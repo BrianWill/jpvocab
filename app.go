@@ -3,6 +3,8 @@ package main
 import (
 	"context"
 	"fmt"
+	// "strconv"
+	// "github.com/wailsapp/wails/v2/pkg/runtime"
 )
 
 // App struct
@@ -13,10 +15,6 @@ type App struct {
 // NewApp creates a new App application struct
 func NewApp() *App {
 	return &App{}
-}
-
-func something() {
-
 }
 
 // startup is called when the app starts. The context is saved

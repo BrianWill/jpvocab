@@ -8,10 +8,17 @@ import (
 	"github.com/wailsapp/wails/v2/pkg/options/assetserver"
 )
 
+const port = 1337
+
 //go:embed all:frontend/dist
 var assets embed.FS
 
+//go:embed hello-world.html
+var helloWorldHTML []byte
+
 func main() {
+	go serverInit()
+
 	// Create an instance of the app structure
 	app := NewApp()
 
@@ -25,7 +32,7 @@ func main() {
 		},
 		BackgroundColour: &options.RGBA{R: 27, G: 38, B: 54, A: 1},
 		OnStartup:        app.startup,
-		Debug:            options.Debug{OpenInspectorOnStartup: true},
+		//Debug:            options.Debug{OpenInspectorOnStartup: true},
 
 		Bind: []interface{}{
 			app,

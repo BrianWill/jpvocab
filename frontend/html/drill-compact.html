@@ -16,8 +16,8 @@
 
   /* --- Sidebar --- */
   .sidebar {
-    width: 200px;
-    min-width: 200px;
+    width: 260px;
+    min-width: 260px;
     background: #11111b;
     border-right: 1px solid #313244;
     padding: 1rem 0;
@@ -25,10 +25,9 @@
     flex-direction: column;
   }
   .sidebar-title {
-    font-size: 0.7rem;
-    text-transform: uppercase;
-    letter-spacing: 0.1em;
-    color: #585b70;
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: #89b4fa;
     padding: 0 0.75rem 0.5rem;
   }
   .sidebar-list {
@@ -41,6 +40,8 @@
     font-size: 0.95rem;
     cursor: default;
   }
+  .sidebar-item.unseen { color: #585b70; filter: blur(4px); user-select: none; }
+  .sidebar-item.unseen:hover { filter: none; background: #1e1e2e; }
   .sidebar-item.known { color: #a6e3a1; }
   .sidebar-item.missed { color: #f38ba8; }
   .sidebar-item:hover { background: #1e1e2e; }
@@ -113,31 +114,25 @@
     padding: 1.5rem;
   }
 
-  .topbar {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    width: 100%;
-    max-width: 600px;
-    margin-bottom: 1rem;
+  .sidebar-stats {
+    padding: 0 0.75rem 0.75rem;
     font-size: 0.8rem;
     color: #6c7086;
   }
-  .topbar .round-label {
-    background: #313244;
-    padding: 0.25rem 0.75rem;
-    border-radius: 4px;
-    color: #89b4fa;
-    font-weight: 600;
-  }
   .counters {
     display: flex;
-    gap: 1rem;
+    margin-bottom: 0.5rem;
   }
   .counter {
+    flex: 1;
     display: flex;
     align-items: center;
     gap: 0.3rem;
+  }
+  .counter span {
+    display: inline-block;
+    width: 1.4em;
+    text-align: right;
   }
   .counter .dot {
     width: 8px;
@@ -145,16 +140,14 @@
     border-radius: 50%;
   }
   .dot-remaining { background: #89b4fa; }
-  .dot-redo { background: #fab387; }
+  .dot-redo { background: #f38ba8; }
   .dot-done { background: #a6e3a1; }
 
   .progress {
     width: 100%;
-    max-width: 600px;
     height: 3px;
     background: #313244;
     border-radius: 2px;
-    margin-bottom: 1.5rem;
   }
   .progress-bar {
     height: 100%;
@@ -231,11 +224,16 @@
     user-select: none;
   }
 
+  .button-area {
+    width: 100%;
+    max-width: 600px;
+    margin-top: 0.75rem;
+  }
+
   .action-bar {
     display: flex;
     align-items: center;
     justify-content: center;
-    padding: 1rem 2rem;
     gap: 1rem;
   }
 
@@ -301,20 +299,16 @@
 
 <!-- Sidebar -->
 <div class="sidebar">
-  <div class="sidebar-title">History</div>
-  <ul class="sidebar-list" id="sidebar-list">
-    <!-- Pre-filled history -->
-    <li class="sidebar-item missed" data-id="難しい" data-word='{"word":"難しい","reading":"むずかしい","type":"i-adjective","meaning":"difficult","exampleJp":"この問題は難しい。","exampleEn":"\"This problem is difficult.\""}'>難しい</li>
-    <li class="sidebar-item missed" data-id="届ける" data-word='{"word":"届ける","reading":"とどける","type":"verb","meaning":"to deliver","exampleJp":"荷物を届ける。","exampleEn":"\"I deliver the package.\""}'>届ける</li>
-    <li class="sidebar-item missed" data-id="必要" data-word='{"word":"必要","reading":"ひつよう","type":"na-adjective","meaning":"necessary","exampleJp":"準備が必要だ。","exampleEn":"\"Preparation is necessary.\""}'>必要</li>
-    <li class="sidebar-item known" data-id="食べる" data-word='{"word":"食べる","reading":"たべる","type":"verb","meaning":"to eat","exampleJp":"毎朝パンを食べる。","exampleEn":"\"I eat bread every morning.\""}'>食べる</li>
-    <li class="sidebar-item known" data-id="飲む" data-word='{"word":"飲む","reading":"のむ","type":"verb","meaning":"to drink","exampleJp":"水を飲む。","exampleEn":"\"I drink water.\""}'>飲む</li>
-    <li class="sidebar-item known" data-id="大きい" data-word='{"word":"大きい","reading":"おおきい","type":"i-adjective","meaning":"big; large","exampleJp":"大きい犬がいる。","exampleEn":"\"There is a big dog.\""}'>大きい</li>
-    <li class="sidebar-item known" data-id="書く" data-word='{"word":"書く","reading":"かく","type":"verb","meaning":"to write","exampleJp":"手紙を書く。","exampleEn":"\"I write a letter.\""}'>書く</li>
-    <li class="sidebar-item known" data-id="新しい" data-word='{"word":"新しい","reading":"あたらしい","type":"i-adjective","meaning":"new","exampleJp":"新しい靴を買った。","exampleEn":"\"I bought new shoes.\""}'>新しい</li>
-    <li class="sidebar-item known" data-id="学校" data-word='{"word":"学校","reading":"がっこう","type":"noun","meaning":"school","exampleJp":"学校に行く。","exampleEn":"\"I go to school.\""}'>学校</li>
-    <li class="sidebar-item known" data-id="友達" data-word='{"word":"友達","reading":"ともだち","type":"noun","meaning":"friend","exampleJp":"友達と遊ぶ。","exampleEn":"\"I hang out with friends.\""}'>友達</li>
-  </ul>
+  <div class="sidebar-title" id="sidebar-title">Round 1</div>
+  <div class="sidebar-stats">
+    <div class="counters">
+      <div class="counter"><div class="dot dot-remaining"></div> <span id="stat-left">0</span> left</div>
+      <div class="counter"><div class="dot dot-redo"></div> <span id="stat-redo">0</span> redo</div>
+      <div class="counter"><div class="dot dot-done"></div> <span id="stat-done">0</span> done</div>
+    </div>
+    <div class="progress"><div class="progress-bar"></div></div>
+  </div>
+  <ul class="sidebar-list" id="sidebar-list"></ul>
 </div>
 
 <!-- Floating tooltip -->
@@ -329,35 +323,7 @@
 
 <!-- Main content -->
 <div class="content">
-  <div class="topbar">
-    <div class="round-label">Round 1</div>
-    <div class="counters">
-      <div class="counter"><div class="dot dot-remaining"></div> 12 left</div>
-      <div class="counter"><div class="dot dot-redo"></div> 3 redo</div>
-      <div class="counter"><div class="dot dot-done"></div> 5 done</div>
-    </div>
-  </div>
-
-  <div class="progress"><div class="progress-bar"></div></div>
-
   <div class="main-area">
-    <!-- Prompt buttons -->
-    <div class="action-bar" id="action-prompt">
-      <button class="btn btn-no" onclick="reveal(false)">
-        ✕ Don't know <span class="key-hint">A</span>
-      </button>
-      <button class="btn btn-yes" onclick="reveal(true)">
-        ✓ Know it <span class="key-hint">D</span>
-      </button>
-    </div>
-
-    <!-- Next button -->
-    <div class="action-bar" id="action-next" style="display:none">
-      <button class="btn btn-next" onclick="next()">
-        Next → <span class="key-hint">Space</span>
-      </button>
-    </div>
-
     <div class="prompt-section">
       <div class="word-jp">走る</div>
       <div class="example-jp">公園を走る。</div>
@@ -374,6 +340,25 @@
         <div class="detail-label">Example</div>
         <div class="detail-value" id="val-example" style="font-style:italic; color:#6c7086"><span class="detail-placeholder">- - -</span></div>
       </div>
+    </div>
+  </div>
+
+  <div class="button-area">
+    <!-- Prompt buttons -->
+    <div class="action-bar" id="action-prompt">
+      <button class="btn btn-no" onclick="reveal(false)">
+        ✕ Don't know <span class="key-hint">A</span>
+      </button>
+      <button class="btn btn-yes" onclick="reveal(true)">
+        ✓ Know it <span class="key-hint">D</span>
+      </button>
+    </div>
+
+    <!-- Next button -->
+    <div class="action-bar" id="action-next" style="display:none">
+      <button class="btn btn-next" onclick="next()">
+        Next → <span class="key-hint">Space</span>
+      </button>
     </div>
   </div>
 </div>
@@ -414,8 +399,24 @@
     { word: '捨てる', reading: 'すてる', meaning: 'to throw away', type: 'verb', exampleJp: 'ゴミを捨てる。', exampleEn: '"I throw away the trash."' },
   ];
 
-  let wordIndex = 0;
-  let currentWord = words[wordIndex];
+  // Drill session state
+  let round = 1;
+  let remaining = [...words];  // words left in this round
+  let redo = [];               // missed words for next round
+  let doneCount = 0;           // total words marked known
+  let currentWord = remaining[0];
+
+  function updateStats() {
+    document.getElementById('stat-left').textContent = remaining.length;
+    document.getElementById('stat-redo').textContent = redo.length;
+    document.getElementById('stat-done').textContent = doneCount;
+    document.getElementById('sidebar-title').textContent = 'Round ' + round;
+
+    const total = remaining.length + redo.length + doneCount;
+    const pct = total > 0 ? (doneCount / total) * 100 : 0;
+    document.querySelector('.progress-bar').style.width = pct + '%';
+  }
+
   function showWord() {
     document.querySelector('.word-jp').textContent = currentWord.word;
     document.querySelector('.example-jp').textContent = currentWord.exampleJp;
@@ -424,6 +425,15 @@
   function reveal(knew) {
     // Add to sidebar immediately
     addToSidebar(currentWord, knew);
+
+    // Update drill state
+    remaining.shift();
+    if (knew) {
+      doneCount++;
+    } else {
+      redo.push(currentWord);
+    }
+    updateStats();
 
     // Show answer details
     document.getElementById('val-reading').textContent = currentWord.reading;
@@ -437,6 +447,20 @@
     const wordEl = document.querySelector('.word-jp');
     wordEl.classList.add(knew ? 'knew' : 'missed');
   }
+
+  // Populate sidebar with all words as unseen
+  function initSidebar() {
+    const list = document.getElementById('sidebar-list');
+    words.forEach(word => {
+      const li = document.createElement('li');
+      li.className = 'sidebar-item unseen';
+      li.textContent = word.word;
+      li.dataset.word = JSON.stringify(word);
+      li.dataset.id = word.word;
+      list.appendChild(li);
+    });
+  }
+  initSidebar();
 
   function addToSidebar(word, knew) {
     const list = document.getElementById('sidebar-list');
@@ -452,13 +476,23 @@
     li.dataset.id = word.word;
     li.addEventListener('animationend', () => li.classList.remove('flash-known', 'flash-missed'));
 
-    // Both missed and known insert right before the first known item
-    // (missed: top of list; known: start of known section)
-    const firstKnown = list.querySelector('.sidebar-item.known');
-    if (firstKnown) {
-      list.insertBefore(li, firstKnown);
+    // Order: unseen, then missed, then known
+    if (!knew) {
+      // Missed: top of missed section = right after last unseen
+      const firstNonUnseen = list.querySelector('.sidebar-item.missed, .sidebar-item.known');
+      if (firstNonUnseen) {
+        list.insertBefore(li, firstNonUnseen);
+      } else {
+        list.appendChild(li);
+      }
     } else {
-      list.appendChild(li);
+      // Known: top of known section = right after last missed
+      const firstKnown = list.querySelector('.sidebar-item.known');
+      if (firstKnown) {
+        list.insertBefore(li, firstKnown);
+      } else {
+        list.appendChild(li);
+      }
     }
   }
 
@@ -476,9 +510,10 @@
     document.getElementById('tip-example-en').textContent = data.exampleEn || '';
 
     const rect = item.getBoundingClientRect();
-    tip.style.left = rect.right + 8 + 'px';
-    tip.style.top = rect.top + rect.height / 2 + 'px';
-    tip.style.transform = 'translateY(-50%)';
+    const sidebar = document.querySelector('.sidebar');
+    tip.style.left = sidebar.getBoundingClientRect().right + 'px';
+    tip.style.top = rect.top + 'px';
+    tip.style.transform = '';
     tip.classList.add('visible');
   });
   document.getElementById('sidebar-list').addEventListener('mouseout', e => {
@@ -489,10 +524,39 @@
     }
   });
 
+  function startNextRound() {
+    round++;
+    remaining = [...redo];
+    redo = [];
+    updateStats();
+
+    // Reset sidebar: clear all, re-populate with remaining as unseen
+    const list = document.getElementById('sidebar-list');
+    list.innerHTML = '';
+    remaining.forEach(word => {
+      const li = document.createElement('li');
+      li.className = 'sidebar-item unseen';
+      li.textContent = word.word;
+      li.dataset.word = JSON.stringify(word);
+      li.dataset.id = word.word;
+      list.appendChild(li);
+    });
+  }
+
   function next() {
-    // Advance to next word
-    wordIndex = (wordIndex + 1) % words.length;
-    currentWord = words[wordIndex];
+    if (remaining.length === 0) {
+      if (redo.length > 0) {
+        startNextRound();
+      } else {
+        // Session complete
+        document.querySelector('.word-jp').textContent = 'Done!';
+        document.querySelector('.example-jp').textContent = 'All words cleared.';
+        document.getElementById('action-next').style.display = 'none';
+        return;
+      }
+    }
+
+    currentWord = remaining[0];
     showWord();
 
     // Reset to placeholders
@@ -506,16 +570,18 @@
     document.getElementById('action-next').style.display = 'none';
   }
 
-  // Initialize first word
+  // Initialize
   showWord();
+  updateStats();
 
   document.addEventListener('keydown', e => {
+    if (e.key === ' ') e.preventDefault();
     const prompt = document.getElementById('action-prompt');
     if (prompt.style.display !== 'none') {
       if (e.key === 'd' || e.key === 'D') reveal(true);
       if (e.key === 'a' || e.key === 'A') reveal(false);
     } else {
-      if (e.key === ' ') { e.preventDefault(); next(); }
+      if (e.key === ' ') next();
     }
   });
 </script>

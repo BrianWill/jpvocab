@@ -131,9 +131,7 @@ let remaining = buildRound();
 let currentWord = remaining[0];
 
 function updateStats() {
-  document.getElementById('stat-left').textContent = remaining.length;
-  document.getElementById('stat-redo').textContent = redo.length;
-  document.getElementById('stat-done').textContent = doneCount;
+  document.getElementById('stat-togo').textContent = (words.length - doneCount) + ' to go of ' + words.length;
   document.getElementById('sidebar-title').textContent = 'Round ' + round;
 
   const pct = (doneCount / words.length) * 100;
@@ -141,8 +139,8 @@ function updateStats() {
 }
 
 function showWord() {
-  document.querySelector('.word-jp').textContent = currentWord.word;
-  document.querySelector('.example-jp').textContent = currentWord.exampleJp;
+  document.getElementById('prompt-word-jp').textContent = currentWord.word;
+  document.getElementById('prompt-example-jp').textContent = currentWord.exampleJp;
 
   const list = document.getElementById('sidebar-list');
   list.querySelectorAll('.sidebar-item.current').forEach(el => el.classList.remove('current'));
@@ -151,29 +149,45 @@ function showWord() {
 }
 
 function reveal(knew) {
-  // Add to sidebar immediately
-  addToSidebar(currentWord, knew);
+  const answered = currentWord;
 
   // Update drill state
   remaining.shift();
   if (knew) {
     doneCount++;
   } else {
-    redo.push(currentWord);
+    redo.push(answered);
   }
+
+  addToSidebar(answered, knew);
   updateStats();
 
-  // Show answer details
-  document.getElementById('val-reading').textContent = currentWord.reading;
-  document.getElementById('val-meaning').textContent = currentWord.meaning;
-  document.getElementById('val-type').textContent = currentWord.type;
-  document.getElementById('val-example').textContent = currentWord.exampleEn;
+  // Show answered word in last-word card
+  document.getElementById('last-word-card').style.display = '';
+  const lastWordEl = document.getElementById('last-word-jp');
+  lastWordEl.textContent = answered.word;
+  lastWordEl.className = 'tooltip-word ' + (knew ? 'knew' : 'missed');
+  document.getElementById('last-reading').textContent = answered.reading;
+  document.getElementById('last-pos').textContent = answered.type;
+  document.getElementById('last-meaning').textContent = answered.meaning;
+  document.getElementById('last-example-jp').textContent = answered.exampleJp;
+  document.getElementById('last-example-en').textContent = answered.exampleEn;
 
-  document.getElementById('action-prompt').style.display = 'none';
-  document.getElementById('action-next').style.display = 'flex';
+  // Advance
+  if (remaining.length === 0) {
+    if (redo.length > 0 || pool.length > 0) {
+      startNextRound();
+      return;
+    } else {
+      document.getElementById('prompt-word-jp').textContent = 'Done!';
+      document.getElementById('prompt-example-jp').textContent = 'All words cleared.';
+      document.getElementById('action-prompt').style.display = 'none';
+      return;
+    }
+  }
 
-  const wordEl = document.querySelector('.word-jp');
-  wordEl.classList.add(knew ? 'knew' : 'missed');
+  currentWord = remaining[0];
+  showWord();
 }
 
 function initSidebar() {
@@ -251,6 +265,7 @@ document.getElementById('sidebar-list').addEventListener('mouseout', e => {
   }
 });
 
+
 function startNextRound() {
   round++;
   const redoSet = new Set(redo.map(w => w.word));
@@ -274,33 +289,9 @@ function startNextRound() {
     li.dataset.id = word.word;
     list.appendChild(li);
   });
-}
 
-function next() {
-  if (remaining.length === 0) {
-    if (redo.length > 0 || pool.length > 0) {
-      startNextRound();
-    } else {
-      // Session complete
-      document.querySelector('.word-jp').textContent = 'Done!';
-      document.querySelector('.example-jp').textContent = 'All words cleared.';
-      document.getElementById('action-next').style.display = 'none';
-      return;
-    }
-  }
-
-  currentWord = remaining[0];
+  document.getElementById('last-word-card').style.display = 'none';
   showWord();
-
-  // Reset to placeholders
-  document.getElementById('val-reading').innerHTML = placeholder;
-  document.getElementById('val-meaning').innerHTML = placeholder;
-  document.getElementById('val-type').innerHTML = placeholder;
-  document.getElementById('val-example').innerHTML = placeholder;
-
-  document.querySelector('.word-jp').classList.remove('knew', 'missed');
-  document.getElementById('action-prompt').style.display = 'flex';
-  document.getElementById('action-next').style.display = 'none';
 }
 
 // Initialize
@@ -308,12 +299,8 @@ showWord();
 updateStats();
 
 document.addEventListener('keydown', e => {
-  if (e.key === ' ') e.preventDefault();
   const prompt = document.getElementById('action-prompt');
-  if (prompt.style.display !== 'none') {
-    if (e.key === 'd' || e.key === 'D') reveal(true);
-    if (e.key === 'a' || e.key === 'A') reveal(false);
-  } else {
-    if (e.key === ' ') next();
-  }
+  if (prompt.style.display === 'none') return;
+  if (e.key === 'd' || e.key === 'D') reveal(true);
+  if (e.key === 'a' || e.key === 'A') reveal(false);
 });

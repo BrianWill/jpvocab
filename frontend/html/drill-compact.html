@@ -10,19 +10,15 @@
 
 <!-- Sidebar -->
 <div class="sidebar">
-  <div class="sidebar-title" id="sidebar-title">Round 1</div>
   <div class="sidebar-stats">
-    <div class="counters">
-      <div class="counter"><div class="dot dot-redo"></div> <span id="stat-redo">0</span> redo</div>
-      <div class="counter"><div class="dot dot-done"></div> <span id="stat-done">0</span> done</div>
-      <div class="counter"><div class="dot dot-remaining"></div> <span id="stat-left">0</span> left</div>
-    </div>
-    <div class="progress"><div class="progress-bar"></div></div>
+    <div class="counter"><span id="stat-togo"></span></div>
   </div>
+  <div class="progress" id="progress-bar-container"><div class="progress-bar"></div></div>
+  <div class="sidebar-title" id="sidebar-title">Round 1</div>
   <ul class="sidebar-list" id="sidebar-list"></ul>
 </div>
 
-<!-- Floating tooltip -->
+<!-- Floating tooltips -->
 <div class="tooltip" id="tooltip">
   <div class="tooltip-word" id="tip-word"></div>
   <div class="tooltip-reading" id="tip-reading"></div>
@@ -36,26 +32,12 @@
 <div class="content">
   <div class="main-area">
     <div class="prompt-section">
-      <div class="word-jp">走る</div>
-      <div class="example-jp">公園を走る。</div>
-    </div>
-
-    <div class="detail-section" id="details">
-      <div class="detail-grid">
-        <div class="detail-label">Reading</div>
-        <div class="detail-value highlight" id="val-reading"><span class="detail-placeholder">- - -</span></div>
-        <div class="detail-label">Meaning</div>
-        <div class="detail-value meaning-text" id="val-meaning"><span class="detail-placeholder">- - -</span></div>
-        <div class="detail-label">Type</div>
-        <div class="detail-value" id="val-type"><span class="detail-placeholder">- - -</span></div>
-        <div class="detail-label">Example</div>
-        <div class="detail-value" id="val-example" style="font-style:italic; color:#6c7086"><span class="detail-placeholder">- - -</span></div>
-      </div>
+      <div class="word-jp" id="prompt-word-jp"></div>
+      <div class="example-jp" id="prompt-example-jp"></div>
     </div>
   </div>
 
   <div class="button-area">
-    <!-- Prompt buttons -->
     <div class="action-bar" id="action-prompt">
       <button class="btn btn-no" onclick="reveal(false)">
         ✕ Don't know <span class="key-hint">A</span>
@@ -64,13 +46,15 @@
         ✓ Know it <span class="key-hint">D</span>
       </button>
     </div>
+  </div>
 
-    <!-- Next button -->
-    <div class="action-bar" id="action-next" style="display:none">
-      <button class="btn btn-next" onclick="next()">
-        Next → <span class="key-hint">Space</span>
-      </button>
-    </div>
+  <div class="last-word-card" id="last-word-card" style="display:none">
+    <div id="last-word-jp" class="tooltip-word"></div>
+    <div id="last-reading" class="tooltip-reading"></div>
+    <div id="last-pos" class="tooltip-pos"></div>
+    <div id="last-meaning" class="tooltip-meaning"></div>
+    <div id="last-example-jp" class="tooltip-example"></div>
+    <div id="last-example-en" class="tooltip-example-en"></div>
   </div>
 </div>
 

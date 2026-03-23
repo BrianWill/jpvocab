@@ -104,7 +104,7 @@ const words = [
   { word: '特別', reading: 'とくべつ', meaning: 'special', type: 'na-adjective', exampleJp: '今日は特別な日だ。', exampleEn: '"Today is a special day."' },
 ];
 
-const ROUND_SIZE = 10;
+const DEFAULT_ROUND_SIZE = 10;
 
 function shuffle(arr) {
   const a = [...arr];
@@ -127,14 +127,16 @@ function timeAgo(date) {
 }
 
 // Session state
-let pool = shuffle([...words]); // unplayed words in random order
+let poolSize = words.length;
+let roundSize = DEFAULT_ROUND_SIZE;
+let pool = shuffle([...words]);
 let round = 1;
 let redo = [];
 let doneCount = 0;
 let drillStartedAt = Date.now();
 
 function buildRound() {
-  const slots = Math.max(0, ROUND_SIZE - redo.length);
+  const slots = Math.max(0, roundSize - redo.length);
   const picked = pool.splice(0, slots);
   return [...redo, ...picked];
 }
@@ -143,11 +145,11 @@ let remaining = buildRound();
 let currentWord = remaining[0];
 
 function updateStats() {
-  document.getElementById('stat-togo').textContent = (words.length - doneCount) + ' to go of ' + words.length;
+  document.getElementById('stat-togo').textContent = (poolSize - doneCount) + ' to go of ' + poolSize;
   document.getElementById('sidebar-title').textContent = 'Round ' + round;
   document.getElementById('header-began').textContent = 'began ' + timeAgo(drillStartedAt);
 
-  const pct = (doneCount / words.length) * 100;
+  const pct = (doneCount / poolSize) * 100;
   document.querySelector('.progress-bar').style.width = pct + '%';
 }
 
@@ -307,7 +309,27 @@ function startNextRound() {
   showWord();
 }
 
+const STEP_INTERVAL = 230;
+let _stepTimer = null;
+function startStep(fn, ...args) { fn(...args); _stepTimer = setInterval(() => fn(...args), STEP_INTERVAL); }
+function stopStep() { clearInterval(_stepTimer); _stepTimer = null; }
+
+function adjustRestart(id, delta) {
+  const input = document.getElementById(id);
+  const val = parseInt(input.value, 10) || 5;
+  input.value = delta > 0
+    ? Math.min(995, Math.floor(val / 5) * 5 + 5)
+    : Math.max(5, Math.ceil(val / 5) * 5 - 5);
+}
+
+function capRestartInput(input) {
+  if (input.value.length > 3) input.value = input.value.slice(0, 3);
+  if (input.value === '0') input.value = '1';
+}
+
 function openRestartModal() {
+  document.getElementById('restart-total-words').value = poolSize;
+  document.getElementById('restart-round-size').value = roundSize;
   document.getElementById('restart-modal-backdrop').classList.remove('hidden');
 }
 function closeRestartModal() {
@@ -317,12 +339,16 @@ function handleRestartBackdropClick(e) {
   if (e.target === document.getElementById('restart-modal-backdrop')) closeRestartModal();
 }
 function confirmRestart() {
+  const total = Math.max(1, Math.min(parseInt(document.getElementById('restart-total-words').value, 10) || poolSize, words.length));
+  const rSize = Math.max(1, parseInt(document.getElementById('restart-round-size').value, 10) || roundSize);
   closeRestartModal();
-  restartDrill();
+  restartDrill(total, rSize);
 }
 
-function restartDrill() {
-  pool = shuffle([...words]);
+function restartDrill(totalWords, newRoundSize) {
+  poolSize = totalWords;
+  roundSize = newRoundSize;
+  pool = shuffle([...words]).slice(0, poolSize);
   round = 1;
   redo = [];
   doneCount = 0;

@@ -75,7 +75,22 @@
       <button class="modal-close" onclick="closeRestartModal()">✕</button>
     </div>
     <div class="modal-body">
-      <p class="modal-confirm-text">Start a new drill with a fresh set of randomly drawn words from the lexicon?</p>
+      <div class="restart-field">
+        <label>Total words</label>
+        <div class="num-stepper">
+          <button class="num-btn" type="button" onmousedown="startStep(adjustRestart,'restart-total-words',-5)" onmouseup="stopStep()" onmouseleave="stopStep()">−</button>
+          <input type="number" id="restart-total-words" min="1" oninput="capRestartInput(this)">
+          <button class="num-btn" type="button" onmousedown="startStep(adjustRestart,'restart-total-words',5)" onmouseup="stopStep()" onmouseleave="stopStep()">+</button>
+        </div>
+      </div>
+      <div class="restart-field">
+        <label>Words per round</label>
+        <div class="num-stepper">
+          <button class="num-btn" type="button" onmousedown="startStep(adjustRestart,'restart-round-size',-5)" onmouseup="stopStep()" onmouseleave="stopStep()">−</button>
+          <input type="number" id="restart-round-size" min="1" oninput="capRestartInput(this)">
+          <button class="num-btn" type="button" onmousedown="startStep(adjustRestart,'restart-round-size',5)" onmouseup="stopStep()" onmouseleave="stopStep()">+</button>
+        </div>
+      </div>
     </div>
     <div class="modal-footer">
       <button class="btn-cancel" onclick="closeRestartModal()">Cancel</button>

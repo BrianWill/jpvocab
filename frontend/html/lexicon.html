@@ -95,9 +95,9 @@
       <div class="modal-field">
         <label for="edit-target">Target drills</label>
         <div class="num-stepper">
-          <button class="num-btn" type="button" onclick="adjustTarget(-1)">−</button>
-          <input id="edit-target" type="number" min="0">
-          <button class="num-btn" type="button" onclick="adjustTarget(1)">+</button>
+          <button class="num-btn" type="button" onmousedown="startStep(adjustTarget,-1)" onmouseup="stopStep()" onmouseleave="stopStep()">−</button>
+          <input id="edit-target" type="number" min="0" oninput="capTargetInput(this)">
+          <button class="num-btn" type="button" onmousedown="startStep(adjustTarget,1)" onmouseup="stopStep()" onmouseleave="stopStep()">+</button>
         </div>
       </div>
     </div>

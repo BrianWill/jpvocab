@@ -68,6 +68,43 @@ body {
 .tooltip.visible,
 .lex-tooltip.visible { display: block; }
 
+/* --- Number stepper --- */
+.num-stepper {
+  display: flex;
+  align-items: stretch;
+}
+.num-stepper input {
+  width: 4rem;
+  background: #11111b;
+  border: 1px solid #313244;
+  border-radius: 0;
+  border-left: none;
+  border-right: none;
+  color: #cdd6f4;
+  font-family: inherit;
+  font-size: 0.9rem;
+  padding: 0.4rem 0.6rem;
+  text-align: center;
+  flex-shrink: 0;
+  -moz-appearance: textfield;
+}
+.num-stepper input::-webkit-inner-spin-button,
+.num-stepper input::-webkit-outer-spin-button { -webkit-appearance: none; }
+.num-stepper input:focus { outline: none; box-shadow: inset 0 0 0 1px #89b4fa; }
+.num-btn {
+  background: #11111b;
+  border: 1px solid #313244;
+  color: #89b4fa;
+  font-size: 1.1rem;
+  padding: 0 0.75rem;
+  cursor: pointer;
+  line-height: 1;
+  flex-shrink: 0;
+}
+.num-btn:first-child { border-radius: 4px 0 0 4px; }
+.num-btn:last-child  { border-radius: 0 4px 4px 0; }
+.num-btn:hover { background: #313244; }
+
 /* --- Modals --- */
 .modal-backdrop {
   position: fixed;

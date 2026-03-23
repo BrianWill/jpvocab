@@ -294,8 +294,21 @@
 .word-jp.knew { color: #a6e3a1; }
 .word-jp.missed { color: #f38ba8; }
 
+/* Modal — restart fields */
+.restart-field {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+}
+.restart-field label {
+  font-size: 0.8rem;
+  color: #585b70;
+}
+
 /* Modal — drill-specific overrides */
-.modal { max-width: 400px; }
+.modal { max-width: 360px; }
+.modal .modal-body { display: flex; flex-direction: column; gap: 0.75rem; }
 .modal-word-label {
   font-size: 1.1rem;
   font-weight: 700;

@@ -233,9 +233,18 @@ function adjustTargetInline(event, delta) {
   updateWordCount();
 }
 
+const STEP_INTERVAL = 230;
+let _stepTimer = null;
+function startStep(fn, ...args) { fn(...args); _stepTimer = setInterval(() => fn(...args), STEP_INTERVAL); }
+function stopStep() { clearInterval(_stepTimer); _stepTimer = null; }
+
+function capTargetInput(input) {
+  if (input.value.length > 2) input.value = input.value.slice(0, 2);
+}
+
 function adjustTarget(delta) {
   const input = document.getElementById('edit-target');
-  input.value = Math.max(0, (parseInt(input.value, 10) || 0) + delta);
+  input.value = Math.min(99, Math.max(0, (parseInt(input.value, 10) || 0) + delta));
 }
 
 document.addEventListener('keydown', e => { if (e.key === 'Escape') { closeModal(); closeAddModal(); } });

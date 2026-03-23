@@ -71,6 +71,7 @@ body {
 .row-example td {
   padding: 0 1rem 0.5rem;
   font-size: 0.8rem;
+  text-align: right;
 }
 .cell-ex-jp { color: #c8956a; }
 .cell-ex-en { color: #9e6e48; font-style: italic; }

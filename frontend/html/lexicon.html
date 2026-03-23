@@ -11,6 +11,8 @@
 <div class="page-header">
   <span class="page-title">Lexicon</span>
   <span class="page-meta" id="word-count"></span>
+  <button class="btn-add-word" onclick="openAddModal()" title="Add words">＋</button>
+  <a class="page-nav-link" href="drill-compact.html">Drill →</a>
 </div>
 
 <div class="table-wrap">
@@ -28,6 +30,30 @@
     </thead>
     <tbody id="word-tbody"></tbody>
   </table>
+</div>
+
+<div id="add-modal-backdrop" class="modal-backdrop hidden" onclick="handleAddBackdropClick(event)">
+  <div class="modal">
+    <div class="modal-header">
+      <span class="modal-word-label">Add words</span>
+      <button class="modal-close" onclick="closeAddModal()">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="modal-field">
+        <label for="add-words-input">Words to add — separate with spaces, commas, or newlines</label>
+        <textarea id="add-words-input" rows="8" placeholder="食べる 走る, 静か&#10;美しい、難しい"></textarea>
+      </div>
+      <p class="add-modal-note">
+        When connected to the backend, words will be normalised to their dictionary base form
+        and checked for duplicates. Readings, meanings, example sentences, and optionally
+        audio (via VoiceVox) will be generated automatically with AI assistance.
+      </p>
+    </div>
+    <div class="modal-footer">
+      <button class="btn-cancel" onclick="closeAddModal()">Cancel</button>
+      <button class="btn-save" onclick="saveAddModal()">Add</button>
+    </div>
+  </div>
 </div>
 
 <div id="modal-backdrop" class="modal-backdrop hidden" onclick="handleBackdropClick(event)">

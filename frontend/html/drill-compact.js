@@ -115,11 +115,23 @@ function shuffle(arr) {
   return a;
 }
 
+function timeAgo(date) {
+  const sec = Math.floor((Date.now() - date) / 1000);
+  const min = Math.floor(sec / 60);
+  if (min < 1) return 'just now';
+  if (min < 60) return min + ' minute' + (min === 1 ? '' : 's') + ' ago';
+  const hr = Math.floor(min / 60);
+  if (hr < 24) return hr + ' hour' + (hr === 1 ? '' : 's') + ' ago';
+  const day = Math.floor(hr / 24);
+  return day + ' day' + (day === 1 ? '' : 's') + ' ago';
+}
+
 // Session state
 let pool = shuffle([...words]); // unplayed words in random order
 let round = 1;
 let redo = [];
 let doneCount = 0;
+let drillStartedAt = Date.now();
 
 function buildRound() {
   const slots = Math.max(0, ROUND_SIZE - redo.length);
@@ -133,6 +145,7 @@ let currentWord = remaining[0];
 function updateStats() {
   document.getElementById('stat-togo').textContent = (words.length - doneCount) + ' to go of ' + words.length;
   document.getElementById('sidebar-title').textContent = 'Round ' + round;
+  document.getElementById('header-began').textContent = 'began ' + timeAgo(drillStartedAt);
 
   const pct = (doneCount / words.length) * 100;
   document.querySelector('.progress-bar').style.width = pct + '%';
@@ -294,11 +307,43 @@ function startNextRound() {
   showWord();
 }
 
+function openRestartModal() {
+  document.getElementById('restart-modal-backdrop').classList.remove('hidden');
+}
+function closeRestartModal() {
+  document.getElementById('restart-modal-backdrop').classList.add('hidden');
+}
+function handleRestartBackdropClick(e) {
+  if (e.target === document.getElementById('restart-modal-backdrop')) closeRestartModal();
+}
+function confirmRestart() {
+  closeRestartModal();
+  restartDrill();
+}
+
+function restartDrill() {
+  pool = shuffle([...words]);
+  round = 1;
+  redo = [];
+  doneCount = 0;
+  drillStartedAt = Date.now();
+  remaining = buildRound();
+  currentWord = remaining[0];
+
+  document.getElementById('sidebar-list').innerHTML = '';
+  document.getElementById('action-prompt').style.display = '';
+  document.getElementById('last-word-card').style.display = 'none';
+  initSidebar();
+  updateStats();
+  showWord();
+}
+
 // Initialize
 showWord();
 updateStats();
 
 document.addEventListener('keydown', e => {
+  if (e.key === 'Escape') { closeRestartModal(); return; }
   const prompt = document.getElementById('action-prompt');
   if (prompt.style.display === 'none') return;
   if (e.key === 'd' || e.key === 'D') reveal(true);

@@ -101,7 +101,12 @@
   { word: '特別', reading: 'とくべつ', meaning: 'special', type: 'na-adjective', exampleJp: '今日は特別な日だ。', exampleEn: 'Today is a special day.', correct: 0, incorrect: 0, target: 3, createdAt: '2025-06-01', lastDrilled: '2026-03-18' },
 ];
 
-document.getElementById('word-count').textContent = words.length + ' words';
+function updateWordCount() {
+  const active = words.filter(w => w.correct < w.target).length;
+  document.getElementById('word-count').textContent =
+    words.length + ' words (' + active + ' active)';
+}
+updateWordCount();
 
 const typeLabels = {
   'godan-verb':   'Godan verb — Group 1 (五段動詞)',
@@ -114,8 +119,8 @@ const typeLabels = {
 
 function timeAgo(dateStr) {
   const sec = Math.floor((Date.now() - new Date(dateStr)) / 1000);
-  if (sec < 60)   return sec + ' second' + (sec === 1 ? '' : 's') + ' ago';
   const min = Math.floor(sec / 60);
+  if (min < 1) return 'just now';
   if (min < 60)   return min + ' minute' + (min === 1 ? '' : 's') + ' ago';
   const hr = Math.floor(min / 60);
   if (hr < 24)    return hr + ' hour' + (hr === 1 ? '' : 's') + ' ago';
@@ -216,4 +221,47 @@ function adjustTarget(delta) {
   input.value = Math.max(0, (parseInt(input.value, 10) || 0) + delta);
 }
 
-document.addEventListener('keydown', e => { if (e.key === 'Escape') closeModal(); });
+document.addEventListener('keydown', e => { if (e.key === 'Escape') { closeModal(); closeAddModal(); } });
+
+// --- Add words modal ---
+function openAddModal() {
+  document.getElementById('add-words-input').value = '';
+  document.getElementById('add-modal-backdrop').classList.remove('hidden');
+  document.getElementById('add-words-input').focus();
+}
+
+function closeAddModal() {
+  document.getElementById('add-modal-backdrop').classList.add('hidden');
+}
+
+function handleAddBackdropClick(event) {
+  if (event.target === document.getElementById('add-modal-backdrop')) closeAddModal();
+}
+
+function saveAddModal() {
+  const lines = document.getElementById('add-words-input').value
+    .split(/[\s,、。・;:!?()（）「」【】『』\[\]]+/)
+    .map(t => t.trim()).filter(t => t.length > 0);
+
+  const today = new Date().toISOString().slice(0, 10);
+  lines.forEach(word => {
+    if (words.some(w => w.word === word)) return; // basic duplicate check
+    const w = {
+      word, reading: '', type: 'noun', meaning: '',
+      exampleJp: '', exampleEn: '',
+      correct: 0, incorrect: 0, target: 3,
+      createdAt: today, lastDrilled: null,
+    };
+    words.push(w);
+    const trMain = document.createElement('tr');
+    trMain.className = 'row-main';
+    const trEx = document.createElement('tr');
+    trEx.className = 'row-example';
+    renderRow(w, trMain, trEx);
+    tbody.appendChild(trMain);
+    tbody.appendChild(trEx);
+  });
+
+  updateWordCount();
+  closeAddModal();
+}

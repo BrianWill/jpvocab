@@ -57,6 +57,14 @@ go mod tidy
 
 There are no test suites or linting configurations set up.
 
+## Planned Lexicon Features (not yet implemented)
+
+- **Add words flow** — the lexicon has an "add words" modal where the user pastes Japanese words (one per line). When wired to the backend:
+  - Words are normalised to their dictionary base form via grammatical analysis (e.g. conjugated verbs → dictionary form) to prevent duplicates across inflections
+  - Duplicates (same base form already in lexicon) are silently skipped
+  - AI is used to auto-generate: reading (hiragana), meaning (English), example sentence (Japanese + English translation)
+  - Optionally, audio of the word and example sentence is generated via VoiceVox and stored alongside the word
+
 ## Frontend Prototypes
 
 `frontend/html/` contains standalone HTML/CSS/JS prototypes that define the UI design. They use hardcoded word data and have no backend connection yet.

@@ -11,6 +11,19 @@ Japanese vocabulary drilling desktop app built with **Wails v2** (Go backend + w
 
 Word data (lexicon) is stored in a SQLite database. Per-word drill counts (correct/incorrect) will also be persisted there. Drill session state (current round, remaining words, redo queue) is in-memory only.
 
+Each word has two integers:
+
+- "current drill count" (total number of times the word has been marked correct across all prior drills)
+- "target drill count" (the number of times the word is intended to be drilled) 
+
+When words are randomly selected from the lexion to drill, only active words are chosen.
+
+A word tracks three timestamps:
+
+- "creation date": date and time when the word was added to the database
+- "last drill date": date and time when the word was last drilled (updated not when drill starts but when the user gives answer for the word)
+- "target last reached date": date and time when the word's current drill count matched or exceeded its target drill count (for new words, this starts out null)
+
 The frontend is currently being refined as static HTML prototypes (`frontend/html/`) before being wired up to the backend.
 
 ## Terminology

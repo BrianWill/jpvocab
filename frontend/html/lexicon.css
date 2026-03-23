@@ -36,7 +36,12 @@ body {
 .word-table {
   width: 100%;
   border-collapse: collapse;
+  table-layout: fixed;
 }
+.word-table th:nth-child(1) { width: 20%; }   /* Word */
+.word-table th:nth-child(2) { width: 15%; }   /* Reading */
+.word-table th:nth-child(3) { width: 15%; }   /* Type */
+/* Meaning (4th) takes all remaining space */
 
 .word-table th {
   background: #11111b;
@@ -71,10 +76,18 @@ body {
 .row-example td {
   padding: 0 1rem 0.5rem;
   font-size: 0.8rem;
-  text-align: right;
 }
+.cell-ex { text-align: right; }
 .cell-ex-jp { color: #c8956a; }
 .cell-ex-en { color: #9e6e48; font-style: italic; }
+.cell-date {
+  white-space: nowrap;
+  cursor: default;
+}
+.cell-date-added { color: #45475a; display: inline-block; min-width: 7.5rem; }
+.cell-date-sep   { color: #313244; }
+.cell-date-drilled { color: #6c7086; font-style: italic; }
+.cell-date-never   {}
 
 .cell-reading { color: #89b4fa; white-space: nowrap; }
 
@@ -88,11 +101,12 @@ body {
 
 .cell-meaning { color: #cdd6f4; }
 
-.col-num { width: 3rem; }
-.cell-correct, .cell-incorrect {
+.col-num { width: 5%; }
+.cell-correct, .cell-incorrect, .cell-target {
   text-align: center;
   font-weight: 600;
   font-size: 0.9rem;
 }
 .cell-correct { color: #a6e3a1; }
 .cell-incorrect { color: #f38ba8; }
+.cell-target { color: #f9e2af; }

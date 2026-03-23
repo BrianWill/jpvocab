@@ -1,0 +1,312 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Drill - Compact</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: 'Segoe UI', system-ui, sans-serif;
+    background: #1e1e2e;
+    color: #cdd6f4;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    min-height: 100vh;
+    padding: 1.5rem;
+  }
+
+  .topbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    width: 100%;
+    max-width: 600px;
+    margin-bottom: 1rem;
+    font-size: 0.8rem;
+    color: #6c7086;
+  }
+  .topbar .round-label {
+    background: #313244;
+    padding: 0.25rem 0.75rem;
+    border-radius: 4px;
+    color: #89b4fa;
+    font-weight: 600;
+  }
+  .counters {
+    display: flex;
+    gap: 1rem;
+  }
+  .counter {
+    display: flex;
+    align-items: center;
+    gap: 0.3rem;
+  }
+  .counter .dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+  }
+  .dot-remaining { background: #89b4fa; }
+  .dot-redo { background: #fab387; }
+  .dot-done { background: #a6e3a1; }
+
+  .progress {
+    width: 100%;
+    max-width: 600px;
+    height: 3px;
+    background: #313244;
+    border-radius: 2px;
+    margin-bottom: 1.5rem;
+  }
+  .progress-bar {
+    height: 100%;
+    width: 30%;
+    background: #89b4fa;
+    border-radius: 2px;
+  }
+
+  .main-area {
+    width: 100%;
+    max-width: 600px;
+    background: #181825;
+    border: 1px solid #313244;
+    border-radius: 8px;
+    overflow: hidden;
+  }
+
+  .prompt-section {
+    padding: 2.5rem 2rem;
+    text-align: center;
+    border-bottom: 1px solid #313244;
+  }
+
+  .word-jp {
+    font-size: 2.8rem;
+    font-weight: 700;
+    color: #cdd6f4;
+  }
+
+  .example-jp {
+    font-size: 0.95rem;
+    color: #585b70;
+    margin-top: 0.5rem;
+  }
+
+  .detail-section {
+    padding: 1.5rem 2rem;
+    border-bottom: 1px solid #313244;
+  }
+
+  .detail-grid {
+    display: grid;
+    grid-template-columns: auto 1fr;
+    gap: 0.4rem 1.2rem;
+    font-size: 0.9rem;
+  }
+  .detail-label {
+    color: #585b70;
+    text-align: right;
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    line-height: 1.6;
+    padding-top: 0.15rem;
+  }
+  .detail-value {
+    color: #cdd6f4;
+    line-height: 1.6;
+  }
+  .detail-value.highlight {
+    color: #89b4fa;
+    font-weight: 600;
+    font-size: 1.1rem;
+    line-height: 1.6;
+  }
+  .detail-value.meaning-text {
+    font-size: 1.1rem;
+    font-weight: 600;
+    line-height: 1.6;
+  }
+  .detail-placeholder {
+    color: #313244;
+    letter-spacing: 0.15em;
+    user-select: none;
+  }
+
+  .action-bar {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 1rem 2rem;
+    gap: 1rem;
+  }
+
+  .btn {
+    border: none;
+    cursor: pointer;
+    transition: all 0.1s;
+    font-family: inherit;
+  }
+  .btn:active { transform: scale(0.95); }
+
+  .btn-no, .btn-yes {
+    border-radius: 6px;
+    padding: 0.7rem 1.8rem;
+    font-size: 0.9rem;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    flex: 1;
+    justify-content: center;
+  }
+
+  .btn-no {
+    background: rgba(243,139,168,0.1);
+    border: 1px solid rgba(243,139,168,0.25);
+    color: #f38ba8;
+  }
+  .btn-no:hover { background: rgba(243,139,168,0.18); }
+
+  .btn-yes {
+    background: rgba(166,227,161,0.1);
+    border: 1px solid rgba(166,227,161,0.25);
+    color: #a6e3a1;
+  }
+  .btn-yes:hover { background: rgba(166,227,161,0.18); }
+
+  .btn-next {
+    background: #89b4fa;
+    border: 1px solid #89b4fa;
+    color: #1e1e2e;
+    border-radius: 6px;
+    padding: 0.7rem 0;
+    font-size: 0.9rem;
+    font-weight: 600;
+    width: 100%;
+  }
+  .btn-next:hover { background: #74c7ec; }
+
+  .key-hint {
+    font-size: 0.65rem;
+    color: #7c7e8b;
+    background: #313244;
+    padding: 0.1rem 0.4rem;
+    border-radius: 3px;
+  }
+
+  .verdict-bar {
+    text-align: center;
+    padding: 0.5rem;
+    font-size: 0.8rem;
+    font-weight: 600;
+    visibility: hidden;
+  }
+  .verdict-bar.show { visibility: visible; }
+  .verdict-bar.knew { background: rgba(166,227,161,0.08); color: #a6e3a1; }
+  .verdict-bar.missed { background: rgba(243,139,168,0.08); color: #f38ba8; }
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <div class="round-label">Round 1</div>
+  <div class="counters">
+    <div class="counter"><div class="dot dot-remaining"></div> 12 left</div>
+    <div class="counter"><div class="dot dot-redo"></div> 3 redo</div>
+    <div class="counter"><div class="dot dot-done"></div> 5 done</div>
+  </div>
+</div>
+
+<div class="progress"><div class="progress-bar"></div></div>
+
+<div class="main-area">
+  <!-- Prompt buttons -->
+  <div class="action-bar" id="action-prompt">
+    <button class="btn btn-no" onclick="reveal(false)">
+      ✕ Don't know <span class="key-hint">A</span>
+    </button>
+    <button class="btn btn-yes" onclick="reveal(true)">
+      ✓ Know it <span class="key-hint">D</span>
+    </button>
+  </div>
+
+  <!-- Next button -->
+  <div class="action-bar" id="action-next" style="display:none">
+    <button class="btn btn-next" onclick="next()">
+      Next → <span class="key-hint">Space</span>
+    </button>
+  </div>
+
+  <div class="verdict-bar" id="verdict-bar">&nbsp;</div>
+
+  <div class="prompt-section">
+    <div class="word-jp">走る</div>
+    <div class="example-jp">公園を走る。</div>
+  </div>
+
+  
+
+  <div class="detail-section" id="details">
+    <div class="detail-grid">
+      <div class="detail-label">Reading</div>
+      <div class="detail-value highlight" id="val-reading"><span class="detail-placeholder">- - -</span></div>
+      <div class="detail-label">Meaning</div>
+      <div class="detail-value meaning-text" id="val-meaning"><span class="detail-placeholder">- - -</span></div>
+      <div class="detail-label">Type</div>
+      <div class="detail-value" id="val-type"><span class="detail-placeholder">- - -</span></div>
+      <div class="detail-label">Example</div>
+      <div class="detail-value" id="val-example" style="font-style:italic; color:#6c7086"><span class="detail-placeholder">- - -</span></div>
+    </div>
+  </div>
+</div>
+
+<script>
+  const placeholder = '<span class="detail-placeholder">- - -</span>';
+
+  function reveal(knew) {
+    // Show answer details
+    document.getElementById('val-reading').innerHTML = 'はしる';
+    document.getElementById('val-meaning').textContent = 'to run';
+    document.getElementById('val-type').textContent = 'verb';
+    document.getElementById('val-example').textContent = '"I run in the park."';
+
+    document.getElementById('action-prompt').style.display = 'none';
+    document.getElementById('action-next').style.display = 'flex';
+    const vb = document.getElementById('verdict-bar');
+    if (knew) {
+      vb.className = 'verdict-bar show knew';
+      vb.textContent = 'Marked as known';
+    } else {
+      vb.className = 'verdict-bar show missed';
+      vb.textContent = 'Added to redo pile';
+    }
+  }
+  function next() {
+    // Reset to placeholders
+    document.getElementById('val-reading').innerHTML = placeholder;
+    document.getElementById('val-meaning').innerHTML = placeholder;
+    document.getElementById('val-type').innerHTML = placeholder;
+    document.getElementById('val-example').innerHTML = placeholder;
+
+    const vb = document.getElementById('verdict-bar');
+    vb.classList.remove('show', 'knew', 'missed');
+    vb.innerHTML = '&nbsp;';
+    document.getElementById('action-prompt').style.display = 'flex';
+    document.getElementById('action-next').style.display = 'none';
+  }
+  document.addEventListener('keydown', e => {
+    const prompt = document.getElementById('action-prompt');
+    if (prompt.style.display !== 'none') {
+      if (e.key === 'd' || e.key === 'D') reveal(true);
+      if (e.key === 'a' || e.key === 'A') reveal(false);
+    } else {
+      if (e.key === ' ') { e.preventDefault(); next(); }
+    }
+  });
+</script>
+
+</body>
+</html>

@@ -109,6 +109,7 @@ const typeLabels = {
   'noun':         'Noun (名詞)',
   'i-adjective':  'い-adjective (い形容詞)',
   'na-adjective': 'な-adjective (な形容詞)',
+  'adverb':       'Adverb (副詞)',
 };
 
 function timeAgo(dateStr) {
@@ -133,21 +134,20 @@ function fullDateTime(dateStr) {
   });
 }
 
-const tbody = document.getElementById('word-tbody');
-words.forEach(w => {
-  const trMain = document.createElement('tr');
-  trMain.className = 'row-main';
+function renderRow(w, trMain, trEx) {
   trMain.innerHTML =
-    '<td><div class="cell-word" title="Japanese word">' + w.word + '</div></td>' +
+    '<td><div class="cell-word" title="Japanese word">' + w.word +
+      '<button class="btn-edit" onclick="openModal(event)" title="Edit word">✎</button>' +
+    '</div></td>' +
     '<td class="cell-reading" title="Hiragana reading">' + w.reading + '</td>' +
     '<td title="Part of speech"><span class="type-badge" title="' + (typeLabels[w.type] || w.type) + '">' + w.type + '</span></td>' +
     '<td class="cell-meaning" title="English meaning">' + w.meaning + '</td>' +
     '<td class="cell-correct" title="Times answered correctly">' + w.correct + '</td>' +
     '<td class="cell-incorrect" title="Times answered incorrectly">' + w.incorrect + '</td>' +
     '<td class="cell-target" title="Target number of additional drills">' + w.target + '</td>';
+  trMain._word = w;
+  trMain._trEx  = trEx;
 
-  const trEx = document.createElement('tr');
-  trEx.className = 'row-example';
   trEx.innerHTML =
     '<td colspan="2" class="cell-date">' +
       '<span class="cell-date-added" title="Date added: ' + fullDateTime(w.createdAt) + '">added ' + timeAgo(w.createdAt) + '</span>' +
@@ -160,7 +160,60 @@ words.forEach(w => {
       '<span class="cell-ex-jp" title="Example sentence (Japanese)">' + w.exampleJp + '</span> ' +
       '<span class="cell-ex-en" title="Example sentence (English)">' + w.exampleEn + '</span>' +
     '</td>';
+}
 
+const tbody = document.getElementById('word-tbody');
+words.forEach(w => {
+  const trMain = document.createElement('tr');
+  trMain.className = 'row-main';
+  const trEx = document.createElement('tr');
+  trEx.className = 'row-example';
+  renderRow(w, trMain, trEx);
   tbody.appendChild(trMain);
   tbody.appendChild(trEx);
 });
+
+// --- Modal ---
+let _modalTrMain = null;
+
+function openModal(event) {
+  event.stopPropagation();
+  const trMain = event.target.closest('tr');
+  _modalTrMain = trMain;
+  const w = trMain._word;
+  document.getElementById('modal-word-label').textContent = w.word;
+  document.getElementById('edit-reading').value  = w.reading;
+  document.getElementById('edit-type').value     = w.type;
+  document.getElementById('edit-meaning').value  = w.meaning;
+  document.getElementById('edit-ex-jp').value    = w.exampleJp;
+  document.getElementById('edit-ex-en').value    = w.exampleEn;
+  document.getElementById('edit-target').value   = w.target;
+  document.getElementById('modal-backdrop').classList.remove('hidden');
+}
+
+function closeModal() {
+  document.getElementById('modal-backdrop').classList.add('hidden');
+}
+
+function handleBackdropClick(event) {
+  if (event.target === document.getElementById('modal-backdrop')) closeModal();
+}
+
+function saveModal() {
+  const w = _modalTrMain._word;
+  w.reading   = document.getElementById('edit-reading').value;
+  w.type      = document.getElementById('edit-type').value;
+  w.meaning   = document.getElementById('edit-meaning').value;
+  w.exampleJp = document.getElementById('edit-ex-jp').value;
+  w.exampleEn = document.getElementById('edit-ex-en').value;
+  w.target    = parseInt(document.getElementById('edit-target').value, 10);
+  renderRow(w, _modalTrMain, _modalTrMain._trEx);
+  closeModal();
+}
+
+function adjustTarget(delta) {
+  const input = document.getElementById('edit-target');
+  input.value = Math.max(0, (parseInt(input.value, 10) || 0) + delta);
+}
+
+document.addEventListener('keydown', e => { if (e.key === 'Escape') closeModal(); });

@@ -1,60 +1,7 @@
-* { margin: 0; padding: 0; box-sizing: border-box; }
-body {
-  font-family: 'Segoe UI', system-ui, sans-serif;
-  background: #1e1e2e;
-  color: #cdd6f4;
-  display: flex;
-  flex-direction: column;
-  height: 100vh;
-}
-
-.page-header {
-  flex-shrink: 0;
-  background: #11111b;
-  border-bottom: 1px solid #313244;
-  padding: 0.75rem 1.5rem;
-  min-height: 3.2rem;
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
-}
-
-.btn-add-word {
-  background: rgba(137,180,250,0.1);
-  border: 1px solid rgba(137,180,250,0.25);
-  color: #89b4fa;
-  border-radius: 6px;
-  font-size: 1.1rem;
-  line-height: 1;
-  padding: 0.2rem 0.6rem;
-  cursor: pointer;
-}
-.btn-add-word:hover { background: rgba(137,180,250,0.2); }
-.page-title {
-  font-size: 0.9rem;
-  font-weight: 700;
-  color: #89b4fa;
-}
 .page-meta {
   font-size: 0.8rem;
   color: #585b70;
 }
-.page-nav-link {
-  margin-left: auto;
-  align-self: stretch;
-  display: flex;
-  align-items: center;
-  padding: 0 1.5rem;
-  margin-top: -0.75rem;
-  margin-bottom: -0.75rem;
-  margin-right: -1.5rem;
-  border-left: 1px solid #313244;
-  background: #181825;
-  font-size: 0.8rem;
-  color: #585b70;
-  text-decoration: none;
-}
-.page-nav-link:hover { color: #89b4fa; background: #1e1e2e; }
 
 .table-wrap {
   flex: 1;
@@ -120,55 +67,13 @@ body {
 .btn-edit:hover { color: #cdd6f4; border-color: #6c7086; }
 .row-main:hover .btn-edit { display: inline-block; }
 
-/* Modal */
-.modal-backdrop {
-  position: fixed;
-  inset: 0;
-  background: rgba(0,0,0,0.6);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 100;
-}
-.modal-backdrop.hidden { display: none; }
-
-.modal {
-  background: #1e1e2e;
-  border: 1px solid #313244;
-  border-radius: 10px;
-  width: 100%;
-  max-width: 480px;
-  display: flex;
-  flex-direction: column;
-  gap: 0;
-  overflow: hidden;
-}
-
-.modal-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 1rem 1.25rem 0.75rem;
-  border-bottom: 1px solid #313244;
-}
+/* Modal — lexicon-specific overrides */
 .modal-word-label {
   font-size: 1.5rem;
   font-weight: 700;
   color: #cdd6f4;
 }
-.modal-close {
-  background: none;
-  border: none;
-  color: #585b70;
-  font-size: 1rem;
-  cursor: pointer;
-  padding: 0.25rem 0.5rem;
-  border-radius: 4px;
-}
-.modal-close:hover { color: #cdd6f4; background: #313244; }
-
 .modal-body {
-  padding: 1.25rem;
   display: flex;
   flex-direction: column;
   gap: 0.85rem;
@@ -249,37 +154,6 @@ body {
 .num-btn:last-child  { border-radius: 0 4px 4px 0; }
 .num-btn:hover { background: #313244; }
 
-.modal-footer {
-  display: flex;
-  justify-content: flex-end;
-  gap: 0.6rem;
-  padding: 0.85rem 1.25rem;
-  border-top: 1px solid #313244;
-}
-.btn-cancel {
-  background: none;
-  border: 1px solid #45475a;
-  color: #585b70;
-  border-radius: 6px;
-  padding: 0.45rem 1.1rem;
-  font-size: 0.85rem;
-  font-family: inherit;
-  cursor: pointer;
-}
-.btn-cancel:hover { border-color: #6c7086; color: #cdd6f4; }
-.btn-save {
-  background: rgba(137,180,250,0.12);
-  border: 1px solid rgba(137,180,250,0.3);
-  color: #89b4fa;
-  border-radius: 6px;
-  padding: 0.45rem 1.1rem;
-  font-size: 0.85rem;
-  font-weight: 600;
-  font-family: inherit;
-  cursor: pointer;
-}
-.btn-save:hover { background: rgba(137,180,250,0.2); }
-
 .row-example td {
   padding: 0 1rem 0.5rem;
   font-size: 0.8rem;
@@ -306,9 +180,19 @@ body {
   white-space: nowrap;
 }
 
-.cell-meaning { color: #cdd6f4; }
+.cell-meaning { color: #cdd6f4; overflow: hidden; }
+.cell-meaning-inner { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; cursor: default; }
+
+.lex-tooltip {
+  padding: 0.4rem 0.75rem;
+  font-size: 0.65rem;
+  color: #cdd6f4;
+  z-index: 200;
+  max-width: 320px;
+}
 
 .col-num { width: 5%; }
+.word-table .col-spacer { width: 1.0rem; padding: 0; }
 .cell-correct, .cell-incorrect, .cell-target {
   text-align: center;
   font-weight: 600;
@@ -317,3 +201,23 @@ body {
 .cell-correct { color: #a6e3a1; }
 .cell-incorrect { color: #f38ba8; }
 .cell-target { color: #f9e2af; }
+
+.target-stepper {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+}
+.btn-target-adj {
+  display: none;
+  background: none;
+  border: 1px solid #45475a;
+  border-radius: 4px;
+  color: #585b70;
+  font-size: 0.7rem;
+  padding: 0.05rem 0.2rem;
+  cursor: pointer;
+  line-height: 1;
+}
+.btn-target-adj:hover { color: #cdd6f4; border-color: #6c7086; }
+.row-main:hover .btn-target-adj { display: inline-block; }

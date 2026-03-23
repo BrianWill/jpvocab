@@ -141,30 +141,38 @@ function fullDateTime(dateStr) {
 
 function renderRow(w, trMain, trEx) {
   trMain.innerHTML =
-    '<td><div class="cell-word" title="Japanese word">' + w.word +
-      '<button class="btn-edit" onclick="openModal(event)" title="Edit word">✎</button>' +
+    '<td><div class="cell-word" data-tooltip="Word">' + w.word +
+      '<button class="btn-edit" onclick="openModal(event)" data-tooltip="Edit word">✎</button>' +
     '</div></td>' +
-    '<td class="cell-reading" title="Hiragana reading">' + w.reading + '</td>' +
-    '<td title="Part of speech"><span class="type-badge" title="' + (typeLabels[w.type] || w.type) + '">' + w.type + '</span></td>' +
-    '<td class="cell-meaning" title="English meaning">' + w.meaning + '</td>' +
-    '<td class="cell-correct" title="Times answered correctly">' + w.correct + '</td>' +
-    '<td class="cell-incorrect" title="Times answered incorrectly">' + w.incorrect + '</td>' +
-    '<td class="cell-target" title="Target number of additional drills">' + w.target + '</td>';
+    '<td class="cell-reading" data-tooltip="Reading (Pronunciation)">' + w.reading + '</td>' +
+    '<td><span class="type-badge" data-tooltip="' + (typeLabels[w.type] || w.type) + '">' + w.type + '</span></td>' +
+    '<td class="cell-meaning"><div class="cell-meaning-inner" data-tooltip="Meaning: ' + w.meaning + '">' + w.meaning + '</div></td>' +
+    '<td class="cell-correct" data-tooltip="Times answered correctly">' + w.correct + '</td>' +
+    '<td class="cell-incorrect" data-tooltip="Times answered incorrectly">' + w.incorrect + '</td>' +
+    '<td class="cell-target">' +
+      '<div class="target-stepper">' +
+        '<button class="btn-target-adj" onclick="adjustTargetInline(event,-4)" data-tooltip="Decrease target">−</button>' +
+        '<span data-tooltip="Drills to target remaining">' + w.target + '</span>' +
+        '<button class="btn-target-adj" onclick="adjustTargetInline(event,4)" data-tooltip="Increase target">+</button>' +
+      '</div>' +
+    '</td>' +
+    '<td></td>';
   trMain._word = w;
   trMain._trEx  = trEx;
 
   trEx.innerHTML =
     '<td colspan="2" class="cell-date">' +
-      '<span class="cell-date-added" title="Date added: ' + fullDateTime(w.createdAt) + '">added ' + timeAgo(w.createdAt) + '</span>' +
+      '<span class="cell-date-added" data-tooltip="Date added: ' + fullDateTime(w.createdAt) + '">added ' + timeAgo(w.createdAt) + '</span>' +
       '<span class="cell-date-sep"> · </span>' +
       (w.lastDrilled
-        ? '<span class="cell-date-drilled" title="Last drilled: ' + fullDateTime(w.lastDrilled) + '">drilled ' + timeAgo(w.lastDrilled) + '</span>'
+        ? '<span class="cell-date-drilled" data-tooltip="Last drilled: ' + fullDateTime(w.lastDrilled) + '">drilled ' + timeAgo(w.lastDrilled) + '</span>'
         : '<span class="cell-date-drilled cell-date-never">never drilled</span>') +
     '</td>' +
     '<td colspan="5" class="cell-ex">' +
-      '<span class="cell-ex-jp" title="Example sentence (Japanese)">' + w.exampleJp + '</span> ' +
-      '<span class="cell-ex-en" title="Example sentence (English)">' + w.exampleEn + '</span>' +
-    '</td>';
+      '<span class="cell-ex-jp" data-tooltip="Example sentence">' + w.exampleJp + '</span> ' +
+      '<span class="cell-ex-en" data-tooltip="Example sentence">' + w.exampleEn + '</span>' +
+    '</td>' +
+    '<td></td>';
 }
 
 const tbody = document.getElementById('word-tbody');
@@ -216,12 +224,41 @@ function saveModal() {
   closeModal();
 }
 
+function adjustTargetInline(event, delta) {
+  event.stopPropagation();
+  const trMain = event.target.closest('tr');
+  const w = trMain._word;
+  w.target = Math.max(w.correct, w.target + delta);
+  renderRow(w, trMain, trMain._trEx);
+  updateWordCount();
+}
+
 function adjustTarget(delta) {
   const input = document.getElementById('edit-target');
   input.value = Math.max(0, (parseInt(input.value, 10) || 0) + delta);
 }
 
 document.addEventListener('keydown', e => { if (e.key === 'Escape') { closeModal(); closeAddModal(); } });
+
+// --- Tooltip ---
+const lexTooltip = document.createElement('div');
+lexTooltip.className = 'lex-tooltip';
+document.body.appendChild(lexTooltip);
+
+document.addEventListener('mouseover', e => {
+  const el = e.target.closest('[data-tooltip]');
+  if (!el) { lexTooltip.classList.remove('visible'); return; }
+  lexTooltip.textContent = el.dataset.tooltip;
+  lexTooltip.classList.add('visible');
+});
+document.addEventListener('mousemove', e => {
+  if (!lexTooltip.classList.contains('visible')) return;
+  const x = e.clientX + 14;
+  lexTooltip.style.left = (x + lexTooltip.offsetWidth > window.innerWidth)
+    ? (e.clientX - lexTooltip.offsetWidth) + 'px'
+    : x + 'px';
+  lexTooltip.style.top = (e.clientY - 10) + 'px';
+});
 
 // --- Add words modal ---
 function openAddModal() {

@@ -72,6 +72,10 @@ There are no test suites or linting configurations set up.
 - **drill-compact.html** — the drill view
 - **lexicon.html** — the lexicon/word management view
 
+### CSS organisation
+
+Styles shared across pages belong in `common.css`, which is loaded first by all pages. Page-specific files only contain styles unique to that page. When adding new styles, prefer extending `common.css` over duplicating rules across page stylesheets. Current shared styles include: CSS reset, `body` base, page header, nav link, `.btn-header` (the header icon button), and the full modal system.
+
 ## Architecture
 
 The app runs as a Wails desktop window. On startup, a Go HTTP server starts on port **1337** and the frontend redirects the WebView to it.

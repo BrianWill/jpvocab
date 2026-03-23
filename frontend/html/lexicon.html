@@ -4,14 +4,15 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Lexicon</title>
+<link rel="stylesheet" href="common.css">
 <link rel="stylesheet" href="lexicon.css">
 </head>
 <body>
 
 <div class="page-header">
   <span class="page-title">Lexicon</span>
-  <span class="page-meta" id="word-count"></span>
-  <button class="btn-add-word" onclick="openAddModal()" title="Add words">＋</button>
+  <span class="page-meta" id="word-count" data-tooltip="Active words have not yet reached their target drill count and are eligible to be drawn in drills"></span>
+  <button class="btn-header" onclick="openAddModal()" data-tooltip="Add words">＋</button>
   <a class="page-nav-link" href="drill-compact.html">Drill →</a>
 </div>
 
@@ -19,13 +20,14 @@
   <table class="word-table">
     <thead>
       <tr>
-        <th title="Japanese word">Word</th>
-        <th title="Hiragana reading">Reading</th>
-        <th title="Part of speech">Type</th>
-        <th title="English meaning">Meaning</th>
-        <th class="col-num" title="Times answered correctly">✓</th>
-        <th class="col-num" title="Times answered incorrectly">✗</th>
-        <th class="col-num" title="Target number of additional drills">🎯</th>
+        <th data-tooltip="Japanese word">Word</th>
+        <th data-tooltip="Hiragana reading">Reading</th>
+        <th data-tooltip="Part of speech">Type</th>
+        <th data-tooltip="English meaning">Meaning</th>
+        <th class="col-num" data-tooltip="Times answered correctly">✓</th>
+        <th class="col-num" data-tooltip="Times answered incorrectly">✗</th>
+        <th class="col-num" data-tooltip="Target number of additional drills">🎯</th>
+        <th class="col-spacer"></th>
       </tr>
     </thead>
     <tbody id="word-tbody"></tbody>

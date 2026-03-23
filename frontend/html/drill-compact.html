@@ -45,6 +45,17 @@
   .sidebar-item.missed { color: #f38ba8; }
   .sidebar-item:hover { background: #1e1e2e; }
 
+  @keyframes flash-known {
+    0% { background: rgba(166,227,161,0.25); }
+    100% { background: transparent; }
+  }
+  @keyframes flash-missed {
+    0% { background: rgba(243,139,168,0.25); }
+    100% { background: transparent; }
+  }
+  .sidebar-item.flash-known { animation: flash-known 2.8s ease-out; }
+  .sidebar-item.flash-missed { animation: flash-missed 2.8s ease-out; }
+
   /* --- Tooltip (attached to body) --- */
   .tooltip {
     display: none;
@@ -263,16 +274,16 @@
   .btn-yes:hover { background: rgba(166,227,161,0.18); }
 
   .btn-next {
-    background: #89b4fa;
-    border: 1px solid #89b4fa;
-    color: #1e1e2e;
+    background: rgba(137,180,250,0.1);
+    border: 1px solid rgba(137,180,250,0.25);
+    color: #89b4fa;
     border-radius: 6px;
     padding: 0.7rem 0;
     font-size: 0.9rem;
     font-weight: 600;
     width: 100%;
   }
-  .btn-next:hover { background: #74c7ec; }
+  .btn-next:hover { background: rgba(137,180,250,0.18); }
 
   .key-hint {
     font-size: 0.65rem;
@@ -282,16 +293,8 @@
     border-radius: 3px;
   }
 
-  .verdict-bar {
-    text-align: center;
-    padding: 0.5rem;
-    font-size: 0.8rem;
-    font-weight: 600;
-    visibility: hidden;
-  }
-  .verdict-bar.show { visibility: visible; }
-  .verdict-bar.knew { background: rgba(166,227,161,0.08); color: #a6e3a1; }
-  .verdict-bar.missed { background: rgba(243,139,168,0.08); color: #f38ba8; }
+  .word-jp.knew { color: #a6e3a1; }
+  .word-jp.missed { color: #f38ba8; }
 </style>
 </head>
 <body>
@@ -354,8 +357,6 @@
         Next → <span class="key-hint">Space</span>
       </button>
     </div>
-
-    <div class="verdict-bar" id="verdict-bar">&nbsp;</div>
 
     <div class="prompt-section">
       <div class="word-jp">走る</div>
@@ -432,14 +433,9 @@
 
     document.getElementById('action-prompt').style.display = 'none';
     document.getElementById('action-next').style.display = 'flex';
-    const vb = document.getElementById('verdict-bar');
-    if (knew) {
-      vb.className = 'verdict-bar show knew';
-      vb.textContent = 'Marked as known';
-    } else {
-      vb.className = 'verdict-bar show missed';
-      vb.textContent = 'Added to redo pile';
-    }
+
+    const wordEl = document.querySelector('.word-jp');
+    wordEl.classList.add(knew ? 'knew' : 'missed');
   }
 
   function addToSidebar(word, knew) {
@@ -450,10 +446,11 @@
     if (existing) existing.remove();
 
     const li = document.createElement('li');
-    li.className = 'sidebar-item ' + (knew ? 'known' : 'missed');
+    li.className = 'sidebar-item ' + (knew ? 'known flash-known' : 'missed flash-missed');
     li.textContent = word.word;
     li.dataset.word = JSON.stringify(word);
     li.dataset.id = word.word;
+    li.addEventListener('animationend', () => li.classList.remove('flash-known', 'flash-missed'));
 
     // Both missed and known insert right before the first known item
     // (missed: top of list; known: start of known section)
@@ -504,9 +501,7 @@
     document.getElementById('val-type').innerHTML = placeholder;
     document.getElementById('val-example').innerHTML = placeholder;
 
-    const vb = document.getElementById('verdict-bar');
-    vb.classList.remove('show', 'knew', 'missed');
-    vb.innerHTML = '&nbsp;';
+    document.querySelector('.word-jp').classList.remove('knew', 'missed');
     document.getElementById('action-prompt').style.display = 'flex';
     document.getElementById('action-next').style.display = 'none';
   }

@@ -11,9 +11,94 @@
     background: #1e1e2e;
     color: #cdd6f4;
     display: flex;
+    min-height: 100vh;
+  }
+
+  /* --- Sidebar --- */
+  .sidebar {
+    width: 200px;
+    min-width: 200px;
+    background: #11111b;
+    border-right: 1px solid #313244;
+    padding: 1rem 0;
+    display: flex;
+    flex-direction: column;
+  }
+  .sidebar-title {
+    font-size: 0.7rem;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: #585b70;
+    padding: 0 0.75rem 0.5rem;
+  }
+  .sidebar-list {
+    list-style: none;
+    flex: 1;
+    overflow-y: auto;
+  }
+  .sidebar-item {
+    padding: 0.35rem 0.75rem;
+    font-size: 0.95rem;
+    cursor: default;
+  }
+  .sidebar-item.known { color: #a6e3a1; }
+  .sidebar-item.missed { color: #f38ba8; }
+  .sidebar-item:hover { background: #1e1e2e; }
+
+  /* --- Tooltip (attached to body) --- */
+  .tooltip {
+    display: none;
+    position: fixed;
+    background: #1e1e2e;
+    border: 1px solid #313244;
+    border-radius: 6px;
+    padding: 0.6rem 0.8rem;
+    width: 220px;
+    z-index: 100;
+    box-shadow: 0 4px 16px rgba(0,0,0,0.4);
+    pointer-events: none;
+  }
+  .tooltip.visible { display: block; }
+  .tooltip-word {
+    font-size: 1.1rem;
+    font-weight: 700;
+    color: #cdd6f4;
+    margin-bottom: 0.25rem;
+  }
+  .tooltip-reading {
+    font-size: 0.85rem;
+    color: #89b4fa;
+    margin-bottom: 0.2rem;
+  }
+  .tooltip-pos {
+    font-size: 0.65rem;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: #585b70;
+    margin-bottom: 0.15rem;
+  }
+  .tooltip-meaning {
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: #cdd6f4;
+    margin-bottom: 0.3rem;
+  }
+  .tooltip-example {
+    font-size: 0.75rem;
+    color: #585b70;
+    line-height: 1.4;
+  }
+  .tooltip-example-en {
+    font-style: italic;
+    color: #6c7086;
+  }
+
+  /* --- Main content --- */
+  .content {
+    flex: 1;
+    display: flex;
     flex-direction: column;
     align-items: center;
-    min-height: 100vh;
     padding: 1.5rem;
   }
 
@@ -211,54 +296,83 @@
 </head>
 <body>
 
-<div class="topbar">
-  <div class="round-label">Round 1</div>
-  <div class="counters">
-    <div class="counter"><div class="dot dot-remaining"></div> 12 left</div>
-    <div class="counter"><div class="dot dot-redo"></div> 3 redo</div>
-    <div class="counter"><div class="dot dot-done"></div> 5 done</div>
-  </div>
+<!-- Sidebar -->
+<div class="sidebar">
+  <div class="sidebar-title">History</div>
+  <ul class="sidebar-list" id="sidebar-list">
+    <!-- Pre-filled history -->
+    <li class="sidebar-item missed" data-id="難しい" data-word='{"word":"難しい","reading":"むずかしい","type":"i-adjective","meaning":"difficult","exampleJp":"この問題は難しい。","exampleEn":"\"This problem is difficult.\""}'>難しい</li>
+    <li class="sidebar-item missed" data-id="届ける" data-word='{"word":"届ける","reading":"とどける","type":"verb","meaning":"to deliver","exampleJp":"荷物を届ける。","exampleEn":"\"I deliver the package.\""}'>届ける</li>
+    <li class="sidebar-item missed" data-id="必要" data-word='{"word":"必要","reading":"ひつよう","type":"na-adjective","meaning":"necessary","exampleJp":"準備が必要だ。","exampleEn":"\"Preparation is necessary.\""}'>必要</li>
+    <li class="sidebar-item known" data-id="食べる" data-word='{"word":"食べる","reading":"たべる","type":"verb","meaning":"to eat","exampleJp":"毎朝パンを食べる。","exampleEn":"\"I eat bread every morning.\""}'>食べる</li>
+    <li class="sidebar-item known" data-id="飲む" data-word='{"word":"飲む","reading":"のむ","type":"verb","meaning":"to drink","exampleJp":"水を飲む。","exampleEn":"\"I drink water.\""}'>飲む</li>
+    <li class="sidebar-item known" data-id="大きい" data-word='{"word":"大きい","reading":"おおきい","type":"i-adjective","meaning":"big; large","exampleJp":"大きい犬がいる。","exampleEn":"\"There is a big dog.\""}'>大きい</li>
+    <li class="sidebar-item known" data-id="書く" data-word='{"word":"書く","reading":"かく","type":"verb","meaning":"to write","exampleJp":"手紙を書く。","exampleEn":"\"I write a letter.\""}'>書く</li>
+    <li class="sidebar-item known" data-id="新しい" data-word='{"word":"新しい","reading":"あたらしい","type":"i-adjective","meaning":"new","exampleJp":"新しい靴を買った。","exampleEn":"\"I bought new shoes.\""}'>新しい</li>
+    <li class="sidebar-item known" data-id="学校" data-word='{"word":"学校","reading":"がっこう","type":"noun","meaning":"school","exampleJp":"学校に行く。","exampleEn":"\"I go to school.\""}'>学校</li>
+    <li class="sidebar-item known" data-id="友達" data-word='{"word":"友達","reading":"ともだち","type":"noun","meaning":"friend","exampleJp":"友達と遊ぶ。","exampleEn":"\"I hang out with friends.\""}'>友達</li>
+  </ul>
 </div>
 
-<div class="progress"><div class="progress-bar"></div></div>
+<!-- Floating tooltip -->
+<div class="tooltip" id="tooltip">
+  <div class="tooltip-word" id="tip-word"></div>
+  <div class="tooltip-reading" id="tip-reading"></div>
+  <div class="tooltip-pos" id="tip-pos"></div>
+  <div class="tooltip-meaning" id="tip-meaning"></div>
+  <div class="tooltip-example" id="tip-example"></div>
+  <div class="tooltip-example-en" id="tip-example-en"></div>
+</div>
 
-<div class="main-area">
-  <!-- Prompt buttons -->
-  <div class="action-bar" id="action-prompt">
-    <button class="btn btn-no" onclick="reveal(false)">
-      ✕ Don't know <span class="key-hint">A</span>
-    </button>
-    <button class="btn btn-yes" onclick="reveal(true)">
-      ✓ Know it <span class="key-hint">D</span>
-    </button>
+<!-- Main content -->
+<div class="content">
+  <div class="topbar">
+    <div class="round-label">Round 1</div>
+    <div class="counters">
+      <div class="counter"><div class="dot dot-remaining"></div> 12 left</div>
+      <div class="counter"><div class="dot dot-redo"></div> 3 redo</div>
+      <div class="counter"><div class="dot dot-done"></div> 5 done</div>
+    </div>
   </div>
 
-  <!-- Next button -->
-  <div class="action-bar" id="action-next" style="display:none">
-    <button class="btn btn-next" onclick="next()">
-      Next → <span class="key-hint">Space</span>
-    </button>
-  </div>
+  <div class="progress"><div class="progress-bar"></div></div>
 
-  <div class="verdict-bar" id="verdict-bar">&nbsp;</div>
+  <div class="main-area">
+    <!-- Prompt buttons -->
+    <div class="action-bar" id="action-prompt">
+      <button class="btn btn-no" onclick="reveal(false)">
+        ✕ Don't know <span class="key-hint">A</span>
+      </button>
+      <button class="btn btn-yes" onclick="reveal(true)">
+        ✓ Know it <span class="key-hint">D</span>
+      </button>
+    </div>
 
-  <div class="prompt-section">
-    <div class="word-jp">走る</div>
-    <div class="example-jp">公園を走る。</div>
-  </div>
+    <!-- Next button -->
+    <div class="action-bar" id="action-next" style="display:none">
+      <button class="btn btn-next" onclick="next()">
+        Next → <span class="key-hint">Space</span>
+      </button>
+    </div>
 
-  
+    <div class="verdict-bar" id="verdict-bar">&nbsp;</div>
 
-  <div class="detail-section" id="details">
-    <div class="detail-grid">
-      <div class="detail-label">Reading</div>
-      <div class="detail-value highlight" id="val-reading"><span class="detail-placeholder">- - -</span></div>
-      <div class="detail-label">Meaning</div>
-      <div class="detail-value meaning-text" id="val-meaning"><span class="detail-placeholder">- - -</span></div>
-      <div class="detail-label">Type</div>
-      <div class="detail-value" id="val-type"><span class="detail-placeholder">- - -</span></div>
-      <div class="detail-label">Example</div>
-      <div class="detail-value" id="val-example" style="font-style:italic; color:#6c7086"><span class="detail-placeholder">- - -</span></div>
+    <div class="prompt-section">
+      <div class="word-jp">走る</div>
+      <div class="example-jp">公園を走る。</div>
+    </div>
+
+    <div class="detail-section" id="details">
+      <div class="detail-grid">
+        <div class="detail-label">Reading</div>
+        <div class="detail-value highlight" id="val-reading"><span class="detail-placeholder">- - -</span></div>
+        <div class="detail-label">Meaning</div>
+        <div class="detail-value meaning-text" id="val-meaning"><span class="detail-placeholder">- - -</span></div>
+        <div class="detail-label">Type</div>
+        <div class="detail-value" id="val-type"><span class="detail-placeholder">- - -</span></div>
+        <div class="detail-label">Example</div>
+        <div class="detail-value" id="val-example" style="font-style:italic; color:#6c7086"><span class="detail-placeholder">- - -</span></div>
+      </div>
     </div>
   </div>
 </div>
@@ -266,12 +380,55 @@
 <script>
   const placeholder = '<span class="detail-placeholder">- - -</span>';
 
+  const words = [
+    { word: '走る', reading: 'はしる', meaning: 'to run', type: 'verb', exampleJp: '公園を走る。', exampleEn: '"I run in the park."' },
+    { word: '美しい', reading: 'うつくしい', meaning: 'beautiful', type: 'i-adjective', exampleJp: '美しい花が咲いている。', exampleEn: '"Beautiful flowers are blooming."' },
+    { word: '話す', reading: 'はなす', meaning: 'to speak; to talk', type: 'verb', exampleJp: '日本語を話す。', exampleEn: '"I speak Japanese."' },
+    { word: '静か', reading: 'しずか', meaning: 'quiet', type: 'na-adjective', exampleJp: '図書館は静かだ。', exampleEn: '"The library is quiet."' },
+    { word: '始める', reading: 'はじめる', meaning: 'to begin; to start', type: 'verb', exampleJp: '仕事を始める。', exampleEn: '"I start work."' },
+    { word: '天気', reading: 'てんき', meaning: 'weather', type: 'noun', exampleJp: '今日は天気がいい。', exampleEn: '"The weather is nice today."' },
+    { word: '忘れる', reading: 'わすれる', meaning: 'to forget', type: 'verb', exampleJp: '名前を忘れる。', exampleEn: '"I forget the name."' },
+    { word: '危ない', reading: 'あぶない', meaning: 'dangerous', type: 'i-adjective', exampleJp: 'この道は危ない。', exampleEn: '"This road is dangerous."' },
+    { word: '選ぶ', reading: 'えらぶ', meaning: 'to choose; to select', type: 'verb', exampleJp: '好きな色を選ぶ。', exampleEn: '"I choose my favorite color."' },
+    { word: '問題', reading: 'もんだい', meaning: 'problem; question', type: 'noun', exampleJp: '問題を解く。', exampleEn: '"I solve the problem."' },
+    { word: '暖かい', reading: 'あたたかい', meaning: 'warm', type: 'i-adjective', exampleJp: '今日は暖かい。', exampleEn: '"It is warm today."' },
+    { word: '借りる', reading: 'かりる', meaning: 'to borrow', type: 'verb', exampleJp: '本を借りる。', exampleEn: '"I borrow a book."' },
+    { word: '経験', reading: 'けいけん', meaning: 'experience', type: 'noun', exampleJp: 'いい経験になった。', exampleEn: '"It became a good experience."' },
+    { word: '集める', reading: 'あつめる', meaning: 'to collect; to gather', type: 'verb', exampleJp: '切手を集める。', exampleEn: '"I collect stamps."' },
+    { word: '複雑', reading: 'ふくざつ', meaning: 'complicated; complex', type: 'na-adjective', exampleJp: 'この地図は複雑だ。', exampleEn: '"This map is complicated."' },
+    { word: '届く', reading: 'とどく', meaning: 'to arrive; to reach', type: 'verb', exampleJp: '手紙が届く。', exampleEn: '"The letter arrives."' },
+    { word: '練習', reading: 'れんしゅう', meaning: 'practice', type: 'noun', exampleJp: '毎日練習する。', exampleEn: '"I practice every day."' },
+    { word: '眠い', reading: 'ねむい', meaning: 'sleepy', type: 'i-adjective', exampleJp: 'とても眠い。', exampleEn: '"I am very sleepy."' },
+    { word: '伝える', reading: 'つたえる', meaning: 'to convey; to tell', type: 'verb', exampleJp: '気持ちを伝える。', exampleEn: '"I convey my feelings."' },
+    { word: '丁寧', reading: 'ていねい', meaning: 'polite; careful', type: 'na-adjective', exampleJp: '丁寧に説明する。', exampleEn: '"I explain politely."' },
+    { word: '探す', reading: 'さがす', meaning: 'to search; to look for', type: 'verb', exampleJp: '鍵を探す。', exampleEn: '"I look for the key."' },
+    { word: '景色', reading: 'けしき', meaning: 'scenery; view', type: 'noun', exampleJp: '景色がきれいだ。', exampleEn: '"The scenery is beautiful."' },
+    { word: '壊れる', reading: 'こわれる', meaning: 'to break (intransitive)', type: 'verb', exampleJp: '時計が壊れる。', exampleEn: '"The clock breaks."' },
+    { word: '残念', reading: 'ざんねん', meaning: 'regrettable; unfortunate', type: 'na-adjective', exampleJp: '残念な結果だった。', exampleEn: '"It was an unfortunate result."' },
+    { word: '誘う', reading: 'さそう', meaning: 'to invite', type: 'verb', exampleJp: '友達を誘う。', exampleEn: '"I invite a friend."' },
+    { word: '約束', reading: 'やくそく', meaning: 'promise; appointment', type: 'noun', exampleJp: '約束を守る。', exampleEn: '"I keep the promise."' },
+    { word: '優しい', reading: 'やさしい', meaning: 'kind; gentle', type: 'i-adjective', exampleJp: '彼は優しい人だ。', exampleEn: '"He is a kind person."' },
+    { word: '受ける', reading: 'うける', meaning: 'to receive; to take (exam)', type: 'verb', exampleJp: '試験を受ける。', exampleEn: '"I take an exam."' },
+    { word: '自由', reading: 'じゆう', meaning: 'freedom; free', type: 'na-adjective', exampleJp: '自由な時間が欲しい。', exampleEn: '"I want free time."' },
+    { word: '捨てる', reading: 'すてる', meaning: 'to throw away', type: 'verb', exampleJp: 'ゴミを捨てる。', exampleEn: '"I throw away the trash."' },
+  ];
+
+  let wordIndex = 0;
+  let currentWord = words[wordIndex];
+  function showWord() {
+    document.querySelector('.word-jp').textContent = currentWord.word;
+    document.querySelector('.example-jp').textContent = currentWord.exampleJp;
+  }
+
   function reveal(knew) {
+    // Add to sidebar immediately
+    addToSidebar(currentWord, knew);
+
     // Show answer details
-    document.getElementById('val-reading').innerHTML = 'はしる';
-    document.getElementById('val-meaning').textContent = 'to run';
-    document.getElementById('val-type').textContent = 'verb';
-    document.getElementById('val-example').textContent = '"I run in the park."';
+    document.getElementById('val-reading').textContent = currentWord.reading;
+    document.getElementById('val-meaning').textContent = currentWord.meaning;
+    document.getElementById('val-type').textContent = currentWord.type;
+    document.getElementById('val-example').textContent = currentWord.exampleEn;
 
     document.getElementById('action-prompt').style.display = 'none';
     document.getElementById('action-next').style.display = 'flex';
@@ -284,7 +441,63 @@
       vb.textContent = 'Added to redo pile';
     }
   }
+
+  function addToSidebar(word, knew) {
+    const list = document.getElementById('sidebar-list');
+
+    // Remove existing entry for this word if present
+    const existing = list.querySelector('[data-id="' + word.word + '"]');
+    if (existing) existing.remove();
+
+    const li = document.createElement('li');
+    li.className = 'sidebar-item ' + (knew ? 'known' : 'missed');
+    li.textContent = word.word;
+    li.dataset.word = JSON.stringify(word);
+    li.dataset.id = word.word;
+
+    // Both missed and known insert right before the first known item
+    // (missed: top of list; known: start of known section)
+    const firstKnown = list.querySelector('.sidebar-item.known');
+    if (firstKnown) {
+      list.insertBefore(li, firstKnown);
+    } else {
+      list.appendChild(li);
+    }
+  }
+
+  // Tooltip hover logic
+  const tip = document.getElementById('tooltip');
+  document.getElementById('sidebar-list').addEventListener('mouseover', e => {
+    const item = e.target.closest('.sidebar-item');
+    if (!item || !item.dataset.word) return;
+    const data = JSON.parse(item.dataset.word);
+    document.getElementById('tip-word').textContent = data.word;
+    document.getElementById('tip-reading').textContent = data.reading;
+    document.getElementById('tip-pos').textContent = data.type;
+    document.getElementById('tip-meaning').textContent = data.meaning;
+    document.getElementById('tip-example').textContent = data.exampleJp || '';
+    document.getElementById('tip-example-en').textContent = data.exampleEn || '';
+
+    const rect = item.getBoundingClientRect();
+    tip.style.left = rect.right + 8 + 'px';
+    tip.style.top = rect.top + rect.height / 2 + 'px';
+    tip.style.transform = 'translateY(-50%)';
+    tip.classList.add('visible');
+  });
+  document.getElementById('sidebar-list').addEventListener('mouseout', e => {
+    const item = e.target.closest('.sidebar-item');
+    if (!item) return;
+    if (!item.contains(e.relatedTarget)) {
+      tip.classList.remove('visible');
+    }
+  });
+
   function next() {
+    // Advance to next word
+    wordIndex = (wordIndex + 1) % words.length;
+    currentWord = words[wordIndex];
+    showWord();
+
     // Reset to placeholders
     document.getElementById('val-reading').innerHTML = placeholder;
     document.getElementById('val-meaning').innerHTML = placeholder;
@@ -297,6 +510,10 @@
     document.getElementById('action-prompt').style.display = 'flex';
     document.getElementById('action-next').style.display = 'none';
   }
+
+  // Initialize first word
+  showWord();
+
   document.addEventListener('keydown', e => {
     const prompt = document.getElementById('action-prompt');
     if (prompt.style.display !== 'none') {

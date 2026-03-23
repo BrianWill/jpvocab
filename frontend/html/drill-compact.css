@@ -34,9 +34,9 @@ body {
   font-size: 0.95rem;
   cursor: default;
 }
-.sidebar-item.unseen { color: #585b70; filter: blur(1.7px); user-select: none; }
+.sidebar-item.unseen { color: #585b70; filter: blur(1.5px); user-select: none; }
 .sidebar-item.unseen:hover { filter: none; background: #1e1e2e; }
-.sidebar-item.unseen-redo { color: #f38ba8; filter: blur(1.7px); user-select: none; opacity: 0.55; }
+.sidebar-item.unseen-redo { color: #f38ba8; filter: blur(1.5px); user-select: none; opacity: 0.55; }
 .sidebar-item.unseen-redo:hover { filter: none; background: #1e1e2e; opacity: 1; }
 .sidebar-item.current { filter: none !important; background: #313244; opacity: 1 !important; }
 .sidebar-item.unseen.current { color: #cdd6f4; }

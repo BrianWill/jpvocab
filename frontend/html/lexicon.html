@@ -23,13 +23,46 @@
   <table class="word-table">
     <thead>
       <tr>
-        <th data-tooltip="Japanese word">Word</th>
+        <th data-tooltip="Japanese word">
+          <div class="th-inner">
+            Word
+            <span class="th-sort-btns">
+              <button class="btn-sort btn-sort--active" data-sort="added" data-dir="desc" data-tooltip="Sort by date added">↓ added</button>
+              <button class="btn-sort" data-sort="drilled" data-dir="desc" data-tooltip="Sort by last drilled date">↓ drilled</button>
+            </span>
+          </div>
+        </th>
         <th data-tooltip="Hiragana reading">Reading</th>
-        <th data-tooltip="Part of speech">Type</th>
+        <th data-tooltip="Part of speech">
+          <div class="th-inner">
+            Type
+            <span class="th-sort-btns">
+              <button class="btn-sort" data-sort="type" data-tooltip="Group by part of speech; within each group, words are ordered by last drilled date">≡ group</button>
+            </span>
+          </div>
+        </th>
         <th data-tooltip="English meaning">Meaning</th>
-        <th class="col-num" data-tooltip="Times answered correctly">✓</th>
-        <th class="col-num" data-tooltip="Times answered incorrectly">✗</th>
-        <th class="col-num" data-tooltip="Target number of additional drills">🎯</th>
+        <th class="col-num" data-tooltip="Times answered correctly">
+          <div class="th-inner center"><span class="th-correct">✓</span>
+            <span class="th-sort-btns">
+              <button class="btn-sort" data-sort="correct" data-dir="desc" data-tooltip="Sort by correct answer count">↓</button>
+            </span>
+          </div>
+        </th>
+        <th class="col-num" data-tooltip="Times answered incorrectly">
+          <div class="th-inner center"><span class="th-incorrect">✗</span>
+            <span class="th-sort-btns">
+              <button class="btn-sort" data-sort="incorrect" data-dir="desc" data-tooltip="Sort by incorrect answer count">↓</button>
+            </span>
+          </div>
+        </th>
+        <th class="col-num" data-tooltip="Target number of additional drills">
+          <div class="th-inner center"><span class="th-emoji-grey">🎯</span>
+            <span class="th-sort-btns">
+              <button class="btn-sort" data-sort="target" data-dir="desc" data-tooltip="Sort by target drill count">↓</button>
+            </span>
+          </div>
+        </th>
         <th class="col-spacer"></th>
       </tr>
     </thead>

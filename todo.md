@@ -6,14 +6,8 @@ This file is random notes of possible features and bug fixes.
 
 
 - lexicon page
-    - sort by columns
-        - date / time added
-        - remaining drills (target drill count minus current drill count)
-        
 
 - drill page
-    - for prior answered word, present information about the kanji in each word
-        - reveal on hover? on click? always shown?
     - button and hotkey to play the example sentence if audio is available
 
 - for verbs, part of speech includes whether it is icidan or godan

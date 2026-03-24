@@ -31,12 +31,17 @@
 
 <!-- Floating tooltips -->
 <div class="tooltip" id="tooltip">
-  <div class="tooltip-word" id="tip-word"></div>
-  <div class="tooltip-reading" id="tip-reading"></div>
-  <div class="tooltip-pos" id="tip-pos"></div>
-  <div class="tooltip-meaning" id="tip-meaning"></div>
-  <div class="tooltip-example" id="tip-example"></div>
-  <div class="tooltip-example-en" id="tip-example-en"></div>
+  <div class="tooltip-cols">
+    <div class="tooltip-main">
+      <div class="tooltip-word" id="tip-word"></div>
+      <div class="tooltip-reading" id="tip-reading"></div>
+      <div class="tooltip-pos" id="tip-pos"></div>
+      <div class="tooltip-meaning" id="tip-meaning"></div>
+      <div class="tooltip-example" id="tip-example"></div>
+      <div class="tooltip-example-en" id="tip-example-en"></div>
+    </div>
+    <div id="tip-kanji-info" class="last-kanji-info tip-kanji-info"></div>
+  </div>
 </div>
 
 <!-- Main content -->
@@ -54,18 +59,23 @@
         ✕ Don't know <span class="key-hint">A</span>
       </button>
       <button class="btn btn-yes" onclick="reveal(true)">
-        ✓ Know it <span class="key-hint">D</span>
+        ✓ Do know <span class="key-hint">D</span>
       </button>
     </div>
   </div>
 
   <div class="last-word-card" id="last-word-card" style="display:none">
-    <div id="last-word-jp" class="tooltip-word"></div>
-    <div id="last-reading" class="tooltip-reading"></div>
-    <div id="last-pos" class="tooltip-pos"></div>
-    <div id="last-meaning" class="tooltip-meaning"></div>
-    <div id="last-example-jp" class="tooltip-example"></div>
-    <div id="last-example-en" class="tooltip-example-en"></div>
+    <div class="last-word-cols">
+      <div class="last-word-main">
+        <div id="last-word-jp" class="tooltip-word"></div>
+        <div id="last-reading" class="tooltip-reading"></div>
+        <div id="last-pos" class="tooltip-pos"></div>
+        <div id="last-meaning" class="tooltip-meaning"></div>
+        <div id="last-example-jp" class="tooltip-example"></div>
+        <div id="last-example-en" class="tooltip-example-en"></div>
+      </div>
+      <div id="last-kanji-info" class="last-kanji-info"></div>
+    </div>
   </div>
 </div>
 

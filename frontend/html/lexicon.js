@@ -74,16 +74,60 @@ function renderRow(w, trMain, trEx) {
     '<td></td>';
 }
 
+function getSortedWords(key, dir) {
+  const asc = dir === 'asc';
+  const byDate = (a, b, field) => {
+    if (!a[field] && !b[field]) return 0;
+    if (!a[field]) return asc ? -1 : 1;
+    if (!b[field]) return asc ? 1 : -1;
+    const diff = new Date(a[field]) - new Date(b[field]);
+    return asc ? diff : -diff;
+  };
+  return [...words].sort((a, b) => {
+    switch (key) {
+      case 'added':    return byDate(a, b, 'createdAt');
+      case 'drilled':  return byDate(a, b, 'lastDrilled');
+      case 'correct': {
+        const d = asc ? a.correct - b.correct : b.correct - a.correct;
+        return d || new Date(b.createdAt) - new Date(a.createdAt);
+      }
+      case 'incorrect': {
+        const d = asc ? a.incorrect - b.incorrect : b.incorrect - a.incorrect;
+        return d || new Date(b.createdAt) - new Date(a.createdAt);
+      }
+      case 'target': {
+        const d = asc ? a.target - b.target : b.target - a.target;
+        return d || new Date(b.createdAt) - new Date(a.createdAt);
+      }
+      case 'type': {
+        if (a.type < b.type) return -1;
+        if (a.type > b.type) return  1;
+        if (!a.lastDrilled && !b.lastDrilled) return 0;
+        if (!a.lastDrilled) return 1;
+        if (!b.lastDrilled) return -1;
+        return new Date(b.lastDrilled) - new Date(a.lastDrilled);
+      }
+      default: return 0;
+    }
+  });
+}
+
 const tbody = document.getElementById('word-tbody');
-words.forEach(w => {
-  const trMain = document.createElement('tr');
-  trMain.className = 'row-main';
-  const trEx = document.createElement('tr');
-  trEx.className = 'row-example';
-  renderRow(w, trMain, trEx);
-  tbody.appendChild(trMain);
-  tbody.appendChild(trEx);
-});
+
+function renderTable(sortedWords) {
+  tbody.innerHTML = '';
+  sortedWords.forEach(w => {
+    const trMain = document.createElement('tr');
+    trMain.className = 'row-main';
+    const trEx = document.createElement('tr');
+    trEx.className = 'row-example';
+    renderRow(w, trMain, trEx);
+    tbody.appendChild(trMain);
+    tbody.appendChild(trEx);
+  });
+}
+
+renderTable(getSortedWords('added', 'desc'));
 
 // --- Modal ---
 let _modalTrMain = null;
@@ -147,6 +191,29 @@ function adjustTarget(delta) {
 }
 
 document.addEventListener('keydown', e => { if (e.key === 'Escape') { closeModal(); closeAddModal(); } });
+
+// Sort button active state, direction toggle, and sorting
+const sortBtns = document.querySelectorAll('.btn-sort');
+sortBtns.forEach(btn => {
+  btn.addEventListener('click', e => {
+    e.stopPropagation();
+    const wasActive = btn.classList.contains('btn-sort--active');
+    sortBtns.forEach(b => {
+      b.classList.remove('btn-sort--active');
+      if (b !== btn && 'dir' in b.dataset && b.dataset.dir === 'asc') {
+        b.dataset.dir = 'desc';
+        b.textContent = b.textContent.replace('↑', '↓');
+      }
+    });
+    btn.classList.add('btn-sort--active');
+    if (wasActive && 'dir' in btn.dataset) {
+      const desc = btn.dataset.dir === 'desc';
+      btn.dataset.dir = desc ? 'asc' : 'desc';
+      btn.textContent = btn.textContent.replace(desc ? '↓' : '↑', desc ? '↑' : '↓');
+    }
+    renderTable(getSortedWords(btn.dataset.sort, btn.dataset.dir));
+  });
+});
 
 // --- Tooltip ---
 const lexTooltip = document.createElement('div');

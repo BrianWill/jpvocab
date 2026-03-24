@@ -85,6 +85,7 @@ function reveal(knew) {
   document.getElementById('last-meaning').textContent = answered.meaning;
   document.getElementById('last-example-jp').textContent = answered.exampleJp;
   document.getElementById('last-example-en').textContent = answered.exampleEn;
+  renderKanjiInfo(document.getElementById('last-kanji-info'), answered);
 
   // Advance
   if (remaining.length === 0) {
@@ -150,6 +151,46 @@ function addToSidebar(word, knew) {
   }
 }
 
+function katakanaToHiragana(str) {
+  return str.replace(/[\u30A1-\u30F6]/g, ch => String.fromCharCode(ch.charCodeAt(0) - 0x60));
+}
+
+function alignKanjiReadings(wordStr, wordReading) {
+  // Returns one entry per character in wordStr; non-kanji characters return null.
+  const result = [];
+  let pos = 0;
+  for (const ch of wordStr) {
+    if (!kanjiData[ch]) { pos++; result.push(null); continue; }
+    const k = kanjiData[ch];
+    const remaining = wordReading.slice(pos);
+    const candidates = [
+      ...k.on.map(r => ({ match: katakanaToHiragana(r), display: r, type: 'on' })),
+      ...k.kun.map(r => ({ match: r,                    display: r, type: 'kun' })),
+    ].sort((a, b) => b.match.length - a.match.length);
+    const hit = candidates.find(c => remaining.startsWith(c.match));
+    if (hit) { pos += hit.match.length; result.push({ ch, reading: hit.display, type: hit.type }); }
+    else      { pos++;                  result.push({ ch, reading: null,         type: null });     }
+  }
+  return result;
+}
+
+function renderKanjiInfo(container, word) {
+  container.innerHTML = '';
+  alignKanjiReadings(word.word, word.reading).forEach(r => {
+    if (!r) return;
+    const k = kanjiData[r.ch];
+    const entry = document.createElement('div');
+    entry.className = 'kanji-entry';
+    entry.innerHTML =
+      '<div class="kanji-char">' + r.ch + '</div>' +
+      '<div class="kanji-detail">' +
+        '<div class="kanji-readings">' + (r.reading ? '<span class="kanji-' + r.type + '">' + r.reading + '</span>' : '') + '</div>' +
+        '<div class="kanji-meanings">' + k.meanings.join(', ') + '</div>' +
+      '</div>';
+    container.appendChild(entry);
+  });
+}
+
 // Tooltip hover logic
 const tip = document.getElementById('tooltip');
 document.getElementById('sidebar-list').addEventListener('mouseover', e => {
@@ -162,6 +203,7 @@ document.getElementById('sidebar-list').addEventListener('mouseover', e => {
   document.getElementById('tip-meaning').textContent = data.meaning;
   document.getElementById('tip-example').textContent = data.exampleJp || '';
   document.getElementById('tip-example-en').textContent = data.exampleEn || '';
+  renderKanjiInfo(document.getElementById('tip-kanji-info'), data);
 
   const rect = item.getBoundingClientRect();
   const sidebar = document.querySelector('.sidebar');
@@ -203,7 +245,6 @@ function startNextRound() {
     list.appendChild(li);
   });
 
-  document.getElementById('last-word-card').style.display = 'none';
   showWord();
 }
 

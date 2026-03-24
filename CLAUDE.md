@@ -87,6 +87,7 @@ All prototype dummy data lives in `dummy_data.js`, which is loaded before each p
 - `dr()` / `wr()` — helpers for building activity entries
 - `activityData` — date-keyed drill/add/clear history for the activity calendar
 - `stats` — headline stat numbers for the activity stats section
+- `kanjiData` — maps kanji character → `{ on: [...katakana], kun: [...hiragana], meanings: [...] }`; used by the drill page to render per-kanji reading and meaning breakdowns
 
 When adding or changing dummy data, edit `dummy_data.js` only — do not put data back into the page JS files.
 

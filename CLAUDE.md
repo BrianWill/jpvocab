@@ -77,9 +77,27 @@ There are no test suites or linting configurations set up.
 - **lexicon.html** — the lexicon/word management view
 - **activity.html** — the activity/stats view
 
+### Dummy data
+
+All prototype dummy data lives in `dummy_data.js`, which is loaded before each page's own script. It exports:
+
+- `lexiconWords` — word list used by the lexicon page (includes correct/incorrect/target/createdAt/lastDrilled fields)
+- `drillWords` — word list used by the drill page (leaner shape, no stat fields)
+- `W` — word dictionary used by the activity page (`word → [reading, meaning]`)
+- `dr()` / `wr()` — helpers for building activity entries
+- `activityData` — date-keyed drill/add/clear history for the activity calendar
+- `stats` — headline stat numbers for the activity stats section
+
+When adding or changing dummy data, edit `dummy_data.js` only — do not put data back into the page JS files.
+
 ### CSS organisation
 
 Styles shared across pages belong in `common.css`, which is loaded first by all pages. Page-specific files only contain styles unique to that page. When adding new styles, prefer extending `common.css` over duplicating rules across page stylesheets. Current shared styles include: CSS reset, `body` base, page header, nav link, `.btn-header` (the header icon button), and the full modal system.
+
+## Working conventions
+
+- **Scope changes to this project directory.** Do not read or write files outside `D:\code\jpvocab\` without explicit instruction.
+- **Ask before touching unfamiliar files.** If a file has not been part of the current conversation and has not been recently discussed, confirm with the user before editing it. This applies especially to Go source files, config files, and anything outside `frontend/html/`.
 
 ## Architecture
 

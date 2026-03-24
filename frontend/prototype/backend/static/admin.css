@@ -1,0 +1,23 @@
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: system-ui, sans-serif; font-size: 14px; background: #0f0f0f; color: #e0e0e0; padding: 24px; }
+h1 { font-size: 1.2rem; color: #fff; margin-bottom: 16px; }
+h2 { font-size: 1rem; color: #aaa; margin-bottom: 12px; }
+a { color: #7eb8f7; text-decoration: none; }
+a:hover { text-decoration: underline; }
+nav { margin-bottom: 20px; font-size: 0.85rem; color: #666; }
+nav a { color: #7eb8f7; }
+table { border-collapse: collapse; width: 100%; margin-bottom: 24px; }
+th { text-align: left; padding: 6px 10px; background: #1e1e1e; color: #aaa; font-weight: 600; border-bottom: 1px solid #333; }
+td { padding: 6px 10px; border-bottom: 1px solid #222; vertical-align: top; }
+tr:hover td { background: #1a1a1a; }
+.badge { display: inline-block; background: #2a2a2a; color: #888; font-size: 0.75rem; padding: 2px 6px; border-radius: 4px; margin-left: 6px; }
+form { display: flex; gap: 8px; flex-wrap: wrap; align-items: flex-end; margin-bottom: 20px; }
+input[type=text] { background: #1e1e1e; border: 1px solid #333; color: #e0e0e0; padding: 5px 10px; border-radius: 4px; font-size: 14px; }
+input[type=text]:focus { outline: none; border-color: #7eb8f7; }
+.page-header { display: flex; align-items: baseline; justify-content: space-between; margin-bottom: 16px; }
+.page-header h1 { margin-bottom: 0; }
+button { background: #2563eb; color: #fff; border: none; padding: 6px 14px; border-radius: 4px; cursor: pointer; font-size: 14px; }
+button:hover { background: #1d4ed8; }
+.btn-danger { background: #7f1d1d; }
+.btn-danger:hover { background: #991b1b; }
+.empty { color: #555; font-style: italic; padding: 12px 0; }

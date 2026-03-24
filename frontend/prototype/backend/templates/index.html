@@ -1,0 +1,24 @@
+{{define "content"}}
+<div class="page-header">
+  <h1>jpvocab — admin</h1>
+  <form method="POST" action="/admin/reset-db" onsubmit="return confirm('Drop all tables and reinitialise? This cannot be undone.')">
+    <button class="btn-danger" type="submit">Reset DB</button>
+  </form>
+</div>
+<h2>Tables</h2>
+{{if .}}
+<table>
+  <thead><tr><th>Table</th><th>Rows</th></tr></thead>
+  <tbody>
+  {{range .}}
+  <tr>
+    <td><a href="/admin/tables/{{.Name}}">{{.Name}}</a></td>
+    <td><span class="badge">{{.Rows}}</span></td>
+  </tr>
+  {{end}}
+  </tbody>
+</table>
+{{else}}
+<p class="empty">No tables found.</p>
+{{end}}
+{{end}}

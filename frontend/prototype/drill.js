@@ -306,6 +306,9 @@ function restartDrill(totalWords, newRoundSize) {
 // Initialize
 showWord();
 updateStats();
+setInterval(() => {
+  document.getElementById('header-began').textContent = 'began ' + timeAgo(drillStartedAt);
+}, 30_000);
 
 document.addEventListener('keydown', e => {
   if (e.key === 'Escape') { closeRestartModal(); return; }

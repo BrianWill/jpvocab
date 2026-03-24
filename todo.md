@@ -10,8 +10,6 @@ This file is random notes of possible features and bug fixes.
 - drill page
     - button and hotkey to play the example sentence if audio is available
 
-- for verbs, part of speech includes whether it is icidan or godan
-
 - maybe AI could create / find images relevant for each word
     - maybe just for nouns and verbs but not for other parts of speech
 

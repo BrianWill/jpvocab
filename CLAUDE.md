@@ -28,7 +28,7 @@ A word tracks three timestamps:
 - "last drill date": date and time when the word was last drilled (updated not when drill starts but when the user gives answer for the word)
 - "target last reached date": date and time when the word's current drill count matched or exceeded its target drill count (for new words, this starts out null)
 
-The frontend is currently being refined as static HTML prototypes (`frontend/html/`) before being wired up to the backend.
+The frontend is currently being refined as static HTML prototypes (`frontend/prototype/`) before being wired up to the backend.
 
 ## Terminology
 
@@ -71,9 +71,9 @@ There are no test suites or linting configurations set up.
 
 ## Frontend Prototypes
 
-`frontend/html/` contains standalone HTML/CSS/JS prototypes that define the UI design. They use hardcoded word data and have no backend connection yet.
+`frontend/prototype/` contains standalone HTML/CSS/JS prototypes that define the UI design. They use hardcoded word data and have no backend connection yet.
 
-- **drill-compact.html** — the drill view
+- **drill.html** — the drill view
 - **lexicon.html** — the lexicon/word management view
 - **activity.html** — the activity/stats view
 
@@ -91,6 +91,22 @@ All prototype dummy data lives in `dummy_data.js`, which is loaded before each p
 
 When adding or changing dummy data, edit `dummy_data.js` only — do not put data back into the page JS files.
 
+### Backend prototype
+
+`frontend/prototype/backend/` is a standalone Go module (separate `go.mod`) that runs a SQLite-backed HTTP server on port **1338**. It is developed and run independently from the Wails app.
+
+- **`main.go`** — entry point; opens the DB and starts the server
+- **`db.go`** — all database access: `initDB`, `migrate`, and one function per query or write operation. No SQL appears outside this file.
+- **`routes.go`** — Chi router and HTTP handlers only; no direct DB access. Handlers call functions from `db.go` and pass results to `renderTemplate`.
+- **`templates/`** — HTML templates parsed from disk on every request (live-editable without restart); `base.html` is the shared shell, each page has its own file
+- **`static/`** — CSS and other static assets, also served from disk
+
+Run from the `backend/` directory so that relative paths (`templates/`, `static/`) resolve correctly:
+
+```bash
+cd frontend/prototype/backend && go run .
+```
+
 ### CSS organisation
 
 Styles shared across pages belong in `common.css`, which is loaded first by all pages. Page-specific files only contain styles unique to that page. When adding new styles, prefer extending `common.css` over duplicating rules across page stylesheets. Current shared styles include: CSS reset, `body` base, page header, nav link, `.btn-header` (the header icon button), and the full modal system.
@@ -98,7 +114,7 @@ Styles shared across pages belong in `common.css`, which is loaded first by all 
 ## Working conventions
 
 - **Scope changes to this project directory.** Do not read or write files outside `D:\code\jpvocab\` without explicit instruction.
-- **Ask before touching unfamiliar files.** If a file has not been part of the current conversation and has not been recently discussed, confirm with the user before editing it. This applies especially to Go source files, config files, and anything outside `frontend/html/`.
+- **Ask before touching unfamiliar files.** If a file has not been part of the current conversation and has not been recently discussed, confirm with the user before editing it. This applies especially to Go source files, config files, and anything outside `frontend/prototype/`.
 
 ## Architecture
 

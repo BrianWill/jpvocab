@@ -153,13 +153,6 @@
 .cell-meaning { color: #cdd6f4; overflow: hidden; }
 .cell-meaning-inner { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; cursor: default; }
 
-.lex-tooltip {
-  padding: 0.4rem 0.75rem;
-  font-size: 0.65rem;
-  color: #cdd6f4;
-  z-index: 200;
-  max-width: 320px;
-}
 
 .col-num { width: 5%; }
 .word-table .col-spacer { width: 1.0rem; padding: 0; }

@@ -4,10 +4,12 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-Japanese vocabulary drilling desktop app built with **Wails v2** (Go backend + web frontend). The app has two core views:
+
+Japanese vocabulary drilling desktop app built with **Wails v2** (Go backend + web frontend). For now, assume a single user with no user login or need for security. The app has three core views:
 
 - **Lexicon** — displays the user's full vocabulary set with word info (reading, part of speech, meaning, example sentences) and per-word correct/incorrect drill counts accumulated over all sessions.
 - **Drill** — a round-based flashcard drill. Each round presents 10 words randomly drawn from the lexicon. The user marks each word as known or unknown; unknown words carry over to the next round alongside fresh picks. Drill state is transient and not persisted to the database.
+- **Activity** — displays headline stats and a week-by-week calendar of recent drill activity. Each day cell shows how many words were drilled, added, and cleared. Clicking a day opens a detail modal listing the words involved.
 
 Word data (lexicon) is stored in a SQLite database. Per-word drill counts (correct/incorrect) will also be persisted there. Drill session state (current round, remaining words, redo queue) is in-memory only.
 
@@ -16,7 +18,9 @@ Each word has two integers:
 - "current drill count" (total number of times the word has been marked correct across all prior drills)
 - "target drill count" (the number of times the word is intended to be drilled) 
 
-When words are randomly selected from the lexion to drill, only active words are chosen.
+When words are randomly selected from the lexicon to drill, only active words are chosen.
+
+Incorrect answers are not penalised beyond incrementing the word's lifetime incorrect count. There is no spaced-repetition penalty, cooldown, or demotion mechanic — a wrong answer simply carries the word forward to the next round as normal.
 
 A word tracks three timestamps:
 
@@ -71,6 +75,7 @@ There are no test suites or linting configurations set up.
 
 - **drill-compact.html** — the drill view
 - **lexicon.html** — the lexicon/word management view
+- **activity.html** — the activity/stats view
 
 ### CSS organisation
 

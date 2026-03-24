@@ -24,15 +24,19 @@ body {
   font-weight: 700;
   color: #89b4fa;
 }
-.page-nav-link {
+.page-nav-links {
   margin-left: auto;
+  align-self: stretch;
+  display: flex;
+  margin-top: -0.75rem;
+  margin-bottom: -0.75rem;
+  margin-right: -1.5rem;
+}
+.page-nav-link {
   align-self: stretch;
   display: flex;
   align-items: center;
   padding: 0 1.5rem;
-  margin-top: -0.75rem;
-  margin-bottom: -0.75rem;
-  margin-right: -1.5rem;
   border-left: 1px solid #313244;
   background: #181825;
   font-size: 0.8rem;
@@ -67,6 +71,14 @@ body {
 }
 .tooltip.visible,
 .lex-tooltip.visible { display: block; }
+.lex-tooltip {
+  padding: 0.4rem 0.75rem;
+  font-size: 0.65rem;
+  color: #cdd6f4;
+  z-index: 200;
+  max-width: 320px;
+  white-space: pre-line;
+}
 
 /* --- Number stepper --- */
 .num-stepper {

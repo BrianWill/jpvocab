@@ -340,7 +340,7 @@ function handleRestartBackdropClick(e) {
 }
 function confirmRestart() {
   const total = Math.max(1, Math.min(parseInt(document.getElementById('restart-total-words').value, 10) || poolSize, words.length));
-  const rSize = Math.max(1, parseInt(document.getElementById('restart-round-size').value, 10) || roundSize);
+  const rSize = Math.max(1, Math.min(total, parseInt(document.getElementById('restart-round-size').value, 10) || roundSize));
   closeRestartModal();
   restartDrill(total, rSize);
 }

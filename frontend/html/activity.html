@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Activity</title>
+<link rel="stylesheet" href="common.css">
+<link rel="stylesheet" href="activity.css">
+</head>
+<body>
+
+<div class="page-header">
+  <span class="page-title">Activity</span>
+  <div class="page-nav-links">
+    <a class="page-nav-link" href="drill-compact.html">Drill →</a>
+    <a class="page-nav-link" href="lexicon.html">Lexicon →</a>
+  </div>
+</div>
+
+<div class="activity-body">
+  <div id="stats-section"></div>
+  <div class="calendar-wrap">
+    <div class="day-labels" id="day-labels"></div>
+    <div class="calendar" id="calendar"></div>
+  </div>
+</div>
+
+<div id="day-modal-backdrop" class="modal-backdrop hidden" onclick="handleDayBackdropClick(event)">
+  <div class="modal">
+    <div class="modal-header">
+      <span class="modal-word-label" id="day-modal-title"></span>
+      <button class="modal-close" onclick="closeDayModal()">✕</button>
+    </div>
+    <div class="modal-body" id="day-modal-body"></div>
+  </div>
+</div>
+
+<script src="activity.js"></script>
+</body>
+</html>

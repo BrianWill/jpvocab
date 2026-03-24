@@ -758,9 +758,6 @@ const stats = {
   activeWords:      72,
   clearedLifetime:  28,
   streakDays:        7,
-  avgClearedPerDay:  1.3,
-  avgPerDay:        11.4,
-  avgAddedPerDay:    0.6,
   daysActiveMonth:  18,
   // progress bar segments
   drillsCleared:    84,   // words that reached their target

@@ -10,9 +10,6 @@ This file is random notes of possible features and bug fixes.
         - date / time added
         - remaining drills (target drill count minus current drill count)
         
-    - option to add words on mass: list of words
-        - smart about filtering out words that already exist in the lexicon (normalizing on base form)
-    - at top, report number of words that are "active" (target drill count is greater than current drill count)
 
 - drill page
     - for prior answered word, present information about the kanji in each word

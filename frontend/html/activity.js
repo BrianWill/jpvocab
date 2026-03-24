@@ -1,6 +1,30 @@
 const TODAY = '2026-03-23';
 const HISTORY_START = '2025-11-02'; // Sunday of oldest week with history
 
+// ── Stats utilities ───────────────────────────────────────────────────────────
+
+// Returns average count of `field` per day over the given window.
+// days = number of calendar days ending today; null = all time (from HISTORY_START).
+// Days with no entry in activityData count as zero — the denominator is the full window.
+function computeAvg(field, days) {
+  let startStr, denom;
+  if (days === null) {
+    startStr = HISTORY_START;
+    const ms = new Date(TODAY + 'T00:00:00') - new Date(HISTORY_START + 'T00:00:00');
+    denom = Math.round(ms / 86400000) + 1;
+  } else {
+    const start = addDays(new Date(TODAY + 'T00:00:00'), -(days - 1));
+    startStr = toDateStr(start);
+    denom = days;
+  }
+  let total = 0;
+  for (const [date, data] of Object.entries(activityData)) {
+    if (date < startStr || date > TODAY) continue;
+    total += data[field].length;
+  }
+  return (total / denom).toFixed(1);
+}
+
 // ── Calendar utilities ────────────────────────────────────────────────────────
 
 function weekSunday(dateStr) {
@@ -61,6 +85,16 @@ function renderStats() {
   const wordTotal = stats.drillsCleared + stats.drillsClose + stats.drillsMid + stats.drillsFar;
   const pct = n => (n / wordTotal * 100).toFixed(1);
 
+  const avgDrilled7  = computeAvg('drilled',  7);
+  const avgDrilled30 = computeAvg('drilled', 30);
+  const avgDrilledAll = computeAvg('drilled', null);
+  const avgCleared7  = computeAvg('cleared',  7);
+  const avgCleared30 = computeAvg('cleared', 30);
+  const avgClearedAll = computeAvg('cleared', null);
+  const avgAdded7  = computeAvg('added',  7);
+  const avgAdded30 = computeAvg('added', 30);
+  const avgAddedAll = computeAvg('added', null);
+
   el.innerHTML = `
     <div class="stat-grid">
       <div class="stat-card" data-tooltip="Total words in your vocabulary">
@@ -75,16 +109,16 @@ function renderStats() {
         <div class="stat-value">${stats.clearedLifetime}</div>
         <div class="stat-label">Cleared (lifetime)</div>
       </div>
-      <div class="stat-card" data-tooltip="Words cleared per active day&#10;Last 7 days: 1.7&#10;Last 30 days: 1.3&#10;All time: 0.9">
-        <div class="stat-value">${stats.avgClearedPerDay}</div>
+      <div class="stat-card" data-tooltip="Words cleared per day (last 30 days)&#10;Over last 7 days: ${avgCleared7}&#10;Over last 30 days: ${avgCleared30}&#10;All time: ${avgClearedAll}">
+        <div class="stat-value">${avgCleared30}</div>
         <div class="stat-label">Avg cleared per day</div>
       </div>
-      <div class="stat-card" data-tooltip="Words drilled per active day&#10;Last 7 days: 13.1&#10;Last 30 days: 11.4&#10;All time: 10.2">
-        <div class="stat-value">${stats.avgPerDay}</div>
+      <div class="stat-card" data-tooltip="Words drilled per day (last 30 days)&#10;Over last 7 days: ${avgDrilled7}&#10;Over last 30 days: ${avgDrilled30}&#10;All time: ${avgDrilledAll}">
+        <div class="stat-value">${avgDrilled30}</div>
         <div class="stat-label">Avg drilled per day</div>
       </div>
-      <div class="stat-card" data-tooltip="Words added per active day&#10;Last 7 days: 0.4&#10;Last 30 days: 0.6&#10;All time: 0.5">
-        <div class="stat-value">${stats.avgAddedPerDay}</div>
+      <div class="stat-card" data-tooltip="Words added per day (last 30 days)&#10;Over last 7 days: ${avgAdded7}&#10;Over last 30 days: ${avgAdded30}&#10;All time: ${avgAddedAll}">
+        <div class="stat-value">${avgAdded30}</div>
         <div class="stat-label">Avg added per day</div>
       </div>
     </div>

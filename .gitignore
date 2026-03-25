@@ -19,6 +19,7 @@ pkg/
 # ----------------------------
 # Build output
 /build/bin/
+/build/
 /dist/
 /wailsjs/runtime/
 /wailsjs/go/
@@ -63,6 +64,14 @@ pnpm-debug.log*
 # ----------------------------
 .DS_Store
 Thumbs.db
+
+# ----------------------------
+# Audio / generated media
+# ----------------------------
+*.wav
+*.mp3
+*.ogg
+*.aac
 
 # ----------------------------
 # Misc

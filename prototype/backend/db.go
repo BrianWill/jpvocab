@@ -8,6 +8,7 @@ import (
 	"os"
 	"slices"
 	"strings"
+	"time"
 
 	_ "modernc.org/sqlite"
 )
@@ -544,4 +545,171 @@ func queryTable(db *sql.DB, table string) (cols []string, rows [][]string, err e
 		rows = append(rows, row)
 	}
 	return cols, rows, nil
+}
+
+// activityStats holds headline stats for the activity page.
+type activityStats struct {
+	LexiconSize     int `json:"lexiconSize"`
+	ActiveWords     int `json:"activeWords"`
+	ClearedLifetime int `json:"clearedLifetime"`
+	DrillsCleared   int `json:"drillsCleared"`
+	DrillsClose     int `json:"drillsClose"`
+	DrillsMid       int `json:"drillsMid"`
+	DrillsFar       int `json:"drillsFar"`
+}
+
+// getActivityStats returns headline statistics computed from the words table.
+func getActivityStats(db *sql.DB) (activityStats, error) {
+	var s activityStats
+	err := db.QueryRow(`
+		SELECT
+			COUNT(*),
+			SUM(CASE WHEN drill_count < drill_target THEN 1 ELSE 0 END),
+			SUM(CASE WHEN target_reached_at IS NOT NULL THEN 1 ELSE 0 END),
+			SUM(CASE WHEN drill_count >= drill_target THEN 1 ELSE 0 END),
+			SUM(CASE WHEN drill_count < drill_target AND (drill_target - drill_count) <= 4 THEN 1 ELSE 0 END),
+			SUM(CASE WHEN drill_count < drill_target AND (drill_target - drill_count) > 4 AND (drill_target - drill_count) <= 8 THEN 1 ELSE 0 END),
+			SUM(CASE WHEN drill_count < drill_target AND (drill_target - drill_count) > 8 THEN 1 ELSE 0 END)
+		FROM words
+	`).Scan(&s.LexiconSize, &s.ActiveWords, &s.ClearedLifetime, &s.DrillsCleared, &s.DrillsClose, &s.DrillsMid, &s.DrillsFar)
+	return s, err
+}
+
+// activityWordEntry is one word entry within a calendar day section.
+type activityWordEntry struct {
+	Word    string `json:"word"`
+	Reading string `json:"reading"`
+	Meaning string `json:"meaning"`
+	Knew    *bool  `json:"knew,omitempty"` // set only for drilled entries
+}
+
+// activityDay holds the drilled/added/cleared events for a single calendar day.
+type activityDay struct {
+	Drilled []activityWordEntry `json:"drilled"`
+	Added   []activityWordEntry `json:"added"`
+	Cleared []activityWordEntry `json:"cleared"`
+}
+
+// activityCalendar is the full response for the /api/activity/calendar endpoint.
+type activityCalendar struct {
+	Today        string                 `json:"today"`
+	HistoryStart string                 `json:"historyStart"`
+	Days         map[string]activityDay `json:"days"`
+}
+
+// getActivityCalendar builds the date-keyed calendar data from drill_answers,
+// words.created_at, and words.target_reached_at.
+func getActivityCalendar(db *sql.DB) (activityCalendar, error) {
+	days := make(map[string]activityDay)
+
+	// Drilled entries — each answer row produces one entry on the answer date.
+	rows, err := db.Query(`
+		SELECT w.word, COALESCE(w.reading,''), COALESCE(w.meaning,''), da.correct, DATE(da.answered_at)
+		FROM drill_answers da
+		JOIN words w ON w.id = da.word_id
+		ORDER BY da.answered_at
+	`)
+	if err != nil {
+		return activityCalendar{}, err
+	}
+	for rows.Next() {
+		var word, reading, meaning, dateStr string
+		var correct int
+		if err := rows.Scan(&word, &reading, &meaning, &correct, &dateStr); err != nil {
+			rows.Close()
+			return activityCalendar{}, err
+		}
+		knew := correct == 1
+		d := days[dateStr]
+		d.Drilled = append(d.Drilled, activityWordEntry{Word: word, Reading: reading, Meaning: meaning, Knew: &knew})
+		days[dateStr] = d
+	}
+	if err := rows.Close(); err != nil {
+		return activityCalendar{}, err
+	}
+
+	// Added entries — one entry per word on its creation date.
+	rows2, err := db.Query(`
+		SELECT word, COALESCE(reading,''), COALESCE(meaning,''), DATE(created_at)
+		FROM words
+		ORDER BY created_at
+	`)
+	if err != nil {
+		return activityCalendar{}, err
+	}
+	for rows2.Next() {
+		var word, reading, meaning, dateStr string
+		if err := rows2.Scan(&word, &reading, &meaning, &dateStr); err != nil {
+			rows2.Close()
+			return activityCalendar{}, err
+		}
+		d := days[dateStr]
+		d.Added = append(d.Added, activityWordEntry{Word: word, Reading: reading, Meaning: meaning})
+		days[dateStr] = d
+	}
+	if err := rows2.Close(); err != nil {
+		return activityCalendar{}, err
+	}
+
+	// Cleared entries — words that first reached their drill target on a given date.
+	rows3, err := db.Query(`
+		SELECT word, COALESCE(reading,''), COALESCE(meaning,''), DATE(target_reached_at)
+		FROM words
+		WHERE target_reached_at IS NOT NULL
+		ORDER BY target_reached_at
+	`)
+	if err != nil {
+		return activityCalendar{}, err
+	}
+	for rows3.Next() {
+		var word, reading, meaning, dateStr string
+		if err := rows3.Scan(&word, &reading, &meaning, &dateStr); err != nil {
+			rows3.Close()
+			return activityCalendar{}, err
+		}
+		d := days[dateStr]
+		d.Cleared = append(d.Cleared, activityWordEntry{Word: word, Reading: reading, Meaning: meaning})
+		days[dateStr] = d
+	}
+	if err := rows3.Close(); err != nil {
+		return activityCalendar{}, err
+	}
+
+	// Ensure every day's slices are non-nil so they encode as [] not null.
+	for k, v := range days {
+		if v.Drilled == nil {
+			v.Drilled = []activityWordEntry{}
+		}
+		if v.Added == nil {
+			v.Added = []activityWordEntry{}
+		}
+		if v.Cleared == nil {
+			v.Cleared = []activityWordEntry{}
+		}
+		days[k] = v
+	}
+
+	today := time.Now().UTC().Format("2006-01-02")
+
+	// historyStart is the Sunday of the week containing the earliest activity date.
+	historyStart := today
+	for dateStr := range days {
+		if dateStr < historyStart {
+			historyStart = dateStr
+		}
+	}
+	historyStart = calendarWeekSunday(historyStart)
+
+	return activityCalendar{Today: today, HistoryStart: historyStart, Days: days}, nil
+}
+
+// calendarWeekSunday returns the Sunday of the week that contains dateStr (YYYY-MM-DD).
+func calendarWeekSunday(dateStr string) string {
+	d, err := time.Parse("2006-01-02", dateStr)
+	if err != nil {
+		return dateStr
+	}
+	dayOfWeek := int(d.Weekday()) // 0 = Sunday
+	sun := d.AddDate(0, 0, -dayOfWeek)
+	return sun.Format("2006-01-02")
 }

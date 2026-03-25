@@ -1,5 +1,4 @@
-const TODAY = '2026-03-23';
-const HISTORY_START = '2025-11-02'; // Sunday of oldest week with history
+let TODAY, HISTORY_START, activityData, stats;
 
 // ── Stats utilities ───────────────────────────────────────────────────────────
 
@@ -19,7 +18,7 @@ function computeAvg(field, days) {
   }
   let total = 0;
   for (const [date, data] of Object.entries(activityData)) {
-    if (date < startStr || date > TODAY) continue;
+    if (date < startStr) continue;
     total += data[field].length;
   }
   return (total / denom).toFixed(1);
@@ -29,9 +28,8 @@ function computeAvg(field, days) {
 
 function weekSunday(dateStr) {
   const d = new Date(dateStr + 'T00:00:00');
-  const sun = new Date(d);
-  sun.setDate(d.getDate() - d.getDay()); // getDay(): 0=Sun, 1=Mon, …
-  return sun;
+  d.setDate(d.getDate() - d.getDay()); // getDay(): 0=Sun, 1=Mon, …
+  return d;
 }
 
 function toDateStr(d) { return d.toISOString().slice(0, 10); }
@@ -101,7 +99,7 @@ function renderStats() {
         <div class="stat-value">${stats.lexiconSize}</div>
         <div class="stat-label">Words in lexicon</div>
       </div>
-      <div class="stat-card" data-tooltip="Words below their target drill count&#10;Eligible to be drawn in drills">
+      <div class="stat-card" data-tooltip="Words whose total drill count is below the word's target count&#10;Eligible to be drawn in drills">
         <div class="stat-value">${stats.activeWords}</div>
         <div class="stat-label">Active words</div>
       </div>
@@ -189,7 +187,7 @@ function buildDayCell(dateStr) {
   numEl.textContent = dayLabel(dateStr);
   cell.appendChild(numEl);
 
-  if (data && !isFuture) {
+  if (data) {
     cell.classList.add('has-activity');
     cell.addEventListener('click', () => openDayModal(dateStr));
 
@@ -234,7 +232,7 @@ function openDayModal(dateStr) {
     const knew = data.drilled.filter(e => e.knew).length;
     const missed = data.drilled.length - knew;
     body.appendChild(buildSection(
-      'Drilled — ' + knew + ' ✓  ' + missed + ' ✗',
+      'Drilled — <span class="drilled-knew-count">' + knew + ' ✓</span>  <span class="drilled-missed-count">' + missed + ' ✗</span>',
       data.drilled,
       'drilled'
     ));
@@ -249,7 +247,7 @@ function buildSection(title, words, type) {
   const section = document.createElement('div');
   const titleEl = document.createElement('div');
   titleEl.className = 'day-section-title';
-  titleEl.textContent = title;
+  titleEl.innerHTML = title;
   section.appendChild(titleEl);
 
   const list = document.createElement('div');
@@ -258,13 +256,11 @@ function buildSection(title, words, type) {
   words.forEach(entry => {
     const item = document.createElement('div');
     item.className = 'day-word-item';
+    if (type === 'drilled') item.classList.add(entry.knew ? 'knew' : 'missed');
     item.innerHTML =
       '<span class="day-word-jp">' + entry.word + '</span>' +
       '<span class="day-word-reading">' + entry.reading + '</span>' +
-      '<span class="day-word-meaning">' + entry.meaning + '</span>' +
-      (type === 'drilled'
-        ? '<span class="day-word-result ' + (entry.knew ? 'knew' : 'missed') + '">' + (entry.knew ? '✓' : '✗') + '</span>'
-        : '');
+      '<span class="day-word-meaning">' + entry.meaning + '</span>';
     list.appendChild(item);
   });
 
@@ -309,5 +305,18 @@ document.addEventListener('mouseout', e => {
   actTooltip.classList.remove('visible');
 });
 
-renderStats();
-renderCalendar();
+async function init() {
+  const [statsRes, calRes] = await Promise.all([
+    fetch('/api/activity/stats'),
+    fetch('/api/activity/calendar'),
+  ]);
+  stats = await statsRes.json();
+  const cal = await calRes.json();
+  TODAY = cal.today;
+  HISTORY_START = cal.historyStart;
+  activityData = cal.days;
+  renderStats();
+  renderCalendar();
+}
+
+init();

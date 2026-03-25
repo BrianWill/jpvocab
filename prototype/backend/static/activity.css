@@ -120,7 +120,7 @@
 .badge-cleared .badge-dot { background: #f9e2af; }
 
 /* Day detail modal */
-.modal { max-width: 520px; }
+.modal { max-width: 680px; }
 .modal .modal-body {
   display: flex;
   flex-direction: column;
@@ -130,12 +130,14 @@
 }
 
 .day-section-title {
-  font-size: 0.65rem;
+  font-size: 0.75rem;
   text-transform: uppercase;
   letter-spacing: 0.1em;
   color: #585b70;
   margin-bottom: 0.45rem;
 }
+.drilled-knew-count  { color: #a6e3a1; }
+.drilled-missed-count { color: #f38ba8; }
 
 .day-word-list {
   display: flex;
@@ -144,33 +146,27 @@
 }
 
 .day-word-item {
-  display: flex;
+  display: grid;
+  grid-template-columns: 9rem 9rem 1fr;
   align-items: baseline;
   gap: 0.5rem;
-  font-size: 0.85rem;
+  font-size: 1rem;
 }
 
 .day-word-jp {
   color: #cdd6f4;
   font-weight: 600;
-  min-width: 4rem;
 }
+.day-word-item.knew .day-word-jp  { color: #a6e3a1; }
+.day-word-item.missed .day-word-jp { color: #f38ba8; }
 .day-word-reading {
   color: #89b4fa;
-  font-size: 0.75rem;
-  min-width: 5rem;
+  font-size: 0.875rem;
 }
 .day-word-meaning {
   color: #585b70;
-  font-size: 0.75rem;
-  flex: 1;
+  font-size: 0.875rem;
 }
-.day-word-result {
-  font-size: 0.7rem;
-  flex-shrink: 0;
-}
-.day-word-result.knew { color: #a6e3a1; }
-.day-word-result.missed { color: #f38ba8; }
 
 /* ── Stats section ────────────────────────────────────────────────────────── */
 

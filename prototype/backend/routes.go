@@ -32,6 +32,9 @@ func serverInit(db *sql.DB) {
 
 	r.Handle("/static/*", http.StripPrefix("/static/", http.FileServer(http.Dir("static"))))
 
+	r.Get("/api/activity/stats", apiGetActivityStats(db))
+	r.Get("/api/activity/calendar", apiGetActivityCalendar(db))
+
 	r.Get("/api/providers", func(w http.ResponseWriter, r *http.Request) {
 		p := checkAIProviders()
 		w.Header().Set("Content-Type", "application/json")
@@ -74,6 +77,30 @@ type indexData struct {
 	Error     string
 	Success   string
 	Providers aiProviders
+}
+
+func apiGetActivityStats(db *sql.DB) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		stats, err := getActivityStats(db)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(stats)
+	}
+}
+
+func apiGetActivityCalendar(db *sql.DB) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		cal, err := getActivityCalendar(db)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(cal)
+	}
 }
 
 func apiGetWords(db *sql.DB) http.HandlerFunc {

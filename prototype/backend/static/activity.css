@@ -136,6 +136,13 @@
   color: #585b70;
   margin-bottom: 0.45rem;
 }
+.day-section-note {
+  font-size: 0.7rem;
+  color: #585b70;
+  font-style: italic;
+  margin-top: -0.25rem;
+  margin-bottom: 0.5rem;
+}
 .drilled-knew-count  { color: #a6e3a1; }
 .drilled-missed-count { color: #f38ba8; }
 

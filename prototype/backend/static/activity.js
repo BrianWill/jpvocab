@@ -197,8 +197,8 @@ function buildDayCell(dateStr) {
     if (data.drilled.length) {
       const knew = data.drilled.filter(e => e.knew).length;
       const missed = data.drilled.length - knew;
-      if (knew)   badges.appendChild(makeBadge('drilled-knew',   knew   + ' drilled ✓'));
-      if (missed) badges.appendChild(makeBadge('drilled-missed', missed + ' drilled ✗'));
+      if (knew)   badges.appendChild(makeBadge('drilled-knew',   knew   + ' drilled ✓', null));
+      if (missed) badges.appendChild(makeBadge('drilled-missed', missed + ' drilled ✗', 'Wrong at least once (may also have been answered correctly the same day)'));
     }
     if (data.added.length)   badges.appendChild(makeBadge('added',   data.added.length + ' added'));
     if (data.cleared.length) badges.appendChild(makeBadge('cleared', data.cleared.length + ' cleared'));
@@ -209,9 +209,10 @@ function buildDayCell(dateStr) {
   return cell;
 }
 
-function makeBadge(type, text) {
+function makeBadge(type, text, tooltip) {
   const div = document.createElement('div');
   div.className = 'day-badge badge-' + type;
+  if (tooltip) div.dataset.tooltip = tooltip;
   const dot = document.createElement('span');
   dot.className = 'badge-dot';
   const label = document.createTextNode(text);
@@ -231,10 +232,12 @@ function openDayModal(dateStr) {
   if (data.drilled.length) {
     const knew = data.drilled.filter(e => e.knew).length;
     const missed = data.drilled.length - knew;
+    const note = missed > 0 ? '✗ = wrong at least once this day (may also have been answered correctly the same day)' : null;
     body.appendChild(buildSection(
       'Drilled — <span class="drilled-knew-count">' + knew + ' ✓</span>  <span class="drilled-missed-count">' + missed + ' ✗</span>',
       data.drilled,
-      'drilled'
+      'drilled',
+      note
     ));
   }
   if (data.added.length)   body.appendChild(buildSection('Added',   data.added,   'added'));
@@ -243,12 +246,18 @@ function openDayModal(dateStr) {
   document.getElementById('day-modal-backdrop').classList.remove('hidden');
 }
 
-function buildSection(title, words, type) {
+function buildSection(title, words, type, note) {
   const section = document.createElement('div');
   const titleEl = document.createElement('div');
   titleEl.className = 'day-section-title';
   titleEl.innerHTML = title;
   section.appendChild(titleEl);
+  if (note) {
+    const noteEl = document.createElement('div');
+    noteEl.className = 'day-section-note';
+    noteEl.textContent = note;
+    section.appendChild(noteEl);
+  }
 
   const list = document.createElement('div');
   list.className = 'day-word-list';

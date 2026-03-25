@@ -47,6 +47,9 @@ func serverInit(db *sql.DB) {
 	r.Patch("/api/words/{id}", apiUpdateWord(db))
 	r.Delete("/api/words/{id}", apiDeleteWord(db))
 
+	r.Post("/api/drill/sessions", apiCreateDrillSession(db))
+	r.Post("/api/drill/sessions/{id}/answers", apiRecordDrillAnswer(db))
+
 	r.Route("/admin", func(r chi.Router) {
 		r.Get("/", adminIndex(db))
 		r.Get("/tables/{table}", adminTable(db))
@@ -153,6 +156,41 @@ func apiDeleteWord(db *sql.DB) http.HandlerFunc {
 			return
 		}
 		if err := deleteWordByID(db, id); err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		w.WriteHeader(http.StatusNoContent)
+	}
+}
+
+func apiCreateDrillSession(db *sql.DB) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		id, err := createDrillSession(db)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(map[string]int64{"id": id})
+	}
+}
+
+func apiRecordDrillAnswer(db *sql.DB) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		sessionID, err := strconv.ParseInt(chi.URLParam(r, "id"), 10, 64)
+		if err != nil {
+			http.Error(w, "invalid session id", http.StatusBadRequest)
+			return
+		}
+		var body struct {
+			WordID  int64 `json:"wordId"`
+			Correct bool  `json:"correct"`
+		}
+		if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+			http.Error(w, "bad request", http.StatusBadRequest)
+			return
+		}
+		if err := recordDrillAnswer(db, sessionID, body.WordID, body.Correct); err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
 		}

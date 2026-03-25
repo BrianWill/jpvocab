@@ -1,6 +1,4 @@
-﻿const placeholder = '<span class="detail-placeholder">- - -</span>';
-
-const words = drillWords;
+const placeholder = '<span class="detail-placeholder">- - -</span>';
 
 // ── Word-type filters ──────────────────────────────────────────────────────
 const FILTER_KEYS = ['katakana', 'verbs', 'nouns', 'other'];
@@ -60,14 +58,21 @@ function timeAgo(date) {
   return day + ' day' + (day === 1 ? '' : 's') + ' ago';
 }
 
-// Session state
-let poolSize = words.length;
+// Kanji reference data (populated by init)
+let kanjiData = {};
+
+// Session state (populated by init / restartDrill)
+let words = [];
+let sessionId = null;
+let poolSize = 0;
 let roundSize = DEFAULT_ROUND_SIZE;
-let pool = shuffle([...words]);
+let pool = [];
 let round = 1;
 let redo = [];
 let doneCount = 0;
 let drillStartedAt = Date.now();
+let remaining = [];
+let currentWord = null;
 
 function buildRound() {
   const slots = Math.max(0, roundSize - redo.length);
@@ -75,19 +80,17 @@ function buildRound() {
   return [...redo, ...picked];
 }
 
-let remaining = buildRound();
-let currentWord = remaining[0];
-
 function updateStats() {
   document.getElementById('stat-togo').textContent = (poolSize - doneCount) + ' to go of ' + poolSize;
   document.getElementById('sidebar-title').textContent = 'Round ' + round;
   document.getElementById('header-began').textContent = 'began ' + timeAgo(drillStartedAt);
 
-  const pct = (doneCount / poolSize) * 100;
+  const pct = poolSize > 0 ? (doneCount / poolSize) * 100 : 0;
   document.querySelector('.progress-bar').style.width = pct + '%';
 }
 
 function showWord() {
+  if (!currentWord) return;
   document.getElementById('prompt-word-jp').textContent = currentWord.word;
   document.getElementById('prompt-example-jp').textContent = currentWord.exampleJp;
 
@@ -97,8 +100,55 @@ function showWord() {
   if (item) item.classList.add('current');
 }
 
+// ── API helpers ────────────────────────────────────────────────────────────
+
+async function createSession() {
+  const resp = await fetch('/api/drill/sessions', { method: 'POST' });
+  const data = await resp.json();
+  return data.id;
+}
+
+function postAnswer(wordId, correct) {
+  if (!sessionId) return;
+  fetch('/api/drill/sessions/' + sessionId + '/answers', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ wordId, correct }),
+  });
+}
+
+// ── Init ───────────────────────────────────────────────────────────────────
+
+async function init() {
+  const [wordsResp, kanjiResp] = await Promise.all([
+    fetch('/api/words'),
+    fetch('/static/kanji.json'),
+  ]);
+  const allWords = await wordsResp.json();
+  kanjiData = await kanjiResp.json();
+
+  // Only drill active words (drill_count < target)
+  words = allWords.filter(w => w.correct < w.target);
+
+  sessionId = await createSession();
+
+  poolSize = words.length;
+  pool = shuffle([...words]);
+  remaining = buildRound();
+  currentWord = remaining[0];
+
+  initSidebar();
+  showWord();
+  updateStats();
+}
+
+// ── Drill logic ────────────────────────────────────────────────────────────
+
 function reveal(knew) {
+  if (!currentWord) return;
   const answered = currentWord;
+
+  postAnswer(answered.id, knew);
 
   // Update drill state
   remaining.shift();
@@ -151,7 +201,6 @@ function initSidebar() {
     list.appendChild(li);
   });
 }
-initSidebar();
 
 function addToSidebar(word, knew) {
   const list = document.getElementById('sidebar-list');
@@ -169,7 +218,6 @@ function addToSidebar(word, knew) {
 
   // Order: missed, then known, then unseen-redo, then unseen
   if (!knew) {
-    // Missed: before known, unseen-redo, and unseen
     const firstNonMissed = list.querySelector('.sidebar-item.known, .sidebar-item.unseen-redo, .sidebar-item.unseen');
     if (firstNonMissed) {
       list.insertBefore(li, firstNonMissed);
@@ -177,7 +225,6 @@ function addToSidebar(word, knew) {
       list.appendChild(li);
     }
   } else {
-    // Known: before unseen-redo and unseen
     const firstUnseen = list.querySelector('.sidebar-item.unseen-redo, .sidebar-item.unseen');
     if (firstUnseen) {
       list.insertBefore(li, firstUnseen);
@@ -314,11 +361,12 @@ function closeRestartModal() {
 function handleRestartBackdropClick(e) {
   if (e.target === document.getElementById('restart-modal-backdrop')) closeRestartModal();
 }
-function confirmRestart() {
+async function confirmRestart() {
   const filtered = getFilteredWords();
   const total = Math.max(1, Math.min(parseInt(document.getElementById('restart-total-words').value, 10) || filtered.length, filtered.length));
   const rSize = Math.max(1, Math.min(total, parseInt(document.getElementById('restart-round-size').value, 10) || roundSize));
   closeRestartModal();
+  sessionId = await createSession();
   restartDrill(total, rSize, filtered);
 }
 
@@ -343,8 +391,8 @@ function restartDrill(totalWords, newRoundSize, sourceWords) {
 }
 
 // Initialize
-showWord();
-updateStats();
+init();
+
 setInterval(() => {
   document.getElementById('header-began').textContent = 'began ' + timeAgo(drillStartedAt);
 }, 30_000);

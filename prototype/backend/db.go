@@ -514,6 +514,54 @@ func deleteWordsByName(db *sql.DB, words []string) error {
 	return err
 }
 
+// createDrillSession inserts a new drill_sessions row and returns its ID.
+func createDrillSession(db *sql.DB) (int64, error) {
+	res, err := db.Exec(`INSERT INTO drill_sessions DEFAULT VALUES`)
+	if err != nil {
+		return 0, err
+	}
+	return res.LastInsertId()
+}
+
+// recordDrillAnswer inserts one row into drill_answers and updates the word's
+// counts and timestamps. For a correct answer: drill_count++, last_drilled_at,
+// and target_reached_at (first time drill_count reaches drill_target). For an
+// incorrect answer: incorrect_count++, last_drilled_at.
+func recordDrillAnswer(db *sql.DB, sessionID, wordID int64, correct bool) error {
+	correctInt := 0
+	if correct {
+		correctInt = 1
+	}
+	if _, err := db.Exec(
+		`INSERT INTO drill_answers (session_id, word_id, correct) VALUES (?, ?, ?)`,
+		sessionID, wordID, correctInt,
+	); err != nil {
+		return err
+	}
+
+	if correct {
+		_, err := db.Exec(`
+			UPDATE words SET
+				drill_count     = drill_count + 1,
+				last_drilled_at = datetime('now'),
+				target_reached_at = CASE
+					WHEN target_reached_at IS NULL AND (drill_count + 1) >= drill_target
+					THEN datetime('now')
+					ELSE target_reached_at
+				END
+			WHERE id = ?
+		`, wordID)
+		return err
+	}
+	_, err := db.Exec(`
+		UPDATE words SET
+			incorrect_count = incorrect_count + 1,
+			last_drilled_at = datetime('now')
+		WHERE id = ?
+	`, wordID)
+	return err
+}
+
 // queryTable returns all rows of a table as string slices, newest first.
 func queryTable(db *sql.DB, table string) (cols []string, rows [][]string, err error) {
 	sqlRows, err := db.Query(fmt.Sprintf("SELECT * FROM %q ORDER BY rowid DESC", table))
@@ -602,12 +650,15 @@ type activityCalendar struct {
 func getActivityCalendar(db *sql.DB) (activityCalendar, error) {
 	days := make(map[string]activityDay)
 
-	// Drilled entries — each answer row produces one entry on the answer date.
+	// Drilled entries — one entry per (word, date), marked wrong if any answer
+	// that day was wrong (MIN(correct) = 0 if any incorrect answer exists).
 	rows, err := db.Query(`
-		SELECT w.word, COALESCE(w.reading,''), COALESCE(w.meaning,''), da.correct, DATE(da.answered_at)
+		SELECT w.word, COALESCE(w.reading,''), COALESCE(w.meaning,''),
+		       MIN(da.correct), DATE(da.answered_at)
 		FROM drill_answers da
 		JOIN words w ON w.id = da.word_id
-		ORDER BY da.answered_at
+		GROUP BY w.id, DATE(da.answered_at)
+		ORDER BY MIN(da.answered_at)
 	`)
 	if err != nil {
 		return activityCalendar{}, err

@@ -5,8 +5,9 @@ import (
 )
 
 const (
-	port   = 1338
-	dbPath = "jpvocab.db"
+	port               = 1338
+	dbPath             = "jpvocab.db"
+	defaultDrillTarget = 8
 )
 
 func main() {

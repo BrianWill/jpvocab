@@ -2,11 +2,11 @@ package main
 
 import (
 	"database/sql"
+	"encoding/json"
 	"fmt"
 	"html/template"
 	"log"
 	"net/http"
-	"strconv"
 	"strings"
 
 	"github.com/go-chi/chi/v5"
@@ -28,13 +28,25 @@ func serverInit(db *sql.DB) {
 		r.Get("/", adminIndex(db))
 		r.Get("/tables/{table}", adminTable(db))
 		r.Post("/reset-db", adminResetDB(db))
-		r.Post("/words", adminAddWord(db))
 		r.Post("/words/batch", adminAddWordsBatch(db))
+		r.Post("/words/delete", adminDeleteWords(db))
 	})
 
 	if err := http.ListenAndServe(fmt.Sprintf(":%d", port), r); err != nil {
 		log.Fatal(err)
 	}
+}
+
+type batchWordResult struct {
+	Input        string `json:"input"`
+	Word         string `json:"word"`
+	Added        bool   `json:"added"`
+	Reason       string `json:"reason,omitempty"`
+	Reading      string `json:"reading,omitempty"`
+	PartOfSpeech string `json:"part_of_speech,omitempty"`
+	Meaning      string `json:"meaning,omitempty"`
+	ExampleJP    string `json:"example_jp,omitempty"`
+	ExampleEN    string `json:"example_en,omitempty"`
 }
 
 type indexData struct {
@@ -64,84 +76,131 @@ func adminIndex(db *sql.DB) http.HandlerFunc {
 	}
 }
 
-func adminAddWord(db *sql.DB) http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		if err := r.ParseForm(); err != nil {
-			http.Redirect(w, r, "/admin?error=bad+request", http.StatusSeeOther)
-			return
-		}
-		word := toBaseForm(r.FormValue("word"))
-		if word == "" {
-			http.Redirect(w, r, "/admin?error=word+is+required", http.StatusSeeOther)
-			return
-		}
-		target, err := strconv.Atoi(r.FormValue("drill_target"))
-		if err != nil || target < 1 {
-			target = 1
-		}
-		if err := insertWord(db,
-			word,
-			r.FormValue("reading"),
-			r.FormValue("part_of_speech"),
-			r.FormValue("meaning"),
-			r.FormValue("example_jp"),
-			r.FormValue("example_en"),
-			target,
-		); err != nil {
-			http.Redirect(w, r, "/admin?error="+err.Error(), http.StatusSeeOther)
-			return
-		}
-		http.Redirect(w, r, "/admin", http.StatusSeeOther)
-	}
-}
 
 func adminAddWordsBatch(db *sql.DB) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		if err := r.ParseForm(); err != nil {
-			http.Redirect(w, r, "/admin?error=bad+request", http.StatusSeeOther)
+		// Parse multipart form (sent by fetch + FormData) before writing response.
+		if err := r.ParseMultipartForm(1 << 20); err != nil {
+			http.Error(w, "bad request", http.StatusBadRequest)
 			return
 		}
-		words := parseWordList(r.FormValue("words"))
-		if len(words) == 0 {
-			http.Redirect(w, r, "/admin", http.StatusSeeOther)
+		rawWords := parseWordList(r.FormValue("words"))
+		if len(rawWords) == 0 {
+			w.WriteHeader(http.StatusNoContent)
 			return
 		}
-		// Normalise each word to its base form, then re-deduplicate (two
-		// different conjugations of the same verb collapse to one entry).
-		seen := make(map[string]bool, len(words))
-		normalised := make([]string, 0, len(words))
-		for _, w := range words {
-			b := toBaseForm(w)
-			if !seen[b] {
-				seen[b] = true
-				normalised = append(normalised, b)
-			}
+
+		w.Header().Set("Content-Type", "text/event-stream")
+		w.Header().Set("Cache-Control", "no-cache")
+		w.Header().Set("X-Accel-Buffering", "no")
+
+		flusher, ok := w.(http.Flusher)
+		if !ok {
+			http.Error(w, "streaming not supported", http.StatusInternalServerError)
+			return
 		}
-		words = normalised
+
+		send := func(v any) {
+			data, _ := json.Marshal(v)
+			fmt.Fprintf(w, "data: %s\n\n", data)
+			flusher.Flush()
+		}
 
 		autoFill := r.FormValue("autofill") == "on"
-		added := 0
-		for _, word := range words {
+		aiModel := r.FormValue("ai_model")
+
+		// Phase 1: normalise and record in-batch duplicates; collect unique norms.
+		type entry struct {
+			input      string
+			norm       string
+			isBatchDup bool
+		}
+		seen := make(map[string]bool, len(rawWords))
+		entries := make([]entry, 0, len(rawWords))
+		var uniqueNorms []string
+		for _, raw := range rawWords {
+			norm := toBaseForm(raw)
+			if seen[norm] {
+				entries = append(entries, entry{input: raw, norm: norm, isBatchDup: true})
+			} else {
+				seen[norm] = true
+				entries = append(entries, entry{input: raw, norm: norm})
+				uniqueNorms = append(uniqueNorms, norm)
+			}
+		}
+
+		// Phase 2: single DB query to find which unique words already exist —
+		// before making any AI requests.
+		select {
+		case <-r.Context().Done():
+			return
+		default:
+		}
+		existsInDB, err := wordsExistInDB(db, uniqueNorms)
+		if err != nil {
+			send(map[string]string{"error": err.Error()})
+			return
+		}
+
+		// Phase 3: process in original input order, streaming each result.
+		for _, e := range entries {
+			select {
+			case <-r.Context().Done():
+				return
+			default:
+			}
+
+			if e.isBatchDup {
+				send(batchWordResult{Input: e.input, Word: e.norm, Added: false, Reason: "duplicate in input"})
+				continue
+			}
+			if existsInDB[e.norm] {
+				send(batchWordResult{Input: e.input, Word: e.norm, Added: false, Reason: "already in lexicon"})
+				continue
+			}
+
 			var reading, pos, meaning, exJP, exEN string
 			if autoFill {
-				e, err := autoFillWord(word, r.FormValue("ai_model"))
+				filled, err := autoFillWord(e.norm, aiModel)
 				if err != nil {
-					http.Redirect(w, r, "/admin?error=auto-fill+error+for+「"+word+"」:+"+err.Error(), http.StatusSeeOther)
-					return
+					send(batchWordResult{Input: e.input, Word: e.norm, Added: false, Reason: "auto-fill error: " + err.Error()})
+					continue
 				}
-				reading, pos, meaning, exJP, exEN = e.Reading, e.PartOfSpeech, e.Meaning, e.ExampleJP, e.ExampleEN
+				reading, pos, meaning, exJP, exEN = filled.Reading, filled.PartOfSpeech, filled.Meaning, filled.ExampleJP, filled.ExampleEN
 			}
-			err := insertWord(db, word, reading, pos, meaning, exJP, exEN, 1)
-			if err != nil {
-				if strings.Contains(err.Error(), "UNIQUE constraint failed") {
-					continue // silently skip duplicates
+
+			if err := insertWord(db, e.norm, reading, pos, meaning, exJP, exEN, defaultDrillTarget); err != nil {
+				reason := err.Error()
+				if strings.Contains(reason, "UNIQUE constraint failed") {
+					reason = "already in lexicon"
 				}
-				http.Redirect(w, r, "/admin?error="+err.Error(), http.StatusSeeOther)
-				return
+				send(batchWordResult{Input: e.input, Word: e.norm, Added: false, Reason: reason,
+					Reading: reading, PartOfSpeech: pos, Meaning: meaning, ExampleJP: exJP, ExampleEN: exEN})
+				continue
 			}
-			added++
+
+			send(batchWordResult{Input: e.input, Word: e.norm, Added: true,
+				Reading: reading, PartOfSpeech: pos, Meaning: meaning, ExampleJP: exJP, ExampleEN: exEN})
 		}
-		http.Redirect(w, r, fmt.Sprintf("/admin?added=%d", added), http.StatusSeeOther)
+
+		send(map[string]bool{"done": true})
+	}
+}
+
+func adminDeleteWords(db *sql.DB) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		var req struct {
+			Words []string `json:"words"`
+		}
+		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+			http.Error(w, "bad request", http.StatusBadRequest)
+			return
+		}
+		if err := deleteWordsByName(db, req.Words); err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		w.WriteHeader(http.StatusNoContent)
 	}
 }
 

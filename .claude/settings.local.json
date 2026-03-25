@@ -5,7 +5,8 @@
       "Bash(go mod:*)",
       "Bash(ls /c/Windows/Media/*.wav)",
       "Bash(go test:*)",
-      "Bash(du -sb D:/code/jpvocab/prototype/backend/tmp/*)"
+      "Bash(du -sb D:/code/jpvocab/prototype/backend/tmp/*)",
+      "Bash(grep:*)"
     ]
   },
   "outputStyle": "Explanatory"

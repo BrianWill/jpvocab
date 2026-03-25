@@ -7,6 +7,7 @@ import (
 	"log"
 	"os"
 	"slices"
+	"strings"
 
 	_ "modernc.org/sqlite"
 )
@@ -406,6 +407,49 @@ func insertWord(db *sql.DB, word, reading, partOfSpeech, meaning, exampleJP, exa
 		INSERT INTO words (word, reading, part_of_speech, meaning, example_jp, example_en, drill_target, is_katakana)
 		VALUES (?, ?, ?, ?, ?, ?, ?, ?)
 	`, word, reading, partOfSpeech, meaning, exampleJP, exampleEN, drillTarget, kat)
+	return err
+}
+
+// wordsExistInDB returns a set of which words from the given slice are already
+// present in the lexicon, keyed by their normalised word value.
+func wordsExistInDB(db *sql.DB, words []string) (map[string]bool, error) {
+	if len(words) == 0 {
+		return nil, nil
+	}
+	placeholders := strings.Repeat("?,", len(words))
+	placeholders = placeholders[:len(placeholders)-1]
+	args := make([]any, len(words))
+	for i, w := range words {
+		args[i] = w
+	}
+	rows, err := db.Query("SELECT word FROM words WHERE word IN ("+placeholders+")", args...)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	existing := make(map[string]bool, len(words))
+	for rows.Next() {
+		var w string
+		if err := rows.Scan(&w); err != nil {
+			return nil, err
+		}
+		existing[w] = true
+	}
+	return existing, rows.Err()
+}
+
+// deleteWordsByName removes words from the lexicon by their (normalised) word value.
+func deleteWordsByName(db *sql.DB, words []string) error {
+	if len(words) == 0 {
+		return nil
+	}
+	placeholders := strings.Repeat("?,", len(words))
+	placeholders = placeholders[:len(placeholders)-1] // trim trailing comma
+	args := make([]any, len(words))
+	for i, w := range words {
+		args[i] = w
+	}
+	_, err := db.Exec("DELETE FROM words WHERE word IN ("+placeholders+")", args...)
 	return err
 }
 

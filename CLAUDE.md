@@ -28,7 +28,7 @@ A word tracks three timestamps:
 - "last drill date": date and time when the word was last drilled (updated not when drill starts but when the user gives answer for the word)
 - "target last reached date": date and time when the word's current drill count matched or exceeded its target drill count (for new words, this starts out null)
 
-The frontend is currently being refined as static HTML prototypes (`prototype/`) before being wired up to the backend.
+The frontend is being wired up to the prototype backend (`prototype/backend/`), which is the primary development target and will eventually replace the Wails app as the main application.
 
 ## Terminology
 
@@ -72,9 +72,9 @@ The Go backend has a test suite; the frontend does not. When writing tests, only
   - AI is used to auto-generate: reading (hiragana), meaning (English), example sentence (Japanese + English translation)
   - Optionally, audio of the word and example sentence is generated via VoiceVox and stored alongside the word
 
-## Frontend Prototypes
+## Frontend Pages
 
-`prototype/` contains standalone HTML/CSS/JS prototypes that define the UI design. They use hardcoded word data and have no backend connection yet.
+The HTML/CSS/JS frontend files live in `prototype/backend/static/` and are served by the prototype backend. They are being progressively wired up to real backend data, replacing dummy data with live responses.
 
 - **drill.html** — the drill view
 - **lexicon.html** — the lexicon/word management view
@@ -82,7 +82,7 @@ The Go backend has a test suite; the frontend does not. When writing tests, only
 
 ### Dummy data
 
-All prototype dummy data lives in `dummy_data.js`, which is loaded before each page's own script. It exports:
+`dummy_data.js` (in `prototype/backend/static/`) holds hardcoded data used by pages not yet wired to the backend. It exports:
 
 - `lexiconWords` — word list used by the lexicon page (includes correct/incorrect/target/createdAt/lastDrilled fields)
 - `drillWords` — word list used by the drill page (leaner shape, no stat fields)
@@ -92,17 +92,17 @@ All prototype dummy data lives in `dummy_data.js`, which is loaded before each p
 - `stats` — headline stat numbers for the activity stats section
 - `kanjiData` — maps kanji character → `{ on: [...katakana], kun: [...hiragana], meanings: [...] }`; used by the drill page to render per-kanji reading and meaning breakdowns
 
-When adding or changing dummy data, edit `dummy_data.js` only — do not put data back into the page JS files.
+When adding or changing dummy data, edit `dummy_data.js` only — do not put data back into the page JS files. As pages are wired to real backend endpoints, their dummy data dependencies can be removed.
 
 ### Backend prototype
 
-`prototype/backend/` is a standalone Go module (separate `go.mod`) that runs a SQLite-backed HTTP server on port **1338**. It is developed and run independently from the Wails app.
+`prototype/backend/` is a standalone Go module (separate `go.mod`) that runs a SQLite-backed HTTP server on port **1338**. It is the primary development target and will eventually replace the Wails app in the project root.
 
 - **`main.go`** — entry point; opens the DB and starts the server
 - **`db.go`** — all database access: `initDB`, `migrate`, `seedDB`, and one function per query or write operation. No SQL appears outside this file.
 - **`routes.go`** — Chi router and HTTP handlers only; no direct DB access. Handlers call functions from `db.go` and pass results to `renderTemplate`.
 - **`templates/`** — HTML templates parsed from disk on every request (live-editable without restart); `base.html` is the shared shell, each page has its own file
-- **`static/`** — CSS and other static assets, also served from disk
+- **`static/`** — HTML pages, CSS, and JS, served from disk (live-editable without restart)
 - **`seed.json`** — fixture data loaded on first startup (or after a DB reset); contains `words` and `sessions` arrays
 
 Run with hot-reload from the `backend/` directory:
@@ -130,7 +130,7 @@ Styles shared across pages belong in `common.css`, which is loaded first by all 
 ## Working conventions
 
 - **Scope changes to this project directory.** Do not read or write files outside `D:\code\jpvocab\` without explicit instruction.
-- **Ask before touching unfamiliar files.** If a file has not been part of the current conversation and has not been recently discussed, confirm with the user before editing it. This applies especially to Go source files, config files, and anything outside `prototype/`.
+- **Ask before touching unfamiliar files.** If a file has not been part of the current conversation and has not been recently discussed, confirm with the user before editing it. This applies especially to Go source files, config files, and anything outside `prototype/backend/`.
 
 ## Architecture
 

@@ -128,11 +128,44 @@ function renderTable(sortedWords) {
 }
 
 async function init() {
-  const res = await fetch('/api/words');
-  words = await res.json();
+  const [wordsData, providers] = await Promise.all([
+    fetch('/api/words').then(r => r.json()),
+    fetch('/api/providers').then(r => r.json()),
+  ]);
+  words = wordsData;
   updateWordCount();
   renderTable(getSortedWords('added', 'desc'));
+  applyProviderAvailability(providers);
 }
+
+function applyProviderAvailability(providers) {
+  const select       = document.getElementById('ai-model-select');
+  const checkbox     = document.getElementById('autofill-check');
+  const msg          = document.getElementById('autofill-msg');
+  const anthropicGrp = document.querySelector('#ai-model-select optgroup[label="Anthropic"]');
+  const openaiGrp    = document.querySelector('#ai-model-select optgroup[label="OpenAI"]');
+
+  if (!providers.anthropic) {
+    anthropicGrp.disabled = true;
+    anthropicGrp.label = 'Anthropic — no API key';
+  }
+  if (!providers.openai) {
+    openaiGrp.disabled = true;
+    openaiGrp.label = 'OpenAI — no API key';
+  }
+
+  if (!providers.anthropic && !providers.openai) {
+    checkbox.disabled = true;
+    select.disabled = true;
+    msg.textContent = '— no AI providers configured';
+  } else {
+    checkbox.checked = true;
+    select.disabled = false;
+    const first = select.querySelector('optgroup:not([disabled]) option');
+    if (first) select.value = first.value;
+  }
+}
+
 init();
 
 // --- Modal ---
@@ -402,7 +435,11 @@ async function saveAddModal() {
         if (data.done) {
           _progressPhase = 'done';
           const skipped = _progressTotal - _progressAdded.length;
-          setProgressStatus('done', _progressAdded.length + ' added, ' + skipped + ' skipped');
+          const doneEl = document.getElementById('progress-modal-status');
+          doneEl.className = 'modal-status modal-status-done';
+          doneEl.innerHTML = '<span>' + _progressAdded.length + ' added' +
+            (skipped > 0 ? ', <span class="status-skipped">' + skipped + ' skipped</span>' : '') +
+            '</span>';
           words = await fetch('/api/words').then(r => r.json());
           updateWordCount();
           updateProgressFooter();

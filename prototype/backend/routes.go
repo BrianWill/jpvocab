@@ -32,6 +32,14 @@ func serverInit(db *sql.DB) {
 
 	r.Handle("/static/*", http.StripPrefix("/static/", http.FileServer(http.Dir("static"))))
 
+	r.Get("/api/providers", func(w http.ResponseWriter, r *http.Request) {
+		p := checkAIProviders()
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(map[string]bool{
+			"anthropic": p.AnthropicAvail,
+			"openai":    p.OpenAIAvail,
+		})
+	})
 	r.Get("/api/words", apiGetWords(db))
 	r.Patch("/api/words/{id}", apiUpdateWord(db))
 	r.Delete("/api/words/{id}", apiDeleteWord(db))

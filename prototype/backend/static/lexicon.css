@@ -152,6 +152,7 @@
 }
 .add-modal-options select:disabled { opacity: 0.4; cursor: default; }
 .add-modal-options select:focus { outline: 1px solid #89b4fa; }
+.autofill-msg { font-size: 0.75rem; color: #585b70; }
 
 /* --- Progress modal --- */
 .modal-wide { max-width: 560px; }
@@ -174,6 +175,7 @@
 }
 .modal-status-loading { color: #89b4fa; }
 .modal-status-done    { color: #a6e3a1; }
+.status-skipped { color: #f9e2af; }
 .modal-status-cancelled, .modal-status-error { color: #f38ba8; }
 
 @keyframes spin { to { transform: rotate(360deg); } }

@@ -4,18 +4,18 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Lexicon</title>
-<link rel="stylesheet" href="common.css">
-<link rel="stylesheet" href="lexicon.css">
+<link rel="stylesheet" href="/static/common.css">
+<link rel="stylesheet" href="/static/lexicon.css">
 </head>
 <body>
 
 <div class="page-header">
-  <span class="page-title">Lexicon</span>
   <span class="page-meta" id="word-count" data-tooltip="Active words have not yet reached their target drill count and are eligible to be drawn in drills"></span>
   <button class="btn-header" onclick="openAddModal()" data-tooltip="Add words">＋</button>
   <div class="page-nav-links">
-    <a class="page-nav-link" href="activity.html">Activity →</a>
-    <a class="page-nav-link" href="drill-compact.html">Drill →</a>
+    <a class="page-nav-link" href="/activity">Activity →</a>
+    <a class="page-nav-link page-nav-link--current" href="/lexicon">Lexicon</a>
+    <a class="page-nav-link" href="/drill">Drill →</a>
   </div>
 </div>
 
@@ -148,8 +148,9 @@
       </div>
     </div>
     <div class="modal-footer">
+      <span class="modal-error hidden" id="edit-error"></span>
       <button class="btn-cancel" onclick="closeModal()">Cancel</button>
-      <button class="btn-save" onclick="saveModal()">Save</button>
+      <button id="btn-edit-save" class="btn-save" onclick="saveModal()">Save</button>
     </div>
   </div>
 </div>
@@ -165,7 +166,6 @@
   </div>
 </div>
 
-<script src="dummy_data.js"></script>
-<script src="lexicon.js"></script>
+<script src="/static/lexicon.js"></script>
 </body>
 </html>

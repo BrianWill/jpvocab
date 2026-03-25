@@ -1,11 +1,10 @@
-﻿const words = lexiconWords;
+﻿let words = [];
 
 function updateWordCount() {
   const active = words.filter(w => w.correct < w.target).length;
   document.getElementById('word-count').textContent =
     words.length + ' words (' + active + ' active)';
 }
-updateWordCount();
 
 const typeLabels = {
   'godan-verb':   'Godan verb — Group 1 (五段動詞)',
@@ -127,7 +126,13 @@ function renderTable(sortedWords) {
   });
 }
 
-renderTable(getSortedWords('added', 'desc'));
+async function init() {
+  const res = await fetch('/api/words');
+  words = await res.json();
+  updateWordCount();
+  renderTable(getSortedWords('added', 'desc'));
+}
+init();
 
 // --- Modal ---
 let _modalTrMain = null;
@@ -144,6 +149,8 @@ function openModal(event) {
   document.getElementById('edit-ex-jp').value    = w.exampleJp;
   document.getElementById('edit-ex-en').value    = w.exampleEn;
   document.getElementById('edit-target').value   = w.target;
+  document.getElementById('edit-error').classList.add('hidden');
+  document.getElementById('btn-edit-save').textContent = 'Save';
   document.getElementById('modal-backdrop').classList.remove('hidden');
 }
 
@@ -155,16 +162,40 @@ function handleBackdropClick(event) {
   if (event.target === document.getElementById('modal-backdrop')) closeModal();
 }
 
-function saveModal() {
-  const w = _modalTrMain._word;
-  w.reading   = document.getElementById('edit-reading').value;
-  w.type      = document.getElementById('edit-type').value;
-  w.meaning   = document.getElementById('edit-meaning').value;
-  w.exampleJp = document.getElementById('edit-ex-jp').value;
-  w.exampleEn = document.getElementById('edit-ex-en').value;
-  w.target    = parseInt(document.getElementById('edit-target').value, 10);
-  renderRow(w, _modalTrMain, _modalTrMain._trEx);
-  closeModal();
+async function saveModal() {
+  const w         = _modalTrMain._word;
+  const reading   = document.getElementById('edit-reading').value;
+  const type      = document.getElementById('edit-type').value;
+  const meaning   = document.getElementById('edit-meaning').value;
+  const exampleJp = document.getElementById('edit-ex-jp').value;
+  const exampleEn = document.getElementById('edit-ex-en').value;
+  const target    = parseInt(document.getElementById('edit-target').value, 10);
+
+  const btn   = document.getElementById('btn-edit-save');
+  const errEl = document.getElementById('edit-error');
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner"></span>';
+  errEl.textContent = '';
+  errEl.classList.add('hidden');
+
+  try {
+    const res = await fetch('/api/words/' + w.id, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ reading, type, meaning, exampleJp, exampleEn, target }),
+    });
+    if (!res.ok) throw new Error((await res.text()).trim() || res.statusText);
+    w.reading = reading; w.type = type; w.meaning = meaning;
+    w.exampleJp = exampleJp; w.exampleEn = exampleEn; w.target = target;
+    renderRow(w, _modalTrMain, _modalTrMain._trEx);
+    updateWordCount();
+    closeModal();
+  } catch (err) {
+    errEl.textContent = err.message;
+    errEl.classList.remove('hidden');
+    btn.disabled = false;
+    btn.textContent = 'Save';
+  }
 }
 
 function adjustTargetInline(event, delta) {

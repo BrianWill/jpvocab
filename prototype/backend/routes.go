@@ -7,6 +7,7 @@ import (
 	"html/template"
 	"log"
 	"net/http"
+	"strconv"
 	"strings"
 
 	"github.com/go-chi/chi/v5"
@@ -18,11 +19,21 @@ func serverInit(db *sql.DB) {
 	r.Use(middleware.Logger)
 	r.Use(middleware.Recoverer)
 
-	r.Get("/", func(w http.ResponseWriter, r *http.Request) {
-		http.Redirect(w, r, "/admin", http.StatusFound)
-	})
+	staticPage := func(file string) http.HandlerFunc {
+		return func(w http.ResponseWriter, r *http.Request) {
+			http.ServeFile(w, r, "static/"+file)
+		}
+	}
+
+	r.Get("/", staticPage("activity.html"))
+	r.Get("/activity", staticPage("activity.html"))
+	r.Get("/lexicon", staticPage("lexicon.html"))
+	r.Get("/drill", staticPage("drill.html"))
 
 	r.Handle("/static/*", http.StripPrefix("/static/", http.FileServer(http.Dir("static"))))
+
+	r.Get("/api/words", apiGetWords(db))
+	r.Patch("/api/words/{id}", apiUpdateWord(db))
 
 	r.Route("/admin", func(r chi.Router) {
 		r.Get("/", adminIndex(db))
@@ -54,6 +65,48 @@ type indexData struct {
 	Error     string
 	Success   string
 	Providers aiProviders
+}
+
+func apiGetWords(db *sql.DB) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		words, err := listWords(db)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		if words == nil {
+			words = []wordJSON{}
+		}
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(words)
+	}
+}
+
+func apiUpdateWord(db *sql.DB) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		id, err := strconv.ParseInt(chi.URLParam(r, "id"), 10, 64)
+		if err != nil {
+			http.Error(w, "invalid id", http.StatusBadRequest)
+			return
+		}
+		var body struct {
+			Reading   string `json:"reading"`
+			Type      string `json:"type"`
+			Meaning   string `json:"meaning"`
+			ExampleJp string `json:"exampleJp"`
+			ExampleEn string `json:"exampleEn"`
+			Target    int    `json:"target"`
+		}
+		if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+			http.Error(w, "bad request", http.StatusBadRequest)
+			return
+		}
+		if err := updateWord(db, id, body.Reading, body.Type, body.Meaning, body.ExampleJp, body.ExampleEn, body.Target); err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		w.WriteHeader(http.StatusNoContent)
+	}
 }
 
 func adminIndex(db *sql.DB) http.HandlerFunc {

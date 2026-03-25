@@ -438,6 +438,60 @@ func wordsExistInDB(db *sql.DB, words []string) (map[string]bool, error) {
 	return existing, rows.Err()
 }
 
+// wordJSON is the JSON shape returned by the /api/words endpoint.
+// Field names are chosen to match what lexicon.js already expects.
+type wordJSON struct {
+	ID          int64   `json:"id"`
+	Word        string  `json:"word"`
+	Reading     string  `json:"reading"`
+	Type        string  `json:"type"`
+	Meaning     string  `json:"meaning"`
+	ExampleJp   string  `json:"exampleJp"`
+	ExampleEn   string  `json:"exampleEn"`
+	Correct     int     `json:"correct"`
+	Incorrect   int     `json:"incorrect"`
+	Target      int     `json:"target"`
+	CreatedAt   string  `json:"createdAt"`
+	LastDrilled *string `json:"lastDrilled"`
+}
+
+// listWords returns all words from the lexicon ordered by creation date descending.
+func listWords(db *sql.DB) ([]wordJSON, error) {
+	rows, err := db.Query(`
+		SELECT id, word, reading, part_of_speech, meaning, example_jp, example_en,
+		       drill_count, incorrect_count, drill_target, created_at, last_drilled_at
+		FROM words
+		ORDER BY created_at DESC
+	`)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var words []wordJSON
+	for rows.Next() {
+		var w wordJSON
+		if err := rows.Scan(
+			&w.ID, &w.Word, &w.Reading, &w.Type, &w.Meaning, &w.ExampleJp, &w.ExampleEn,
+			&w.Correct, &w.Incorrect, &w.Target, &w.CreatedAt, &w.LastDrilled,
+		); err != nil {
+			return nil, err
+		}
+		words = append(words, w)
+	}
+	return words, rows.Err()
+}
+
+// updateWord saves editable fields for an existing word by ID.
+func updateWord(db *sql.DB, id int64, reading, partOfSpeech, meaning, exampleJp, exampleEn string, target int) error {
+	_, err := db.Exec(`
+		UPDATE words
+		SET reading=?, part_of_speech=?, meaning=?, example_jp=?, example_en=?, drill_target=?
+		WHERE id=?
+	`, reading, partOfSpeech, meaning, exampleJp, exampleEn, target, id)
+	return err
+}
+
 // deleteWordsByName removes words from the lexicon by their (normalised) word value.
 func deleteWordsByName(db *sql.DB, words []string) error {
 	if len(words) == 0 {

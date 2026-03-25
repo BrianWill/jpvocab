@@ -2,6 +2,42 @@
 
 const words = drillWords;
 
+// ── Word-type filters ──────────────────────────────────────────────────────
+const FILTER_KEYS = ['katakana', 'verbs', 'nouns', 'other'];
+const activeFilters = new Set(FILTER_KEYS);
+
+function matchesFilter(w, f) {
+  const isKatakana = /^[\u30A0-\u30FF]+$/.test(w.word);
+  const isVerb = w.type === 'ichidan-verb' || w.type === 'godan-verb';
+  const isNoun = w.type === 'noun';
+  if (f === 'katakana') return isKatakana;
+  if (f === 'verbs')    return isVerb;
+  if (f === 'nouns')    return isNoun;
+  if (f === 'other')    return !isKatakana && !isVerb && !isNoun;
+  return false;
+}
+
+function getFilteredWords() {
+  return words.filter(w => FILTER_KEYS.some(f => activeFilters.has(f) && matchesFilter(w, f)));
+}
+
+function updateFilterHint() {
+  const hint = document.getElementById('filter-hint');
+  const btn  = document.getElementById('restart-start-btn');
+  if (activeFilters.size === 0) {
+    hint.textContent = 'Select at least one word type';
+    hint.classList.add('error');
+    btn.disabled = true;
+  } else {
+    const count = getFilteredWords().length;
+    hint.textContent = activeFilters.size === FILTER_KEYS.length
+      ? 'All ' + count + ' words'
+      : count + ' of ' + words.length + ' words';
+    hint.classList.remove('error');
+    btn.disabled = false;
+  }
+}
+
 const DEFAULT_ROUND_SIZE = 10;
 
 function shuffle(arr) {
@@ -269,6 +305,7 @@ function capRestartInput(input) {
 function openRestartModal() {
   document.getElementById('restart-total-words').value = poolSize;
   document.getElementById('restart-round-size').value = roundSize;
+  updateFilterHint();
   document.getElementById('restart-modal-backdrop').classList.remove('hidden');
 }
 function closeRestartModal() {
@@ -278,16 +315,18 @@ function handleRestartBackdropClick(e) {
   if (e.target === document.getElementById('restart-modal-backdrop')) closeRestartModal();
 }
 function confirmRestart() {
-  const total = Math.max(1, Math.min(parseInt(document.getElementById('restart-total-words').value, 10) || poolSize, words.length));
+  const filtered = getFilteredWords();
+  const total = Math.max(1, Math.min(parseInt(document.getElementById('restart-total-words').value, 10) || filtered.length, filtered.length));
   const rSize = Math.max(1, Math.min(total, parseInt(document.getElementById('restart-round-size').value, 10) || roundSize));
   closeRestartModal();
-  restartDrill(total, rSize);
+  restartDrill(total, rSize, filtered);
 }
 
-function restartDrill(totalWords, newRoundSize) {
+function restartDrill(totalWords, newRoundSize, sourceWords) {
+  sourceWords = sourceWords || words;
   poolSize = totalWords;
   roundSize = newRoundSize;
-  pool = shuffle([...words]).slice(0, poolSize);
+  pool = shuffle([...sourceWords]).slice(0, poolSize);
   round = 1;
   redo = [];
   doneCount = 0;
@@ -316,4 +355,14 @@ document.addEventListener('keydown', e => {
   if (prompt.style.display === 'none') return;
   if (e.key === 'd' || e.key === 'D') reveal(true);
   if (e.key === 'a' || e.key === 'A') reveal(false);
+});
+
+document.querySelectorAll('.filter-chip').forEach(btn => {
+  btn.addEventListener('click', () => {
+    const f = btn.dataset.filter;
+    if (activeFilters.has(f)) activeFilters.delete(f);
+    else activeFilters.add(f);
+    btn.classList.toggle('active');
+    updateFilterHint();
+  });
 });

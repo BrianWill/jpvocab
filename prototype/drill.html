@@ -104,10 +104,20 @@
           <button class="num-btn" type="button" onmousedown="startStep(adjustRestart,'restart-round-size',5)" onmouseup="stopStep()" onmouseleave="stopStep()">+</button>
         </div>
       </div>
+      <div class="restart-field restart-field-filter">
+        <label>Word type</label>
+        <div class="filter-chips">
+          <button type="button" class="filter-chip active" data-filter="katakana">Katakana</button>
+          <button type="button" class="filter-chip active" data-filter="verbs">Verbs</button>
+          <button type="button" class="filter-chip active" data-filter="nouns">Nouns</button>
+          <button type="button" class="filter-chip active" data-filter="other">Other</button>
+        </div>
+      </div>
+      <div class="filter-hint" id="filter-hint"></div>
     </div>
     <div class="modal-footer">
       <button class="btn-cancel" onclick="closeRestartModal()">Cancel</button>
-      <button class="btn-save" onclick="confirmRestart()">Start</button>
+      <button class="btn-save" id="restart-start-btn" onclick="confirmRestart()">Start</button>
     </div>
   </div>
 </div>

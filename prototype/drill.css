@@ -380,8 +380,42 @@
   color: #585b70;
 }
 
+/* Filter chips */
+.restart-field-filter { align-items: flex-start; padding-top: 0.1rem; }
+.filter-chips {
+  display: flex;
+  gap: 0.4rem;
+}
+.filter-chip {
+  background: #11111b;
+  border: 1px solid #313244;
+  color: #585b70;
+  border-radius: 4px;
+  padding: 0.3rem 0.65rem;
+  font-size: 0.75rem;
+  font-family: inherit;
+  cursor: pointer;
+  transition: border-color 0.1s, color 0.1s, background 0.1s;
+}
+.filter-chip:hover { border-color: #6c7086; color: #cdd6f4; }
+.filter-chip.active {
+  background: rgba(137,180,250,0.12);
+  border-color: rgba(137,180,250,0.4);
+  color: #89b4fa;
+}
+.filter-hint {
+  font-size: 0.72rem;
+  color: #45475a;
+  text-align: right;
+  min-height: 1.1em;
+}
+.filter-hint.error { color: #f38ba8; }
+
+/* Disabled Start button */
+.btn-save:disabled { opacity: 0.3; cursor: not-allowed; pointer-events: none; }
+
 /* Modal — drill-specific overrides */
-.modal { max-width: 360px; }
+.modal { max-width: 520px; }
 .modal .modal-body { display: flex; flex-direction: column; gap: 0.75rem; }
 .modal-word-label {
   font-size: 1.1rem;

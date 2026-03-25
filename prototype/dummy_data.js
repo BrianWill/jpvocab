@@ -127,6 +127,14 @@ const lexiconWords = [
   { word: '旅行計画準備', reading: 'りょこうけいかくじゅんび', meaning: 'travel planning and preparation', type: 'noun', exampleJp: '旅行計画準備に時間がかかる。', exampleEn: 'Travel planning and preparation takes time.', correct: 0, incorrect: 0, target: 3, createdAt: '2026-03-24', lastDrilled: null },
   { word: '日常生活費用', reading: 'にちじょうせいかつひよう', meaning: 'daily living costs', type: 'noun', exampleJp: '日常生活費用を計算する。', exampleEn: 'I calculate daily living costs.', correct: 0, incorrect: 0, target: 3, createdAt: '2026-03-24', lastDrilled: null },
   { word: '問題解決方法', reading: 'もんだいかいけつほうほう', meaning: 'problem-solving method', type: 'noun', exampleJp: '問題解決方法を探している。', exampleEn: 'I am searching for a problem-solving method.', correct: 0, incorrect: 0, target: 3, createdAt: '2026-03-24', lastDrilled: null },
+  // ── Katakana ─────────────────────────────────────────────────────────────
+  { word: 'コーヒー', reading: 'こーひー', meaning: 'coffee', type: 'noun', exampleJp: 'コーヒーを飲む。', exampleEn: 'I drink coffee.', correct: 0, incorrect: 0, target: 3, createdAt: '2026-03-20', lastDrilled: null },
+  { word: 'テレビ', reading: 'てれび', meaning: 'television; TV', type: 'noun', exampleJp: 'テレビを見る。', exampleEn: 'I watch television.', correct: 0, incorrect: 0, target: 3, createdAt: '2026-03-20', lastDrilled: '2026-03-22' },
+  { word: 'パソコン', reading: 'ぱそこん', meaning: 'personal computer; PC', type: 'noun', exampleJp: 'パソコンで仕事をする。', exampleEn: 'I work on a PC.', correct: 0, incorrect: 0, target: 3, createdAt: '2026-03-20', lastDrilled: null },
+  { word: 'スマホ', reading: 'すまほ', meaning: 'smartphone', type: 'noun', exampleJp: 'スマホで写真を撮る。', exampleEn: 'I take photos with my smartphone.', correct: 0, incorrect: 0, target: 3, createdAt: '2026-03-21', lastDrilled: '2026-03-23' },
+  { word: 'バス', reading: 'ばす', meaning: 'bus', type: 'noun', exampleJp: 'バスで学校に行く。', exampleEn: 'I go to school by bus.', correct: 0, incorrect: 0, target: 3, createdAt: '2026-03-21', lastDrilled: null },
+  { word: 'レストラン', reading: 'れすとらん', meaning: 'restaurant', type: 'noun', exampleJp: 'レストランで食事をする。', exampleEn: 'I eat at a restaurant.', correct: 0, incorrect: 0, target: 3, createdAt: '2026-03-22', lastDrilled: '2026-03-23' },
+  { word: 'アパート', reading: 'あぱーと', meaning: 'apartment', type: 'noun', exampleJp: 'アパートに住んでいる。', exampleEn: 'I live in an apartment.', correct: 0, incorrect: 0, target: 3, createdAt: '2026-03-22', lastDrilled: null },
 ];
 
 const drillWords = [
@@ -257,6 +265,14 @@ const drillWords = [
   { word: '旅行計画準備', reading: 'りょこうけいかくじゅんび', meaning: 'travel planning and preparation', type: 'noun', exampleJp: '旅行計画準備に時間がかかる。', exampleEn: '"Travel planning and preparation takes time."' },
   { word: '日常生活費用', reading: 'にちじょうせいかつひよう', meaning: 'daily living costs', type: 'noun', exampleJp: '日常生活費用を計算する。', exampleEn: '"I calculate daily living costs."' },
   { word: '問題解決方法', reading: 'もんだいかいけつほうほう', meaning: 'problem-solving method', type: 'noun', exampleJp: '問題解決方法を探している。', exampleEn: '"I am searching for a problem-solving method."' },
+  // ── Katakana ─────────────────────────────────────────────────────────────
+  { word: 'コーヒー', reading: 'こーひー', meaning: 'coffee', type: 'noun', exampleJp: 'コーヒーを飲む。', exampleEn: '"I drink coffee."' },
+  { word: 'テレビ', reading: 'てれび', meaning: 'television; TV', type: 'noun', exampleJp: 'テレビを見る。', exampleEn: '"I watch television."' },
+  { word: 'パソコン', reading: 'ぱそこん', meaning: 'personal computer; PC', type: 'noun', exampleJp: 'パソコンで仕事をする。', exampleEn: '"I work on a PC."' },
+  { word: 'スマホ', reading: 'すまほ', meaning: 'smartphone', type: 'noun', exampleJp: 'スマホで写真を撮る。', exampleEn: '"I take photos with my smartphone."' },
+  { word: 'バス', reading: 'ばす', meaning: 'bus', type: 'noun', exampleJp: 'バスで学校に行く。', exampleEn: '"I go to school by bus."' },
+  { word: 'レストラン', reading: 'れすとらん', meaning: 'restaurant', type: 'noun', exampleJp: 'レストランで食事をする。', exampleEn: '"I eat at a restaurant."' },
+  { word: 'アパート', reading: 'あぱーと', meaning: 'apartment', type: 'noun', exampleJp: 'アパートに住んでいる。', exampleEn: '"I live in an apartment."' },
 ];
 
 // Word dictionary: word -> [reading, meaning]

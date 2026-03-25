@@ -1,4 +1,38 @@
 {
+  "kanji": [
+    {"character": "走", "meanings": ["run", "flee"]},
+    {"character": "美", "meanings": ["beautiful", "pretty"]},
+    {"character": "話", "meanings": ["speak", "story", "talk"]},
+    {"character": "静", "meanings": ["quiet", "still", "calm"]},
+    {"character": "始", "meanings": ["begin", "start"]},
+    {"character": "天", "meanings": ["heaven", "sky"]},
+    {"character": "気", "meanings": ["spirit", "mood", "air", "energy"]},
+    {"character": "忘", "meanings": ["forget"]},
+    {"character": "危", "meanings": ["dangerous", "perilous"]},
+    {"character": "選", "meanings": ["select", "choose", "elect"]},
+    {"character": "問", "meanings": ["question", "ask"]},
+    {"character": "題", "meanings": ["topic", "subject", "title"]},
+    {"character": "暖", "meanings": ["warm", "mild"]},
+    {"character": "借", "meanings": ["borrow", "rent"]},
+    {"character": "経", "meanings": ["pass through", "longitude", "sutra"]},
+    {"character": "験", "meanings": ["test", "verify", "experience"]},
+    {"character": "練", "meanings": ["practice", "knead", "train"]},
+    {"character": "習", "meanings": ["learn", "practice", "custom"]},
+    {"character": "眠", "meanings": ["sleep", "drowsy"]},
+    {"character": "約", "meanings": ["promise", "approximately", "bind"]},
+    {"character": "束", "meanings": ["bundle", "bind", "bunch"]},
+    {"character": "優", "meanings": ["gentle", "superior", "excel"]},
+    {"character": "自", "meanings": ["self", "oneself"]},
+    {"character": "由", "meanings": ["reason", "cause", "from"]},
+    {"character": "考", "meanings": ["think", "consider", "reflect"]},
+    {"character": "決", "meanings": ["decide", "determine"]},
+    {"character": "調", "meanings": ["investigate", "tune", "prepare"]},
+    {"character": "続", "meanings": ["continue", "follow"]},
+    {"character": "手", "meanings": ["hand", "arm", "skill"]},
+    {"character": "伝", "meanings": ["transmit", "convey", "legend"]},
+    {"character": "困", "meanings": ["troubled", "distressed"]},
+    {"character": "信", "meanings": ["believe", "trust", "faith"]}
+  ],
   "words": [
     {
       "word": "走る",
@@ -12,7 +46,8 @@
       "incorrect_count": 1,
       "created_at": "2026-01-05 09:00:00",
       "last_drilled_at": "2026-03-22 14:30:00",
-      "target_reached_at": "2026-03-22 14:30:00"
+      "target_reached_at": "2026-03-22 14:30:00",
+      "kanji_data": [{"char": "走", "reading": "はし"}]
     },
     {
       "word": "美しい",
@@ -26,7 +61,8 @@
       "incorrect_count": 0,
       "created_at": "2026-03-18 10:00:00",
       "last_drilled_at": null,
-      "target_reached_at": null
+      "target_reached_at": null,
+      "kanji_data": [{"char": "美", "reading": "うつく"}]
     },
     {
       "word": "話す",
@@ -40,7 +76,8 @@
       "incorrect_count": 2,
       "created_at": "2026-01-15 08:00:00",
       "last_drilled_at": "2026-03-10 11:00:00",
-      "target_reached_at": null
+      "target_reached_at": null,
+      "kanji_data": [{"char": "話", "reading": "はな"}]
     },
     {
       "word": "静か",
@@ -54,7 +91,8 @@
       "incorrect_count": 0,
       "created_at": "2025-12-01 09:00:00",
       "last_drilled_at": "2026-03-20 16:00:00",
-      "target_reached_at": "2026-03-20 16:00:00"
+      "target_reached_at": "2026-03-20 16:00:00",
+      "kanji_data": [{"char": "静", "reading": "しず"}]
     },
     {
       "word": "始める",
@@ -68,7 +106,8 @@
       "incorrect_count": 3,
       "created_at": "2025-11-10 09:00:00",
       "last_drilled_at": "2026-02-28 10:00:00",
-      "target_reached_at": null
+      "target_reached_at": null,
+      "kanji_data": [{"char": "始", "reading": "はじ"}]
     },
     {
       "word": "天気",
@@ -82,7 +121,8 @@
       "incorrect_count": 1,
       "created_at": "2026-02-01 09:00:00",
       "last_drilled_at": "2026-03-22 14:30:00",
-      "target_reached_at": "2026-03-22 14:30:00"
+      "target_reached_at": "2026-03-22 14:30:00",
+      "kanji_data": [{"char": "天", "reading": "テン"}, {"char": "気", "reading": "キ"}]
     },
     {
       "word": "忘れる",
@@ -96,7 +136,8 @@
       "incorrect_count": 1,
       "created_at": "2026-03-01 09:00:00",
       "last_drilled_at": "2026-03-23 09:15:00",
-      "target_reached_at": null
+      "target_reached_at": null,
+      "kanji_data": [{"char": "忘", "reading": "わす"}]
     },
     {
       "word": "危ない",
@@ -110,7 +151,8 @@
       "incorrect_count": 0,
       "created_at": "2026-03-10 09:00:00",
       "last_drilled_at": null,
-      "target_reached_at": null
+      "target_reached_at": null,
+      "kanji_data": [{"char": "危", "reading": "あぶ"}]
     },
     {
       "word": "選ぶ",
@@ -124,7 +166,8 @@
       "incorrect_count": 0,
       "created_at": "2025-12-15 09:00:00",
       "last_drilled_at": "2026-01-08 13:00:00",
-      "target_reached_at": "2026-01-08 13:00:00"
+      "target_reached_at": "2026-01-08 13:00:00",
+      "kanji_data": [{"char": "選", "reading": "えら"}]
     },
     {
       "word": "問題",
@@ -138,7 +181,8 @@
       "incorrect_count": 2,
       "created_at": "2025-11-20 09:00:00",
       "last_drilled_at": "2026-03-18 15:00:00",
-      "target_reached_at": null
+      "target_reached_at": null,
+      "kanji_data": [{"char": "問", "reading": "モン"}, {"char": "題", "reading": "ダイ"}]
     },
     {
       "word": "暖かい",
@@ -152,7 +196,8 @@
       "incorrect_count": 0,
       "created_at": "2026-02-14 09:00:00",
       "last_drilled_at": "2026-03-22 14:30:00",
-      "target_reached_at": "2026-03-22 14:30:00"
+      "target_reached_at": "2026-03-22 14:30:00",
+      "kanji_data": [{"char": "暖", "reading": "あたた"}]
     },
     {
       "word": "借りる",
@@ -166,7 +211,8 @@
       "incorrect_count": 0,
       "created_at": "2026-03-18 10:00:00",
       "last_drilled_at": null,
-      "target_reached_at": null
+      "target_reached_at": null,
+      "kanji_data": [{"char": "借", "reading": "か"}]
     },
     {
       "word": "経験",
@@ -180,7 +226,8 @@
       "incorrect_count": 1,
       "created_at": "2026-01-20 09:00:00",
       "last_drilled_at": "2026-03-10 11:00:00",
-      "target_reached_at": null
+      "target_reached_at": null,
+      "kanji_data": [{"char": "経", "reading": "ケイ"}, {"char": "験", "reading": "ケン"}]
     },
     {
       "word": "練習",
@@ -194,7 +241,8 @@
       "incorrect_count": 1,
       "created_at": "2026-01-10 09:00:00",
       "last_drilled_at": "2026-03-23 09:15:00",
-      "target_reached_at": "2026-03-23 09:15:00"
+      "target_reached_at": "2026-03-23 09:15:00",
+      "kanji_data": [{"char": "練", "reading": "レン"}, {"char": "習", "reading": "シュウ"}]
     },
     {
       "word": "眠い",
@@ -208,7 +256,8 @@
       "incorrect_count": 0,
       "created_at": "2026-03-05 09:00:00",
       "last_drilled_at": null,
-      "target_reached_at": null
+      "target_reached_at": null,
+      "kanji_data": [{"char": "眠", "reading": "ねむ"}]
     },
     {
       "word": "約束",
@@ -222,7 +271,8 @@
       "incorrect_count": 0,
       "created_at": "2026-02-10 09:00:00",
       "last_drilled_at": "2026-03-22 14:30:00",
-      "target_reached_at": "2026-03-22 14:30:00"
+      "target_reached_at": "2026-03-22 14:30:00",
+      "kanji_data": [{"char": "約", "reading": "ヤク"}, {"char": "束", "reading": "ソク"}]
     },
     {
       "word": "優しい",
@@ -236,7 +286,8 @@
       "incorrect_count": 0,
       "created_at": "2026-02-20 09:00:00",
       "last_drilled_at": "2026-03-23 09:15:00",
-      "target_reached_at": null
+      "target_reached_at": null,
+      "kanji_data": [{"char": "優", "reading": "やさ"}]
     },
     {
       "word": "自由",
@@ -250,7 +301,8 @@
       "incorrect_count": 2,
       "created_at": "2025-12-20 09:00:00",
       "last_drilled_at": "2026-01-08 13:00:00",
-      "target_reached_at": "2026-01-08 13:00:00"
+      "target_reached_at": "2026-01-08 13:00:00",
+      "kanji_data": [{"char": "自", "reading": "ジ"}, {"char": "由", "reading": "ユウ"}]
     },
     {
       "word": "考える",
@@ -264,7 +316,8 @@
       "incorrect_count": 3,
       "created_at": "2026-01-25 09:00:00",
       "last_drilled_at": "2026-03-22 14:30:00",
-      "target_reached_at": null
+      "target_reached_at": null,
+      "kanji_data": [{"char": "考", "reading": "かんが"}]
     },
     {
       "word": "決める",
@@ -278,7 +331,8 @@
       "incorrect_count": 1,
       "created_at": "2026-02-05 09:00:00",
       "last_drilled_at": "2026-03-23 09:15:00",
-      "target_reached_at": null
+      "target_reached_at": null,
+      "kanji_data": [{"char": "決", "reading": "き"}]
     },
     {
       "word": "調べる",
@@ -292,7 +346,8 @@
       "incorrect_count": 0,
       "created_at": "2026-01-30 09:00:00",
       "last_drilled_at": "2026-03-10 11:00:00",
-      "target_reached_at": "2026-03-10 11:00:00"
+      "target_reached_at": "2026-03-10 11:00:00",
+      "kanji_data": [{"char": "調", "reading": "しら"}]
     },
     {
       "word": "続ける",
@@ -306,7 +361,8 @@
       "incorrect_count": 0,
       "created_at": "2026-03-20 09:00:00",
       "last_drilled_at": null,
-      "target_reached_at": null
+      "target_reached_at": null,
+      "kanji_data": [{"char": "続", "reading": "つづ"}]
     },
     {
       "word": "手伝う",
@@ -320,7 +376,8 @@
       "incorrect_count": 0,
       "created_at": "2026-02-25 09:00:00",
       "last_drilled_at": "2026-03-23 09:15:00",
-      "target_reached_at": "2026-03-23 09:15:00"
+      "target_reached_at": "2026-03-23 09:15:00",
+      "kanji_data": [{"char": "手", "reading": "て"}, {"char": "伝", "reading": "つた"}]
     },
     {
       "word": "困る",
@@ -334,7 +391,8 @@
       "incorrect_count": 2,
       "created_at": "2026-02-28 09:00:00",
       "last_drilled_at": "2026-03-22 14:30:00",
-      "target_reached_at": null
+      "target_reached_at": null,
+      "kanji_data": [{"char": "困", "reading": "こま"}]
     },
     {
       "word": "信じる",
@@ -348,7 +406,8 @@
       "incorrect_count": 0,
       "created_at": "2025-12-10 09:00:00",
       "last_drilled_at": "2026-03-20 16:00:00",
-      "target_reached_at": "2026-03-20 16:00:00"
+      "target_reached_at": "2026-03-20 16:00:00",
+      "kanji_data": [{"char": "信", "reading": "シン"}]
     },
     {
       "word": "コーヒー",

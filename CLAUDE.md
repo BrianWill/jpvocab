@@ -90,8 +90,6 @@ The HTML/CSS/JS frontend files live in `prototype/backend/static/` and are serve
 - `dr()` / `wr()` — helpers for building activity entries
 - `activityData` — date-keyed drill/add/clear history for the activity calendar
 - `stats` — headline stat numbers for the activity stats section
-- `kanjiData` — maps kanji character → `{ on: [...katakana], kun: [...hiragana], meanings: [...] }`; used by the drill page to render per-kanji reading and meaning breakdowns
-
 When adding or changing dummy data, edit `dummy_data.js` only — do not put data back into the page JS files. As pages are wired to real backend endpoints, their dummy data dependencies can be removed.
 
 ### Backend prototype
@@ -117,7 +115,8 @@ cd prototype/backend && air
 
 Table definitions live in the `migrate()` function in `db.go`. Schema is versioned via `PRAGMA user_version` — each entry in the migrations slice runs exactly once. Current tables:
 
-- **`words`** — the lexicon; one row per word with reading, part of speech, meaning, example sentences, audio paths (`audio_word_path`, `audio_example_path`), drill counts, target, timestamps. `word` column has a unique index.
+- **`words`** — the lexicon; one row per word with reading, part of speech, meaning, example sentences, audio paths (`audio_word_path`, `audio_example_path`), drill counts, target, timestamps, and a `kanji_data` JSON column (array of `{id, reading}` linking to the `kanji` table). `word` column has a unique index.
+- **`kanji`** — one row per kanji character with `character` and `meanings` (JSON array of English meanings). Readings (on/kun) are stored per-word in the `kanji_data` column of `words`, not on the kanji row itself. Served via `/api/kanji`.
 - **`drill_sessions`** — one row per drill session with a `started_at` timestamp.
 - **`drill_answers`** — one row per answer within a session; references `words` and `drill_sessions`; stores `correct` (0/1) and `answered_at`.
 

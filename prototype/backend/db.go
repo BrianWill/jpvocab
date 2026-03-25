@@ -46,6 +46,8 @@ func migrate(db *sql.DB) {
 			drill_count       INTEGER  NOT NULL DEFAULT 0,
 			drill_target      INTEGER  NOT NULL DEFAULT 1,
 			incorrect_count   INTEGER  NOT NULL DEFAULT 0,
+			is_katakana       INTEGER  NOT NULL DEFAULT 0,
+			kanji_data        TEXT,
 			created_at        DATETIME NOT NULL DEFAULT (datetime('now')),
 			last_drilled_at   DATETIME,
 			target_reached_at DATETIME
@@ -61,7 +63,11 @@ func migrate(db *sql.DB) {
 			correct     INTEGER  NOT NULL CHECK (correct IN (0, 1)),
 			answered_at DATETIME NOT NULL DEFAULT (datetime('now'))
 		)`,
-		`ALTER TABLE words ADD COLUMN is_katakana INTEGER NOT NULL DEFAULT 0`,
+		`CREATE TABLE IF NOT EXISTS kanji (
+			id        INTEGER PRIMARY KEY AUTOINCREMENT,
+			character TEXT    NOT NULL UNIQUE,
+			meanings  TEXT    NOT NULL
+		)`,
 	}
 
 	var version int
@@ -242,20 +248,33 @@ func validTableName(db *sql.DB, name string) bool {
 	return slices.Contains(tables, name)
 }
 
+// seedKanjiDef is one entry in the top-level "kanji" array in seed.json.
+type seedKanjiDef struct {
+	Character string   `json:"character"`
+	Meanings  []string `json:"meanings"`
+}
+
+// seedKanjiRef links a kanji character to its reading within a specific word.
+type seedKanjiRef struct {
+	Char    string `json:"char"`
+	Reading string `json:"reading"`
+}
+
 // seedWord is the shape of a word entry in seed.json.
 type seedWord struct {
-	Word            string  `json:"word"`
-	Reading         string  `json:"reading"`
-	PartOfSpeech    string  `json:"part_of_speech"`
-	Meaning         string  `json:"meaning"`
-	ExampleJP       string  `json:"example_jp"`
-	ExampleEN       string  `json:"example_en"`
-	DrillCount      int     `json:"drill_count"`
-	DrillTarget     int     `json:"drill_target"`
-	IncorrectCount  int     `json:"incorrect_count"`
-	CreatedAt       string  `json:"created_at"`
-	LastDrilledAt   *string `json:"last_drilled_at"`
-	TargetReachedAt *string `json:"target_reached_at"`
+	Word            string         `json:"word"`
+	Reading         string         `json:"reading"`
+	PartOfSpeech    string         `json:"part_of_speech"`
+	Meaning         string         `json:"meaning"`
+	ExampleJP       string         `json:"example_jp"`
+	ExampleEN       string         `json:"example_en"`
+	DrillCount      int            `json:"drill_count"`
+	DrillTarget     int            `json:"drill_target"`
+	IncorrectCount  int            `json:"incorrect_count"`
+	CreatedAt       string         `json:"created_at"`
+	LastDrilledAt   *string        `json:"last_drilled_at"`
+	TargetReachedAt *string        `json:"target_reached_at"`
+	KanjiData       []seedKanjiRef `json:"kanji_data,omitempty"`
 }
 
 // seedAnswer is one drill answer within a session in seed.json.
@@ -273,8 +292,9 @@ type seedSession struct {
 
 // seedData is the top-level shape of seed.json.
 type seedData struct {
-	Words    []seedWord    `json:"words"`
-	Sessions []seedSession `json:"sessions"`
+	Kanji    []seedKanjiDef `json:"kanji"`
+	Words    []seedWord     `json:"words"`
+	Sessions []seedSession  `json:"sessions"`
 }
 
 // seedDB loads seed.json and inserts words and drill history if the words table is empty.
@@ -304,13 +324,32 @@ func seedDB(db *sql.DB) {
 		log.Fatal("seed: begin tx:", err)
 	}
 
+	// Insert kanji definitions, collecting character → id for word kanji_data.
+	kanjiStmt, err := tx.Prepare(`INSERT INTO kanji (character, meanings) VALUES (?, ?)`)
+	if err != nil {
+		log.Fatal("seed: prepare kanji:", err)
+	}
+	defer kanjiStmt.Close()
+
+	kanjiCharToID := make(map[string]int64, len(seed.Kanji))
+	for _, k := range seed.Kanji {
+		meaningsJSON, _ := json.Marshal(k.Meanings)
+		res, err := kanjiStmt.Exec(k.Character, string(meaningsJSON))
+		if err != nil {
+			tx.Rollback()
+			log.Fatal("seed: insert kanji:", err)
+		}
+		id, _ := res.LastInsertId()
+		kanjiCharToID[k.Character] = id
+	}
+
 	// Insert words, collecting word text → id for answer lookup.
 	wordStmt, err := tx.Prepare(`
 		INSERT INTO words
 			(word, reading, part_of_speech, meaning, example_jp, example_en,
 			 drill_count, drill_target, incorrect_count,
-			 created_at, last_drilled_at, target_reached_at, is_katakana)
-		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+			 created_at, last_drilled_at, target_reached_at, is_katakana, kanji_data)
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 	`)
 	if err != nil {
 		log.Fatal("seed: prepare words:", err)
@@ -323,10 +362,26 @@ func seedDB(db *sql.DB) {
 		if containsKatakana(w.Word) {
 			kat = 1
 		}
+		// Resolve kanji character references to IDs.
+		type kanjiDataEntry struct {
+			ID      int64  `json:"id"`
+			Reading string `json:"reading"`
+		}
+		entries := make([]kanjiDataEntry, 0, len(w.KanjiData))
+		for _, ref := range w.KanjiData {
+			id, ok := kanjiCharToID[ref.Char]
+			if !ok {
+				tx.Rollback()
+				log.Fatalf("seed: word %q references unknown kanji %q", w.Word, ref.Char)
+			}
+			entries = append(entries, kanjiDataEntry{ID: id, Reading: ref.Reading})
+		}
+		kanjiDataJSON, _ := json.Marshal(entries)
+
 		res, err := wordStmt.Exec(
 			w.Word, w.Reading, w.PartOfSpeech, w.Meaning, w.ExampleJP, w.ExampleEN,
 			w.DrillCount, w.DrillTarget, w.IncorrectCount,
-			w.CreatedAt, w.LastDrilledAt, w.TargetReachedAt, kat,
+			w.CreatedAt, w.LastDrilledAt, w.TargetReachedAt, kat, string(kanjiDataJSON),
 		)
 		if err != nil {
 			tx.Rollback()
@@ -396,7 +451,8 @@ func containsKatakana(s string) bool {
 
 // insertWord adds a single word to the lexicon. Only the word itself is
 // required; all other fields are optional and default to empty / zero.
-func insertWord(db *sql.DB, word, reading, partOfSpeech, meaning, exampleJP, exampleEN string, drillTarget int) error {
+// kanjiData should be a JSON string like `[{"id":1,"reading":"はし"}]` or empty.
+func insertWord(db *sql.DB, word, reading, partOfSpeech, meaning, exampleJP, exampleEN, kanjiData string, drillTarget int) error {
 	if drillTarget < 1 {
 		drillTarget = 1
 	}
@@ -404,10 +460,13 @@ func insertWord(db *sql.DB, word, reading, partOfSpeech, meaning, exampleJP, exa
 	if containsKatakana(word) {
 		kat = 1
 	}
+	if kanjiData == "" {
+		kanjiData = "[]"
+	}
 	_, err := db.Exec(`
-		INSERT INTO words (word, reading, part_of_speech, meaning, example_jp, example_en, drill_target, is_katakana)
-		VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-	`, word, reading, partOfSpeech, meaning, exampleJP, exampleEN, drillTarget, kat)
+		INSERT INTO words (word, reading, part_of_speech, meaning, example_jp, example_en, drill_target, is_katakana, kanji_data)
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+	`, word, reading, partOfSpeech, meaning, exampleJP, exampleEN, drillTarget, kat, kanjiData)
 	return err
 }
 
@@ -439,28 +498,87 @@ func wordsExistInDB(db *sql.DB, words []string) (map[string]bool, error) {
 	return existing, rows.Err()
 }
 
+// kanjiJSON is one entry in the /api/kanji response.
+type kanjiJSON struct {
+	ID        int64    `json:"id"`
+	Character string   `json:"character"`
+	Meanings  []string `json:"meanings"`
+}
+
+// kanjiDataEntry is one element of a word's kanji_data JSON column.
+type kanjiDataEntry struct {
+	ID      int64  `json:"id"`
+	Reading string `json:"reading"`
+}
+
+// upsertKanji inserts a kanji row or updates its meanings if it already exists,
+// then returns the row's ID.
+func upsertKanji(db *sql.DB, character string, meanings []string) (int64, error) {
+	meaningsJSON, err := json.Marshal(meanings)
+	if err != nil {
+		return 0, err
+	}
+	if _, err := db.Exec(`
+		INSERT INTO kanji (character, meanings) VALUES (?, ?)
+		ON CONFLICT(character) DO NOTHING
+	`, character, string(meaningsJSON)); err != nil {
+		return 0, err
+	}
+	var id int64
+	err = db.QueryRow(`SELECT id FROM kanji WHERE character = ?`, character).Scan(&id)
+	return id, err
+}
+
+// listKanji returns all rows from the kanji table.
+func listKanji(db *sql.DB) ([]kanjiJSON, error) {
+	rows, err := db.Query(`SELECT id, character, meanings FROM kanji ORDER BY id`)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var out []kanjiJSON
+	for rows.Next() {
+		var k kanjiJSON
+		var meaningsStr string
+		if err := rows.Scan(&k.ID, &k.Character, &meaningsStr); err != nil {
+			return nil, err
+		}
+		json.Unmarshal([]byte(meaningsStr), &k.Meanings)
+		if k.Meanings == nil {
+			k.Meanings = []string{}
+		}
+		out = append(out, k)
+	}
+	if out == nil {
+		out = []kanjiJSON{}
+	}
+	return out, rows.Err()
+}
+
 // wordJSON is the JSON shape returned by the /api/words endpoint.
 // Field names are chosen to match what lexicon.js already expects.
 type wordJSON struct {
-	ID          int64   `json:"id"`
-	Word        string  `json:"word"`
-	Reading     string  `json:"reading"`
-	Type        string  `json:"type"`
-	Meaning     string  `json:"meaning"`
-	ExampleJp   string  `json:"exampleJp"`
-	ExampleEn   string  `json:"exampleEn"`
-	Correct     int     `json:"correct"`
-	Incorrect   int     `json:"incorrect"`
-	Target      int     `json:"target"`
-	CreatedAt   string  `json:"createdAt"`
-	LastDrilled *string `json:"lastDrilled"`
+	ID          int64            `json:"id"`
+	Word        string           `json:"word"`
+	Reading     string           `json:"reading"`
+	Type        string           `json:"type"`
+	Meaning     string           `json:"meaning"`
+	ExampleJp   string           `json:"exampleJp"`
+	ExampleEn   string           `json:"exampleEn"`
+	Correct     int              `json:"correct"`
+	Incorrect   int              `json:"incorrect"`
+	Target      int              `json:"target"`
+	CreatedAt   string           `json:"createdAt"`
+	LastDrilled *string          `json:"lastDrilled"`
+	KanjiData   []kanjiDataEntry `json:"kanjiData"`
 }
 
 // listWords returns all words from the lexicon ordered by creation date descending.
 func listWords(db *sql.DB) ([]wordJSON, error) {
 	rows, err := db.Query(`
 		SELECT id, word, reading, part_of_speech, meaning, example_jp, example_en,
-		       drill_count, incorrect_count, drill_target, created_at, last_drilled_at
+		       drill_count, incorrect_count, drill_target, created_at, last_drilled_at,
+		       kanji_data
 		FROM words
 		ORDER BY created_at DESC
 	`)
@@ -472,11 +590,19 @@ func listWords(db *sql.DB) ([]wordJSON, error) {
 	var words []wordJSON
 	for rows.Next() {
 		var w wordJSON
+		var kanjiDataStr *string
 		if err := rows.Scan(
 			&w.ID, &w.Word, &w.Reading, &w.Type, &w.Meaning, &w.ExampleJp, &w.ExampleEn,
 			&w.Correct, &w.Incorrect, &w.Target, &w.CreatedAt, &w.LastDrilled,
+			&kanjiDataStr,
 		); err != nil {
 			return nil, err
+		}
+		if kanjiDataStr != nil {
+			json.Unmarshal([]byte(*kanjiDataStr), &w.KanjiData)
+		}
+		if w.KanjiData == nil {
+			w.KanjiData = []kanjiDataEntry{}
 		}
 		words = append(words, w)
 	}

@@ -9,21 +9,34 @@ import (
 	"strings"
 )
 
+// kanjiAutoFillEntry holds AI-generated data for one kanji character within a word.
+type kanjiAutoFillEntry struct {
+	Character string   `json:"character"`
+	Reading   string   `json:"reading"`  // hiragana for kun'yomi, katakana for on'yomi
+	Meanings  []string `json:"meanings"`
+}
+
 // wordAutoFill holds AI-generated fields for a Japanese word.
 type wordAutoFill struct {
-	Reading      string `json:"reading"`
-	PartOfSpeech string `json:"part_of_speech"`
-	Meaning      string `json:"meaning"`
-	ExampleJP    string `json:"example_jp"`
-	ExampleEN    string `json:"example_en"`
+	Reading      string               `json:"reading"`
+	PartOfSpeech string               `json:"part_of_speech"`
+	Meaning      string               `json:"meaning"`
+	ExampleJP    string               `json:"example_jp"`
+	ExampleEN    string               `json:"example_en"`
+	Kanji        []kanjiAutoFillEntry `json:"kanji"`
 }
 
 const autoFillSystemPrompt = `You are a Japanese dictionary assistant. Given a Japanese word or phrase, return a JSON object with exactly these fields:
 - "reading": the word's reading in hiragana (use katakana only for loanwords)
-- "part_of_speech": e.g. "noun", "verb", "i-adjective", "na-adjective", "adverb", "particle", etc.
+- "part_of_speech": e.g. "noun", "godan-verb", "ichidan-verb", "i-adjective", "na-adjective", "adverb", etc.
 - "meaning": concise English meaning (one short phrase or sentence)
 - "example_jp": a short, natural example sentence in Japanese using the word
 - "example_en": English translation of the example sentence
+- "kanji": array of objects, one per kanji character in the word in order of appearance, each with:
+  - "character": the kanji character
+  - "reading": this kanji's reading in this specific word — use hiragana for kun'yomi, katakana for on'yomi
+  - "meanings": array of concise English meanings for this kanji (2–4 entries)
+  For words with no kanji (e.g. pure kana or katakana loanwords), use an empty array.
 Return only a valid JSON object with no markdown, no code fences, and no extra commentary.`
 
 // aiProviders holds which AI providers have API keys configured.

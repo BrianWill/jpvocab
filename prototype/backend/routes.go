@@ -47,6 +47,7 @@ func serverInit(db *sql.DB) {
 	r.Patch("/api/words/{id}", apiUpdateWord(db))
 	r.Delete("/api/words/{id}", apiDeleteWord(db))
 
+	r.Get("/api/kanji", apiGetKanji(db))
 	r.Post("/api/drill/sessions", apiCreateDrillSession(db))
 	r.Post("/api/drill/sessions/{id}/answers", apiRecordDrillAnswer(db))
 
@@ -160,6 +161,18 @@ func apiDeleteWord(db *sql.DB) http.HandlerFunc {
 			return
 		}
 		w.WriteHeader(http.StatusNoContent)
+	}
+}
+
+func apiGetKanji(db *sql.DB) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		kanji, err := listKanji(db)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(kanji)
 	}
 }
 
@@ -301,7 +314,7 @@ func adminAddWordsBatch(db *sql.DB) http.HandlerFunc {
 				continue
 			}
 
-			var reading, pos, meaning, exJP, exEN string
+			var reading, pos, meaning, exJP, exEN, kanjiDataStr string
 			if autoFill {
 				filled, err := autoFillWord(e.norm, aiModel)
 				if err != nil {
@@ -309,9 +322,25 @@ func adminAddWordsBatch(db *sql.DB) http.HandlerFunc {
 					continue
 				}
 				reading, pos, meaning, exJP, exEN = filled.Reading, filled.PartOfSpeech, filled.Meaning, filled.ExampleJP, filled.ExampleEN
+				// Upsert each kanji from the AI response and build kanji_data JSON.
+				type kdEntry struct {
+					ID      int64  `json:"id"`
+					Reading string `json:"reading"`
+				}
+				kd := make([]kdEntry, 0, len(filled.Kanji))
+				for _, k := range filled.Kanji {
+					id, kErr := upsertKanji(db, k.Character, k.Meanings)
+					if kErr != nil {
+						send(batchWordResult{Input: e.input, Word: e.norm, Added: false, Reason: "kanji upsert error: " + kErr.Error()})
+						continue
+					}
+					kd = append(kd, kdEntry{ID: id, Reading: k.Reading})
+				}
+				b, _ := json.Marshal(kd)
+				kanjiDataStr = string(b)
 			}
 
-			if err := insertWord(db, e.norm, reading, pos, meaning, exJP, exEN, defaultDrillTarget); err != nil {
+			if err := insertWord(db, e.norm, reading, pos, meaning, exJP, exEN, kanjiDataStr, defaultDrillTarget); err != nil {
 				reason := err.Error()
 				if strings.Contains(reason, "UNIQUE constraint failed") {
 					reason = "already in lexicon"

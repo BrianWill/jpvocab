@@ -30,7 +30,7 @@ func TestMigrate_CreatesAllTables(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	want := map[string]bool{"words": true, "drill_sessions": true, "drill_answers": true}
+	want := map[string]bool{"words": true, "drill_sessions": true, "drill_answers": true, "kanji": true}
 	for _, table := range tables {
 		delete(want, table)
 	}
@@ -48,8 +48,8 @@ func TestMigrate_Idempotent(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(tables) != 3 {
-		t.Errorf("expected 3 tables, got %d: %v", len(tables), tables)
+	if len(tables) != 4 {
+		t.Errorf("expected 4 tables, got %d: %v", len(tables), tables)
 	}
 }
 
@@ -57,7 +57,7 @@ func TestMigrate_Idempotent(t *testing.T) {
 
 func TestInsertWord_Basic(t *testing.T) {
 	db := testDB(t)
-	err := insertWord(db, "食べる", "たべる", "verb", "to eat", "私は寿司を食べる。", "I eat sushi.", 3)
+	err := insertWord(db, "食べる", "たべる", "verb", "to eat", "私は寿司を食べる。", "I eat sushi.", "", 3)
 	if err != nil {
 		t.Fatalf("insertWord: %v", err)
 	}
@@ -82,7 +82,7 @@ func TestInsertWord_Basic(t *testing.T) {
 
 func TestInsertWord_DrillTargetClampsToOne(t *testing.T) {
 	db := testDB(t)
-	if err := insertWord(db, "猫", "", "", "", "", "", 0); err != nil {
+	if err := insertWord(db, "猫", "", "", "", "", "", "", 0); err != nil {
 		t.Fatal(err)
 	}
 	var target int
@@ -94,10 +94,10 @@ func TestInsertWord_DrillTargetClampsToOne(t *testing.T) {
 
 func TestInsertWord_Duplicate(t *testing.T) {
 	db := testDB(t)
-	if err := insertWord(db, "犬", "", "", "", "", "", 1); err != nil {
+	if err := insertWord(db, "犬", "", "", "", "", "", "", 1); err != nil {
 		t.Fatal("first insert:", err)
 	}
-	err := insertWord(db, "犬", "", "", "", "", "", 1)
+	err := insertWord(db, "犬", "", "", "", "", "", "", 1)
 	if err == nil {
 		t.Fatal("expected UNIQUE constraint error, got nil")
 	}
@@ -109,7 +109,7 @@ func TestInsertWord_Duplicate(t *testing.T) {
 func TestInsertWord_EmptyOptionalFields(t *testing.T) {
 	db := testDB(t)
 	// Insert with only the word; all other fields empty.
-	if err := insertWord(db, "空", "", "", "", "", "", 1); err != nil {
+	if err := insertWord(db, "空", "", "", "", "", "", "", 1); err != nil {
 		t.Fatal(err)
 	}
 	var count int
@@ -127,13 +127,13 @@ func TestListTables(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(tables) != 3 {
-		t.Fatalf("expected 3 tables, got %d: %v", len(tables), tables)
+	if len(tables) != 4 {
+		t.Fatalf("expected 4 tables, got %d: %v", len(tables), tables)
 	}
 	// listTables returns names ordered by name
 	for _, name := range tables {
 		switch name {
-		case "drill_answers", "drill_sessions", "words":
+		case "drill_answers", "drill_sessions", "words", "kanji":
 			// expected
 		default:
 			t.Errorf("unexpected table: %q", name)
@@ -168,7 +168,7 @@ func TestValidTableName(t *testing.T) {
 
 func TestQueryTable_ReturnsInsertedRow(t *testing.T) {
 	db := testDB(t)
-	if err := insertWord(db, "水", "みず", "noun", "water", "水を飲む。", "Drink water.", 1); err != nil {
+	if err := insertWord(db, "水", "みず", "noun", "water", "水を飲む。", "Drink water.", "", 1); err != nil {
 		t.Fatal(err)
 	}
 
@@ -199,7 +199,7 @@ func TestQueryTable_ReturnsInsertedRow(t *testing.T) {
 func TestQueryTable_NewestFirst(t *testing.T) {
 	db := testDB(t)
 	for _, w := range []string{"一", "二", "三"} {
-		if err := insertWord(db, w, "", "", "", "", "", 1); err != nil {
+		if err := insertWord(db, w, "", "", "", "", "", "", 1); err != nil {
 			t.Fatal(err)
 		}
 	}
@@ -258,8 +258,8 @@ func TestListTableInfos_WordsColumnFlags(t *testing.T) {
 
 func TestListTableInfos_RowCounts(t *testing.T) {
 	db := testDB(t)
-	insertWord(db, "本", "", "", "", "", "", 1)
-	insertWord(db, "紙", "", "", "", "", "", 1)
+	insertWord(db, "本", "", "", "", "", "", "", 1)
+	insertWord(db, "紙", "", "", "", "", "", "", 1)
 
 	infos, err := listTableInfos(db)
 	if err != nil {
@@ -277,8 +277,8 @@ func TestListTableInfos_RowCounts(t *testing.T) {
 func TestResetDB_ClearsData(t *testing.T) {
 	db := testDB(t)
 	// Use sentinel words unlikely to appear in seed.json.
-	insertWord(db, "山", "", "", "", "", "", 1)
-	insertWord(db, "川", "", "", "", "", "", 1)
+	insertWord(db, "山", "", "", "", "", "", "", 1)
+	insertWord(db, "川", "", "", "", "", "", "", 1)
 
 	if err := resetDB(db); err != nil {
 		t.Fatal("resetDB:", err)
@@ -302,7 +302,7 @@ func TestResetDB_TablesStillExist(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(tables) != 3 {
-		t.Errorf("expected 3 tables after reset, got %d: %v", len(tables), tables)
+	if len(tables) != 4 {
+		t.Errorf("expected 4 tables after reset, got %d: %v", len(tables), tables)
 	}
 }

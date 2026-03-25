@@ -58,8 +58,8 @@ function timeAgo(date) {
   return day + ' day' + (day === 1 ? '' : 's') + ' ago';
 }
 
-// Kanji reference data (populated by init)
-let kanjiData = {};
+// Kanji reference data keyed by ID (populated by init)
+let kanjiMap = {};
 
 // Session state (populated by init / restartDrill)
 let words = [];
@@ -122,10 +122,12 @@ function postAnswer(wordId, correct) {
 async function init() {
   const [wordsResp, kanjiResp] = await Promise.all([
     fetch('/api/words'),
-    fetch('/static/kanji.json'),
+    fetch('/api/kanji'),
   ]);
   const allWords = await wordsResp.json();
-  kanjiData = await kanjiResp.json();
+  const kanjiList = await kanjiResp.json();
+  kanjiMap = {};
+  kanjiList.forEach(k => { kanjiMap[k.id] = k; });
 
   // Only drill active words (drill_count < target)
   words = allWords.filter(w => w.correct < w.target);
@@ -234,43 +236,22 @@ function addToSidebar(word, knew) {
   }
 }
 
-function katakanaToHiragana(str) {
-  return str.replace(/[\u30A1-\u30F6]/g, ch => String.fromCharCode(ch.charCodeAt(0) - 0x60));
-}
-
-function alignKanjiReadings(wordStr, wordReading) {
-  // Returns one entry per character in wordStr; non-kanji characters return null.
-  const result = [];
-  let pos = 0;
-  for (const ch of wordStr) {
-    if (!kanjiData[ch]) { pos++; result.push(null); continue; }
-    const k = kanjiData[ch];
-    const remaining = wordReading.slice(pos);
-    const candidates = [
-      ...k.on.map(r => ({ match: katakanaToHiragana(r), display: r, type: 'on' })),
-      ...k.kun.map(r => ({ match: r,                    display: r, type: 'kun' })),
-    ].sort((a, b) => b.match.length - a.match.length);
-    const hit = candidates.find(c => remaining.startsWith(c.match));
-    if (hit) { pos += hit.match.length; result.push({ ch, reading: hit.display, type: hit.type }); }
-    else      { pos++;                  result.push({ ch, reading: null,         type: null });     }
-  }
-  return result;
-}
-
 function renderKanjiInfo(container, word) {
   container.innerHTML = '';
-  alignKanjiReadings(word.word, word.reading).forEach(r => {
-    if (!r) return;
-    const k = kanjiData[r.ch];
-    const entry = document.createElement('div');
-    entry.className = 'kanji-entry';
-    entry.innerHTML =
-      '<div class="kanji-char">' + r.ch + '</div>' +
+  if (!word.kanjiData || word.kanjiData.length === 0) return;
+  word.kanjiData.forEach(entry => {
+    const k = kanjiMap[entry.id];
+    if (!k) return;
+    const isOn = /[\u30A0-\u30FF]/.test(entry.reading);
+    const div = document.createElement('div');
+    div.className = 'kanji-entry';
+    div.innerHTML =
+      '<div class="kanji-char">' + k.character + '</div>' +
       '<div class="kanji-detail">' +
-        '<div class="kanji-readings">' + (r.reading ? '<span class="kanji-' + r.type + '">' + r.reading + '</span>' : '') + '</div>' +
+        '<div class="kanji-readings"><span class="kanji-' + (isOn ? 'on' : 'kun') + '">' + entry.reading + '</span></div>' +
         '<div class="kanji-meanings">' + k.meanings.join(', ') + '</div>' +
       '</div>';
-    container.appendChild(entry);
+    container.appendChild(div);
   });
 }
 

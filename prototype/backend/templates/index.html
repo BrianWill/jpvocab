@@ -5,19 +5,76 @@
     <button class="btn-danger" type="submit">Reset DB</button>
   </form>
 </div>
+
+<details class="add-word-panel">
+  <summary class="add-word-toggle">Add words</summary>
+
+  <div class="add-word-body">
+
+    <form class="add-word-form" method="POST" action="/admin/words">
+      <div class="form-row">
+        <label>Word <span class="required">*</span><input type="text" name="word" placeholder="e.g. 食べる" required></label>
+        <label>Reading<input type="text" name="reading" placeholder="e.g. たべる"></label>
+        <label>Part of speech<input type="text" name="part_of_speech" placeholder="e.g. verb"></label>
+        <label>Drill target<input type="number" name="drill_target" value="1" min="1" style="width:70px"></label>
+      </div>
+      <div class="form-row">
+        <label class="label-wide">Meaning<input type="text" name="meaning" placeholder="e.g. to eat"></label>
+        <label class="label-wide">Example (JP)<input type="text" name="example_jp" placeholder="Japanese example sentence"></label>
+        <label class="label-wide">Example (EN)<input type="text" name="example_en" placeholder="English translation"></label>
+      </div>
+      <button type="submit">Add</button>
+    </form>
+
+    <div class="form-divider"></div>
+
+    <form class="add-word-form" method="POST" action="/admin/words/batch">
+      <label class="label-block">
+        Words
+        <textarea name="words" rows="4" placeholder="One word per line, or comma-separated&#10;e.g. 食べる, 飲む&#10;走る"></textarea>
+      </label>
+      <div class="batch-footer">
+        <label class="checkbox-label">
+          <input type="checkbox" name="autofill">
+          Auto-fill fields via AI (requires <code>ANTHROPIC_API_KEY</code>)
+        </label>
+        <button type="submit">Add words</button>
+      </div>
+    </form>
+
+  </div>
+</details>
+
+{{if .Error}}
+<p class="form-error">{{.Error}}</p>
+{{end}}
+{{if .Success}}
+<p class="form-success">{{.Success}}</p>
+{{end}}
+
 <h2>Tables</h2>
-{{if .}}
-<table>
-  <thead><tr><th>Table</th><th>Rows</th></tr></thead>
-  <tbody>
-  {{range .}}
-  <tr>
-    <td><a href="/admin/tables/{{.Name}}">{{.Name}}</a></td>
-    <td><span class="badge">{{.Rows}}</span></td>
-  </tr>
-  {{end}}
-  </tbody>
-</table>
+{{if .Tables}}
+{{range .Tables}}
+<div class="table-card">
+  <div class="table-card-header">
+    <a href="/admin/tables/{{.Name}}">{{.Name}}</a>
+    <span class="badge">{{.Rows}} rows</span>
+  </div>
+  <div class="col-list">
+    {{range .Columns}}
+    <div class="col-row">
+      <span class="col-name">{{.Name}}</span>
+      <span class="col-type">{{.Type}}</span>
+      <span class="col-flags">
+        {{if .PK}}<span class="flag flag-pk">PK</span>{{end}}
+        {{if .Unique}}<span class="flag flag-unique">UNIQUE</span>{{end}}
+        {{if .NotNull}}<span class="flag flag-notnull">NOT NULL</span>{{end}}
+      </span>
+    </div>
+    {{end}}
+  </div>
+</div>
+{{end}}
 {{else}}
 <p class="empty">No tables found.</p>
 {{end}}

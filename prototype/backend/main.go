@@ -10,6 +10,8 @@ const (
 )
 
 func main() {
+	initTokenizer()
+
 	db := initDB(dbPath)
 	defer db.Close()
 

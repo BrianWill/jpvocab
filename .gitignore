@@ -68,3 +68,5 @@ Thumbs.db
 # Misc
 # ----------------------------
 coverage/
+prototype/backend/jpvocab.db
+prototype/backend/tmp/

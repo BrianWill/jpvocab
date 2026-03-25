@@ -2,7 +2,8 @@
   "permissions": {
     "allow": [
       "Bash(go build:*)",
-      "Bash(go mod:*)"
+      "Bash(go mod:*)",
+      "Bash(ls /c/Windows/Media/*.wav)"
     ]
   },
   "outputStyle": "Explanatory"

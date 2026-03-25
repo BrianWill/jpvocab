@@ -28,7 +28,7 @@ A word tracks three timestamps:
 - "last drill date": date and time when the word was last drilled (updated not when drill starts but when the user gives answer for the word)
 - "target last reached date": date and time when the word's current drill count matched or exceeded its target drill count (for new words, this starts out null)
 
-The frontend is currently being refined as static HTML prototypes (`frontend/prototype/`) before being wired up to the backend.
+The frontend is currently being refined as static HTML prototypes (`prototype/`) before being wired up to the backend.
 
 ## Terminology
 
@@ -71,7 +71,7 @@ There are no test suites or linting configurations set up.
 
 ## Frontend Prototypes
 
-`frontend/prototype/` contains standalone HTML/CSS/JS prototypes that define the UI design. They use hardcoded word data and have no backend connection yet.
+`prototype/` contains standalone HTML/CSS/JS prototypes that define the UI design. They use hardcoded word data and have no backend connection yet.
 
 - **drill.html** — the drill view
 - **lexicon.html** — the lexicon/word management view
@@ -93,19 +93,30 @@ When adding or changing dummy data, edit `dummy_data.js` only — do not put dat
 
 ### Backend prototype
 
-`frontend/prototype/backend/` is a standalone Go module (separate `go.mod`) that runs a SQLite-backed HTTP server on port **1338**. It is developed and run independently from the Wails app.
+`prototype/backend/` is a standalone Go module (separate `go.mod`) that runs a SQLite-backed HTTP server on port **1338**. It is developed and run independently from the Wails app.
 
 - **`main.go`** — entry point; opens the DB and starts the server
-- **`db.go`** — all database access: `initDB`, `migrate`, and one function per query or write operation. No SQL appears outside this file.
+- **`db.go`** — all database access: `initDB`, `migrate`, `seedDB`, and one function per query or write operation. No SQL appears outside this file.
 - **`routes.go`** — Chi router and HTTP handlers only; no direct DB access. Handlers call functions from `db.go` and pass results to `renderTemplate`.
 - **`templates/`** — HTML templates parsed from disk on every request (live-editable without restart); `base.html` is the shared shell, each page has its own file
 - **`static/`** — CSS and other static assets, also served from disk
+- **`seed.json`** — fixture data loaded on first startup (or after a DB reset); contains `words` and `sessions` arrays
 
-Run from the `backend/` directory so that relative paths (`templates/`, `static/`) resolve correctly:
+Run with hot-reload from the `backend/` directory:
 
 ```bash
-cd frontend/prototype/backend && go run .
+cd prototype/backend && air
 ```
+
+#### Database schema
+
+Table definitions live in the `migrate()` function in `db.go`. Schema is versioned via `PRAGMA user_version` — each entry in the migrations slice runs exactly once. Current tables:
+
+- **`words`** — the lexicon; one row per word with reading, part of speech, meaning, example sentences, audio paths (`audio_word_path`, `audio_example_path`), drill counts, target, timestamps. `word` column has a unique index.
+- **`drill_sessions`** — one row per drill session with a `started_at` timestamp.
+- **`drill_answers`** — one row per answer within a session; references `words` and `drill_sessions`; stores `correct` (0/1) and `answered_at`.
+
+The admin UI at `http://localhost:1338/admin` shows live table schemas (column names, types, PK/UNIQUE/NOT NULL flags) and row counts, and links through to full table data views.
 
 ### CSS organisation
 
@@ -114,7 +125,7 @@ Styles shared across pages belong in `common.css`, which is loaded first by all 
 ## Working conventions
 
 - **Scope changes to this project directory.** Do not read or write files outside `D:\code\jpvocab\` without explicit instruction.
-- **Ask before touching unfamiliar files.** If a file has not been part of the current conversation and has not been recently discussed, confirm with the user before editing it. This applies especially to Go source files, config files, and anything outside `frontend/prototype/`.
+- **Ask before touching unfamiliar files.** If a file has not been part of the current conversation and has not been recently discussed, confirm with the user before editing it. This applies especially to Go source files, config files, and anything outside `prototype/`.
 
 ## Architecture
 

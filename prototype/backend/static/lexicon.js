@@ -127,6 +127,11 @@ function renderTable(sortedWords) {
   });
 }
 
+async function reloadWords() {
+  words = await fetch('/api/words').then(r => r.json());
+  updateWordCount();
+}
+
 async function init() {
   const [wordsData, providers] = await Promise.all([
     fetch('/api/words').then(r => r.json()),
@@ -192,8 +197,8 @@ function closeModal() {
   document.getElementById('modal-backdrop').classList.add('hidden');
 }
 
-function handleBackdropClick(event) {
-  if (event.target === document.getElementById('modal-backdrop')) closeModal();
+function onBackdropClick(event, closeFn) {
+  if (event.target === event.currentTarget) closeFn();
 }
 
 async function saveModal() {
@@ -209,7 +214,6 @@ async function saveModal() {
   const errEl = document.getElementById('edit-error');
   btn.disabled = true;
   btn.innerHTML = '<span class="spinner"></span>';
-  errEl.textContent = '';
   errEl.classList.add('hidden');
 
   try {
@@ -250,9 +254,6 @@ function closeDeleteModal() {
   document.getElementById('delete-modal-backdrop').classList.add('hidden');
 }
 
-function handleDeleteBackdropClick(event) {
-  if (event.target === document.getElementById('delete-modal-backdrop')) closeDeleteModal();
-}
 
 async function confirmDelete() {
   const w   = _deleteTrMain._word;
@@ -364,9 +365,6 @@ function closeAddModal() {
   document.getElementById('add-modal-backdrop').classList.add('hidden');
 }
 
-function handleAddBackdropClick(event) {
-  if (event.target === document.getElementById('add-modal-backdrop')) closeAddModal();
-}
 
 document.getElementById('autofill-check').addEventListener('change', function () {
   document.getElementById('ai-model-select').disabled = !this.checked;
@@ -440,8 +438,7 @@ async function saveAddModal() {
           doneEl.innerHTML = '<span>' + _progressAdded.length + ' added' +
             (skipped > 0 ? ', <span class="status-skipped">' + skipped + ' skipped</span>' : '') +
             '</span>';
-          words = await fetch('/api/words').then(r => r.json());
-          updateWordCount();
+          await reloadWords();
           updateProgressFooter();
           return;
         }
@@ -458,8 +455,7 @@ async function saveAddModal() {
       _progressPhase = 'done';
       setProgressStatus('done', 'Error: ' + err.message);
     }
-    words = await fetch('/api/words').then(r => r.json());
-    updateWordCount();
+    await reloadWords();
     updateProgressFooter();
   }
 }
@@ -526,8 +522,7 @@ function initProgressFooter() {
       badge.textContent = 'removed';
     });
     setProgressStatus('done', 'Removed \u2014 0 words added from this batch');
-    words = await fetch('/api/words').then(r => r.json());
-    updateWordCount();
+    await reloadWords();
     updateProgressFooter();
   };
   document.getElementById('btn-prog-close').onclick = closeProgressModal;

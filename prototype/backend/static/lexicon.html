@@ -70,7 +70,7 @@
   </table>
 </div>
 
-<div id="add-modal-backdrop" class="modal-backdrop hidden" onclick="handleAddBackdropClick(event)">
+<div id="add-modal-backdrop" class="modal-backdrop hidden" onclick="onBackdropClick(event, closeAddModal)">
   <div class="modal">
     <div class="modal-header">
       <span class="modal-word-label">Add words</span>
@@ -105,7 +105,7 @@
   </div>
 </div>
 
-<div id="modal-backdrop" class="modal-backdrop hidden" onclick="handleBackdropClick(event)">
+<div id="modal-backdrop" class="modal-backdrop hidden" onclick="onBackdropClick(event, closeModal)">
   <div class="modal">
     <div class="modal-header">
       <span class="modal-word-label" id="modal-word-label"></span>
@@ -167,7 +167,7 @@
   </div>
 </div>
 
-<div id="delete-modal-backdrop" class="modal-backdrop hidden" onclick="handleDeleteBackdropClick(event)">
+<div id="delete-modal-backdrop" class="modal-backdrop hidden" onclick="onBackdropClick(event, closeDeleteModal)">
   <div class="modal">
     <div class="modal-header">
       <span class="modal-word-label" id="delete-modal-label"></span>

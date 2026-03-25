@@ -57,9 +57,12 @@ cd frontend && npm install && npm run dev
 
 # Go dependencies
 go mod tidy
+
+# Run backend tests (from prototype/backend/)
+cd prototype/backend && go test ./...
 ```
 
-There are no test suites or linting configurations set up.
+The Go backend has a test suite; the frontend does not. When writing tests, only write them for Go backend code — do not write tests for frontend JS or HTML.
 
 ## Planned Lexicon Features (not yet implemented)
 

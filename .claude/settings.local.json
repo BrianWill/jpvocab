@@ -3,7 +3,8 @@
     "allow": [
       "Bash(go build:*)",
       "Bash(go mod:*)",
-      "Bash(ls /c/Windows/Media/*.wav)"
+      "Bash(ls /c/Windows/Media/*.wav)",
+      "Bash(go test:*)"
     ]
   },
   "outputStyle": "Explanatory"

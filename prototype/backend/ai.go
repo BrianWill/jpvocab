@@ -39,6 +39,29 @@ const autoFillSystemPrompt = `You are a Japanese dictionary assistant. Given a J
   For words with no kanji (e.g. pure kana or katakana loanwords), use an empty array.
 Return only a valid JSON object with no markdown, no code fences, and no extra commentary.`
 
+// autoFillExample holds a single few-shot example: the input word and the expected JSON output.
+type autoFillExample struct {
+	word   string
+	result string
+}
+
+// autoFillExamples are few-shot examples prepended to every request to improve output reliability.
+// They cover: a verb with kun'yomi kanji, a noun with on'yomi kanji, and a pure-kana word.
+var autoFillExamples = []autoFillExample{
+	{
+		word: "食べる",
+		result: `{"reading":"たべる","part_of_speech":"ichidan-verb","meaning":"to eat","example_jp":"朝ごはんを食べる。","example_en":"I eat breakfast.","kanji":[{"character":"食","reading":"た","meanings":["eat","food","meal"]}]}`,
+	},
+	{
+		word: "電話",
+		result: `{"reading":"でんわ","part_of_speech":"noun","meaning":"telephone; phone call","example_jp":"電話をかけてもいいですか。","example_en":"May I make a phone call?","kanji":[{"character":"電","reading":"デン","meanings":["electricity","lightning","electric"]},{"character":"話","reading":"ワ","meanings":["talk","speech","story","conversation"]}]}`,
+	},
+	{
+		word: "きれい",
+		result: `{"reading":"きれい","part_of_speech":"na-adjective","meaning":"beautiful; clean; pretty","example_jp":"この花はきれいですね。","example_en":"This flower is beautiful, isn't it?","kanji":[]}`,
+	},
+}
+
 // aiProviders holds which AI providers have API keys configured.
 type aiProviders struct {
 	AnthropicAvail bool
@@ -87,11 +110,19 @@ func autoFillWordAnthropic(word, model string) (*wordAutoFill, error) {
 		Messages  []message `json:"messages"`
 	}
 
+	messages := make([]message, 0, len(autoFillExamples)*2+1)
+	for _, ex := range autoFillExamples {
+		messages = append(messages, message{Role: "user", Content: ex.word})
+		messages = append(messages, message{Role: "assistant", Content: ex.result})
+	}
+	messages = append(messages, message{Role: "user", Content: word})
+	messages = append(messages, message{Role: "assistant", Content: "{"})
+
 	payload, err := json.Marshal(reqBody{
 		Model:     model,
 		MaxTokens: 512,
 		System:    autoFillSystemPrompt,
-		Messages:  []message{{Role: "user", Content: word}},
+		Messages:  messages,
 	})
 	if err != nil {
 		return nil, err
@@ -131,7 +162,7 @@ func autoFillWordAnthropic(word, model string) (*wordAutoFill, error) {
 	}
 
 	var e wordAutoFill
-	if err := json.Unmarshal([]byte(apiResp.Content[0].Text), &e); err != nil {
+	if err := json.Unmarshal([]byte("{"+apiResp.Content[0].Text), &e); err != nil {
 		return nil, fmt.Errorf("parse auto-fill JSON: %w", err)
 	}
 	return &e, nil
@@ -154,12 +185,17 @@ func autoFillWordOpenAI(word, model string) (*wordAutoFill, error) {
 		Messages []message `json:"messages"`
 	}
 
+	messages := make([]message, 0, len(autoFillExamples)*2+2)
+	messages = append(messages, message{Role: "system", Content: autoFillSystemPrompt})
+	for _, ex := range autoFillExamples {
+		messages = append(messages, message{Role: "user", Content: ex.word})
+		messages = append(messages, message{Role: "assistant", Content: ex.result})
+	}
+	messages = append(messages, message{Role: "user", Content: word})
+
 	payload, err := json.Marshal(reqBody{
-		Model: model,
-		Messages: []message{
-			{Role: "system", Content: autoFillSystemPrompt},
-			{Role: "user", Content: word},
-		},
+		Model:    model,
+		Messages: messages,
 	})
 	if err != nil {
 		return nil, err

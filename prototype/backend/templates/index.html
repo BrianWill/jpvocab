@@ -35,9 +35,19 @@
       </label>
       <div class="batch-footer">
         <label class="checkbox-label">
-          <input type="checkbox" name="autofill">
-          Auto-fill fields via AI (requires <code>ANTHROPIC_API_KEY</code>)
+          <input type="checkbox" name="autofill" id="autofill-check">
+          Auto-fill via AI
         </label>
+        <select name="ai_model">
+          <optgroup label="Anthropic{{if not .Providers.AnthropicAvail}} — ANTHROPIC_API_KEY not set{{end}}"{{if not .Providers.AnthropicAvail}} disabled{{end}}>
+            <option value="anthropic/claude-haiku-4-5-20251001">claude-haiku (fast)</option>
+            <option value="anthropic/claude-sonnet-4-6">claude-sonnet (better)</option>
+          </optgroup>
+          <optgroup label="OpenAI{{if not .Providers.OpenAIAvail}} — OPENAI_API_KEY not set{{end}}"{{if not .Providers.OpenAIAvail}} disabled{{end}}>
+            <option value="openai/gpt-4o-mini">gpt-4o-mini (fast)</option>
+            <option value="openai/gpt-4o">gpt-4o (better)</option>
+          </optgroup>
+        </select>
         <button type="submit">Add words</button>
       </div>
     </form>

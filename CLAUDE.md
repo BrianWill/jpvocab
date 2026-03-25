@@ -113,6 +113,8 @@ cd prototype/backend && air
 
 #### Database schema
 
+> **No migration compatibility required.** During development it is fine to reset the database (`/admin` → Reset DB) whenever the schema changes. Do not spend effort on backwards-compatible migrations or backfill logic at this stage.
+
 Table definitions live in the `migrate()` function in `db.go`. Schema is versioned via `PRAGMA user_version` — each entry in the migrations slice runs exactly once. Current tables:
 
 - **`words`** — the lexicon; one row per word with reading, part of speech, meaning, example sentences, audio paths (`audio_word_path`, `audio_example_path`), drill counts, target, timestamps. `word` column has a unique index.

@@ -59,6 +59,7 @@ func migrate(db *sql.DB) {
 			correct     INTEGER  NOT NULL CHECK (correct IN (0, 1)),
 			answered_at DATETIME NOT NULL DEFAULT (datetime('now'))
 		)`,
+		`ALTER TABLE words ADD COLUMN is_katakana INTEGER NOT NULL DEFAULT 0`,
 	}
 
 	var version int
@@ -306,8 +307,8 @@ func seedDB(db *sql.DB) {
 		INSERT INTO words
 			(word, reading, part_of_speech, meaning, example_jp, example_en,
 			 drill_count, drill_target, incorrect_count,
-			 created_at, last_drilled_at, target_reached_at)
-		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+			 created_at, last_drilled_at, target_reached_at, is_katakana)
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 	`)
 	if err != nil {
 		log.Fatal("seed: prepare words:", err)
@@ -316,10 +317,14 @@ func seedDB(db *sql.DB) {
 
 	wordIDs := make(map[string]int64)
 	for _, w := range seed.Words {
+		kat := 0
+		if containsKatakana(w.Word) {
+			kat = 1
+		}
 		res, err := wordStmt.Exec(
 			w.Word, w.Reading, w.PartOfSpeech, w.Meaning, w.ExampleJP, w.ExampleEN,
 			w.DrillCount, w.DrillTarget, w.IncorrectCount,
-			w.CreatedAt, w.LastDrilledAt, w.TargetReachedAt,
+			w.CreatedAt, w.LastDrilledAt, w.TargetReachedAt, kat,
 		)
 		if err != nil {
 			tx.Rollback()
@@ -376,16 +381,31 @@ func seedDB(db *sql.DB) {
 	log.Printf("DB seeded: %d words, %d sessions", len(seed.Words), len(seed.Sessions))
 }
 
+// containsKatakana reports whether s contains any character in the main
+// Katakana Unicode block (U+30A0–U+30FF).
+func containsKatakana(s string) bool {
+	for _, r := range s {
+		if r >= 0x30A0 && r <= 0x30FF {
+			return true
+		}
+	}
+	return false
+}
+
 // insertWord adds a single word to the lexicon. Only the word itself is
 // required; all other fields are optional and default to empty / zero.
 func insertWord(db *sql.DB, word, reading, partOfSpeech, meaning, exampleJP, exampleEN string, drillTarget int) error {
 	if drillTarget < 1 {
 		drillTarget = 1
 	}
+	kat := 0
+	if containsKatakana(word) {
+		kat = 1
+	}
 	_, err := db.Exec(`
-		INSERT INTO words (word, reading, part_of_speech, meaning, example_jp, example_en, drill_target)
-		VALUES (?, ?, ?, ?, ?, ?, ?)
-	`, word, reading, partOfSpeech, meaning, exampleJP, exampleEN, drillTarget)
+		INSERT INTO words (word, reading, part_of_speech, meaning, example_jp, example_en, drill_target, is_katakana)
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+	`, word, reading, partOfSpeech, meaning, exampleJP, exampleEN, drillTarget, kat)
 	return err
 }
 

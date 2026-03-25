@@ -38,9 +38,10 @@ func serverInit(db *sql.DB) {
 }
 
 type indexData struct {
-	Tables  []tableInfo
-	Error   string
-	Success string
+	Tables    []tableInfo
+	Error     string
+	Success   string
+	Providers aiProviders
 }
 
 func adminIndex(db *sql.DB) http.HandlerFunc {
@@ -55,9 +56,10 @@ func adminIndex(db *sql.DB) http.HandlerFunc {
 			success = fmt.Sprintf("Added %s word(s).", n)
 		}
 		renderTemplate(w, "index", indexData{
-			Tables:  infos,
-			Error:   r.URL.Query().Get("error"),
-			Success: success,
+			Tables:    infos,
+			Error:     r.URL.Query().Get("error"),
+			Success:   success,
+			Providers: checkAIProviders(),
 		})
 	}
 }
@@ -122,7 +124,7 @@ func adminAddWordsBatch(db *sql.DB) http.HandlerFunc {
 		for _, word := range words {
 			var reading, pos, meaning, exJP, exEN string
 			if autoFill {
-				e, err := autoFillWord(word)
+				e, err := autoFillWord(word, r.FormValue("ai_model"))
 				if err != nil {
 					http.Redirect(w, r, "/admin?error=auto-fill+error+for+「"+word+"」:+"+err.Error(), http.StatusSeeOther)
 					return

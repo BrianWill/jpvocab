@@ -190,7 +190,13 @@ function adjustTarget(delta) {
   input.value = Math.min(99, Math.max(0, (parseInt(input.value, 10) || 0) + delta));
 }
 
-document.addEventListener('keydown', e => { if (e.key === 'Escape') { closeModal(); closeAddModal(); } });
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape') {
+    closeModal();
+    closeAddModal();
+    if (_progressPhase !== 'loading') closeProgressModal();
+  }
+});
 
 // Sort button active state, direction toggle, and sorting
 const sortBtns = document.querySelectorAll('.btn-sort');
@@ -250,30 +256,170 @@ function handleAddBackdropClick(event) {
   if (event.target === document.getElementById('add-modal-backdrop')) closeAddModal();
 }
 
+document.getElementById('autofill-check').addEventListener('change', function () {
+  document.getElementById('ai-model-select').disabled = !this.checked;
+});
+
+// --- Progress modal ---
+let _progressPhase = 'idle'; // 'loading' | 'done' | 'cancelled'
+let _progressCancel = false;
+let _progressAdded = [];
+
+document.getElementById('progress-modal-backdrop').addEventListener('click', function (e) {
+  if (e.target === this && _progressPhase !== 'loading') closeProgressModal();
+});
+
+function closeProgressModal() {
+  document.getElementById('progress-modal-backdrop').classList.add('hidden');
+  const activeBtn = document.querySelector('.btn-sort--active');
+  renderTable(getSortedWords(activeBtn.dataset.sort, activeBtn.dataset.dir || 'desc'));
+  updateWordCount();
+}
+
 function saveAddModal() {
-  const lines = document.getElementById('add-words-input').value
+  const wordList = document.getElementById('add-words-input').value
     .split(/[\s,、。・;:!?()（）「」【】『』\[\]]+/)
     .map(t => t.trim()).filter(t => t.length > 0);
 
-  const today = new Date().toISOString().slice(0, 10);
-  lines.forEach(word => {
-    if (words.some(w => w.word === word)) return; // basic duplicate check
-    const w = {
-      word, reading: '', type: 'noun', meaning: '',
-      exampleJp: '', exampleEn: '',
-      correct: 0, incorrect: 0, target: 3,
-      createdAt: today, lastDrilled: null,
-    };
-    words.push(w);
-    const trMain = document.createElement('tr');
-    trMain.className = 'row-main';
-    const trEx = document.createElement('tr');
-    trEx.className = 'row-example';
-    renderRow(w, trMain, trEx);
-    tbody.appendChild(trMain);
-    tbody.appendChild(trEx);
-  });
+  if (wordList.length === 0) return;
 
-  updateWordCount();
+  const useAI = document.getElementById('autofill-check').checked;
   closeAddModal();
+
+  _progressPhase = 'loading';
+  _progressCancel = false;
+  _progressAdded = [];
+
+  document.getElementById('progress-modal-body').innerHTML = '';
+  document.getElementById('progress-modal-backdrop').classList.remove('hidden');
+  setProgressStatus('loading', 'Processing\u2026');
+  initProgressFooter();
+
+  let i = 0;
+  function processNext() {
+    if (_progressCancel || i >= wordList.length) {
+      if (_progressCancel) {
+        _progressPhase = 'cancelled';
+        setProgressStatus('cancelled', 'Cancelled \u2014 ' + _progressAdded.length + ' word(s) added before cancel');
+      } else {
+        _progressPhase = 'done';
+        const skipped = wordList.length - _progressAdded.length;
+        setProgressStatus('done', _progressAdded.length + ' added, ' + skipped + ' skipped');
+      }
+      updateProgressFooter();
+      return;
+    }
+
+    const word = wordList[i++];
+    const isDup = words.some(w => w.word === word);
+
+    if (isDup) {
+      appendProgressResult({ word, added: false, reason: 'duplicate' });
+    } else {
+      const fakeAI = useAI ? {
+        reading: 'よみがな',
+        part_of_speech: 'noun',
+        meaning: 'example meaning (AI placeholder)',
+        example_jp: 'これは例文です。',
+        example_en: 'This is an example sentence.',
+      } : {};
+      words.push({
+        word,
+        reading:   fakeAI.reading        || '',
+        type:      fakeAI.part_of_speech || 'noun',
+        meaning:   fakeAI.meaning        || '',
+        exampleJp: fakeAI.example_jp     || '',
+        exampleEn: fakeAI.example_en     || '',
+        correct: 0, incorrect: 0, target: 3,
+        createdAt: new Date().toISOString(), lastDrilled: null,
+      });
+      _progressAdded.push(word);
+      appendProgressResult({ word, added: true, ...fakeAI });
+    }
+
+    updateProgressFooter();
+    setTimeout(processNext, 280);
+  }
+
+  setTimeout(processNext, 180);
+}
+
+function appendProgressResult(data) {
+  const row = document.createElement('div');
+  row.className = 'word-result-row ' + (data.added ? 'result-added' : 'result-skipped');
+
+  const badge = data.added
+    ? '<span class="result-badge badge-added">added</span>'
+    : '<span class="result-badge badge-skipped">' + esc(data.reason) + '</span>';
+
+  let details = '';
+  if (data.reading || data.part_of_speech || data.meaning || data.example_jp) {
+    const items = [];
+    if (data.reading)        items.push(detailItem('reading', data.reading));
+    if (data.part_of_speech) items.push(detailItem('pos', data.part_of_speech));
+    if (data.meaning)        items.push(detailItem('meaning', data.meaning));
+    if (data.example_jp)     items.push(detailItem('ex.', data.example_jp + (data.example_en ? '  ' + data.example_en : '')));
+    details = '<div class="word-result-details">' + items.join('') + '</div>';
+  }
+
+  row.innerHTML =
+    '<div class="word-result-main"><span class="result-word">' + esc(data.word) + '</span>' + badge + '</div>' +
+    details;
+  document.getElementById('progress-modal-body').appendChild(row);
+}
+
+function detailItem(label, text) {
+  return '<span class="detail-item"><span class="detail-label">' + esc(label) + '</span> ' + esc(text) + '</span>';
+}
+
+function esc(s) {
+  return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+}
+
+function setProgressStatus(type, text) {
+  const el = document.getElementById('progress-modal-status');
+  const spinner = type === 'loading' ? '<span class="spinner"></span>' : '';
+  el.className = 'modal-status modal-status-' + type;
+  el.innerHTML = spinner + '<span>' + esc(text) + '</span>';
+}
+
+function initProgressFooter() {
+  const footer = document.getElementById('progress-modal-footer');
+  footer.innerHTML =
+    '<button id="btn-prog-cancel" class="btn-cancel">Cancel request</button>' +
+    '<button id="btn-prog-remove" class="btn-danger">Remove added words</button>' +
+    '<button id="btn-prog-close" class="btn-save">Close</button>';
+
+  document.getElementById('btn-prog-cancel').onclick = function () {
+    _progressCancel = true;
+  };
+  document.getElementById('btn-prog-remove').onclick = function () {
+    const toRemove = _progressAdded.slice();
+    toRemove.forEach(w => {
+      const idx = words.findIndex(x => x.word === w);
+      if (idx !== -1) words.splice(idx, 1);
+    });
+    _progressAdded = [];
+    document.querySelectorAll('#progress-modal-body .badge-added').forEach(badge => {
+      badge.className = 'result-badge badge-removed';
+      badge.textContent = 'removed';
+    });
+    setProgressStatus('done', 'Removed \u2014 0 words added from this batch');
+    updateProgressFooter();
+  };
+  document.getElementById('btn-prog-close').onclick = closeProgressModal;
+  updateProgressFooter();
+}
+
+function updateProgressFooter() {
+  const btnCancel = document.getElementById('btn-prog-cancel');
+  const btnRemove = document.getElementById('btn-prog-remove');
+  const btnClose  = document.getElementById('btn-prog-close');
+  if (!btnCancel) return;
+  btnCancel.disabled = _progressPhase !== 'loading';
+  btnRemove.disabled = _progressAdded.length === 0 || _progressPhase === 'loading';
+  btnRemove.textContent = _progressAdded.length > 0
+    ? 'Remove the ' + _progressAdded.length + ' added word' + (_progressAdded.length === 1 ? '' : 's')
+    : 'Remove added words';
+  btnClose.disabled = _progressPhase === 'loading';
 }

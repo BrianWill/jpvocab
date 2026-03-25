@@ -81,11 +81,21 @@
         <label for="add-words-input">Words to add — separate with spaces, commas, or newlines</label>
         <textarea id="add-words-input" rows="8" placeholder="食べる 走る, 静か&#10;美しい、難しい"></textarea>
       </div>
-      <p class="add-modal-note">
-        When connected to the backend, words will be normalised to their dictionary base form
-        and checked for duplicates. Readings, meanings, example sentences, and optionally
-        audio (via VoiceVox) will be generated automatically with AI assistance.
-      </p>
+      <div class="add-modal-options">
+        <label class="checkbox-label">
+          <input type="checkbox" id="autofill-check"> Auto-fill via AI
+        </label>
+        <select id="ai-model-select" disabled>
+          <optgroup label="Anthropic">
+            <option value="anthropic/claude-haiku-4-5-20251001">claude-haiku (fast)</option>
+            <option value="anthropic/claude-sonnet-4-6">claude-sonnet (better)</option>
+          </optgroup>
+          <optgroup label="OpenAI">
+            <option value="openai/gpt-4o-mini">gpt-4o-mini (fast)</option>
+            <option value="openai/gpt-4o">gpt-4o (better)</option>
+          </optgroup>
+        </select>
+      </div>
     </div>
     <div class="modal-footer">
       <button class="btn-cancel" onclick="closeAddModal()">Cancel</button>
@@ -141,6 +151,17 @@
       <button class="btn-cancel" onclick="closeModal()">Cancel</button>
       <button class="btn-save" onclick="saveModal()">Save</button>
     </div>
+  </div>
+</div>
+
+<div class="modal-backdrop hidden" id="progress-modal-backdrop">
+  <div class="modal modal-wide">
+    <div class="modal-header">
+      <span>Add words</span>
+    </div>
+    <div class="modal-status" id="progress-modal-status"></div>
+    <div class="modal-body modal-body-scroll" id="progress-modal-body"></div>
+    <div class="modal-footer" id="progress-modal-footer"></div>
   </div>
 </div>
 

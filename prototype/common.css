@@ -177,6 +177,7 @@ body {
   cursor: pointer;
 }
 .btn-cancel:hover { border-color: #6c7086; color: #cdd6f4; }
+.btn-cancel:disabled { opacity: 0.35; cursor: default; pointer-events: none; }
 .btn-save {
   background: rgba(137,180,250,0.12);
   border: 1px solid rgba(137,180,250,0.3);
@@ -189,3 +190,16 @@ body {
   cursor: pointer;
 }
 .btn-save:hover { background: rgba(137,180,250,0.2); }
+.btn-save:disabled { opacity: 0.35; cursor: default; pointer-events: none; }
+.btn-danger {
+  background: rgba(243,139,168,0.1);
+  border: 1px solid rgba(243,139,168,0.3);
+  color: #f38ba8;
+  border-radius: 6px;
+  padding: 0.45rem 1.1rem;
+  font-size: 0.85rem;
+  font-family: inherit;
+  cursor: pointer;
+}
+.btn-danger:hover { background: rgba(243,139,168,0.2); }
+.btn-danger:disabled { opacity: 0.35; cursor: default; pointer-events: none; }

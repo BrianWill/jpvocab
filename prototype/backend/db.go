@@ -492,6 +492,12 @@ func updateWord(db *sql.DB, id int64, reading, partOfSpeech, meaning, exampleJp,
 	return err
 }
 
+// deleteWordByID removes a single word from the lexicon by its primary key.
+func deleteWordByID(db *sql.DB, id int64) error {
+	_, err := db.Exec("DELETE FROM words WHERE id = ?", id)
+	return err
+}
+
 // deleteWordsByName removes words from the lexicon by their (normalised) word value.
 func deleteWordsByName(db *sql.DB, words []string) error {
 	if len(words) == 0 {

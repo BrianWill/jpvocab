@@ -34,6 +34,7 @@ func serverInit(db *sql.DB) {
 
 	r.Get("/api/words", apiGetWords(db))
 	r.Patch("/api/words/{id}", apiUpdateWord(db))
+	r.Delete("/api/words/{id}", apiDeleteWord(db))
 
 	r.Route("/admin", func(r chi.Router) {
 		r.Get("/", adminIndex(db))
@@ -102,6 +103,21 @@ func apiUpdateWord(db *sql.DB) http.HandlerFunc {
 			return
 		}
 		if err := updateWord(db, id, body.Reading, body.Type, body.Meaning, body.ExampleJp, body.ExampleEn, body.Target); err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		w.WriteHeader(http.StatusNoContent)
+	}
+}
+
+func apiDeleteWord(db *sql.DB) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		id, err := strconv.ParseInt(chi.URLParam(r, "id"), 10, 64)
+		if err != nil {
+			http.Error(w, "invalid id", http.StatusBadRequest)
+			return
+		}
+		if err := deleteWordByID(db, id); err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
 		}

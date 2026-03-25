@@ -41,6 +41,7 @@ function renderRow(w, trMain, trEx) {
   trMain.innerHTML =
     '<td><div class="cell-word" data-tooltip="Word">' + w.word +
       '<button class="btn-edit" onclick="openModal(event)" data-tooltip="Edit word">✎</button>' +
+      '<button class="btn-delete" onclick="openDeleteModal(event)" data-tooltip="Delete word">✕</button>' +
     '</div></td>' +
     '<td class="cell-reading" data-tooltip="Reading (Pronunciation)">' + w.reading + '</td>' +
     '<td><span class="type-badge" data-tooltip="' + (typeLabels[w.type] || w.type) + '">' + w.type + '</span></td>' +
@@ -198,6 +199,52 @@ async function saveModal() {
   }
 }
 
+// --- Delete modal ---
+let _deleteTrMain = null;
+
+function openDeleteModal(event) {
+  event.stopPropagation();
+  _deleteTrMain = event.target.closest('tr');
+  const w = _deleteTrMain._word;
+  document.getElementById('delete-modal-label').textContent = w.word;
+  document.getElementById('delete-error').classList.add('hidden');
+  document.getElementById('btn-delete-confirm').disabled = false;
+  document.getElementById('btn-delete-confirm').textContent = 'Delete';
+  document.getElementById('delete-modal-backdrop').classList.remove('hidden');
+}
+
+function closeDeleteModal() {
+  document.getElementById('delete-modal-backdrop').classList.add('hidden');
+}
+
+function handleDeleteBackdropClick(event) {
+  if (event.target === document.getElementById('delete-modal-backdrop')) closeDeleteModal();
+}
+
+async function confirmDelete() {
+  const w   = _deleteTrMain._word;
+  const btn = document.getElementById('btn-delete-confirm');
+  const errEl = document.getElementById('delete-error');
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner"></span>';
+  errEl.classList.add('hidden');
+
+  try {
+    const res = await fetch('/api/words/' + w.id, { method: 'DELETE' });
+    if (!res.ok) throw new Error((await res.text()).trim() || res.statusText);
+    words.splice(words.indexOf(w), 1);
+    _deleteTrMain._trEx.remove();
+    _deleteTrMain.remove();
+    updateWordCount();
+    closeDeleteModal();
+  } catch (err) {
+    errEl.textContent = err.message;
+    errEl.classList.remove('hidden');
+    btn.disabled = false;
+    btn.textContent = 'Delete';
+  }
+}
+
 function adjustTargetInline(event, delta) {
   event.stopPropagation();
   const trMain = event.target.closest('tr');
@@ -225,6 +272,7 @@ document.addEventListener('keydown', e => {
   if (e.key === 'Escape') {
     closeModal();
     closeAddModal();
+    closeDeleteModal();
     if (_progressPhase !== 'loading') closeProgressModal();
   }
 });
@@ -293,8 +341,9 @@ document.getElementById('autofill-check').addEventListener('change', function ()
 
 // --- Progress modal ---
 let _progressPhase = 'idle'; // 'loading' | 'done' | 'cancelled'
-let _progressCancel = false;
 let _progressAdded = [];
+let _progressTotal = 0;
+let _abortController = null;
 
 document.getElementById('progress-modal-backdrop').addEventListener('click', function (e) {
   if (e.target === this && _progressPhase !== 'loading') closeProgressModal();
@@ -307,72 +356,75 @@ function closeProgressModal() {
   updateWordCount();
 }
 
-function saveAddModal() {
+async function saveAddModal() {
   const wordList = document.getElementById('add-words-input').value
     .split(/[\s,、。・;:!?()（）「」【】『』\[\]]+/)
     .map(t => t.trim()).filter(t => t.length > 0);
-
   if (wordList.length === 0) return;
 
-  const useAI = document.getElementById('autofill-check').checked;
+  const useAI   = document.getElementById('autofill-check').checked;
+  const aiModel = document.getElementById('ai-model-select').value;
   closeAddModal();
 
   _progressPhase = 'loading';
-  _progressCancel = false;
   _progressAdded = [];
+  _progressTotal = wordList.length;
+  _abortController = new AbortController();
 
   document.getElementById('progress-modal-body').innerHTML = '';
   document.getElementById('progress-modal-backdrop').classList.remove('hidden');
   setProgressStatus('loading', 'Processing\u2026');
   initProgressFooter();
 
-  let i = 0;
-  function processNext() {
-    if (_progressCancel || i >= wordList.length) {
-      if (_progressCancel) {
-        _progressPhase = 'cancelled';
-        setProgressStatus('cancelled', 'Cancelled \u2014 ' + _progressAdded.length + ' word(s) added before cancel');
-      } else {
-        _progressPhase = 'done';
-        const skipped = wordList.length - _progressAdded.length;
-        setProgressStatus('done', _progressAdded.length + ' added, ' + skipped + ' skipped');
+  const form = new FormData();
+  form.append('words', wordList.join('\n'));
+  form.append('autofill', useAI ? 'on' : 'off');
+  form.append('ai_model', aiModel);
+
+  try {
+    const res = await fetch('/admin/words/batch', {
+      method: 'POST', body: form, signal: _abortController.signal,
+    });
+    if (!res.ok) throw new Error(await res.text());
+
+    const reader = res.body.getReader();
+    const dec = new TextDecoder();
+    let buf = '';
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      buf += dec.decode(value, { stream: true });
+      const lines = buf.split('\n');
+      buf = lines.pop();
+      for (const line of lines) {
+        if (!line.startsWith('data: ')) continue;
+        const data = JSON.parse(line.slice(6));
+        if (data.done) {
+          _progressPhase = 'done';
+          const skipped = _progressTotal - _progressAdded.length;
+          setProgressStatus('done', _progressAdded.length + ' added, ' + skipped + ' skipped');
+          words = await fetch('/api/words').then(r => r.json());
+          updateWordCount();
+          updateProgressFooter();
+          return;
+        }
+        if (data.added) _progressAdded.push(data.word);
+        appendProgressResult(data);
+        updateProgressFooter();
       }
-      updateProgressFooter();
-      return;
     }
-
-    const word = wordList[i++];
-    const isDup = words.some(w => w.word === word);
-
-    if (isDup) {
-      appendProgressResult({ word, added: false, reason: 'duplicate' });
+  } catch (err) {
+    if (err.name === 'AbortError') {
+      _progressPhase = 'cancelled';
+      setProgressStatus('cancelled', 'Cancelled \u2014 ' + _progressAdded.length + ' word(s) added before cancel');
     } else {
-      const fakeAI = useAI ? {
-        reading: 'よみがな',
-        part_of_speech: 'noun',
-        meaning: 'example meaning (AI placeholder)',
-        example_jp: 'これは例文です。',
-        example_en: 'This is an example sentence.',
-      } : {};
-      words.push({
-        word,
-        reading:   fakeAI.reading        || '',
-        type:      fakeAI.part_of_speech || 'noun',
-        meaning:   fakeAI.meaning        || '',
-        exampleJp: fakeAI.example_jp     || '',
-        exampleEn: fakeAI.example_en     || '',
-        correct: 0, incorrect: 0, target: 3,
-        createdAt: new Date().toISOString(), lastDrilled: null,
-      });
-      _progressAdded.push(word);
-      appendProgressResult({ word, added: true, ...fakeAI });
+      _progressPhase = 'done';
+      setProgressStatus('done', 'Error: ' + err.message);
     }
-
+    words = await fetch('/api/words').then(r => r.json());
+    updateWordCount();
     updateProgressFooter();
-    setTimeout(processNext, 280);
   }
-
-  setTimeout(processNext, 180);
 }
 
 function appendProgressResult(data) {
@@ -422,13 +474,14 @@ function initProgressFooter() {
     '<button id="btn-prog-close" class="btn-save">Close</button>';
 
   document.getElementById('btn-prog-cancel').onclick = function () {
-    _progressCancel = true;
+    _abortController.abort();
   };
-  document.getElementById('btn-prog-remove').onclick = function () {
+  document.getElementById('btn-prog-remove').onclick = async function () {
     const toRemove = _progressAdded.slice();
-    toRemove.forEach(w => {
-      const idx = words.findIndex(x => x.word === w);
-      if (idx !== -1) words.splice(idx, 1);
+    await fetch('/admin/words/delete', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ words: toRemove }),
     });
     _progressAdded = [];
     document.querySelectorAll('#progress-modal-body .badge-added').forEach(badge => {
@@ -436,6 +489,8 @@ function initProgressFooter() {
       badge.textContent = 'removed';
     });
     setProgressStatus('done', 'Removed \u2014 0 words added from this batch');
+    words = await fetch('/api/words').then(r => r.json());
+    updateWordCount();
     updateProgressFooter();
   };
   document.getElementById('btn-prog-close').onclick = closeProgressModal;

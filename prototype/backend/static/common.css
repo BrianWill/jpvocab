@@ -170,6 +170,10 @@ body {
   color: #f38ba8;
 }
 .modal-error.hidden { display: none; }
+.delete-confirm-text {
+  font-size: 0.9rem;
+  color: #a6adc8;
+}
 .btn-cancel {
   background: none;
   border: 1px solid #45475a;

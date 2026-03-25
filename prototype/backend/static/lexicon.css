@@ -52,20 +52,25 @@
   gap: 0.5rem;
 }
 
-.btn-edit {
+.btn-edit { margin-left: 0.4rem; }
+
+.btn-edit, .btn-delete {
   display: none;
   background: none;
   border: 1px solid #45475a;
   border-radius: 4px;
   color: #585b70;
   font-size: 0.8rem;
-  padding: 0.1rem 0.35rem;
+  width: 1.5rem;
+  height: 1.5rem;
+  padding: 0;
   cursor: pointer;
   line-height: 1;
+  text-align: center;
   flex-shrink: 0;
 }
-.btn-edit:hover { color: #cdd6f4; border-color: #6c7086; }
-.row-main:hover .btn-edit { display: inline-block; }
+.btn-edit:hover, .btn-delete:hover { color: #cdd6f4; border-color: #6c7086; }
+.row-main:hover .btn-edit, .row-main:hover .btn-delete { display: inline-block; }
 
 /* Modal — lexicon-specific overrides */
 .modal-word-label {

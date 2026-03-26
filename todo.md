@@ -2,20 +2,31 @@
 
 This file is random notes of possible features and bug fixes.
 
-- Each word has its current total drill count and also its target drill count. By default, words where total drill count matches or exceeds target drill count are not pulled from lexicon into the drill pool. When the user re-ups a word that hits its drill count, the target is simply increased, e.g. current total count is 10 and target is 10, so setting the target to 20 means the word will be drilled another 10 times. 
+
+- words in lexicon page list shift layout by a couple pixels when hovering (the edit / delete buttons should be visibility hidden, not display none)
+
+- when adding words that already are in lexicon, present the remaining target count and present - + buttons to tweak the count
 
 
-- update / add / remove tests
+- when adding words, option to ask AI to give a different definition or a example sentence / translation
+    - do this in the add words modal?
+    - or only do this in the word edit modal?
+        - presented with prior info and all subsequent re-rolls, then user picks the winner to keep
 
+- generate audio for the words
+    - pulldown options: either no audio, browser tts, or voicevox
+        - selecting voicevox triggers error message if the voicevox server is not found
+            - give detailed message explaining what user must do, including expected port number
+    - drill page: button and hotkey to play the example sentence if audio is available
+        - second and third sets of hotkeys to play at slower speeds
+    - lexicon page: button to play word audio / sentence audio
 
-
-- lexicon page
-
-- drill page
-    - button and hotkey to play the example sentence if audio is available
-
-- maybe AI could create / find images relevant for each word
+- AI images
+    - generate or find relevant images to associate with words
     - maybe just for nouns and verbs but not for other parts of speech
+    - favor certain pics within certain aspect ratio ranges
+    - rescale to target res
+        - images that are too low res to be effectively upscaled will be rejected
 
 - use turso to sync db
 - make a mobile app (sync through turso)

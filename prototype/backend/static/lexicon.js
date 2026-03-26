@@ -169,6 +169,35 @@ function applyProviderAvailability(providers) {
     const first = select.querySelector('optgroup:not([disabled]) option');
     if (first) select.value = first.value;
   }
+
+  // Apply to edit modal AI select and reroll buttons
+  const editSelect       = document.getElementById('edit-ai-model-select');
+  const editAnthropicGrp = editSelect.querySelector('optgroup[label="Anthropic"]');
+  const editOpenaiGrp    = editSelect.querySelector('optgroup[label="OpenAI"]');
+  const btnMeaning       = document.getElementById('btn-reroll-meaning');
+  const btnExamples      = document.getElementById('btn-reroll-examples');
+
+  if (!providers.anthropic) {
+    editAnthropicGrp.disabled = true;
+    editAnthropicGrp.label = 'Anthropic — no API key';
+  }
+  if (!providers.openai) {
+    editOpenaiGrp.disabled = true;
+    editOpenaiGrp.label = 'OpenAI — no API key';
+  }
+
+  if (!providers.anthropic && !providers.openai) {
+    editSelect.disabled = true;
+    btnMeaning.disabled = true;
+    btnExamples.disabled = true;
+    document.getElementById('edit-sidebar-empty').innerHTML =
+      '<span class="sidebar-no-providers">No AI providers configured.<br><br>' +
+      'Set <code>ANTHROPIC_API_KEY</code> or <code>OPENAI_API_KEY</code> ' +
+      'as environment variables and restart the server.</span>';
+  } else {
+    const firstEdit = editSelect.querySelector('optgroup:not([disabled]) option');
+    if (firstEdit) editSelect.value = firstEdit.value;
+  }
 }
 
 init();
@@ -190,11 +219,102 @@ function openModal(event) {
   document.getElementById('edit-target').value   = w.target;
   document.getElementById('edit-error').classList.add('hidden');
   document.getElementById('btn-edit-save').textContent = 'Save';
+  resetEditSidebar();
   document.getElementById('modal-backdrop').classList.remove('hidden');
 }
 
 function closeModal() {
   document.getElementById('modal-backdrop').classList.add('hidden');
+}
+
+function resetEditSidebar() {
+  document.getElementById('edit-sidebar-empty').classList.remove('hidden');
+  document.getElementById('edit-sidebar-content').classList.add('hidden');
+}
+
+function showEditSidebarLoading(label) {
+  document.getElementById('edit-sidebar-empty').classList.add('hidden');
+  const contentEl = document.getElementById('edit-sidebar-content');
+  contentEl.classList.remove('hidden');
+  document.getElementById('edit-sidebar-label').textContent = label;
+  document.getElementById('edit-alternatives-list').innerHTML =
+    '<div class="edit-sidebar-loading"><span class="spinner"></span> Generating\u2026</div>';
+}
+
+function showEditSidebarError(message) {
+  document.getElementById('edit-alternatives-list').innerHTML =
+    '<div class="edit-sidebar-loading edit-sidebar-error">' + esc(message) + '</div>';
+}
+
+async function doRerollMeaning() {
+  const w = _modalTrMain._word;
+  const currentMeaning = document.getElementById('edit-meaning').value;
+  const aiModel = document.getElementById('edit-ai-model-select').value;
+  showEditSidebarLoading('Alternative meanings');
+  try {
+    const res = await fetch('/api/words/' + w.id + '/reroll-meaning', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ word: w.word, current: currentMeaning, ai_model: aiModel }),
+    });
+    if (!res.ok) throw new Error((await res.text()).trim() || res.statusText);
+    const data = await res.json();
+    renderMeaningAlternatives(data.alternatives);
+  } catch (err) {
+    showEditSidebarError(err.message);
+  }
+}
+
+async function doRerollExamples() {
+  const w = _modalTrMain._word;
+  const aiModel = document.getElementById('edit-ai-model-select').value;
+  showEditSidebarLoading('Alternative examples');
+  try {
+    const res = await fetch('/api/words/' + w.id + '/reroll-examples', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ word: w.word, ai_model: aiModel }),
+    });
+    if (!res.ok) throw new Error((await res.text()).trim() || res.statusText);
+    const data = await res.json();
+    renderExampleAlternatives(data.alternatives);
+  } catch (err) {
+    showEditSidebarError(err.message);
+  }
+}
+
+function renderMeaningAlternatives(alternatives) {
+  const list = document.getElementById('edit-alternatives-list');
+  list.innerHTML = '';
+  alternatives.forEach(alt => {
+    const item = document.createElement('div');
+    item.className = 'alt-item';
+    item.innerHTML =
+      '<span class="alt-text">' + esc(alt) + '</span>' +
+      '<button class="btn-replace">Replace</button>';
+    item.querySelector('.btn-replace').onclick = () => {
+      document.getElementById('edit-meaning').value = alt;
+    };
+    list.appendChild(item);
+  });
+}
+
+function renderExampleAlternatives(alternatives) {
+  const list = document.getElementById('edit-alternatives-list');
+  list.innerHTML = '';
+  alternatives.forEach(alt => {
+    const item = document.createElement('div');
+    item.className = 'alt-item';
+    item.innerHTML =
+      '<span class="alt-text">' + esc(alt.jp) + '</span>' +
+      '<span class="alt-text-sub">' + esc(alt.en) + '</span>' +
+      '<button class="btn-replace">Replace</button>';
+    item.querySelector('.btn-replace').onclick = () => {
+      document.getElementById('edit-ex-jp').value = alt.jp;
+      document.getElementById('edit-ex-en').value = alt.en;
+    };
+    list.appendChild(item);
+  });
 }
 
 function onBackdropClick(event, closeFn) {

@@ -46,6 +46,8 @@ func serverInit(db *sql.DB) {
 	r.Get("/api/words", apiGetWords(db))
 	r.Patch("/api/words/{id}", apiUpdateWord(db))
 	r.Delete("/api/words/{id}", apiDeleteWord(db))
+	r.Post("/api/words/{id}/reroll-meaning", apiRerollMeaning())
+	r.Post("/api/words/{id}/reroll-examples", apiRerollExamples())
 
 	r.Get("/api/kanji", apiGetKanji(db))
 	r.Post("/api/drill/sessions", apiCreateDrillSession(db))
@@ -161,6 +163,47 @@ func apiDeleteWord(db *sql.DB) http.HandlerFunc {
 			return
 		}
 		w.WriteHeader(http.StatusNoContent)
+	}
+}
+
+func apiRerollMeaning() http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		var body struct {
+			Word    string `json:"word"`
+			Current string `json:"current"`
+			AIModel string `json:"ai_model"`
+		}
+		if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+			http.Error(w, "bad request", http.StatusBadRequest)
+			return
+		}
+		alternatives, err := rerollMeaning(body.Word, body.Current, body.AIModel)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(map[string]any{"alternatives": alternatives})
+	}
+}
+
+func apiRerollExamples() http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		var body struct {
+			Word    string `json:"word"`
+			AIModel string `json:"ai_model"`
+		}
+		if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+			http.Error(w, "bad request", http.StatusBadRequest)
+			return
+		}
+		alternatives, err := rerollExamples(body.Word, body.AIModel)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(map[string]any{"alternatives": alternatives})
 	}
 }
 

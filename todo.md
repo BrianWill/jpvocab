@@ -7,6 +7,10 @@ This file is random notes of possible features and bug fixes.
 
 - when adding words that already are in lexicon, present the remaining target count and present - + buttons to tweak the count
 
+- translate stories and generate audio via voicevox
+    - can voicevox generate a single audio file but give timemarks for each line?
+    - e.g. given chapter of novel, produce audio
+    - experiment with openAI audio generation. Might be better quality than voicevox
 
 - when adding words, option to ask AI to give a different definition or a example sentence / translation
     - do this in the add words modal?

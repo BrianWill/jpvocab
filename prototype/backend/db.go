@@ -470,6 +470,40 @@ func insertWord(db *sql.DB, word, reading, partOfSpeech, meaning, exampleJP, exa
 	return err
 }
 
+// insertWordReturningID inserts a new word and returns its database ID.
+func insertWordReturningID(db *sql.DB, word, reading, partOfSpeech, meaning, exampleJP, exampleEN, kanjiData string, drillTarget int) (int64, error) {
+	if drillTarget < 1 {
+		drillTarget = 1
+	}
+	kat := 0
+	if containsKatakana(word) {
+		kat = 1
+	}
+	if kanjiData == "" {
+		kanjiData = "[]"
+	}
+	res, err := db.Exec(`
+		INSERT INTO words (word, reading, part_of_speech, meaning, example_jp, example_en, drill_target, is_katakana, kanji_data)
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+	`, word, reading, partOfSpeech, meaning, exampleJP, exampleEN, drillTarget, kat, kanjiData)
+	if err != nil {
+		return 0, err
+	}
+	return res.LastInsertId()
+}
+
+// updateWordFill sets the AI-generated fields for an existing word by ID.
+func updateWordFill(db *sql.DB, id int64, reading, partOfSpeech, meaning, exampleJP, exampleEN, kanjiData string) error {
+	if kanjiData == "" {
+		kanjiData = "[]"
+	}
+	_, err := db.Exec(`
+		UPDATE words SET reading=?, part_of_speech=?, meaning=?, example_jp=?, example_en=?, kanji_data=?
+		WHERE id=?
+	`, reading, partOfSpeech, meaning, exampleJP, exampleEN, kanjiData, id)
+	return err
+}
+
 // wordsExistInDB returns a set of which words from the given slice are already
 // present in the lexicon, keyed by their normalised word value.
 func wordsExistInDB(db *sql.DB, words []string) (map[string]bool, error) {
@@ -498,14 +532,20 @@ func wordsExistInDB(db *sql.DB, words []string) (map[string]bool, error) {
 	return existing, rows.Err()
 }
 
-// existingWordInfo holds drill progress data for a word already in the lexicon.
+// existingWordInfo holds data for a word already in the lexicon.
 type existingWordInfo struct {
-	ID          int64
-	DrillCount  int
-	DrillTarget int
+	ID           int64
+	Reading      string
+	PartOfSpeech string
+	Meaning      string
+	ExampleJP    string
+	ExampleEN    string
+	DrillCount     int
+	DrillIncorrect int
+	DrillTarget    int
 }
 
-// wordsInfoInDB returns drill progress info for words already in the lexicon,
+// wordsInfoInDB returns info for words already in the lexicon,
 // keyed by their normalised word value.
 func wordsInfoInDB(db *sql.DB, words []string) (map[string]existingWordInfo, error) {
 	if len(words) == 0 {
@@ -518,7 +558,7 @@ func wordsInfoInDB(db *sql.DB, words []string) (map[string]existingWordInfo, err
 		args[i] = w
 	}
 	rows, err := db.Query(
-		"SELECT id, word, drill_count, drill_target FROM words WHERE word IN ("+placeholders+")",
+		"SELECT id, word, reading, part_of_speech, meaning, example_jp, example_en, drill_count, incorrect_count, drill_target FROM words WHERE word IN ("+placeholders+")",
 		args...,
 	)
 	if err != nil {
@@ -529,7 +569,7 @@ func wordsInfoInDB(db *sql.DB, words []string) (map[string]existingWordInfo, err
 	for rows.Next() {
 		var info existingWordInfo
 		var word string
-		if err := rows.Scan(&info.ID, &word, &info.DrillCount, &info.DrillTarget); err != nil {
+		if err := rows.Scan(&info.ID, &word, &info.Reading, &info.PartOfSpeech, &info.Meaning, &info.ExampleJP, &info.ExampleEN, &info.DrillCount, &info.DrillIncorrect, &info.DrillTarget); err != nil {
 			return nil, err
 		}
 		result[word] = info

@@ -38,9 +38,10 @@ func serverInit(db *sql.DB) {
 	r.Get("/api/providers", func(w http.ResponseWriter, r *http.Request) {
 		p := checkAIProviders()
 		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(map[string]bool{
-			"anthropic": p.AnthropicAvail,
-			"openai":    p.OpenAIAvail,
+		json.NewEncoder(w).Encode(map[string]any{
+			"anthropic":            p.AnthropicAvail,
+			"openai":               p.OpenAIAvail,
+			"default_drill_target": defaultDrillTarget,
 		})
 	})
 	r.Get("/api/words", apiGetWords(db))
@@ -71,6 +72,7 @@ type batchWordResult struct {
 	Input        string `json:"input"`
 	Word         string `json:"word"`
 	Added        bool   `json:"added"`
+	Updated      bool   `json:"updated,omitempty"`
 	Reason       string `json:"reason,omitempty"`
 	Reading      string `json:"reading,omitempty"`
 	PartOfSpeech string `json:"part_of_speech,omitempty"`
@@ -78,9 +80,10 @@ type batchWordResult struct {
 	ExampleJP    string `json:"example_jp,omitempty"`
 	ExampleEN    string `json:"example_en,omitempty"`
 	// Populated only when the word already exists in the lexicon.
-	WordID      int64 `json:"word_id,omitempty"`
-	DrillCount  int   `json:"drill_count,omitempty"`
-	DrillTarget int   `json:"drill_target,omitempty"`
+	WordID         int64 `json:"word_id,omitempty"`
+	DrillCount     int   `json:"drill_count,omitempty"`
+	DrillIncorrect int   `json:"drill_incorrect,omitempty"`
+	DrillTarget    int   `json:"drill_target,omitempty"`
 }
 
 type indexData struct {
@@ -367,7 +370,15 @@ func adminAddWordsBatch(db *sql.DB) http.HandlerFunc {
 			return
 		}
 
-		// Phase 3: process in original input order, streaming each result.
+		// Phase 3: insert all words and stream results immediately so the UI
+		// shows final added/skipped counts before any autofill begins.
+		type insertedEntry struct {
+			input  string
+			norm   string
+			wordID int64
+		}
+		var toFill []insertedEntry
+
 		for _, e := range entries {
 			select {
 			case <-r.Context().Done():
@@ -381,54 +392,77 @@ func adminAddWordsBatch(db *sql.DB) http.HandlerFunc {
 			}
 			if info, exists := existingInfo[e.norm]; exists {
 				send(batchWordResult{
-					Input:       e.input,
-					Word:        e.norm,
-					Added:       false,
-					Reason:      "already in lexicon",
-					WordID:      info.ID,
-					DrillCount:  info.DrillCount,
-					DrillTarget: info.DrillTarget,
+					Input:        e.input,
+					Word:         e.norm,
+					Added:        false,
+					Reason:       "already in lexicon",
+					Reading:      info.Reading,
+					PartOfSpeech: info.PartOfSpeech,
+					Meaning:      info.Meaning,
+					ExampleJP:    info.ExampleJP,
+					ExampleEN:    info.ExampleEN,
+					WordID:         info.ID,
+					DrillCount:     info.DrillCount,
+					DrillIncorrect: info.DrillIncorrect,
+					DrillTarget:    info.DrillTarget,
 				})
 				continue
 			}
 
-			var reading, pos, meaning, exJP, exEN, kanjiDataStr string
-			if autoFill {
-				filled, err := autoFillWord(e.norm, aiModel)
-				if err != nil {
-					send(batchWordResult{Input: e.input, Word: e.norm, Added: false, Reason: "auto-fill error: " + err.Error()})
-					continue
-				}
-				reading, pos, meaning, exJP, exEN = filled.Reading, filled.PartOfSpeech, filled.Meaning, filled.ExampleJP, filled.ExampleEN
-				// Upsert each kanji from the AI response and build kanji_data JSON.
-				type kdEntry struct {
-					ID      int64  `json:"id"`
-					Reading string `json:"reading"`
-				}
-				kd := make([]kdEntry, 0, len(filled.Kanji))
-				for _, k := range filled.Kanji {
-					id, kErr := upsertKanji(db, k.Character, k.Meanings)
-					if kErr != nil {
-						send(batchWordResult{Input: e.input, Word: e.norm, Added: false, Reason: "kanji upsert error: " + kErr.Error()})
-						continue
-					}
-					kd = append(kd, kdEntry{ID: id, Reading: k.Reading})
-				}
-				b, _ := json.Marshal(kd)
-				kanjiDataStr = string(b)
-			}
-
-			if err := insertWord(db, e.norm, reading, pos, meaning, exJP, exEN, kanjiDataStr, defaultDrillTarget); err != nil {
+			wordID, err := insertWordReturningID(db, e.norm, "", "", "", "", "", "", defaultDrillTarget)
+			if err != nil {
 				reason := err.Error()
 				if strings.Contains(reason, "UNIQUE constraint failed") {
 					reason = "already in lexicon"
 				}
-				send(batchWordResult{Input: e.input, Word: e.norm, Added: false, Reason: reason,
-					Reading: reading, PartOfSpeech: pos, Meaning: meaning, ExampleJP: exJP, ExampleEN: exEN})
+				send(batchWordResult{Input: e.input, Word: e.norm, Added: false, Reason: reason})
+				continue
+			}
+			send(batchWordResult{Input: e.input, Word: e.norm, Added: true, WordID: wordID, DrillTarget: defaultDrillTarget})
+			if autoFill {
+				toFill = append(toFill, insertedEntry{input: e.input, norm: e.norm, wordID: wordID})
+			}
+		}
+
+		// Phase 4: autofill each inserted word now that all counts are settled.
+		type kdEntry struct {
+			ID      int64  `json:"id"`
+			Reading string `json:"reading"`
+		}
+	fillLoop:
+		for _, ins := range toFill {
+			select {
+			case <-r.Context().Done():
+				break fillLoop
+			default:
+			}
+
+			filled, fillErr := autoFillWord(ins.norm, aiModel)
+			if fillErr != nil {
 				continue
 			}
 
-			send(batchWordResult{Input: e.input, Word: e.norm, Added: true,
+			reading := filled.Reading
+			pos := filled.PartOfSpeech
+			meaning := filled.Meaning
+			exJP := filled.ExampleJP
+			exEN := filled.ExampleEN
+
+			kd := make([]kdEntry, 0, len(filled.Kanji))
+			for _, k := range filled.Kanji {
+				kID, kErr := upsertKanji(db, k.Character, k.Meanings)
+				if kErr != nil {
+					continue
+				}
+				kd = append(kd, kdEntry{ID: kID, Reading: k.Reading})
+			}
+			b, _ := json.Marshal(kd)
+			kanjiDataStr := string(b)
+
+			if err := updateWordFill(db, ins.wordID, reading, pos, meaning, exJP, exEN, kanjiDataStr); err != nil {
+				continue
+			}
+			send(batchWordResult{Input: ins.input, Word: ins.norm, Updated: true,
 				Reading: reading, PartOfSpeech: pos, Meaning: meaning, ExampleJP: exJP, ExampleEN: exEN})
 		}
 

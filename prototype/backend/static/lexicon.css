@@ -301,7 +301,7 @@
 .autofill-msg { font-size: 0.75rem; color: #585b70; }
 
 /* --- Progress modal --- */
-.modal-wide { max-width: 560px; }
+.modal-wide { max-width: 860px; }
 .modal-body-scroll {
   max-height: 340px;
   overflow-y: auto;
@@ -323,6 +323,7 @@
 .modal-status-done    { color: #a6e3a1; }
 .status-skipped { color: #f9e2af; }
 .modal-status-cancelled, .modal-status-error { color: #f38ba8; }
+.status-cancelled-note { opacity: 0.7; }
 
 @keyframes spin { to { transform: rotate(360deg); } }
 .spinner {
@@ -370,21 +371,52 @@
 .result-skipped .result-word { color: #45475a; }
 
 .word-result-details {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.5rem;
-  margin-top: 0.3rem;
+  display: grid;
+  grid-template-columns: 11rem 9rem 1fr;
+  grid-template-rows: auto auto;
+  column-gap: 1.25rem;
+  row-gap: 0.2rem;
+  margin-top: 0.35rem;
 }
+.detail-reading { grid-column: 1; grid-row: 1; }
+.detail-pos     { grid-column: 2; grid-row: 1; }
+.detail-meaning { grid-column: 3; grid-row: 1; }
+.detail-ex      { grid-column: 1 / -1; grid-row: 2; }
+
 .detail-item {
   font-size: 0.72rem;
   color: #585b70;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
+.detail-item--muted { color: #313244; }
+.detail-dash { color: #313244; }
 .detail-label {
   text-transform: uppercase;
   letter-spacing: 0.06em;
   font-size: 0.65rem;
   color: #45475a;
   margin-right: 0.2rem;
+}
+
+.word-pending-badge {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  color: #45475a;
+  font-size: 0.72rem;
+  font-style: italic;
+}
+.word-pending-badge::after { content: 'Processing\2026'; }
+
+.word-result-main .btn-delete { visibility: visible; }
+.btn-word-remove { width: 1.1rem; height: 1.1rem; font-size: 0.65rem; }
+
+.result-autofill-spinner {
+  display: inline-flex;
+  align-items: center;
 }
 
 .word-result-drill {
@@ -394,7 +426,8 @@
   margin-left: auto;
   font-size: 0.75rem;
 }
-.drill-correct { color: #a6e3a1; }
+.drill-correct   { color: #a6e3a1; }
+.drill-incorrect { color: #f38ba8; }
 .drill-target-label { font-size: 0.85rem; margin-left: 0.6rem; }
 .drill-target-val { color: #f9e2af; min-width: 2ch; text-align: center; }
 .word-result-drill .btn-target-adj { visibility: visible; }

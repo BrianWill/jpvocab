@@ -1,4 +1,5 @@
 ﻿let words = [];
+let defaultDrillTarget = 8; // updated from /api/providers at init
 
 function updateWordCount() {
   const active = words.filter(w => w.correct < w.target).length;
@@ -138,6 +139,7 @@ async function init() {
     fetch('/api/providers').then(r => r.json()),
   ]);
   words = wordsData;
+  if (providers.default_drill_target) defaultDrillTarget = providers.default_drill_target;
   updateWordCount();
   renderTable(getSortedWords('added', 'desc'));
   applyProviderAvailability(providers);
@@ -493,7 +495,9 @@ document.getElementById('autofill-check').addEventListener('change', function ()
 // --- Progress modal ---
 let _progressPhase = 'idle'; // 'loading' | 'done' | 'cancelled'
 let _progressAdded = [];
+let _progressSkipped = 0;
 let _progressTotal = 0;
+let _autofillEnabled = false;
 let _abortController = null;
 
 document.getElementById('progress-modal-backdrop').addEventListener('click', function (e) {
@@ -519,12 +523,46 @@ async function saveAddModal() {
 
   _progressPhase = 'loading';
   _progressAdded = [];
+  _progressSkipped = 0;
   _progressTotal = wordList.length;
+  _autofillEnabled = useAI;
   _abortController = new AbortController();
 
-  document.getElementById('progress-modal-body').innerHTML = '';
+  const progressBody = document.getElementById('progress-modal-body');
+  progressBody.innerHTML = '';
+  const pendingDash = '<span class="detail-dash">\u2014</span>';
+  const pendingDetails =
+    '<div class="word-result-details">' +
+      detailItemRaw('reading', pendingDash, true, 'detail-reading') +
+      detailItemRaw('pos',     pendingDash, true, 'detail-pos') +
+      detailItemRaw('meaning', pendingDash, true, 'detail-meaning') +
+      detailItemRaw('ex.',     pendingDash, true, 'detail-ex') +
+    '</div>';
+  const pendingDrillDisplay =
+    '<span class="word-result-drill">' +
+      '<span class="drill-correct" data-tooltip="Times answered correctly">✓ 0</span>' +
+      '<span class="target-stepper" data-tooltip="Remaining drills to target">' +
+        '<span class="drill-target-label">🎯</span>' +
+        '<button class="btn-target-adj" disabled>−</button>' +
+        '<span class="drill-target-val">' + defaultDrillTarget + '</span>' +
+        '<button class="btn-target-adj" disabled>+</button>' +
+      '</span>' +
+    '</span>';
+  wordList.forEach(word => {
+    const row = document.createElement('div');
+    row.className = 'word-result-row word-result-pending';
+    row._pendingWord = word;
+    row.innerHTML =
+      '<div class="word-result-main">' +
+        '<span class="result-word">' + esc(word) + '</span>' +
+        '<span class="word-pending-badge"><span class="spinner"></span></span>' +
+        pendingDrillDisplay +
+      '</div>' +
+      pendingDetails;
+    progressBody.appendChild(row);
+  });
   document.getElementById('progress-modal-backdrop').classList.remove('hidden');
-  setProgressStatus('loading', 'Processing\u2026');
+  renderStatus();
   initProgressFooter();
 
   const form = new FormData();
@@ -550,53 +588,75 @@ async function saveAddModal() {
       for (const line of lines) {
         if (!line.startsWith('data: ')) continue;
         const data = JSON.parse(line.slice(6));
+        if (data.updated) { updateProgressRowDetails(data); continue; }
         if (data.done) {
           _progressPhase = 'done';
-          const skipped = _progressTotal - _progressAdded.length;
-          const doneEl = document.getElementById('progress-modal-status');
-          doneEl.className = 'modal-status modal-status-done';
-          doneEl.innerHTML = '<span>' + _progressAdded.length + ' added' +
-            (skipped > 0 ? ', <span class="status-skipped">' + skipped + ' skipped</span>' : '') +
-            '</span>';
+          clearAutofillSpinners();
+          renderStatus();
           await reloadWords();
           updateProgressFooter();
           return;
         }
         if (data.added) _progressAdded.push(data.word);
+        else _progressSkipped++;
         appendProgressResult(data);
+        renderStatus();
         updateProgressFooter();
       }
     }
   } catch (err) {
     if (err.name === 'AbortError') {
-      _progressPhase = 'cancelled';
-      setProgressStatus('cancelled', 'Cancelled \u2014 ' + _progressAdded.length + ' word(s) added before cancel');
+      if (_progressPhase === 'loading') {
+        // Abort came from Cancel button — handle as cancellation.
+        _progressPhase = 'cancelled';
+        clearAutofillSpinners();
+        renderStatus();
+        await reloadWords();
+        updateProgressFooter();
+      }
+      // else: abort was triggered by the Remove handler, which manages cleanup itself.
     } else {
       _progressPhase = 'done';
       setProgressStatus('done', 'Error: ' + err.message);
+      await reloadWords();
+      updateProgressFooter();
     }
-    await reloadWords();
-    updateProgressFooter();
   }
 }
 
 function appendProgressResult(data) {
-  const row = document.createElement('div');
+  // Find the pre-inserted placeholder row for this word; fall back to appending a new one
+  const body = document.getElementById('progress-modal-body');
+  let row = null;
+  for (const el of body.children) {
+    if (el._pendingWord === data.word) { row = el; break; }
+  }
+  if (!row) {
+    row = document.createElement('div');
+    body.appendChild(row);
+  }
+  row._pendingWord = null;
+  row._resolvedWord = data.word;
   row.className = 'word-result-row ' + (data.added ? 'result-added' : 'result-skipped');
 
   const badge = data.added
-    ? '<span class="result-badge badge-added">added</span>'
+    ? '<span class="result-badge badge-added">added</span>' +
+      (_autofillEnabled ? '<span class="result-autofill-spinner"><span class="spinner"></span></span>' : '')
     : '<span class="result-badge badge-skipped">' + esc(data.reason) + '</span>';
 
-  let inlineExtra = '';
-  let details = '';
-  if (data.reason === 'already in lexicon' && data.word_id) {
-    const correct   = data.drill_count  ?? 0;
-    const target    = data.drill_target ?? 0;
-    const remaining = target - correct;
+  const removeBtn =
+    '<button class="btn-delete btn-word-remove" data-tooltip="Remove word"' +
+      ' data-word="' + esc(data.word) + '" onmousedown="removeProgressWord(event,this)">✕</button>';
+  let inlineExtra;
+  if (data.word_id) {
+    const correct   = data.drill_count     ?? 0;
+    const incorrect = data.drill_incorrect ?? 0;
+    const target    = data.drill_target    ?? 0;
     inlineExtra =
       '<span class="word-result-drill">' +
+        removeBtn +
         '<span class="drill-correct" data-tooltip="Times answered correctly">✓ ' + correct + '</span>' +
+        '<span class="drill-incorrect" data-tooltip="Times answered incorrectly">✗ ' + incorrect + '</span>' +
         '<span class="target-stepper" data-tooltip="Remaining drills to target">' +
           '<span class="drill-target-label">🎯</span>' +
           '<button class="btn-target-adj" onmousedown="adjustProgressTarget(event,' + data.word_id + ',-1,this)">−</button>' +
@@ -604,19 +664,68 @@ function appendProgressResult(data) {
           '<button class="btn-target-adj" onmousedown="adjustProgressTarget(event,' + data.word_id + ',1,this)">+</button>' +
         '</span>' +
       '</span>';
-  } else if (data.reading || data.part_of_speech || data.meaning || data.example_jp) {
-    const items = [];
-    if (data.reading)        items.push(detailItem('reading', data.reading));
-    if (data.part_of_speech) items.push(detailItem('pos', data.part_of_speech));
-    if (data.meaning)        items.push(detailItem('meaning', data.meaning));
-    if (data.example_jp)     items.push(detailItem('ex.', data.example_jp + (data.example_en ? '  ' + data.example_en : '')));
-    details = '<div class="word-result-details">' + items.join('') + '</div>';
+  } else {
+    inlineExtra = '<span class="word-result-drill">' + removeBtn + '</span>';
   }
+
+  const dash = '<span class="detail-dash">\u2014</span>';
+  const exText = data.example_jp
+    ? esc(data.example_jp) + (data.example_en ? '  <em>' + esc(data.example_en) + '</em>' : '')
+    : dash;
+  const details =
+    '<div class="word-result-details">' +
+      detailItemRaw('reading', data.reading        ? esc(data.reading)        : dash, !data.reading,        'detail-reading') +
+      detailItemRaw('pos',     data.part_of_speech ? esc(data.part_of_speech) : dash, !data.part_of_speech, 'detail-pos') +
+      detailItemRaw('meaning', data.meaning        ? esc(data.meaning)        : dash, !data.meaning,        'detail-meaning') +
+      detailItemRaw('ex.',     exText,                                                !data.example_jp,     'detail-ex') +
+    '</div>';
 
   row.innerHTML =
     '<div class="word-result-main"><span class="result-word">' + esc(data.word) + '</span>' + badge + inlineExtra + '</div>' +
     details;
-  document.getElementById('progress-modal-body').appendChild(row);
+}
+
+function updateProgressRowDetails(data) {
+  const body = document.getElementById('progress-modal-body');
+  let row = null;
+  for (const el of body.children) {
+    if (el._resolvedWord === data.word) { row = el; break; }
+  }
+  if (!row) return;
+  const dash = '<span class="detail-dash">\u2014</span>';
+  const exText = data.example_jp
+    ? esc(data.example_jp) + (data.example_en ? '  <em>' + esc(data.example_en) + '</em>' : '')
+    : dash;
+  const newDetails =
+    '<div class="word-result-details">' +
+      detailItemRaw('reading', data.reading        ? esc(data.reading)        : dash, !data.reading,        'detail-reading') +
+      detailItemRaw('pos',     data.part_of_speech ? esc(data.part_of_speech) : dash, !data.part_of_speech, 'detail-pos') +
+      detailItemRaw('meaning', data.meaning        ? esc(data.meaning)        : dash, !data.meaning,        'detail-meaning') +
+      detailItemRaw('ex.',     exText,                                                !data.example_jp,     'detail-ex') +
+    '</div>';
+  row.querySelector('.word-result-details').outerHTML = newDetails;
+  const spinner = row.querySelector('.result-autofill-spinner');
+  if (spinner) spinner.remove();
+}
+
+async function removeProgressWord(event, btn) {
+  const word = btn.dataset.word;
+  event.stopPropagation();
+  btn.disabled = true;
+  const res = await fetch('/admin/words/delete', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ words: [word] }),
+  });
+  if (!res.ok) { btn.disabled = false; return; }
+
+  const row = btn.closest('.word-result-row');
+  row.remove();
+
+  const idx = _progressAdded.indexOf(word);
+  if (idx !== -1) _progressAdded.splice(idx, 1);
+  renderStatus();
+  updateProgressFooter();
 }
 
 async function adjustProgressTarget(event, wordId, delta, btn) {
@@ -646,12 +755,35 @@ async function adjustProgressTarget(event, wordId, delta, btn) {
   }
 }
 
-function detailItem(label, text) {
-  return '<span class="detail-item"><span class="detail-label">' + esc(label) + '</span> ' + esc(text) + '</span>';
+function detailItemRaw(label, html, muted, cls) {
+  return '<span class="detail-item' + (cls ? ' ' + cls : '') + (muted ? ' detail-item--muted' : '') + '">' +
+    '<span class="detail-label">' + esc(label) + '</span> ' + html + '</span>';
 }
 
 function esc(s) {
   return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+}
+
+function clearAutofillSpinners() {
+  document.querySelectorAll('#progress-modal-body .result-autofill-spinner').forEach(s => s.remove());
+}
+
+function renderStatus() {
+  const el = document.getElementById('progress-modal-status');
+  const skippedHtml = _progressSkipped > 0
+    ? ', <span class="status-skipped">' + _progressSkipped + ' skipped</span>'
+    : '';
+  const countsHtml = '<span>' + _progressAdded.length + ' added' + skippedHtml + '</span>';
+  if (_progressPhase === 'loading') {
+    el.className = 'modal-status modal-status-loading';
+    el.innerHTML = countsHtml + '<span class="spinner"></span>';
+  } else if (_progressPhase === 'cancelled') {
+    el.className = 'modal-status modal-status-cancelled';
+    el.innerHTML = countsHtml + '<span class="status-cancelled-note"> — cancelled</span>';
+  } else {
+    el.className = 'modal-status modal-status-done';
+    el.innerHTML = countsHtml;
+  }
 }
 
 function setProgressStatus(type, text) {
@@ -673,6 +805,10 @@ function initProgressFooter() {
   };
   document.getElementById('btn-prog-remove').onclick = async function () {
     const toRemove = _progressAdded.slice();
+    if (_progressPhase === 'loading') {
+      _progressPhase = 'done'; // mark before abort so the AbortError catch is a no-op
+      _abortController.abort();
+    }
     await fetch('/admin/words/delete', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -680,10 +816,9 @@ function initProgressFooter() {
     });
     _progressAdded = [];
     document.querySelectorAll('#progress-modal-body .badge-added').forEach(badge => {
-      badge.className = 'result-badge badge-removed';
-      badge.textContent = 'removed';
+      badge.closest('.word-result-row').remove();
     });
-    setProgressStatus('done', 'Removed \u2014 0 words added from this batch');
+    renderStatus();
     await reloadWords();
     updateProgressFooter();
   };
@@ -697,7 +832,7 @@ function updateProgressFooter() {
   const btnClose  = document.getElementById('btn-prog-close');
   if (!btnCancel) return;
   btnCancel.disabled = _progressPhase !== 'loading';
-  btnRemove.disabled = _progressAdded.length === 0 || _progressPhase === 'loading';
+  btnRemove.disabled = _progressAdded.length === 0;
   btnRemove.textContent = _progressAdded.length > 0
     ? 'Remove the ' + _progressAdded.length + ' added word' + (_progressAdded.length === 1 ? '' : 's')
     : 'Remove added words';

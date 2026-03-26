@@ -12,10 +12,11 @@ This file is random notes of possible features and bug fixes.
     - e.g. given chapter of novel, produce audio
     - experiment with openAI audio generation. Might be better quality than voicevox
 
-- when adding words, option to ask AI to give a different definition or a example sentence / translation
-    - do this in the add words modal?
-    - or only do this in the word edit modal?
-        - presented with prior info and all subsequent re-rolls, then user picks the winner to keep
+- for word add, generate auto-fill menu should be very similar to the edit generate menu
+    - no checkbox when entering words: will just generate in the modal after the words have been added
+    - does the box list every generation attempt? user can generate multiple times and pick the best for all? 
+        - awkward because you ideally can generate / pick for each word
+        - 
 
 - generate audio for the words
     - pulldown options: either no audio, browser tts, or voicevox

@@ -498,6 +498,51 @@ func wordsExistInDB(db *sql.DB, words []string) (map[string]bool, error) {
 	return existing, rows.Err()
 }
 
+// existingWordInfo holds drill progress data for a word already in the lexicon.
+type existingWordInfo struct {
+	ID          int64
+	DrillCount  int
+	DrillTarget int
+}
+
+// wordsInfoInDB returns drill progress info for words already in the lexicon,
+// keyed by their normalised word value.
+func wordsInfoInDB(db *sql.DB, words []string) (map[string]existingWordInfo, error) {
+	if len(words) == 0 {
+		return nil, nil
+	}
+	placeholders := strings.Repeat("?,", len(words))
+	placeholders = placeholders[:len(placeholders)-1]
+	args := make([]any, len(words))
+	for i, w := range words {
+		args[i] = w
+	}
+	rows, err := db.Query(
+		"SELECT id, word, drill_count, drill_target FROM words WHERE word IN ("+placeholders+")",
+		args...,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	result := make(map[string]existingWordInfo)
+	for rows.Next() {
+		var info existingWordInfo
+		var word string
+		if err := rows.Scan(&info.ID, &word, &info.DrillCount, &info.DrillTarget); err != nil {
+			return nil, err
+		}
+		result[word] = info
+	}
+	return result, rows.Err()
+}
+
+// updateWordTarget updates only the drill_target for a word by ID.
+func updateWordTarget(db *sql.DB, id int64, target int) error {
+	_, err := db.Exec("UPDATE words SET drill_target=? WHERE id=?", target, id)
+	return err
+}
+
 // kanjiJSON is one entry in the /api/kanji response.
 type kanjiJSON struct {
 	ID        int64    `json:"id"`

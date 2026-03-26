@@ -48,11 +48,11 @@ function renderRow(w, trMain, trEx) {
     '<td class="cell-meaning"><div class="cell-meaning-inner" data-tooltip="Meaning: ' + w.meaning + '">' + w.meaning + '</div></td>' +
     '<td class="cell-correct" data-tooltip="Times answered correctly">' + w.correct + '</td>' +
     '<td class="cell-incorrect" data-tooltip="Times answered incorrectly">' + w.incorrect + '</td>' +
-    '<td class="cell-target">' +
+    '<td class="cell-target" data-tooltip="Remaining drills to target">' +
       '<div class="target-stepper">' +
-        '<button class="btn-target-adj" onclick="adjustTargetInline(event,-4)" data-tooltip="Decrease target">−</button>' +
-        '<span data-tooltip="Drills to target remaining">' + w.target + '</span>' +
-        '<button class="btn-target-adj" onclick="adjustTargetInline(event,4)" data-tooltip="Increase target">+</button>' +
+        '<button class="btn-target-adj" onmousedown="adjustTargetInline(event,-4)">−</button>' +
+        '<span>' + w.target + '</span>' +
+        '<button class="btn-target-adj" onmousedown="adjustTargetInline(event,4)">+</button>' +
       '</div>' +
     '</td>' +
     '<td></td>';
@@ -471,7 +471,7 @@ document.addEventListener('mousemove', e => {
   lexTooltip.style.left = (x + lexTooltip.offsetWidth > window.innerWidth)
     ? (e.clientX - lexTooltip.offsetWidth) + 'px'
     : x + 'px';
-  lexTooltip.style.top = (e.clientY - 10) + 'px';
+  lexTooltip.style.top = (e.clientY + 18) + 'px';
 });
 
 // --- Add words modal ---
@@ -588,8 +588,23 @@ function appendProgressResult(data) {
     ? '<span class="result-badge badge-added">added</span>'
     : '<span class="result-badge badge-skipped">' + esc(data.reason) + '</span>';
 
+  let inlineExtra = '';
   let details = '';
-  if (data.reading || data.part_of_speech || data.meaning || data.example_jp) {
+  if (data.reason === 'already in lexicon' && data.word_id) {
+    const correct   = data.drill_count  ?? 0;
+    const target    = data.drill_target ?? 0;
+    const remaining = target - correct;
+    inlineExtra =
+      '<span class="word-result-drill">' +
+        '<span class="drill-correct" data-tooltip="Times answered correctly">✓ ' + correct + '</span>' +
+        '<span class="target-stepper" data-tooltip="Remaining drills to target">' +
+          '<span class="drill-target-label">🎯</span>' +
+          '<button class="btn-target-adj" onmousedown="adjustProgressTarget(event,' + data.word_id + ',-1,this)">−</button>' +
+          '<span class="drill-target-val" data-target="' + target + '">' + target + '</span>' +
+          '<button class="btn-target-adj" onmousedown="adjustProgressTarget(event,' + data.word_id + ',1,this)">+</button>' +
+        '</span>' +
+      '</span>';
+  } else if (data.reading || data.part_of_speech || data.meaning || data.example_jp) {
     const items = [];
     if (data.reading)        items.push(detailItem('reading', data.reading));
     if (data.part_of_speech) items.push(detailItem('pos', data.part_of_speech));
@@ -599,9 +614,36 @@ function appendProgressResult(data) {
   }
 
   row.innerHTML =
-    '<div class="word-result-main"><span class="result-word">' + esc(data.word) + '</span>' + badge + '</div>' +
+    '<div class="word-result-main"><span class="result-word">' + esc(data.word) + '</span>' + badge + inlineExtra + '</div>' +
     details;
   document.getElementById('progress-modal-body').appendChild(row);
+}
+
+async function adjustProgressTarget(event, wordId, delta, btn) {
+  event.stopPropagation();
+  const stepper = btn.closest('.target-stepper');
+  const valEl = stepper.querySelector('.drill-target-val');
+  const drillRow = btn.closest('.word-result-drill');
+
+  const currentTarget = parseInt(valEl.dataset.target, 10);
+  const correctMatch = drillRow.querySelector('.drill-correct').textContent.match(/\d+/);
+  const correct = correctMatch ? parseInt(correctMatch[0], 10) : 0;
+  const newTarget = Math.max(correct, currentTarget + delta);
+  if (newTarget === currentTarget) return;
+
+  btn.disabled = true;
+  try {
+    const res = await fetch('/api/words/' + wordId + '/target', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ target: newTarget }),
+    });
+    if (!res.ok) throw new Error(await res.text());
+    valEl.dataset.target = newTarget;
+    valEl.textContent = newTarget;
+  } finally {
+    btn.disabled = false;
+  }
 }
 
 function detailItem(label, text) {

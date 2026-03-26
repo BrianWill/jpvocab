@@ -387,6 +387,19 @@
   margin-right: 0.2rem;
 }
 
+.word-result-drill {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  margin-left: auto;
+  font-size: 0.75rem;
+}
+.drill-correct { color: #a6e3a1; }
+.drill-target-label { font-size: 0.85rem; margin-left: 0.6rem; }
+.drill-target-val { color: #f9e2af; min-width: 2ch; text-align: center; }
+.word-result-drill .btn-target-adj { visibility: visible; }
+.word-result-drill .target-stepper { gap: 0.35rem; }
+
 
 .row-example td {
   padding: 0 1rem 0.5rem;

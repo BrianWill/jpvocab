@@ -45,6 +45,7 @@ func serverInit(db *sql.DB) {
 	})
 	r.Get("/api/words", apiGetWords(db))
 	r.Patch("/api/words/{id}", apiUpdateWord(db))
+	r.Patch("/api/words/{id}/target", apiUpdateWordTarget(db))
 	r.Delete("/api/words/{id}", apiDeleteWord(db))
 	r.Post("/api/words/{id}/reroll-meaning", apiRerollMeaning())
 	r.Post("/api/words/{id}/reroll-examples", apiRerollExamples())
@@ -76,6 +77,10 @@ type batchWordResult struct {
 	Meaning      string `json:"meaning,omitempty"`
 	ExampleJP    string `json:"example_jp,omitempty"`
 	ExampleEN    string `json:"example_en,omitempty"`
+	// Populated only when the word already exists in the lexicon.
+	WordID      int64 `json:"word_id,omitempty"`
+	DrillCount  int   `json:"drill_count,omitempty"`
+	DrillTarget int   `json:"drill_target,omitempty"`
 }
 
 type indexData struct {
@@ -144,6 +149,28 @@ func apiUpdateWord(db *sql.DB) http.HandlerFunc {
 			return
 		}
 		if err := updateWord(db, id, body.Reading, body.Type, body.Meaning, body.ExampleJp, body.ExampleEn, body.Target); err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		w.WriteHeader(http.StatusNoContent)
+	}
+}
+
+func apiUpdateWordTarget(db *sql.DB) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		id, err := strconv.ParseInt(chi.URLParam(r, "id"), 10, 64)
+		if err != nil {
+			http.Error(w, "invalid id", http.StatusBadRequest)
+			return
+		}
+		var body struct {
+			Target int `json:"target"`
+		}
+		if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+			http.Error(w, "bad request", http.StatusBadRequest)
+			return
+		}
+		if err := updateWordTarget(db, id, body.Target); err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
@@ -334,7 +361,7 @@ func adminAddWordsBatch(db *sql.DB) http.HandlerFunc {
 			return
 		default:
 		}
-		existsInDB, err := wordsExistInDB(db, uniqueNorms)
+		existingInfo, err := wordsInfoInDB(db, uniqueNorms)
 		if err != nil {
 			send(map[string]string{"error": err.Error()})
 			return
@@ -352,8 +379,16 @@ func adminAddWordsBatch(db *sql.DB) http.HandlerFunc {
 				send(batchWordResult{Input: e.input, Word: e.norm, Added: false, Reason: "duplicate in input"})
 				continue
 			}
-			if existsInDB[e.norm] {
-				send(batchWordResult{Input: e.input, Word: e.norm, Added: false, Reason: "already in lexicon"})
+			if info, exists := existingInfo[e.norm]; exists {
+				send(batchWordResult{
+					Input:       e.input,
+					Word:        e.norm,
+					Added:       false,
+					Reason:      "already in lexicon",
+					WordID:      info.ID,
+					DrillCount:  info.DrillCount,
+					DrillTarget: info.DrillTarget,
+				})
 				continue
 			}
 

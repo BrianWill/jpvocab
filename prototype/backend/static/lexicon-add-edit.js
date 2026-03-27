@@ -1,4 +1,5 @@
 import { defaultDrillTarget, typeLabels, _providers, reloadWords, renderTable, getSortedWords, closeAddModal } from './lexicon.js';
+import { esc } from './lexicon-utils.js';
 
 // --- Add/edit modal ---
 // Handles two scenarios:
@@ -436,10 +437,6 @@ function detailItemExInput(exJp, exEn) {
     '<span class="detail-input" contenteditable="true">' + esc(exJp || '') + '</span>' +
     ' <span class="detail-input detail-input--en" contenteditable="true">' + esc(exEn || '') + '</span>' +
     '</span>';
-}
-
-function esc(s) {
-  return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 }
 
 function clearAutofillSpinners() {

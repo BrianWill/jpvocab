@@ -72,7 +72,7 @@ go mod tidy
 The Go backend has a test suite. The frontend has tests for pure JS business logic (no DOM) using the Node.js built-in test runner (`node:test`). Do not write tests for DOM operations, HTML, or browser-specific behaviour.
 
 - **Frontend test location:** `prototype/backend/static/tests/`
-- **Run frontend tests:** `node --test prototype/backend/static/tests/`
+- **Run frontend tests:** `node --test "prototype/backend/static/tests/*.test.js"`
 - **Pure utility functions** that have no DOM dependencies live in `lexicon-utils.js` and are the primary target for frontend tests.
 
 ## Lexicon Features

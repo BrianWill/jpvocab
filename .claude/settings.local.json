@@ -9,7 +9,10 @@
       "Bash(grep:*)",
       "Bash(wc:*)",
       "Bash(find /d/code/jpvocab/frontend/src -type f -name *.js -o -name *.html -o -name *.css)",
-      "Bash(find /d/code/jpvocab -type f -name common.css -o -name *modal*)"
+      "Bash(find /d/code/jpvocab -type f -name common.css -o -name *modal*)",
+      "Bash(node --test prototype/backend/static/tests/)",
+      "Bash(node --test prototype/backend/static/tests/lexicon-utils.test.js)",
+      "Bash(node:*)"
     ]
   },
   "outputStyle": "Explanatory"

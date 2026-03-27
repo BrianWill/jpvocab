@@ -2,6 +2,11 @@
 
 This file is random notes of possible features and bug fixes.
 
+- in the edit words modal
+    - the gap between the generate and remove buttons should be shrunk 
+    - when the user hovers the word type pulldown and when it has focus, it should look like a button rather than be underlined
+    - the word type pulldown isn't wide enough to display every word type; some are cut off
+
 - in the new drill menu, the Total words should be "max total words"
     - currently, toggling word type chips can modify the "total words", but this should not be the case
     - if "max total words" exceeds the sum of words in the selected categories, the pool size is just that size (i.e. which ever is smaller)

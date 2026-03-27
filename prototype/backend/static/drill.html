@@ -12,7 +12,7 @@
 
 <div class="page-header">
   <span class="header-began" id="header-began"></span>
-  <button class="btn-header" onclick="openRestartModal()" title="Restart drill">↺</button>
+  <button class="btn-header" title="Restart drill">↺</button>
   <div class="header-progress" id="progress-bar-container"><div class="progress-bar"></div></div>
   <div class="header-counter"><span id="stat-togo"></span></div>
   <div class="page-nav-links">
@@ -56,10 +56,10 @@
 
   <div class="button-area">
     <div class="action-bar" id="action-prompt">
-      <button class="btn btn-no" onclick="reveal(false)">
+      <button class="btn btn-no">
         ✕ Don't know <span class="key-hint">A</span>
       </button>
-      <button class="btn btn-yes" onclick="reveal(true)">
+      <button class="btn btn-yes">
         ✓ Do know <span class="key-hint">D</span>
       </button>
     </div>
@@ -82,27 +82,27 @@
 
 </div><!-- .page-body -->
 
-<div id="restart-modal-backdrop" class="modal-backdrop hidden" onclick="handleRestartBackdropClick(event)">
+<div id="restart-modal-backdrop" class="modal-backdrop hidden">
   <div class="modal">
     <div class="modal-header">
       <span class="modal-word-label">New drill</span>
-      <button class="modal-close" onclick="closeRestartModal()">✕</button>
+      <button class="modal-close">✕</button>
     </div>
     <div class="modal-body">
       <div class="restart-field">
         <label>Total words</label>
         <div class="num-stepper">
-          <button class="num-btn" type="button" onmousedown="startStep(adjustRestart,'restart-total-words',-5)" onmouseup="stopStep()" onmouseleave="stopStep()">−</button>
-          <input type="number" id="restart-total-words" min="1" oninput="capRestartInput(this)">
-          <button class="num-btn" type="button" onmousedown="startStep(adjustRestart,'restart-total-words',5)" onmouseup="stopStep()" onmouseleave="stopStep()">+</button>
+          <button class="num-btn" type="button">−</button>
+          <input type="number" id="restart-total-words" min="1">
+          <button class="num-btn" type="button">+</button>
         </div>
       </div>
       <div class="restart-field">
         <label>Words per round</label>
         <div class="num-stepper">
-          <button class="num-btn" type="button" onmousedown="startStep(adjustRestart,'restart-round-size',-5)" onmouseup="stopStep()" onmouseleave="stopStep()">−</button>
-          <input type="number" id="restart-round-size" min="1" oninput="capRestartInput(this)">
-          <button class="num-btn" type="button" onmousedown="startStep(adjustRestart,'restart-round-size',5)" onmouseup="stopStep()" onmouseleave="stopStep()">+</button>
+          <button class="num-btn" type="button">−</button>
+          <input type="number" id="restart-round-size" min="1">
+          <button class="num-btn" type="button">+</button>
         </div>
       </div>
       <div class="restart-field restart-field-filter">
@@ -117,8 +117,8 @@
       <div class="filter-hint" id="filter-hint"></div>
     </div>
     <div class="modal-footer">
-      <button class="btn-cancel" onclick="closeRestartModal()">Cancel</button>
-      <button class="btn-save" id="restart-start-btn" onclick="confirmRestart()">Start</button>
+      <button class="btn-cancel">Cancel</button>
+      <button class="btn-save" id="restart-start-btn">Start</button>
     </div>
   </div>
 </div>

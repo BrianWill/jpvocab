@@ -50,6 +50,8 @@ let _providers = null;
 document.getElementById('add-result-modal-backdrop').addEventListener('click', function (e) {
   if (e.target === this && _addPhase !== 'loading' && _pendingGenerates === 0) closeAddResultModal();
 });
+document.getElementById('add-result-modal-close').addEventListener('click', closeAddResultModal);
+document.querySelector('#add-modal-backdrop .btn-save').addEventListener('click', saveAddModal);
 
 // Auto-save word info edits in the add-result modal
 document.getElementById('add-result-modal-body').addEventListener('focusout', function(e) {
@@ -221,13 +223,13 @@ function appendWordRow(data) {
 
   const removeBtn =
     '<button class="btn-delete btn-word-remove" data-tooltip="Remove word"' +
-      ' data-word="' + esc(data.word) + '" onmousedown="removeWordRow(event,this)">✕</button>';
+      ' data-word="' + esc(data.word) + '">✕</button>';
   const hasProviders = _providers && (_providers.anthropic || _providers.openai);
   const generateBtn = data.word_id
     ? '<button class="btn-generate"' +
         (hasProviders ? '' : ' disabled') +
         ' data-tooltip="Uses an AI API request to get the word\'s reading, part-of-speech, meaning, and an example sentence"' +
-        ' onmousedown="generateWordAutofill(event,' + data.word_id + ',\'' + esc(data.word) + '\',this)">generate</button>'
+        '>generate</button>'
     : '';
   let inlineExtra;
   if (data.word_id) {
@@ -243,8 +245,8 @@ function appendWordRow(data) {
         '<span class="target-stepper" data-tooltip="Remaining drills to target">' +
           '<span class="drill-target-label">🎯</span>' +
           '<span class="drill-target-val" data-target="' + target + '">' + target + '</span>' +
-          '<button class="btn-target-adj" onmousedown="adjustWordTarget(event,' + data.word_id + ',-1,this)">−</button>' +
-          '<button class="btn-target-adj" onmousedown="adjustWordTarget(event,' + data.word_id + ',1,this)">+</button>' +
+          '<button class="btn-target-adj">−</button>' +
+          '<button class="btn-target-adj">+</button>' +
         '</span>' +
       '</span>';
   } else {
@@ -262,6 +264,18 @@ function appendWordRow(data) {
   row.innerHTML =
     '<div class="word-result-main"><span class="result-word">' + esc(data.word) + '</span>' + badge + inlineExtra + '</div>' +
     details;
+
+  const removeBtnEl = row.querySelector('.btn-word-remove');
+  if (removeBtnEl) removeBtnEl.addEventListener('mousedown', e => removeWordRow(e, removeBtnEl));
+
+  if (data.word_id) {
+    const genBtnEl = row.querySelector('.btn-generate');
+    if (genBtnEl) genBtnEl.addEventListener('mousedown', e => generateWordAutofill(e, data.word_id, data.word, genBtnEl));
+
+    const [adjMinusEl, adjPlusEl] = row.querySelectorAll('.btn-target-adj');
+    if (adjMinusEl) adjMinusEl.addEventListener('mousedown', e => adjustWordTarget(e, data.word_id, -1, adjMinusEl));
+    if (adjPlusEl) adjPlusEl.addEventListener('mousedown', e => adjustWordTarget(e, data.word_id, 1, adjPlusEl));
+  }
 }
 
 function updateWordRowDetails(data) {
@@ -489,13 +503,13 @@ function renderStatus() {
   const countsHtml = '<span>' + _addedWords.length + ' added' + skippedHtml + '</span>';
   const hasProviders = _providers && (_providers.anthropic || _providers.openai);
   const actionHtml = _pendingGenerates > 0
-    ? '<button class="btn-generate btn-generate--cancel" onmousedown="cancelAllGenerates()">' +
+    ? '<button class="btn-generate btn-generate--cancel">' +
         '<span class="spinner"></span>cancel generation' +
       '</button>'
     : '<button class="btn-generate btn-generate--all"' +
         (_addedWords.length > 0 && hasProviders && _addPhase !== 'loading' ? '' : ' disabled') +
         ' data-tooltip="Uses an AI API request to get the reading, part-of-speech, meaning, and an example sentence for each newly added word"' +
-        ' onmousedown="generateAllAdded()">generate all</button>';
+        '>generate all</button>';
   if (_addPhase === 'loading') {
     el.className = 'modal-status modal-status-loading';
     el.innerHTML = countsHtml + actionHtml + (_pendingGenerates === 0 ? '<span class="spinner"></span>' : '');
@@ -506,6 +520,8 @@ function renderStatus() {
     el.className = 'modal-status ' + (_pendingGenerates > 0 ? 'modal-status-loading' : 'modal-status-done');
     el.innerHTML = countsHtml + actionHtml;
   }
+  const actionBtn = el.querySelector('.btn-generate');
+  if (actionBtn) actionBtn.addEventListener('mousedown', _pendingGenerates > 0 ? cancelAllGenerates : generateAllAdded);
   updateAddResultFooter();
 }
 

@@ -42,8 +42,8 @@ function fullDateTime(dateStr) {
 function renderRow(w, trMain, trEx) {
   trMain.innerHTML =
     '<td><div class="cell-word" data-tooltip="Word">' + w.word +
-      '<button class="btn-edit" onclick="openEditModal(event)" data-tooltip="Edit word">✎</button>' +
-      '<button class="btn-delete" onclick="openDeleteModal(event)" data-tooltip="Delete word">✕</button>' +
+      '<button class="btn-edit" data-tooltip="Edit word">✎</button>' +
+      '<button class="btn-delete" data-tooltip="Delete word">✕</button>' +
     '</div></td>' +
     '<td class="cell-reading" data-tooltip="Reading (Pronunciation)">' + w.reading + '</td>' +
     '<td><span class="type-badge" data-tooltip="' + (typeLabels[w.type] || w.type) + '">' + w.type + '</span></td>' +
@@ -52,14 +52,20 @@ function renderRow(w, trMain, trEx) {
     '<td class="cell-incorrect" data-tooltip="Times answered incorrectly">' + w.incorrect + '</td>' +
     '<td class="cell-target" data-tooltip="Remaining drills to target">' +
       '<div class="target-stepper">' +
-        '<button class="btn-target-adj" onmousedown="adjustTargetInline(event,-4)">−</button>' +
+        '<button class="btn-target-adj">−</button>' +
         '<span>' + w.target + '</span>' +
-        '<button class="btn-target-adj" onmousedown="adjustTargetInline(event,4)">+</button>' +
+        '<button class="btn-target-adj">+</button>' +
       '</div>' +
     '</td>' +
     '<td></td>';
   trMain._word = w;
   trMain._trEx  = trEx;
+
+  trMain.querySelector('.btn-edit').addEventListener('click', openEditModal);
+  trMain.querySelector('.btn-delete').addEventListener('click', openDeleteModal);
+  const [adjMinus, adjPlus] = trMain.querySelectorAll('.btn-target-adj');
+  adjMinus.addEventListener('mousedown', e => adjustTargetInline(e, -4));
+  adjPlus.addEventListener('mousedown', e => adjustTargetInline(e, 4));
 
   trEx.innerHTML =
     '<td colspan="2" class="cell-date">' +
@@ -261,6 +267,20 @@ document.addEventListener('mousemove', e => {
     : x + 'px';
   lexTooltip.style.top = (e.clientY + 18) + 'px';
 });
+
+// --- Static element event listeners ---
+document.querySelector('.btn-header').addEventListener('click', openAddModal);
+
+const addModalBackdrop = document.getElementById('add-modal-backdrop');
+addModalBackdrop.addEventListener('click', e => onBackdropClick(e, closeAddModal));
+addModalBackdrop.querySelector('.modal-close').addEventListener('click', closeAddModal);
+addModalBackdrop.querySelector('.btn-cancel').addEventListener('click', closeAddModal);
+
+const deleteModalBackdrop = document.getElementById('delete-modal-backdrop');
+deleteModalBackdrop.addEventListener('click', e => onBackdropClick(e, closeDeleteModal));
+deleteModalBackdrop.querySelector('.modal-close').addEventListener('click', closeDeleteModal);
+deleteModalBackdrop.querySelector('.btn-cancel').addEventListener('click', closeDeleteModal);
+document.getElementById('btn-delete-confirm').addEventListener('click', confirmDelete);
 
 // --- Add words modal ---
 function openAddModal() {

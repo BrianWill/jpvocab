@@ -395,3 +395,34 @@ document.querySelectorAll('.filter-chip').forEach(btn => {
     updateFilterHint();
   });
 });
+
+// --- Static element event listeners ---
+document.querySelector('.btn-header').addEventListener('click', openRestartModal);
+document.querySelector('.btn-no').addEventListener('click', () => reveal(false));
+document.querySelector('.btn-yes').addEventListener('click', () => reveal(true));
+
+const restartBackdrop = document.getElementById('restart-modal-backdrop');
+restartBackdrop.addEventListener('click', handleRestartBackdropClick);
+restartBackdrop.querySelector('.modal-close').addEventListener('click', closeRestartModal);
+restartBackdrop.querySelector('.btn-cancel').addEventListener('click', closeRestartModal);
+document.getElementById('restart-start-btn').addEventListener('click', confirmRestart);
+
+const totalInput = document.getElementById('restart-total-words');
+const [totalMinus, totalPlus] = totalInput.closest('.num-stepper').querySelectorAll('.num-btn');
+totalMinus.addEventListener('mousedown', () => startStep(adjustRestart, 'restart-total-words', -5));
+totalMinus.addEventListener('mouseup', stopStep);
+totalMinus.addEventListener('mouseleave', stopStep);
+totalPlus.addEventListener('mousedown', () => startStep(adjustRestart, 'restart-total-words', 5));
+totalPlus.addEventListener('mouseup', stopStep);
+totalPlus.addEventListener('mouseleave', stopStep);
+totalInput.addEventListener('input', () => capRestartInput(totalInput));
+
+const roundInput = document.getElementById('restart-round-size');
+const [roundMinus, roundPlus] = roundInput.closest('.num-stepper').querySelectorAll('.num-btn');
+roundMinus.addEventListener('mousedown', () => startStep(adjustRestart, 'restart-round-size', -5));
+roundMinus.addEventListener('mouseup', stopStep);
+roundMinus.addEventListener('mouseleave', stopStep);
+roundPlus.addEventListener('mousedown', () => startStep(adjustRestart, 'restart-round-size', 5));
+roundPlus.addEventListener('mouseup', stopStep);
+roundPlus.addEventListener('mouseleave', stopStep);
+roundInput.addEventListener('input', () => capRestartInput(roundInput));

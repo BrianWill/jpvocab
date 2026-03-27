@@ -12,7 +12,7 @@
 
 <div class="page-header">
   <span class="page-meta" id="word-count" data-tooltip="Active words have not yet reached their target drill count and are eligible to be drawn in drills"></span>
-  <button class="btn-header" onclick="openAddModal()" data-tooltip="Add words">＋</button>
+  <button class="btn-header" data-tooltip="Add words">＋</button>
   <div class="page-nav-links">
     <a class="page-nav-link" href="/activity">Activity →</a>
     <a class="page-nav-link page-nav-link--current" href="/lexicon">Lexicon</a>
@@ -71,11 +71,11 @@
   </table>
 </div>
 
-<div id="add-modal-backdrop" class="modal-backdrop hidden" onclick="onBackdropClick(event, closeAddModal)">
+<div id="add-modal-backdrop" class="modal-backdrop hidden">
   <div class="modal">
     <div class="modal-header">
       <span class="modal-word-label">Add words</span>
-      <button class="modal-close" onclick="closeAddModal()">✕</button>
+      <button class="modal-close">✕</button>
     </div>
     <div class="modal-body">
       <div class="modal-field">
@@ -84,8 +84,8 @@
       </div>
     </div>
     <div class="modal-footer">
-      <button class="btn-cancel" onclick="closeAddModal()">Cancel</button>
-      <button class="btn-save" onclick="saveAddModal()">Add</button>
+      <button class="btn-cancel">Cancel</button>
+      <button class="btn-save">Add</button>
     </div>
   </div>
 </div>
@@ -94,7 +94,7 @@
   <div class="modal modal-wide">
     <div class="modal-header">
       <span id="add-result-modal-title">Edit words</span>
-      <button class="modal-close" id="add-result-modal-close" onclick="closeAddResultModal()">✕</button>
+      <button class="modal-close" id="add-result-modal-close">✕</button>
     </div>
     <div class="modal-status" id="add-result-modal-status"></div>
     <div class="modal-body modal-body-scroll" id="add-result-modal-body"></div>
@@ -102,19 +102,19 @@
   </div>
 </div>
 
-<div id="delete-modal-backdrop" class="modal-backdrop hidden" onclick="onBackdropClick(event, closeDeleteModal)">
+<div id="delete-modal-backdrop" class="modal-backdrop hidden">
   <div class="modal">
     <div class="modal-header">
       <span class="modal-word-label" id="delete-modal-label"></span>
-      <button class="modal-close" onclick="closeDeleteModal()">✕</button>
+      <button class="modal-close">✕</button>
     </div>
     <div class="modal-body">
       <p class="delete-confirm-text">Delete this word from the lexicon? This cannot be undone.</p>
     </div>
     <div class="modal-footer">
       <span class="modal-error hidden" id="delete-error"></span>
-      <button class="btn-cancel" onclick="closeDeleteModal()">Cancel</button>
-      <button id="btn-delete-confirm" class="btn-danger" onclick="confirmDelete()">Delete</button>
+      <button class="btn-cancel">Cancel</button>
+      <button id="btn-delete-confirm" class="btn-danger">Delete</button>
     </div>
   </div>
 </div>

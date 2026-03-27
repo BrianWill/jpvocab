@@ -287,6 +287,11 @@ function handleDayBackdropClick(e) {
 
 document.addEventListener('keydown', e => { if (e.key === 'Escape') closeDayModal(); });
 
+// --- Static element event listeners ---
+const dayModalBackdrop = document.getElementById('day-modal-backdrop');
+dayModalBackdrop.addEventListener('click', handleDayBackdropClick);
+dayModalBackdrop.querySelector('.modal-close').addEventListener('click', closeDayModal);
+
 // ── Tooltip ───────────────────────────────────────────────────────────────────
 
 const actTooltip = document.createElement('div');

@@ -2,6 +2,9 @@
 
 This file is random notes of possible features and bug fixes.
 
+- in the drills, words marked wrong are being sorted to the top as we answer
+    - isn't this sorting supposed to happen just at start of round rather than during the round?
+
 - the set of POS should be constrained to an enum
     - tell AI to stick to the defined categories (or as fallback label a word as "other")
 
@@ -40,4 +43,14 @@ This file is random notes of possible features and bug fixes.
 - make a mobile app (sync through turso)
 
 - EXPERIMENT: when finished with the project, have claude generate a claude.md file with details about the program that could be used to recreate the program from scratch in a new project 
+    - express as a list of features / requirements, not as a spec for implementation
+        - i.e. don't prescribe code structure or specifics of UI layout
+        - only specify broad strokes of tech stack
+    - generate a checklist plan, then have it follow the plan, step-by-step
+        - it is allowed to revise the plan if it desires
+        - but don't test or offer detailed feedback between steps
+        - user is mainly there to tell it to keep going after each step
+            - "are you done? OK revise your tasklist, I'll clear context, and you will resume
+        - if stuck, elevate effort level? or do whole experiment on effort high?
+        - try once with sonnet, and once with opus
     - make sure to embed structuring principles, like keep routes and db functions in separate files

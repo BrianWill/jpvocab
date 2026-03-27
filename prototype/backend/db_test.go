@@ -462,3 +462,395 @@ func TestResetDB_ClearsData(t *testing.T) {
 	}
 }
 
+// --- insertWordReturningID ---
+
+func TestInsertWordReturningID(t *testing.T) {
+	db := testDB(t)
+	id, err := insertWordReturningID(db, "鳥", "とり", "noun", "bird", "", "", "", 2)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if id == 0 {
+		t.Error("expected non-zero ID")
+	}
+	var word string
+	db.QueryRow(`SELECT word FROM words WHERE id = ?`, id).Scan(&word)
+	if word != "鳥" {
+		t.Errorf("word: got %q, want 鳥", word)
+	}
+}
+
+// --- updateWordFill ---
+
+func TestUpdateWordFill(t *testing.T) {
+	db := testDB(t)
+	id := insertTestWord(t, db, "山", 1)
+
+	err := updateWordFill(db, id, "やま", "noun", "mountain", "山が高い。", "The mountain is tall.", `[{"id":1,"reading":"やま"}]`)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	var reading, meaning, kanjiData string
+	db.QueryRow(`SELECT reading, meaning, kanji_data FROM words WHERE id = ?`, id).
+		Scan(&reading, &meaning, &kanjiData)
+	if reading != "やま" {
+		t.Errorf("reading: got %q, want やま", reading)
+	}
+	if meaning != "mountain" {
+		t.Errorf("meaning: got %q, want mountain", meaning)
+	}
+	if kanjiData != `[{"id":1,"reading":"やま"}]` {
+		t.Errorf("kanji_data: got %q", kanjiData)
+	}
+}
+
+func TestUpdateWordFill_EmptyKanjiDataDefaultsToArray(t *testing.T) {
+	db := testDB(t)
+	id := insertTestWord(t, db, "石", 1)
+
+	if err := updateWordFill(db, id, "いし", "noun", "stone", "", "", ""); err != nil {
+		t.Fatal(err)
+	}
+	var kanjiData string
+	db.QueryRow(`SELECT kanji_data FROM words WHERE id = ?`, id).Scan(&kanjiData)
+	if kanjiData != "[]" {
+		t.Errorf("kanji_data: got %q, want []", kanjiData)
+	}
+}
+
+// --- wordsInfoInDB ---
+
+func TestWordsInfoInDB_Empty(t *testing.T) {
+	db := testDB(t)
+	result, err := wordsInfoInDB(db, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if result != nil {
+		t.Errorf("expected nil for empty input, got %v", result)
+	}
+}
+
+func TestWordsInfoInDB_ReturnsCorrectFields(t *testing.T) {
+	db := testDB(t)
+	insertWord(db, "空", "そら", "noun", "sky", "空が青い。", "The sky is blue.", "", 4)
+
+	result, err := wordsInfoInDB(db, []string{"空", "notexist"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	info, ok := result["空"]
+	if !ok {
+		t.Fatal("空 not found in result")
+	}
+	if info.Reading != "そら" {
+		t.Errorf("Reading: got %q, want そら", info.Reading)
+	}
+	if info.DrillTarget != 4 {
+		t.Errorf("DrillTarget: got %d, want 4", info.DrillTarget)
+	}
+	if _, ok := result["notexist"]; ok {
+		t.Error("notexist should not be in result")
+	}
+}
+
+// --- updateWordTarget ---
+
+func TestUpdateWordTarget(t *testing.T) {
+	db := testDB(t)
+	id := insertTestWord(t, db, "森", 1)
+
+	if err := updateWordTarget(db, id, 7); err != nil {
+		t.Fatal(err)
+	}
+	var target int
+	db.QueryRow(`SELECT drill_target FROM words WHERE id = ?`, id).Scan(&target)
+	if target != 7 {
+		t.Errorf("drill_target: got %d, want 7", target)
+	}
+}
+
+// --- listKanji ---
+
+func TestListKanji_EmptySliceWhenNone(t *testing.T) {
+	db := testDB(t)
+	kanji, err := listKanji(db)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if kanji == nil {
+		t.Error("listKanji should return [] not nil for empty table")
+	}
+}
+
+func TestListKanji_ReturnsInserted(t *testing.T) {
+	db := testDB(t)
+	upsertKanji(db, "日", []string{"sun", "day"})
+	upsertKanji(db, "本", []string{"origin", "book"})
+
+	kanji, err := listKanji(db)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(kanji) != 2 {
+		t.Fatalf("expected 2 kanji, got %d", len(kanji))
+	}
+	if kanji[0].Character != "日" {
+		t.Errorf("first character: got %q, want 日", kanji[0].Character)
+	}
+	if len(kanji[0].Meanings) != 2 {
+		t.Errorf("日 meanings: got %v, want [sun day]", kanji[0].Meanings)
+	}
+}
+
+// --- listWords ---
+
+func TestListWords_KanjiDataDefaultsToEmptySlice(t *testing.T) {
+	db := testDB(t)
+	insertWord(db, "月", "つき", "noun", "moon", "", "", "", 1)
+
+	words, err := listWords(db)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(words) != 1 {
+		t.Fatalf("expected 1 word, got %d", len(words))
+	}
+	if words[0].KanjiData == nil {
+		t.Error("KanjiData should be [] not nil")
+	}
+}
+
+func TestListWords_NullableColumnsDefaultToEmpty(t *testing.T) {
+	db := testDB(t)
+	// Insert with only word + created_at so all nullable TEXT columns are NULL.
+	db.Exec(`INSERT INTO words (word, created_at) VALUES ('無', datetime('now'))`)
+
+	words, err := listWords(db)
+	if err != nil {
+		t.Fatalf("listWords with NULL columns: %v", err)
+	}
+	if len(words) != 1 {
+		t.Fatalf("expected 1 word, got %d", len(words))
+	}
+	w := words[0]
+	if w.Reading != "" || w.Type != "" || w.Meaning != "" || w.ExampleJp != "" || w.ExampleEn != "" {
+		t.Errorf("nullable fields should default to empty string, got %+v", w)
+	}
+}
+
+func TestListWords_OrderNewestFirst(t *testing.T) {
+	db := testDB(t)
+	insertWord(db, "古", "", "", "", "", "", "", 1)
+	insertWord(db, "新", "", "", "", "", "", "", 1)
+	db.Exec(`UPDATE words SET created_at = datetime('now', '-1 day') WHERE word = '古'`)
+
+	words, err := listWords(db)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(words) != 2 {
+		t.Fatalf("expected 2 words, got %d", len(words))
+	}
+	if words[0].Word != "新" {
+		t.Errorf("first word: got %q, want 新 (newest first)", words[0].Word)
+	}
+}
+
+// --- updateWord ---
+
+func TestUpdateWord(t *testing.T) {
+	db := testDB(t)
+	id := insertTestWord(t, db, "雨", 3)
+
+	if err := updateWord(db, id, "あめ", "noun", "rain", "雨が降る。", "It rains.", 5); err != nil {
+		t.Fatal(err)
+	}
+
+	var reading, pos, meaning, exJp, exEn string
+	var target int
+	db.QueryRow(`SELECT reading, part_of_speech, meaning, example_jp, example_en, drill_target FROM words WHERE id = ?`, id).
+		Scan(&reading, &pos, &meaning, &exJp, &exEn, &target)
+
+	if reading != "あめ" {
+		t.Errorf("reading: got %q, want あめ", reading)
+	}
+	if pos != "noun" {
+		t.Errorf("part_of_speech: got %q, want noun", pos)
+	}
+	if meaning != "rain" {
+		t.Errorf("meaning: got %q, want rain", meaning)
+	}
+	if exJp != "雨が降る。" {
+		t.Errorf("example_jp: got %q", exJp)
+	}
+	if target != 5 {
+		t.Errorf("drill_target: got %d, want 5", target)
+	}
+}
+
+// --- deleteWordByID / deleteWordsByName ---
+
+func TestDeleteWordByID(t *testing.T) {
+	db := testDB(t)
+	id := insertTestWord(t, db, "花", 1)
+
+	if err := deleteWordByID(db, id); err != nil {
+		t.Fatal(err)
+	}
+	var count int
+	db.QueryRow(`SELECT COUNT(*) FROM words WHERE id = ?`, id).Scan(&count)
+	if count != 0 {
+		t.Errorf("word should be deleted, got count %d", count)
+	}
+}
+
+func TestDeleteWordsByName(t *testing.T) {
+	db := testDB(t)
+	insertWord(db, "春", "", "", "", "", "", "", 1)
+	insertWord(db, "夏", "", "", "", "", "", "", 1)
+	insertWord(db, "秋", "", "", "", "", "", "", 1)
+
+	if err := deleteWordsByName(db, []string{"春", "夏"}); err != nil {
+		t.Fatal(err)
+	}
+	var count int
+	db.QueryRow(`SELECT COUNT(*) FROM words`).Scan(&count)
+	if count != 1 {
+		t.Errorf("expected 1 word remaining, got %d", count)
+	}
+	var remaining string
+	db.QueryRow(`SELECT word FROM words`).Scan(&remaining)
+	if remaining != "秋" {
+		t.Errorf("remaining word: got %q, want 秋", remaining)
+	}
+}
+
+func TestDeleteWordsByName_Empty(t *testing.T) {
+	db := testDB(t)
+	if err := deleteWordsByName(db, nil); err != nil {
+		t.Fatal("deleteWordsByName(nil) should be a no-op, got:", err)
+	}
+}
+
+// --- calendarWeekSunday ---
+
+func TestCalendarWeekSunday(t *testing.T) {
+	cases := []struct {
+		input string
+		want  string
+	}{
+		{"2024-01-14", "2024-01-14"}, // already a Sunday
+		{"2024-01-15", "2024-01-14"}, // Monday
+		{"2024-01-17", "2024-01-14"}, // Wednesday
+		{"2024-01-20", "2024-01-14"}, // Saturday
+		{"2024-01-21", "2024-01-21"}, // next Sunday → itself
+		{"bad-date", "bad-date"},     // invalid input returned as-is
+	}
+	for _, tc := range cases {
+		got := calendarWeekSunday(tc.input)
+		if got != tc.want {
+			t.Errorf("calendarWeekSunday(%q) = %q, want %q", tc.input, got, tc.want)
+		}
+	}
+}
+
+// --- getActivityCalendar ---
+
+func TestGetActivityCalendar_DrilledAddedCleared(t *testing.T) {
+	db := testDB(t)
+
+	// Word added on the 15th, drilled on the 18th, cleared on the 20th.
+	db.Exec(`INSERT INTO words (word, reading, meaning, drill_count, drill_target, created_at, target_reached_at)
+		VALUES ('星', 'ほし', 'star', 3, 3, '2024-01-15 10:00:00', '2024-01-20 10:00:00')`)
+	var wordID int64
+	db.QueryRow(`SELECT id FROM words WHERE word = '星'`).Scan(&wordID)
+
+	db.Exec(`INSERT INTO drill_sessions (started_at) VALUES ('2024-01-18 10:00:00')`)
+	var sessionID int64
+	db.QueryRow(`SELECT MAX(id) FROM drill_sessions`).Scan(&sessionID)
+	db.Exec(`INSERT INTO drill_answers (session_id, word_id, correct, answered_at) VALUES (?, ?, 1, '2024-01-18 10:00:00')`, sessionID, wordID)
+
+	cal, err := getActivityCalendar(db)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	added := cal.Days["2024-01-15"]
+	if len(added.Added) != 1 || added.Added[0].Word != "星" {
+		t.Errorf("added: expected 星 on 2024-01-15, got %v", added.Added)
+	}
+
+	drilled := cal.Days["2024-01-18"]
+	if len(drilled.Drilled) != 1 || drilled.Drilled[0].Word != "星" {
+		t.Errorf("drilled: expected 星 on 2024-01-18, got %v", drilled.Drilled)
+	}
+	if drilled.Drilled[0].Knew == nil || !*drilled.Drilled[0].Knew {
+		t.Error("Knew should be true for a correct answer")
+	}
+
+	cleared := cal.Days["2024-01-20"]
+	if len(cleared.Cleared) != 1 || cleared.Cleared[0].Word != "星" {
+		t.Errorf("cleared: expected 星 on 2024-01-20, got %v", cleared.Cleared)
+	}
+}
+
+func TestGetActivityCalendar_KnewFalseWhenAnyIncorrect(t *testing.T) {
+	db := testDB(t)
+	db.Exec(`INSERT INTO words (word, created_at) VALUES ('風', datetime('now'))`)
+	var wordID int64
+	db.QueryRow(`SELECT id FROM words WHERE word = '風'`).Scan(&wordID)
+
+	db.Exec(`INSERT INTO drill_sessions DEFAULT VALUES`)
+	var sessionID int64
+	db.QueryRow(`SELECT MAX(id) FROM drill_sessions`).Scan(&sessionID)
+	// One correct, one incorrect on the same day — MIN(correct) should be 0.
+	db.Exec(`INSERT INTO drill_answers (session_id, word_id, correct) VALUES (?, ?, 1)`, sessionID, wordID)
+	db.Exec(`INSERT INTO drill_answers (session_id, word_id, correct) VALUES (?, ?, 0)`, sessionID, wordID)
+
+	cal, err := getActivityCalendar(db)
+	if err != nil {
+		t.Fatal(err)
+	}
+	today := cal.Today
+	if len(cal.Days[today].Drilled) == 0 {
+		t.Fatal("expected a drilled entry for today")
+	}
+	if entry := cal.Days[today].Drilled[0]; entry.Knew == nil || *entry.Knew {
+		t.Error("Knew should be false when any answer that day was incorrect")
+	}
+}
+
+func TestGetActivityCalendar_NonNilSlices(t *testing.T) {
+	db := testDB(t)
+	// Only an Added entry on this date — Drilled and Cleared must still be [].
+	db.Exec(`INSERT INTO words (word, created_at) VALUES ('雲', '2024-03-01 00:00:00')`)
+
+	cal, err := getActivityCalendar(db)
+	if err != nil {
+		t.Fatal(err)
+	}
+	day := cal.Days["2024-03-01"]
+	if day.Drilled == nil {
+		t.Error("Drilled should be [] not nil")
+	}
+	if day.Cleared == nil {
+		t.Error("Cleared should be [] not nil")
+	}
+}
+
+func TestGetActivityCalendar_HistoryStartIsContainingSunday(t *testing.T) {
+	db := testDB(t)
+	// 2024-01-17 is a Wednesday; the containing Sunday is 2024-01-14.
+	db.Exec(`INSERT INTO words (word, created_at) VALUES ('川', '2024-01-17 00:00:00')`)
+
+	cal, err := getActivityCalendar(db)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if cal.HistoryStart != "2024-01-14" {
+		t.Errorf("HistoryStart: got %q, want 2024-01-14 (Sunday of week containing 2024-01-17)", cal.HistoryStart)
+	}
+}
+

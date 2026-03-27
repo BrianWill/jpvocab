@@ -6,18 +6,6 @@
 //      bypassing the streaming machinery entirely (openEditModal).
 // The word row helpers (appendWordRow, saveWordRowEdits, etc.) serve both cases.
 
-function providerSelectTooltip(providers) {
-  const lines = [];
-  if (!providers.anthropic) lines.push('Anthropic: set ANTHROPIC_API_KEY to enable');
-  if (!providers.openai)    lines.push('OpenAI: set OPENAI_API_KEY to enable');
-  if (lines.length === 0) return null;
-  return lines.join(' · ') + ' — then restart the program';
-}
-
-function applyProviderAvailability(providers) {
-  _providers = providers;
-}
-
 // --- Edit modal (reuses add-result modal with a single word) ---
 function openEditModal(event) {
   event.stopPropagation();
@@ -84,6 +72,23 @@ async function closeAddResultModal() {
 }
 
 async function saveAddModal() {
+  function sortWordRows() {
+    const body = document.getElementById('add-result-modal-body');
+    const rows = Array.from(body.children);
+    rows.sort((a, b) => {
+      const aLexicon = a.dataset.reason === 'already in lexicon' ? 0 : 1;
+      const bLexicon = b.dataset.reason === 'already in lexicon' ? 0 : 1;
+      return aLexicon - bLexicon;
+    });
+    rows.forEach(r => body.appendChild(r));
+  }
+  function setModalStatus(type, text) {
+    const el = document.getElementById('add-result-modal-status');
+    const spinner = type === 'loading' ? '<span class="spinner"></span>' : '';
+    el.className = 'modal-status modal-status-' + type;
+    el.innerHTML = spinner + '<span>' + esc(text) + '</span>';
+  }
+
   const wordList = document.getElementById('add-words-input').value
     .split(/[\s,、。・;:!?()（）「」【】『』\[\]]+/)
     .map(t => t.trim()).filter(t => t.length > 0);
@@ -191,17 +196,6 @@ async function saveAddModal() {
       updateAddResultFooter();
     }
   }
-}
-
-function sortWordRows() {
-  const body = document.getElementById('add-result-modal-body');
-  const rows = Array.from(body.children);
-  rows.sort((a, b) => {
-    const aLexicon = a.dataset.reason === 'already in lexicon' ? 0 : 1;
-    const bLexicon = b.dataset.reason === 'already in lexicon' ? 0 : 1;
-    return aLexicon - bLexicon;
-  });
-  rows.forEach(r => body.appendChild(r));
 }
 
 function appendWordRow(data) {
@@ -515,14 +509,15 @@ function renderStatus() {
   updateAddResultFooter();
 }
 
-function setModalStatus(type, text) {
-  const el = document.getElementById('add-result-modal-status');
-  const spinner = type === 'loading' ? '<span class="spinner"></span>' : '';
-  el.className = 'modal-status modal-status-' + type;
-  el.innerHTML = spinner + '<span>' + esc(text) + '</span>';
-}
-
 function initAddResultFooter() {
+  function providerSelectTooltip(providers) {
+    const lines = [];
+    if (!providers.anthropic) lines.push('Anthropic: set ANTHROPIC_API_KEY to enable');
+    if (!providers.openai)    lines.push('OpenAI: set OPENAI_API_KEY to enable');
+    if (lines.length === 0) return null;
+    return lines.join(' · ') + ' — then restart the program';
+  }
+
   const footer = document.getElementById('add-result-modal-footer');
   const hasProviders = _providers && (_providers.anthropic || _providers.openai);
   const progTip = _providers ? providerSelectTooltip(_providers) : null;

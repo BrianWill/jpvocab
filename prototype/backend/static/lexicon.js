@@ -143,7 +143,7 @@ async function init() {
   if (providers.default_drill_target) defaultDrillTarget = providers.default_drill_target;
   updateWordCount();
   renderTable(getSortedWords('added', 'desc'));
-  applyProviderAvailability(providers);
+  _providers = providers;
 }
 
 init();

@@ -12,7 +12,7 @@
   font-size: 0.8rem;
   font-weight: 600;
   color: #89b4fa;
-  padding: 0.5rem 0.75rem 0.5rem;
+  padding: 0.5rem 0.75rem;
 }
 .sidebar-list {
   list-style: none;
@@ -118,6 +118,7 @@
   font-size: 0.8rem;
   color: #6c7086;
   white-space: nowrap;
+  margin-left: auto;
 }
 .header-counter span {
   display: inline-block;
@@ -132,6 +133,7 @@
 .dot-done { background: #a6e3a1; }
 
 .header-progress {
+  margin-right: auto;
   flex: 1;
   max-width: 40%;
   height: 4px;
@@ -210,17 +212,9 @@
   color: #cdd6f4;
   line-height: 1.6;
 }
-.detail-value.highlight {
-  color: #89b4fa;
-  font-weight: 600;
-  font-size: 1.1rem;
-  line-height: 1.6;
-}
-.detail-value.meaning-text {
-  font-size: 1.1rem;
-  font-weight: 600;
-  line-height: 1.6;
-}
+.detail-value.highlight,
+.detail-value.meaning-text { font-size: 1.1rem; font-weight: 600; }
+.detail-value.highlight    { color: #89b4fa; }
 .detail-placeholder {
   color: #313244;
   letter-spacing: 0.15em;
@@ -258,7 +252,6 @@
 .last-kanji-info {
   display: flex;
   flex-direction: column;
-  flex-wrap: nowrap;
   align-items: center;
   gap: 0.7rem;
   border-left: 1px solid #313244;
@@ -268,7 +261,6 @@
 .last-kanji-info:empty { display: none; }
 .kanji-entry {
   display: flex;
-  flex-direction: row;
   align-items: center;
   gap: 1.4rem;
   width: 100%;
@@ -405,8 +397,8 @@
 }
 .filter-hint.error { color: #f38ba8; }
 
-/* Disabled Start button */
-.btn-save:disabled { opacity: 0.3; cursor: not-allowed; pointer-events: none; }
+/* Nav links: cancel common.css auto-margin (header-progress owns it here) */
+.page-nav-links { margin-left: 0; }
 
 /* Modal — drill-specific overrides */
 .modal { max-width: 520px; }

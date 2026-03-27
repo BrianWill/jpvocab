@@ -208,7 +208,7 @@ body {
   cursor: pointer;
 }
 .btn-save:hover { background: rgba(137,180,250,0.2); }
-.btn-save:disabled { opacity: 0.35; cursor: default; pointer-events: none; }
+.btn-save:disabled { opacity: 0.35; cursor: not-allowed; pointer-events: none; }
 .btn-danger {
   background: rgba(243,139,168,0.1);
   border: 1px solid rgba(243,139,168,0.3);

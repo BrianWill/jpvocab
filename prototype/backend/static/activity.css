@@ -26,12 +26,13 @@
   max-width: 860px;
 }
 
-.day-labels {
+.day-labels,
+.week-row {
   display: grid;
   grid-template-columns: repeat(7, 1fr);
   gap: 0.4rem;
-  margin-bottom: 0.3rem;
 }
+.day-labels { margin-bottom: 0.3rem; }
 
 .day-label {
   font-size: 0.65rem;
@@ -45,12 +46,6 @@
 .calendar {
   display: flex;
   flex-direction: column;
-  gap: 0.4rem;
-}
-
-.week-row {
-  display: grid;
-  grid-template-columns: repeat(7, 1fr);
   gap: 0.4rem;
 }
 
@@ -190,11 +185,14 @@
   gap: 0.6rem;
 }
 
-.stat-card {
+.stat-card,
+.drill-progress {
   background: #181825;
   border: 1px solid #313244;
   border-radius: 8px;
   padding: 0.75rem 1rem;
+}
+.stat-card {
   display: flex;
   flex-direction: column;
   gap: 0.2rem;
@@ -207,27 +205,14 @@
   line-height: 1;
 }
 
-.stat-label {
-  font-size: 0.65rem;
-  color: #585b70;
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
-}
-
-.drill-progress {
-  background: #181825;
-  border: 1px solid #313244;
-  border-radius: 8px;
-  padding: 0.75rem 1rem;
-}
-
+.stat-label,
 .drill-progress-label {
   font-size: 0.65rem;
   color: #585b70;
   text-transform: uppercase;
   letter-spacing: 0.06em;
-  margin-bottom: 0.5rem;
 }
+.drill-progress-label { margin-bottom: 0.5rem; }
 
 .drill-progress-track {
   display: flex;

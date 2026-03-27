@@ -52,24 +52,32 @@
   gap: 0.5rem;
 }
 
-.btn-edit { margin-left: 0.4rem; }
-
-.btn-edit, .btn-delete {
-  visibility: hidden;
+/* Shared ghost-button base */
+.btn-edit, .btn-delete,
+.btn-target-adj,
+.btn-sort {
   background: none;
   border: 1px solid #45475a;
   border-radius: 4px;
   color: #585b70;
+  cursor: pointer;
+  line-height: 1;
+}
+.btn-edit:hover, .btn-delete:hover,
+.btn-target-adj:hover,
+.btn-sort:hover { color: #cdd6f4; border-color: #6c7086; }
+
+.btn-edit { margin-left: 0.4rem; }
+
+.btn-edit, .btn-delete {
+  visibility: hidden;
   font-size: 0.8rem;
   width: 1.5rem;
   height: 1.5rem;
   padding: 0;
-  cursor: pointer;
-  line-height: 1;
   text-align: center;
   flex-shrink: 0;
 }
-.btn-edit:hover, .btn-delete:hover { color: #cdd6f4; border-color: #6c7086; }
 .row-main:hover .btn-edit, .row-main:hover .btn-delete { visibility: visible; }
 
 /* Modal — lexicon-specific overrides */
@@ -91,30 +99,25 @@
   color: #585b70;
 }
 .modal-field input,
-.modal-field select {
-  background: #11111b;
-  border: 1px solid #313244;
-  border-radius: 4px;
-  color: #cdd6f4;
-  font-family: inherit;
-  font-size: 0.9rem;
-  padding: 0.4rem 0.6rem;
-}
-.modal-field input:focus,
-.modal-field select:focus { outline: 1px solid #89b4fa; }
-
+.modal-field select,
 .modal-field textarea {
   background: #11111b;
   border: 1px solid #313244;
   border-radius: 4px;
   color: #cdd6f4;
   font-family: inherit;
+}
+.modal-field input:focus,
+.modal-field select:focus,
+.modal-field textarea:focus { outline: 1px solid #89b4fa; }
+.modal-field input,
+.modal-field select { font-size: 0.9rem; padding: 0.4rem 0.6rem; }
+.modal-field textarea {
   font-size: 0.95rem;
   padding: 0.5rem 0.6rem;
   resize: vertical;
   line-height: 1.7;
 }
-.modal-field textarea:focus { outline: 1px solid #89b4fa; }
 .modal-field textarea::placeholder { color: #313244; }
 
 
@@ -227,14 +230,6 @@
   outline: none;
   cursor: text;
 }
-.detail-input:hover {
-  color: #9399b2;
-  border-bottom-color: #9399b2;
-}
-.detail-input:focus {
-  border-bottom-color: #89b4fa;
-  color: #cdd6f4;
-}
 .detail-input--en {
   font-style: italic;
 }
@@ -253,14 +248,10 @@
   text-transform: uppercase;
   letter-spacing: 0.06em;
 }
-.detail-pos-select:hover {
-  color: #9399b2;
-  border-bottom-color: #9399b2;
-}
-.detail-pos-select:focus {
-  border-bottom-color: #89b4fa;
-  color: #cdd6f4;
-}
+.detail-input:hover,
+.detail-pos-select:hover { color: #9399b2; border-bottom-color: #9399b2; }
+.detail-input:focus,
+.detail-pos-select:focus  { border-bottom-color: #89b4fa; color: #cdd6f4; }
 .detail-label {
   text-transform: uppercase;
   letter-spacing: 0.06em;
@@ -372,16 +363,9 @@
 }
 .btn-target-adj {
   visibility: hidden;
-  background: none;
-  border: 1px solid #45475a;
-  border-radius: 4px;
-  color: #585b70;
   font-size: 0.7rem;
   padding: 0.05rem 0.2rem;
-  cursor: pointer;
-  line-height: 1;
 }
-.btn-target-adj:hover { color: #cdd6f4; border-color: #6c7086; }
 .row-main:hover .btn-target-adj { visibility: visible; }
 
 /* Sort buttons in column headers */
@@ -407,21 +391,14 @@
 th:hover .th-sort-btns { visibility: visible; }
 
 .btn-sort {
-  background: none;
-  border: 1px solid #45475a;
-  border-radius: 4px;
-  color: #585b70;
   font-size: 0.7rem;
   font-family: inherit;
   font-weight: normal;
   text-transform: none;
   letter-spacing: 0;
   padding: 0.1rem 0.3rem 0.24rem;
-  cursor: pointer;
-  line-height: 1;
   flex-shrink: 0;
 }
-.btn-sort:hover { color: #cdd6f4; border-color: #6c7086; }
 .btn-sort--active {
   background: #45475a;
   color: #cdd6f4;

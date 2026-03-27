@@ -273,7 +273,8 @@ details[open] .add-word-toggle::before {
     align-items: flex-end;
 }
 
-.form-row label {
+.form-row label,
+.label-block {
     display: flex;
     flex-direction: column;
     gap: 4px;
@@ -303,14 +304,6 @@ details[open] .add-word-toggle::before {
 .form-divider {
     border-top: 1px solid #222;
     margin: 0 14px;
-}
-
-.label-block {
-    display: flex;
-    flex-direction: column;
-    gap: 4px;
-    font-size: 0.8rem;
-    color: #888;
 }
 
 textarea {
@@ -361,25 +354,15 @@ textarea:focus {
     color: #aaa;
 }
 
-.form-error {
-    background: #3b1010;
-    border: 1px solid #7f1d1d;
-    color: #fca5a5;
-    padding: 8px 12px;
-    border-radius: 4px;
-    font-size: 0.85rem;
-    margin-bottom: 16px;
-}
-
+.form-error,
 .form-success {
-    background: #0f2a1a;
-    border: 1px solid #166534;
-    color: #86efac;
     padding: 8px 12px;
     border-radius: 4px;
     font-size: 0.85rem;
     margin-bottom: 16px;
 }
+.form-error   { background: #3b1010; border: 1px solid #7f1d1d; color: #fca5a5; }
+.form-success { background: #0f2a1a; border: 1px solid #166534; color: #86efac; }
 
 /* Batch result modal */
 .modal-overlay {

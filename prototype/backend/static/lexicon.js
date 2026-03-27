@@ -1,5 +1,8 @@
-﻿let words = [];
-let defaultDrillTarget = 8; // updated from /api/providers at init
+﻿import { openEditModal, closeAddResultModal, _addPhase, _pendingGenerates } from './lexicon-add-edit.js';
+
+let words = [];
+export let defaultDrillTarget = 8; // updated from /api/providers at init
+export let _providers = null;
 
 function updateWordCount() {
   const active = words.filter(w => w.correct < w.target).length;
@@ -7,7 +10,7 @@ function updateWordCount() {
     words.length + ' words (' + active + ' active)';
 }
 
-const typeLabels = {
+export const typeLabels = {
   'godan-verb':   'Godan verb — Group 1 (五段動詞)',
   'ichidan-verb': 'Ichidan verb — Group 2 (一段動詞)',
   'noun':         'Noun (名詞)',
@@ -82,7 +85,7 @@ function renderRow(w, trMain, trEx) {
     '<td></td>';
 }
 
-function getSortedWords(key, dir) {
+export function getSortedWords(key, dir) {
   const asc = dir === 'asc';
   const byDate = (a, b, field) => {
     if (!a[field] && !b[field]) return 0;
@@ -122,7 +125,7 @@ function getSortedWords(key, dir) {
 
 const tbody = document.getElementById('word-tbody');
 
-function renderTable(sortedWords) {
+export function renderTable(sortedWords) {
   tbody.innerHTML = '';
   sortedWords.forEach(w => {
     const trMain = document.createElement('tr');
@@ -135,7 +138,7 @@ function renderTable(sortedWords) {
   });
 }
 
-async function reloadWords() {
+export async function reloadWords() {
   words = await fetch('/api/words').then(r => r.json());
   updateWordCount();
 }
@@ -289,7 +292,7 @@ function openAddModal() {
   document.getElementById('add-words-input').focus();
 }
 
-function closeAddModal() {
+export function closeAddModal() {
   document.getElementById('add-modal-backdrop').classList.add('hidden');
 }
 

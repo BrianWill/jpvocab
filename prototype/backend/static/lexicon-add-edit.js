@@ -1,3 +1,5 @@
+import { defaultDrillTarget, typeLabels, _providers, reloadWords, renderTable, getSortedWords, closeAddModal } from './lexicon.js';
+
 // --- Add/edit modal ---
 // Handles two scenarios:
 //   1. After "Add words": words stream in via SSE, filling placeholder rows one
@@ -7,7 +9,7 @@
 // The word row helpers (appendWordRow, saveWordRowEdits, etc.) serve both cases.
 
 // --- Edit modal (reuses add-result modal with a single word) ---
-function openEditModal(event) {
+export function openEditModal(event) {
   event.stopPropagation();
   const trMain = event.target.closest('tr');
   const w = trMain._word;
@@ -40,12 +42,11 @@ function openEditModal(event) {
   renderStatus();
 }
 
-let _addPhase = 'idle'; // 'loading' | 'done' | 'cancelled'
+export let _addPhase = 'idle'; // 'loading' | 'done' | 'cancelled'
 let _addedWords = [];
 let _skippedCount = 0;
-let _pendingGenerates = 0;
+export let _pendingGenerates = 0;
 let _abortController = null;
-let _providers = null;
 
 document.getElementById('add-result-modal-backdrop').addEventListener('click', function (e) {
   if (e.target === this && _addPhase !== 'loading' && _pendingGenerates === 0) closeAddResultModal();
@@ -65,7 +66,7 @@ document.getElementById('add-result-modal-body').addEventListener('change', func
   if (row) saveWordRowEdits(row);
 });
 
-async function closeAddResultModal() {
+export async function closeAddResultModal() {
   if (_addPhase === 'loading' || _pendingGenerates > 0) return;
   document.getElementById('add-result-modal-backdrop').classList.add('hidden');
   await reloadWords();

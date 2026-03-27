@@ -69,7 +69,11 @@ cd frontend && npm install && npm run dev
 go mod tidy
 ```
 
-The Go backend has a test suite; the frontend does not. When writing tests, only write them for Go backend code — do not write tests for frontend JS or HTML.
+The Go backend has a test suite. The frontend has tests for pure JS business logic (no DOM) using the Node.js built-in test runner (`node:test`). Do not write tests for DOM operations, HTML, or browser-specific behaviour.
+
+- **Frontend test location:** `prototype/backend/static/tests/`
+- **Run frontend tests:** `node --test prototype/backend/static/tests/`
+- **Pure utility functions** that have no DOM dependencies live in `lexicon-utils.js` and are the primary target for frontend tests.
 
 ## Lexicon Features
 
@@ -145,6 +149,10 @@ Table definitions live in the `migrate()` function in `db.go`. Schema is version
 - **`drill_answers`** — one row per answer within a session; references `words` and `drill_sessions`; stores `correct` (0/1) and `answered_at`.
 
 The admin UI at `http://localhost:1338/admin` shows live table schemas (column names, types, PK/UNIQUE/NOT NULL flags) and row counts, and links through to full table data views.
+
+### JavaScript conventions
+
+- **No inline event handlers.** Do not use `onclick=`, `onmousedown=`, or other `on*` HTML attributes. Use `addEventListener` instead — either on the element directly (for static elements, added once at script load time) or immediately after setting `innerHTML` (for dynamically built elements).
 
 ### CSS organisation
 

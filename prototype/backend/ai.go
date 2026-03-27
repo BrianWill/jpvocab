@@ -1,13 +1,17 @@
 package main
 
 import (
-	"bytes"
 	"encoding/json"
 	"fmt"
-	"net/http"
 	"os"
 	"strings"
 )
+
+// message is a single chat turn shared by all AI provider helpers.
+type message struct {
+	Role    string `json:"role"`
+	Content string `json:"content"`
+}
 
 // kanjiAutoFillEntry holds AI-generated data for one kanji character within a word.
 type kanjiAutoFillEntry struct {
@@ -24,6 +28,12 @@ type wordAutoFill struct {
 	ExampleJP    string               `json:"example_jp"`
 	ExampleEN    string               `json:"example_en"`
 	Kanji        []kanjiAutoFillEntry `json:"kanji"`
+}
+
+// examplePair holds a Japanese/English example sentence pair.
+type examplePair struct {
+	JP string `json:"jp"`
+	EN string `json:"en"`
 }
 
 // validPartsOfSpeech is the canonical closed set of part-of-speech values used throughout the app.
@@ -74,6 +84,10 @@ var autoFillExamples = []autoFillExample{
 	},
 }
 
+const rerollMeaningSystemPrompt = `You are a Japanese dictionary assistant. Given a Japanese word and its current English meaning, return a JSON array of exactly 3 alternative concise English meanings (short phrases). Do not repeat the current meaning. Return only the JSON array with no markdown, no code fences, and no extra commentary.`
+
+const rerollExamplesSystemPrompt = `You are a Japanese dictionary assistant. Given a Japanese word, return a JSON array of exactly 3 natural example sentences using that word. Each entry must have "jp" (the Japanese sentence) and "en" (its English translation). Return only the JSON array with no markdown, no code fences, and no extra commentary.`
+
 // aiProviders holds which AI providers have API keys configured.
 type aiProviders struct {
 	AnthropicAvail bool
@@ -103,93 +117,6 @@ func autoFillWord(word, providerModel string) (*wordAutoFill, error) {
 	}
 }
 
-// autoFillWordAnthropic calls the Anthropic Messages API.
-// The API key is read from the ANTHROPIC_API_KEY environment variable.
-func autoFillWordAnthropic(word, model string) (*wordAutoFill, error) {
-	apiKey := os.Getenv("ANTHROPIC_API_KEY")
-	if apiKey == "" {
-		return nil, fmt.Errorf("ANTHROPIC_API_KEY environment variable is not set")
-	}
-
-	type message struct {
-		Role    string `json:"role"`
-		Content string `json:"content"`
-	}
-	type reqBody struct {
-		Model     string    `json:"model"`
-		MaxTokens int       `json:"max_tokens"`
-		System    string    `json:"system"`
-		Messages  []message `json:"messages"`
-	}
-
-	messages := make([]message, 0, len(autoFillExamples)*2+1)
-	for _, ex := range autoFillExamples {
-		messages = append(messages, message{Role: "user", Content: ex.word})
-		messages = append(messages, message{Role: "assistant", Content: ex.result})
-	}
-	messages = append(messages, message{Role: "user", Content: word})
-	messages = append(messages, message{Role: "assistant", Content: "{"})
-
-	payload, err := json.Marshal(reqBody{
-		Model:     model,
-		MaxTokens: 512,
-		System:    autoFillSystemPrompt,
-		Messages:  messages,
-	})
-	if err != nil {
-		return nil, err
-	}
-
-	req, err := http.NewRequest("POST", "https://api.anthropic.com/v1/messages", bytes.NewReader(payload))
-	if err != nil {
-		return nil, err
-	}
-	req.Header.Set("x-api-key", apiKey)
-	req.Header.Set("anthropic-version", "2023-06-01")
-	req.Header.Set("content-type", "application/json")
-
-	resp, err := http.DefaultClient.Do(req)
-	if err != nil {
-		return nil, err
-	}
-	defer resp.Body.Close()
-
-	var apiResp struct {
-		Content []struct {
-			Type string `json:"type"`
-			Text string `json:"text"`
-		} `json:"content"`
-		Error *struct {
-			Message string `json:"message"`
-		} `json:"error"`
-	}
-	if err := json.NewDecoder(resp.Body).Decode(&apiResp); err != nil {
-		return nil, fmt.Errorf("decode API response: %w", err)
-	}
-	if apiResp.Error != nil {
-		return nil, fmt.Errorf("API error: %s", apiResp.Error.Message)
-	}
-	if len(apiResp.Content) == 0 || apiResp.Content[0].Text == "" {
-		return nil, fmt.Errorf("empty response from API")
-	}
-
-	var e wordAutoFill
-	if err := json.Unmarshal([]byte("{"+apiResp.Content[0].Text), &e); err != nil {
-		return nil, fmt.Errorf("parse auto-fill JSON: %w", err)
-	}
-	return &e, nil
-}
-
-// examplePair holds a Japanese/English example sentence pair.
-type examplePair struct {
-	JP string `json:"jp"`
-	EN string `json:"en"`
-}
-
-const rerollMeaningSystemPrompt = `You are a Japanese dictionary assistant. Given a Japanese word and its current English meaning, return a JSON array of exactly 3 alternative concise English meanings (short phrases). Do not repeat the current meaning. Return only the JSON array with no markdown, no code fences, and no extra commentary.`
-
-const rerollExamplesSystemPrompt = `You are a Japanese dictionary assistant. Given a Japanese word, return a JSON array of exactly 3 natural example sentences using that word. Each entry must have "jp" (the Japanese sentence) and "en" (its English translation). Return only the JSON array with no markdown, no code fences, and no extra commentary.`
-
 // rerollMeaning asks the AI for 3 alternative English meanings for a word.
 func rerollMeaning(word, currentMeaning, providerModel string) ([]string, error) {
 	parts := strings.SplitN(providerModel, "/", 2)
@@ -218,307 +145,9 @@ func rerollExamples(word, providerModel string) ([]examplePair, error) {
 	}
 }
 
-func rerollMeaningAnthropic(word, currentMeaning, model string) ([]string, error) {
-	apiKey := os.Getenv("ANTHROPIC_API_KEY")
-	if apiKey == "" {
-		return nil, fmt.Errorf("ANTHROPIC_API_KEY environment variable is not set")
-	}
-	type message struct {
-		Role    string `json:"role"`
-		Content string `json:"content"`
-	}
-	type reqBody struct {
-		Model     string    `json:"model"`
-		MaxTokens int       `json:"max_tokens"`
-		System    string    `json:"system"`
-		Messages  []message `json:"messages"`
-	}
-	userMsgBytes, _ := json.Marshal(map[string]string{"word": word, "current_meaning": currentMeaning})
-	payload, err := json.Marshal(reqBody{
-		Model:     model,
-		MaxTokens: 256,
-		System:    rerollMeaningSystemPrompt,
-		Messages: []message{
-			{Role: "user", Content: string(userMsgBytes)},
-			{Role: "assistant", Content: "["},
-		},
-	})
-	if err != nil {
-		return nil, err
-	}
-	req, err := http.NewRequest("POST", "https://api.anthropic.com/v1/messages", bytes.NewReader(payload))
-	if err != nil {
-		return nil, err
-	}
-	req.Header.Set("x-api-key", apiKey)
-	req.Header.Set("anthropic-version", "2023-06-01")
-	req.Header.Set("content-type", "application/json")
-	resp, err := http.DefaultClient.Do(req)
-	if err != nil {
-		return nil, err
-	}
-	defer resp.Body.Close()
-	var apiResp struct {
-		Content []struct{ Text string `json:"text"` } `json:"content"`
-		Error   *struct{ Message string `json:"message"` } `json:"error"`
-	}
-	if err := json.NewDecoder(resp.Body).Decode(&apiResp); err != nil {
-		return nil, fmt.Errorf("decode API response: %w", err)
-	}
-	if apiResp.Error != nil {
-		return nil, fmt.Errorf("API error: %s", apiResp.Error.Message)
-	}
-	if len(apiResp.Content) == 0 || apiResp.Content[0].Text == "" {
-		return nil, fmt.Errorf("empty response from API")
-	}
-	var result []string
-	if err := json.Unmarshal([]byte("["+apiResp.Content[0].Text), &result); err != nil {
-		return nil, fmt.Errorf("parse reroll-meaning JSON: %w", err)
-	}
-	return result, nil
-}
-
-func rerollMeaningOpenAI(word, currentMeaning, model string) ([]string, error) {
-	apiKey := os.Getenv("OPENAI_API_KEY")
-	if apiKey == "" {
-		return nil, fmt.Errorf("OPENAI_API_KEY environment variable is not set")
-	}
-	type message struct {
-		Role    string `json:"role"`
-		Content string `json:"content"`
-	}
-	type reqBody struct {
-		Model    string    `json:"model"`
-		Messages []message `json:"messages"`
-	}
-	userMsgBytes, _ := json.Marshal(map[string]string{"word": word, "current_meaning": currentMeaning})
-	payload, err := json.Marshal(reqBody{
-		Model: model,
-		Messages: []message{
-			{Role: "system", Content: rerollMeaningSystemPrompt},
-			{Role: "user", Content: string(userMsgBytes)},
-		},
-	})
-	if err != nil {
-		return nil, err
-	}
-	req, err := http.NewRequest("POST", "https://api.openai.com/v1/chat/completions", bytes.NewReader(payload))
-	if err != nil {
-		return nil, err
-	}
-	req.Header.Set("Authorization", "Bearer "+apiKey)
-	req.Header.Set("Content-Type", "application/json")
-	resp, err := http.DefaultClient.Do(req)
-	if err != nil {
-		return nil, err
-	}
-	defer resp.Body.Close()
-	var apiResp struct {
-		Choices []struct {
-			Message struct{ Content string `json:"content"` } `json:"message"`
-		} `json:"choices"`
-		Error *struct{ Message string `json:"message"` } `json:"error"`
-	}
-	if err := json.NewDecoder(resp.Body).Decode(&apiResp); err != nil {
-		return nil, fmt.Errorf("decode API response: %w", err)
-	}
-	if apiResp.Error != nil {
-		return nil, fmt.Errorf("API error: %s", apiResp.Error.Message)
-	}
-	if len(apiResp.Choices) == 0 || apiResp.Choices[0].Message.Content == "" {
-		return nil, fmt.Errorf("empty response from API")
-	}
-	var result []string
-	if err := json.Unmarshal([]byte(apiResp.Choices[0].Message.Content), &result); err != nil {
-		return nil, fmt.Errorf("parse reroll-meaning JSON: %w", err)
-	}
-	return result, nil
-}
-
-func rerollExamplesAnthropic(word, model string) ([]examplePair, error) {
-	apiKey := os.Getenv("ANTHROPIC_API_KEY")
-	if apiKey == "" {
-		return nil, fmt.Errorf("ANTHROPIC_API_KEY environment variable is not set")
-	}
-	type message struct {
-		Role    string `json:"role"`
-		Content string `json:"content"`
-	}
-	type reqBody struct {
-		Model     string    `json:"model"`
-		MaxTokens int       `json:"max_tokens"`
-		System    string    `json:"system"`
-		Messages  []message `json:"messages"`
-	}
-	payload, err := json.Marshal(reqBody{
-		Model:     model,
-		MaxTokens: 512,
-		System:    rerollExamplesSystemPrompt,
-		Messages: []message{
-			{Role: "user", Content: word},
-			{Role: "assistant", Content: "["},
-		},
-	})
-	if err != nil {
-		return nil, err
-	}
-	req, err := http.NewRequest("POST", "https://api.anthropic.com/v1/messages", bytes.NewReader(payload))
-	if err != nil {
-		return nil, err
-	}
-	req.Header.Set("x-api-key", apiKey)
-	req.Header.Set("anthropic-version", "2023-06-01")
-	req.Header.Set("content-type", "application/json")
-	resp, err := http.DefaultClient.Do(req)
-	if err != nil {
-		return nil, err
-	}
-	defer resp.Body.Close()
-	var apiResp struct {
-		Content []struct{ Text string `json:"text"` } `json:"content"`
-		Error   *struct{ Message string `json:"message"` } `json:"error"`
-	}
-	if err := json.NewDecoder(resp.Body).Decode(&apiResp); err != nil {
-		return nil, fmt.Errorf("decode API response: %w", err)
-	}
-	if apiResp.Error != nil {
-		return nil, fmt.Errorf("API error: %s", apiResp.Error.Message)
-	}
-	if len(apiResp.Content) == 0 || apiResp.Content[0].Text == "" {
-		return nil, fmt.Errorf("empty response from API")
-	}
-	var result []examplePair
-	if err := json.Unmarshal([]byte("["+apiResp.Content[0].Text), &result); err != nil {
-		return nil, fmt.Errorf("parse reroll-examples JSON: %w", err)
-	}
-	return result, nil
-}
-
-func rerollExamplesOpenAI(word, model string) ([]examplePair, error) {
-	apiKey := os.Getenv("OPENAI_API_KEY")
-	if apiKey == "" {
-		return nil, fmt.Errorf("OPENAI_API_KEY environment variable is not set")
-	}
-	type message struct {
-		Role    string `json:"role"`
-		Content string `json:"content"`
-	}
-	type reqBody struct {
-		Model    string    `json:"model"`
-		Messages []message `json:"messages"`
-	}
-	payload, err := json.Marshal(reqBody{
-		Model: model,
-		Messages: []message{
-			{Role: "system", Content: rerollExamplesSystemPrompt},
-			{Role: "user", Content: word},
-		},
-	})
-	if err != nil {
-		return nil, err
-	}
-	req, err := http.NewRequest("POST", "https://api.openai.com/v1/chat/completions", bytes.NewReader(payload))
-	if err != nil {
-		return nil, err
-	}
-	req.Header.Set("Authorization", "Bearer "+apiKey)
-	req.Header.Set("Content-Type", "application/json")
-	resp, err := http.DefaultClient.Do(req)
-	if err != nil {
-		return nil, err
-	}
-	defer resp.Body.Close()
-	var apiResp struct {
-		Choices []struct {
-			Message struct{ Content string `json:"content"` } `json:"message"`
-		} `json:"choices"`
-		Error *struct{ Message string `json:"message"` } `json:"error"`
-	}
-	if err := json.NewDecoder(resp.Body).Decode(&apiResp); err != nil {
-		return nil, fmt.Errorf("decode API response: %w", err)
-	}
-	if apiResp.Error != nil {
-		return nil, fmt.Errorf("API error: %s", apiResp.Error.Message)
-	}
-	if len(apiResp.Choices) == 0 || apiResp.Choices[0].Message.Content == "" {
-		return nil, fmt.Errorf("empty response from API")
-	}
-	var result []examplePair
-	if err := json.Unmarshal([]byte(apiResp.Choices[0].Message.Content), &result); err != nil {
-		return nil, fmt.Errorf("parse reroll-examples JSON: %w", err)
-	}
-	return result, nil
-}
-
-// autoFillWordOpenAI calls the OpenAI Chat Completions API.
-// The API key is read from the OPENAI_API_KEY environment variable.
-func autoFillWordOpenAI(word, model string) (*wordAutoFill, error) {
-	apiKey := os.Getenv("OPENAI_API_KEY")
-	if apiKey == "" {
-		return nil, fmt.Errorf("OPENAI_API_KEY environment variable is not set")
-	}
-
-	type message struct {
-		Role    string `json:"role"`
-		Content string `json:"content"`
-	}
-	type reqBody struct {
-		Model    string    `json:"model"`
-		Messages []message `json:"messages"`
-	}
-
-	messages := make([]message, 0, len(autoFillExamples)*2+2)
-	messages = append(messages, message{Role: "system", Content: autoFillSystemPrompt})
-	for _, ex := range autoFillExamples {
-		messages = append(messages, message{Role: "user", Content: ex.word})
-		messages = append(messages, message{Role: "assistant", Content: ex.result})
-	}
-	messages = append(messages, message{Role: "user", Content: word})
-
-	payload, err := json.Marshal(reqBody{
-		Model:    model,
-		Messages: messages,
-	})
-	if err != nil {
-		return nil, err
-	}
-
-	req, err := http.NewRequest("POST", "https://api.openai.com/v1/chat/completions", bytes.NewReader(payload))
-	if err != nil {
-		return nil, err
-	}
-	req.Header.Set("Authorization", "Bearer "+apiKey)
-	req.Header.Set("Content-Type", "application/json")
-
-	resp, err := http.DefaultClient.Do(req)
-	if err != nil {
-		return nil, err
-	}
-	defer resp.Body.Close()
-
-	var apiResp struct {
-		Choices []struct {
-			Message struct {
-				Content string `json:"content"`
-			} `json:"message"`
-		} `json:"choices"`
-		Error *struct {
-			Message string `json:"message"`
-		} `json:"error"`
-	}
-	if err := json.NewDecoder(resp.Body).Decode(&apiResp); err != nil {
-		return nil, fmt.Errorf("decode API response: %w", err)
-	}
-	if apiResp.Error != nil {
-		return nil, fmt.Errorf("API error: %s", apiResp.Error.Message)
-	}
-	if len(apiResp.Choices) == 0 || apiResp.Choices[0].Message.Content == "" {
-		return nil, fmt.Errorf("empty response from API")
-	}
-
-	var e wordAutoFill
-	if err := json.Unmarshal([]byte(apiResp.Choices[0].Message.Content), &e); err != nil {
-		return nil, fmt.Errorf("parse auto-fill JSON: %w", err)
-	}
-	return &e, nil
+// marshalUserMsg marshals a map to JSON, returning the string form.
+// Used to build structured user messages for reroll requests.
+func marshalUserMsg(v map[string]string) string {
+	b, _ := json.Marshal(v)
+	return string(b)
 }

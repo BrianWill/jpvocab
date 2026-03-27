@@ -101,9 +101,14 @@ The HTML/CSS/JS frontend files live in `prototype/backend/static/` and are serve
 `prototype/backend/` is a standalone Go module (separate `go.mod`) that runs a SQLite-backed HTTP server on port **1338**. It is the primary development target and will eventually replace the Wails app in the project root.
 
 - **`main.go`** — entry point; opens the DB and starts the server
-- **`db.go`** — all database access: `initDB`, `migrate`, `seedDB`, and one function per query or write operation. No SQL appears outside this file.
-- **`routes.go`** — Chi router and HTTP handlers only; no direct DB access. Handlers call functions from `db.go` and pass results to `renderTemplate`.
-- **`ai.go`** — AI provider calls: word autofill, reroll meaning, reroll examples. No direct DB access.
+- **`db_schema.go`** — `initDB`, `migrate`, `resetDB`, `seedDB`, and schema-introspection helpers (`listTableInfos`, `queryTable`, etc.). No SQL appears outside the `db_*.go` files.
+- **`db_words.go`** — all word and kanji database operations: insert, update, delete, list, upsert kanji.
+- **`db_activity.go`** — drill session and answer recording (`createDrillSession`, `recordDrillAnswer`), plus activity stats and calendar queries.
+- **`routes.go`** — `serverInit` (router setup), activity/drill/admin HTTP handlers, and `renderTemplate`. No direct DB access; handlers call functions from the `db_*.go` files.
+- **`routes_words.go`** — word and kanji API handlers: GET/PATCH/DELETE words, autofill, reroll meaning/examples, GET kanji.
+- **`ai.go`** — Shared AI types, prompts, few-shot examples, and provider-dispatch functions (`autoFillWord`, `rerollMeaning`, `rerollExamples`). No direct DB access.
+- **`ai_anthropic.go`** — Anthropic Messages API: `callAnthropic` HTTP helper + autofill/reroll implementations.
+- **`ai_openai.go`** — OpenAI Chat Completions API: `callOpenAI` HTTP helper + autofill/reroll implementations.
 - **`morphology.go`** — word normalisation to dictionary base form (used in the add-words flow).
 - **`templates/`** — HTML templates parsed from disk on every request (live-editable without restart); `base.html` is the shared shell, each page has its own file
 - **`static/`** — HTML pages, CSS, and JS, served from disk (live-editable without restart)

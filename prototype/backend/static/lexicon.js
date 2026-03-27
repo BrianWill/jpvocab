@@ -197,158 +197,8 @@ function applyProviderAvailability(providers) {
 
 init();
 
-// --- Modal ---
-let _modalTrMain = null;
-
-function openModal(event) {
-  event.stopPropagation();
-  const trMain = event.target.closest('tr');
-  _modalTrMain = trMain;
-  const w = trMain._word;
-  document.getElementById('modal-word-label').textContent = w.word;
-  document.getElementById('edit-reading').value  = w.reading;
-  document.getElementById('edit-type').value     = w.type;
-  document.getElementById('edit-meaning').value  = w.meaning;
-  document.getElementById('edit-ex-jp').value    = w.exampleJp;
-  document.getElementById('edit-ex-en').value    = w.exampleEn;
-  document.getElementById('edit-target').value   = w.target;
-  document.getElementById('edit-error').classList.add('hidden');
-  document.getElementById('btn-edit-save').textContent = 'Save';
-  resetEditSidebar();
-  document.getElementById('modal-backdrop').classList.remove('hidden');
-}
-
-function closeModal() {
-  document.getElementById('modal-backdrop').classList.add('hidden');
-}
-
-function resetEditSidebar() {
-  document.getElementById('edit-sidebar-empty').classList.remove('hidden');
-  document.getElementById('edit-sidebar-content').classList.add('hidden');
-}
-
-function showEditSidebarLoading(label) {
-  document.getElementById('edit-sidebar-empty').classList.add('hidden');
-  const contentEl = document.getElementById('edit-sidebar-content');
-  contentEl.classList.remove('hidden');
-  document.getElementById('edit-sidebar-label').textContent = label;
-  document.getElementById('edit-alternatives-list').innerHTML =
-    '<div class="edit-sidebar-loading"><span class="spinner"></span> Generating\u2026</div>';
-}
-
-function showEditSidebarError(message) {
-  document.getElementById('edit-alternatives-list').innerHTML =
-    '<div class="edit-sidebar-loading edit-sidebar-error">' + esc(message) + '</div>';
-}
-
-async function doRerollMeaning() {
-  const w = _modalTrMain._word;
-  const currentMeaning = document.getElementById('edit-meaning').value;
-  const aiModel = document.getElementById('edit-ai-model-select').value;
-  showEditSidebarLoading('Alternative meanings');
-  try {
-    const res = await fetch('/api/words/' + w.id + '/reroll-meaning', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ word: w.word, current: currentMeaning, ai_model: aiModel }),
-    });
-    if (!res.ok) throw new Error((await res.text()).trim() || res.statusText);
-    const data = await res.json();
-    renderMeaningAlternatives(data.alternatives);
-  } catch (err) {
-    showEditSidebarError(err.message);
-  }
-}
-
-async function doRerollExamples() {
-  const w = _modalTrMain._word;
-  const aiModel = document.getElementById('edit-ai-model-select').value;
-  showEditSidebarLoading('Alternative examples');
-  try {
-    const res = await fetch('/api/words/' + w.id + '/reroll-examples', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ word: w.word, ai_model: aiModel }),
-    });
-    if (!res.ok) throw new Error((await res.text()).trim() || res.statusText);
-    const data = await res.json();
-    renderExampleAlternatives(data.alternatives);
-  } catch (err) {
-    showEditSidebarError(err.message);
-  }
-}
-
-function renderMeaningAlternatives(alternatives) {
-  const list = document.getElementById('edit-alternatives-list');
-  list.innerHTML = '';
-  alternatives.forEach(alt => {
-    const item = document.createElement('div');
-    item.className = 'alt-item';
-    item.innerHTML =
-      '<span class="alt-text">' + esc(alt) + '</span>' +
-      '<button class="btn-replace">Replace</button>';
-    item.querySelector('.btn-replace').onclick = () => {
-      document.getElementById('edit-meaning').value = alt;
-    };
-    list.appendChild(item);
-  });
-}
-
-function renderExampleAlternatives(alternatives) {
-  const list = document.getElementById('edit-alternatives-list');
-  list.innerHTML = '';
-  alternatives.forEach(alt => {
-    const item = document.createElement('div');
-    item.className = 'alt-item';
-    item.innerHTML =
-      '<span class="alt-text">' + esc(alt.jp) + '</span>' +
-      '<span class="alt-text-sub">' + esc(alt.en) + '</span>' +
-      '<button class="btn-replace">Replace</button>';
-    item.querySelector('.btn-replace').onclick = () => {
-      document.getElementById('edit-ex-jp').value = alt.jp;
-      document.getElementById('edit-ex-en').value = alt.en;
-    };
-    list.appendChild(item);
-  });
-}
-
 function onBackdropClick(event, closeFn) {
   if (event.target === event.currentTarget) closeFn();
-}
-
-async function saveModal() {
-  const w         = _modalTrMain._word;
-  const reading   = document.getElementById('edit-reading').value;
-  const type      = document.getElementById('edit-type').value;
-  const meaning   = document.getElementById('edit-meaning').value;
-  const exampleJp = document.getElementById('edit-ex-jp').value;
-  const exampleEn = document.getElementById('edit-ex-en').value;
-  const target    = parseInt(document.getElementById('edit-target').value, 10);
-
-  const btn   = document.getElementById('btn-edit-save');
-  const errEl = document.getElementById('edit-error');
-  btn.disabled = true;
-  btn.innerHTML = '<span class="spinner"></span>';
-  errEl.classList.add('hidden');
-
-  try {
-    const res = await fetch('/api/words/' + w.id, {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ reading, type, meaning, exampleJp, exampleEn, target }),
-    });
-    if (!res.ok) throw new Error((await res.text()).trim() || res.statusText);
-    w.reading = reading; w.type = type; w.meaning = meaning;
-    w.exampleJp = exampleJp; w.exampleEn = exampleEn; w.target = target;
-    renderRow(w, _modalTrMain, _modalTrMain._trEx);
-    updateWordCount();
-    closeModal();
-  } catch (err) {
-    errEl.textContent = err.message;
-    errEl.classList.remove('hidden');
-    btn.disabled = false;
-    btn.textContent = 'Save';
-  }
 }
 
 // --- Delete modal ---
@@ -403,23 +253,8 @@ function adjustTargetInline(event, delta) {
   updateWordCount();
 }
 
-const STEP_INTERVAL = 230;
-let _stepTimer = null;
-function startStep(fn, ...args) { fn(...args); _stepTimer = setInterval(() => fn(...args), STEP_INTERVAL); }
-function stopStep() { clearInterval(_stepTimer); _stepTimer = null; }
-
-function capTargetInput(input) {
-  if (input.value.length > 2) input.value = input.value.slice(0, 2);
-}
-
-function adjustTarget(delta) {
-  const input = document.getElementById('edit-target');
-  input.value = Math.min(99, Math.max(0, (parseInt(input.value, 10) || 0) + delta));
-}
-
 document.addEventListener('keydown', e => {
   if (e.key === 'Escape') {
-    closeModal();
     closeAddModal();
     closeDeleteModal();
     if (_progressPhase !== 'loading' && _pendingGenerates === 0) closeProgressModal();
@@ -651,7 +486,7 @@ function appendProgressResult(data) {
   const generateBtn = data.word_id
     ? '<button class="btn-generate"' +
         (hasProviders ? '' : ' disabled') +
-        ' data-tooltip="Uses an AI API request to get the word\'s part-of-speech, meaning, and an example sentence"' +
+        ' data-tooltip="Uses an AI API request to get the word\'s reading, part-of-speech, meaning, and an example sentence"' +
         ' onmousedown="generateWordAutofill(event,' + data.word_id + ',\'' + esc(data.word) + '\',this)">generate</button>'
     : '';
   let inlineExtra;
@@ -882,7 +717,7 @@ function renderStatus() {
       '</button>'
     : '<button class="btn-generate btn-generate--all"' +
         (_progressAdded.length > 0 && hasProviders && _progressPhase !== 'loading' ? '' : ' disabled') +
-        ' data-tooltip="Uses an AI API request to get part-of-speech, meaning, and an example sentence for each newly added word"' +
+        ' data-tooltip="Uses an AI API request to get the reading, part-of-speech, meaning, and an example sentence for each newly added word"' +
         ' onmousedown="generateAllAdded()">generate all</button>';
   if (_progressPhase === 'loading') {
     el.className = 'modal-status modal-status-loading';

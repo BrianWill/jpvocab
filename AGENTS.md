@@ -111,7 +111,7 @@ The HTML/CSS/JS frontend files live in `prototype/backend/static/` and are serve
 - **`ai_openai.go`** — OpenAI Chat Completions API: `callOpenAI` HTTP helper + autofill/reroll implementations.
 - **`morphology.go`** — word normalisation to dictionary base form (used in the add-words flow).
 - **`templates/`** — HTML templates parsed from disk on every request (live-editable without restart); `base.html` is the shared shell, each page has its own file
-- **`static/`** — HTML pages, CSS, and JS, served from disk (live-editable without restart)
+- **`static/`** — HTML pages, CSS, and JS, served from disk (live-editable without restart). JS files for the lexicon page are split across two files: `lexicon.js` (table state/rendering, sorting, delete modal, tooltip) and `lexicon-add-edit.js` (add/edit result modal, word row builders, autofill, status/footer). `lexicon.js` must load first as `lexicon-add-edit.js` reads globals it defines (`words`, `defaultDrillTarget`, `typeLabels`, `reloadWords`, `renderTable`, `getSortedWords`).
 - **`seed.json`** — fixture data loaded on first startup (or after a DB reset); contains `words` and `sessions` arrays
 
 Key API endpoints (beyond CRUD on `/api/words` and `/api/kanji`):

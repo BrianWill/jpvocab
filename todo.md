@@ -2,6 +2,10 @@
 
 This file is random notes of possible features and bug fixes.
 
+- in the new drill menu, the Total words should be "max total words"
+    - currently, toggling word type chips can modify the "total words", but this should not be the case
+    - if "max total words" exceeds the sum of words in the selected categories, the pool size is just that size (i.e. which ever is smaller)
+
 - in the drills, words marked wrong are being sorted to the top as we answer
     - isn't this sorting supposed to happen just at start of round rather than during the round?
 

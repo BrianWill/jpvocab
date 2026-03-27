@@ -71,13 +71,21 @@ go mod tidy
 
 The Go backend has a test suite; the frontend does not. When writing tests, only write them for Go backend code — do not write tests for frontend JS or HTML.
 
-## Planned Lexicon Features
+## Lexicon Features
 
-- **Add words flow** — the lexicon has an "add words" modal where the user pastes Japanese words (one per line). Backend infrastructure exists; full end-to-end wiring is in progress:
-  - **Implemented:** Words are normalised to their dictionary base form via `morphology.go` (e.g. conjugated verbs → dictionary form) to prevent duplicates across inflections
-  - **Implemented:** Duplicates (same base form already in lexicon) are silently skipped
-  - **Implemented:** AI is used to auto-generate reading (hiragana), meaning (English), example sentence (Japanese + English translation) — see `ai.go` and the `/api/words/{id}/autofill`, `/api/words/{id}/reroll-meaning`, `/api/words/{id}/reroll-examples` endpoints
-  - **Not yet implemented:** Audio of the word and example sentence generated via VoiceVox (`tts-demo.html` exists as a sandbox for this)
+- **Add words flow** — the user pastes Japanese words into an "add words" modal; the backend streams results back via SSE, adding words one by one and displaying them in the add-result modal. Implemented:
+  - Words are normalised to their dictionary base form via `morphology.go` (e.g. conjugated verbs → dictionary form) to prevent duplicates across inflections
+  - Duplicates (same base form already in lexicon) are silently skipped with a reason badge
+  - AI auto-generates reading (hiragana), meaning (English), and example sentence (JP + EN) — see `ai.go` and the `/api/words/{id}/autofill` endpoint
+  - All generated fields are editable inline in the add-result modal; changes are auto-saved on blur via `PATCH /api/words/{id}`
+
+- **Edit words** — clicking the ✎ button on any lexicon row opens the same add-result modal with just that word, allowing the user to edit reading, part of speech, meaning, and example sentences. Changes auto-save on blur.
+
+- **Part of speech (POS)** — the current category set (`godan-verb`, `ichidan-verb`, `noun`, `i-adjective`, `na-adjective`, `adverb`, `other`) may need revisiting: check whether the categories cover all desired word types and that AI autofill is classifying words accurately. The canonical list lives in `typeLabels` in `lexicon.js`.
+
+- **Audio** — not yet implemented. Audio of the word and example sentence to be generated via VoiceVox (`tts-demo.html` exists as a sandbox for this).
+
+- **Note:** `/api/words/{id}/reroll-meaning` and `/api/words/{id}/reroll-examples` may be dead code — the old edit modal that used them was removed (commit `f119e10`). Confirm before adding new callers.
 
 ## Frontend Pages
 
@@ -106,9 +114,11 @@ Key API endpoints (beyond CRUD on `/api/words` and `/api/kanji`):
 | Method | Path | Purpose |
 |--------|------|---------|
 | `GET` | `/api/providers` | Check which AI providers are configured/available |
+| `PATCH` | `/api/words/{id}` | Update a word's reading, type, meaning, and example sentences |
+| `PATCH` | `/api/words/{id}/target` | Update a word's target drill count |
 | `POST` | `/api/words/{id}/autofill` | AI-generate reading, meaning, and examples for a word |
-| `POST` | `/api/words/{id}/reroll-meaning` | Regenerate just the meaning via AI |
-| `POST` | `/api/words/{id}/reroll-examples` | Regenerate just the example sentences via AI |
+| `POST` | `/api/words/{id}/reroll-meaning` | Regenerate just the meaning via AI *(may be unused — see Lexicon Features note)* |
+| `POST` | `/api/words/{id}/reroll-examples` | Regenerate just the example sentences via AI *(may be unused — see Lexicon Features note)* |
 | `POST` | `/api/drill/sessions` | Start a new drill session |
 | `POST` | `/api/drill/sessions/{id}/answers` | Record an answer within a session |
 

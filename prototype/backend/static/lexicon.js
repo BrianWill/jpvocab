@@ -42,7 +42,7 @@ function fullDateTime(dateStr) {
 function renderRow(w, trMain, trEx) {
   trMain.innerHTML =
     '<td><div class="cell-word" data-tooltip="Word">' + w.word +
-      '<button class="btn-edit" onclick="openModal(event)" data-tooltip="Edit word">✎</button>' +
+      '<button class="btn-edit" onclick="openEditModal(event)" data-tooltip="Edit word">✎</button>' +
       '<button class="btn-delete" onclick="openDeleteModal(event)" data-tooltip="Delete word">✕</button>' +
     '</div></td>' +
     '<td class="cell-reading" data-tooltip="Reading (Pronunciation)">' + w.reading + '</td>' +
@@ -223,6 +223,40 @@ function adjustTargetInline(event, delta) {
   });
 }
 
+// --- Edit modal (reuses add-result modal with a single word) ---
+function openEditModal(event) {
+  event.stopPropagation();
+  const trMain = event.target.closest('tr');
+  const w = trMain._word;
+
+  _addPhase = 'done';
+  _addedWords = [];
+  _skippedCount = 0;
+  _pendingGenerates = 0;
+  _abortController = null;
+
+  const resultBody = document.getElementById('add-result-modal-body');
+  resultBody.innerHTML = '';
+
+  appendWordRow({
+    word: w.word,
+    word_id: w.id,
+    added: true,
+    reading: w.reading,
+    part_of_speech: w.type,
+    meaning: w.meaning,
+    example_jp: w.exampleJp,
+    example_en: w.exampleEn,
+    drill_count: w.correct,
+    drill_incorrect: w.incorrect,
+    drill_target: w.target,
+  });
+
+  document.getElementById('add-result-modal-backdrop').classList.remove('hidden');
+  initAddResultFooter();
+  renderStatus();
+}
+
 document.addEventListener('keydown', e => {
   if (e.key === 'Escape') {
     closeAddModal();
@@ -286,7 +320,13 @@ function closeAddModal() {
 }
 
 
-// --- Progress modal ---
+// --- Add-result / edit modal ---
+// Used in two ways:
+//   1. After "Add words": words stream in via SSE, starting as placeholders and
+//      filling in one by one as the server processes them.
+//   2. From the edit button (✎) on a lexicon row: opens with a single word,
+//      bypassing the streaming machinery entirely (see openEditModal).
+// The word row helpers (appendWordRow, saveWordRowEdits, etc.) serve both cases.
 let _addPhase = 'idle'; // 'loading' | 'done' | 'cancelled'
 let _addedWords = [];
 let _skippedCount = 0;
@@ -302,12 +342,12 @@ document.getElementById('add-result-modal-backdrop').addEventListener('click', f
 document.getElementById('add-result-modal-body').addEventListener('focusout', function(e) {
   if (!e.target.classList.contains('detail-input')) return;
   const row = e.target.closest('.word-result-row');
-  if (row) saveProgressRowEdits(row);
+  if (row) saveWordRowEdits(row);
 });
 document.getElementById('add-result-modal-body').addEventListener('change', function(e) {
   if (!e.target.classList.contains('detail-pos-select')) return;
   const row = e.target.closest('.word-result-row');
-  if (row) saveProgressRowEdits(row);
+  if (row) saveWordRowEdits(row);
 });
 
 async function closeAddResultModal() {
@@ -391,11 +431,11 @@ async function saveAddModal() {
       for (const line of lines) {
         if (!line.startsWith('data: ')) continue;
         const data = JSON.parse(line.slice(6));
-        if (data.updated) { updateProgressRowDetails(data); continue; }
+        if (data.updated) { updateWordRowDetails(data); continue; }
         if (data.done) {
           _addPhase = 'done';
           clearAutofillSpinners();
-          sortProgressRows();
+          sortWordRows();
           renderStatus();
           await reloadWords();
           updateAddResultFooter();
@@ -403,7 +443,7 @@ async function saveAddModal() {
         }
         if (data.added) _addedWords.push(data.word);
         else _skippedCount++;
-        appendProgressResult(data);
+        appendWordRow(data);
         renderStatus();
         updateAddResultFooter();
       }
@@ -421,14 +461,14 @@ async function saveAddModal() {
       // else: abort was triggered by the Remove handler, which manages cleanup itself.
     } else {
       _addPhase = 'done';
-      setProgressStatus('done', 'Error: ' + err.message);
+      setModalStatus('done', 'Error: ' + err.message);
       await reloadWords();
       updateAddResultFooter();
     }
   }
 }
 
-function sortProgressRows() {
+function sortWordRows() {
   const body = document.getElementById('add-result-modal-body');
   const rows = Array.from(body.children);
   rows.sort((a, b) => {
@@ -439,7 +479,7 @@ function sortProgressRows() {
   rows.forEach(r => body.appendChild(r));
 }
 
-function appendProgressResult(data) {
+function appendWordRow(data) {
   // Find the pre-inserted placeholder row for this word; fall back to appending a new one
   const body = document.getElementById('add-result-modal-body');
   let row = null;
@@ -462,7 +502,7 @@ function appendProgressResult(data) {
 
   const removeBtn =
     '<button class="btn-delete btn-word-remove" data-tooltip="Remove word"' +
-      ' data-word="' + esc(data.word) + '" onmousedown="removeProgressWord(event,this)">✕</button>';
+      ' data-word="' + esc(data.word) + '" onmousedown="removeWordRow(event,this)">✕</button>';
   const hasProviders = _providers && (_providers.anthropic || _providers.openai);
   const generateBtn = data.word_id
     ? '<button class="btn-generate"' +
@@ -484,8 +524,8 @@ function appendProgressResult(data) {
         '<span class="target-stepper" data-tooltip="Remaining drills to target">' +
           '<span class="drill-target-label">🎯</span>' +
           '<span class="drill-target-val" data-target="' + target + '">' + target + '</span>' +
-          '<button class="btn-target-adj" onmousedown="adjustProgressTarget(event,' + data.word_id + ',-1,this)">−</button>' +
-          '<button class="btn-target-adj" onmousedown="adjustProgressTarget(event,' + data.word_id + ',1,this)">+</button>' +
+          '<button class="btn-target-adj" onmousedown="adjustWordTarget(event,' + data.word_id + ',-1,this)">−</button>' +
+          '<button class="btn-target-adj" onmousedown="adjustWordTarget(event,' + data.word_id + ',1,this)">+</button>' +
         '</span>' +
       '</span>';
   } else {
@@ -505,7 +545,7 @@ function appendProgressResult(data) {
     details;
 }
 
-function updateProgressRowDetails(data) {
+function updateWordRowDetails(data) {
   const body = document.getElementById('add-result-modal-body');
   let row = null;
   for (const el of body.children) {
@@ -553,7 +593,7 @@ async function generateWordAutofill(event, wordId, word, btn) {
     if (!res.ok) throw new Error(await res.text());
     const data = await res.json();
     data.word = word;
-    updateProgressRowDetails(data);
+    updateWordRowDetails(data);
   } finally {
     if (btn._generateAbort === abort) {
       btn._generateAbort = null;
@@ -567,7 +607,7 @@ async function generateWordAutofill(event, wordId, word, btn) {
   }
 }
 
-async function removeProgressWord(event, btn) {
+async function removeWordRow(event, btn) {
   const word = btn.dataset.word;
   event.stopPropagation();
   btn.disabled = true;
@@ -587,7 +627,7 @@ async function removeProgressWord(event, btn) {
   updateAddResultFooter();
 }
 
-function saveProgressRowEdits(row) {
+function saveWordRowEdits(row) {
   if (!row._wordId) return;
   const reading   = (row.querySelector('.detail-reading .detail-input')?.textContent ?? '').trim();
   const type      = row.querySelector('.detail-pos-select')?.value ?? '';
@@ -604,7 +644,7 @@ function saveProgressRowEdits(row) {
   });
 }
 
-async function adjustProgressTarget(event, wordId, delta, btn) {
+async function adjustWordTarget(event, wordId, delta, btn) {
   event.stopPropagation();
   const stepper = btn.closest('.target-stepper');
   const valEl = stepper.querySelector('.drill-target-val');
@@ -750,7 +790,7 @@ function renderStatus() {
   updateAddResultFooter();
 }
 
-function setProgressStatus(type, text) {
+function setModalStatus(type, text) {
   const el = document.getElementById('add-result-modal-status');
   const spinner = type === 'loading' ? '<span class="spinner"></span>' : '';
   el.className = 'modal-status modal-status-' + type;

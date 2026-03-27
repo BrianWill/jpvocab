@@ -5,9 +5,6 @@ This file is random notes of possible features and bug fixes.
 - the set of POS should be constrained to an enum
     - tell AI to stick to the defined categories (or as fallback label a word as "other")
 
-- words in lexicon page list shift layout by a couple pixels when hovering (the edit / delete buttons should be visibility hidden, not display none)
-
-- when adding words that already are in lexicon, present the remaining target count and present - + buttons to tweak the count
 
 - when adding words, user should be able to enter any Japanese text to add all words 
     - filters out particles, conjunctions, and other small parts of speech
@@ -19,11 +16,10 @@ This file is random notes of possible features and bug fixes.
     - e.g. given chapter of novel, produce audio
     - experiment with openAI audio generation. Might be better quality than voicevox
 
-- for word add, generate auto-fill menu should be very similar to the edit generate menu
-    - no checkbox when entering words: will just generate in the modal after the words have been added
-    - does the box list every generation attempt? user can generate multiple times and pick the best for all? 
-        - awkward because you ideally can generate / pick for each word
-        - 
+- when generating word info, what if the AI keeps returning the same bad results
+    - Maybe need a text box so the user can add comments for the AI?
+    - or explicitly ask the AI for multiple different choices and let the user pick?
+        - these would be displayed indented below the word and its current info
 
 - generate audio for the words
     - pulldown options: either no audio, browser tts, or voicevox

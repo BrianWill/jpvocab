@@ -7,7 +7,9 @@
       "Bash(go test:*)",
       "Bash(du -sb D:/code/jpvocab/prototype/backend/tmp/*)",
       "Bash(grep:*)",
-      "Bash(wc:*)"
+      "Bash(wc:*)",
+      "Bash(find /d/code/jpvocab/frontend/src -type f -name *.js -o -name *.html -o -name *.css)",
+      "Bash(find /d/code/jpvocab -type f -name common.css -o -name *modal*)"
     ]
   },
   "outputStyle": "Explanatory"

@@ -301,6 +301,7 @@
 
 /* --- Progress modal --- */
 .modal-wide { max-width: 860px; }
+#progress-modal-close { color: #a6adc8; }
 .modal-body-scroll {
   max-height: 340px;
   overflow-y: auto;

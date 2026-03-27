@@ -153,6 +153,7 @@ body {
   border-radius: 4px;
 }
 .modal-close:hover { color: #cdd6f4; background: #313244; }
+.modal-close:disabled { opacity: 0.35; cursor: not-allowed; }
 .modal-body {
   padding: 1.25rem;
 }

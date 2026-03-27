@@ -422,7 +422,7 @@ document.addEventListener('keydown', e => {
     closeModal();
     closeAddModal();
     closeDeleteModal();
-    if (_progressPhase !== 'loading') closeProgressModal();
+    if (_progressPhase !== 'loading' && _pendingGenerates === 0) closeProgressModal();
   }
 });
 
@@ -491,14 +491,15 @@ let _abortController = null;
 let _providers = null;
 
 document.getElementById('progress-modal-backdrop').addEventListener('click', function (e) {
-  if (e.target === this && _progressPhase !== 'loading') closeProgressModal();
+  if (e.target === this && _progressPhase !== 'loading' && _pendingGenerates === 0) closeProgressModal();
 });
 
-function closeProgressModal() {
+async function closeProgressModal() {
+  if (_progressPhase === 'loading' || _pendingGenerates > 0) return;
   document.getElementById('progress-modal-backdrop').classList.add('hidden');
+  await reloadWords();
   const activeBtn = document.querySelector('.btn-sort--active');
   renderTable(getSortedWords(activeBtn.dataset.sort, activeBtn.dataset.dir || 'desc'));
-  updateWordCount();
 }
 
 async function saveAddModal() {
@@ -838,6 +839,27 @@ function generateAllAdded() {
 }
 
 function renderStatus() {
+  // Update modal title
+  const titleEl = document.getElementById('progress-modal-title');
+  if (titleEl) {
+    titleEl.textContent = 'Edit words';
+  }
+
+  // Update header close button state
+  const closeBtnHdr = document.getElementById('progress-modal-close');
+  if (closeBtnHdr) {
+    const locked = _progressPhase === 'loading' || _pendingGenerates > 0;
+    closeBtnHdr.style.opacity = locked ? '0.3' : '';
+    closeBtnHdr.style.cursor  = locked ? 'not-allowed' : '';
+    if (locked) {
+      closeBtnHdr.dataset.tooltip = _progressPhase === 'loading'
+        ? 'Please wait for words to finish being added'
+        : 'Please wait for generation to finish';
+    } else {
+      delete closeBtnHdr.dataset.tooltip;
+    }
+  }
+
   const sel = document.getElementById('progress-ai-model-select');
   if (sel) {
     const busyLock = _pendingGenerates > 0;
@@ -872,6 +894,7 @@ function renderStatus() {
     el.className = 'modal-status ' + (_pendingGenerates > 0 ? 'modal-status-loading' : 'modal-status-done');
     el.innerHTML = countsHtml + actionHtml;
   }
+  updateProgressFooter();
 }
 
 function setProgressStatus(type, text) {
@@ -939,5 +962,5 @@ function updateProgressFooter() {
   btnRemove.textContent = _progressAdded.length > 0
     ? 'Remove the ' + _progressAdded.length + ' added word' + (_progressAdded.length === 1 ? '' : 's')
     : 'Remove added words';
-  btnClose.disabled = _progressPhase === 'loading';
+  btnClose.disabled = _progressPhase === 'loading' || _pendingGenerates > 0;
 }

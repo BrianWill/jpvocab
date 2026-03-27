@@ -82,22 +82,6 @@
         <label for="add-words-input">Words to add — separate with spaces, commas, or newlines</label>
         <textarea id="add-words-input" rows="8" placeholder="食べる 走る, 静か&#10;美しい、難しい"></textarea>
       </div>
-      <div class="add-modal-options">
-        <label class="checkbox-label">
-          <input type="checkbox" id="autofill-check"> Auto-fill via AI
-          <span id="autofill-msg" class="autofill-msg"></span>
-        </label>
-        <select id="ai-model-select" disabled>
-          <optgroup label="Anthropic">
-            <option value="anthropic/claude-haiku-4-5-20251001">claude-haiku (fast)</option>
-            <option value="anthropic/claude-sonnet-4-6">claude-sonnet (better)</option>
-          </optgroup>
-          <optgroup label="OpenAI">
-            <option value="openai/gpt-4o-mini">gpt-4o-mini (fast)</option>
-            <option value="openai/gpt-4o">gpt-4o (better)</option>
-          </optgroup>
-        </select>
-      </div>
     </div>
     <div class="modal-footer">
       <button class="btn-cancel" onclick="closeAddModal()">Cancel</button>

@@ -7,6 +7,11 @@ This file is random notes of possible features and bug fixes.
 
 - when adding words that already are in lexicon, present the remaining target count and present - + buttons to tweak the count
 
+- when adding words, user should be able to enter any Japanese text to add all words 
+    - filters out particles, conjunctions, and other small parts of speech
+    - no longer required to separate words by newlines or whitespace
+        - instead just tries to analyze the text for all discrete words  
+
 - translate stories and generate audio via voicevox
     - can voicevox generate a single audio file but give timemarks for each line?
     - e.g. given chapter of novel, produce audio

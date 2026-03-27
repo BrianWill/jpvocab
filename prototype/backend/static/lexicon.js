@@ -145,32 +145,16 @@ async function init() {
   applyProviderAvailability(providers);
 }
 
+function providerSelectTooltip(providers) {
+  const lines = [];
+  if (!providers.anthropic) lines.push('Anthropic: set ANTHROPIC_API_KEY to enable');
+  if (!providers.openai)    lines.push('OpenAI: set OPENAI_API_KEY to enable');
+  if (lines.length === 0) return null;
+  return lines.join(' · ') + ' — then restart the program';
+}
+
 function applyProviderAvailability(providers) {
-  const select       = document.getElementById('ai-model-select');
-  const checkbox     = document.getElementById('autofill-check');
-  const msg          = document.getElementById('autofill-msg');
-  const anthropicGrp = document.querySelector('#ai-model-select optgroup[label="Anthropic"]');
-  const openaiGrp    = document.querySelector('#ai-model-select optgroup[label="OpenAI"]');
-
-  if (!providers.anthropic) {
-    anthropicGrp.disabled = true;
-    anthropicGrp.label = 'Anthropic — no API key';
-  }
-  if (!providers.openai) {
-    openaiGrp.disabled = true;
-    openaiGrp.label = 'OpenAI — no API key';
-  }
-
-  if (!providers.anthropic && !providers.openai) {
-    checkbox.disabled = true;
-    select.disabled = true;
-    msg.textContent = '— no AI providers configured';
-  } else {
-    checkbox.checked = true;
-    select.disabled = false;
-    const first = select.querySelector('optgroup:not([disabled]) option');
-    if (first) select.value = first.value;
-  }
+  _providers = providers;
 
   // Apply to edit modal AI select and reroll buttons
   const editSelect       = document.getElementById('edit-ai-model-select');
@@ -188,6 +172,15 @@ function applyProviderAvailability(providers) {
     editOpenaiGrp.label = 'OpenAI — no API key';
   }
 
+  const editTip = providerSelectTooltip(providers);
+  if (editTip) {
+    const icon = document.createElement('span');
+    icon.className = 'provider-info-icon';
+    icon.dataset.tooltip = editTip;
+    icon.textContent = '?';
+    editSelect.insertAdjacentElement('afterend', icon);
+  }
+
   if (!providers.anthropic && !providers.openai) {
     editSelect.disabled = true;
     btnMeaning.disabled = true;
@@ -195,7 +188,7 @@ function applyProviderAvailability(providers) {
     document.getElementById('edit-sidebar-empty').innerHTML =
       '<span class="sidebar-no-providers">No AI providers configured.<br><br>' +
       'Set <code>ANTHROPIC_API_KEY</code> or <code>OPENAI_API_KEY</code> ' +
-      'as environment variables and restart the server.</span>';
+      'as environment variables and restart the program.</span>';
   } else {
     const firstEdit = editSelect.querySelector('optgroup:not([disabled]) option');
     if (firstEdit) editSelect.value = firstEdit.value;
@@ -488,17 +481,14 @@ function closeAddModal() {
 }
 
 
-document.getElementById('autofill-check').addEventListener('change', function () {
-  document.getElementById('ai-model-select').disabled = !this.checked;
-});
-
 // --- Progress modal ---
 let _progressPhase = 'idle'; // 'loading' | 'done' | 'cancelled'
 let _progressAdded = [];
 let _progressSkipped = 0;
 let _progressTotal = 0;
-let _autofillEnabled = false;
+let _pendingGenerates = 0;
 let _abortController = null;
+let _providers = null;
 
 document.getElementById('progress-modal-backdrop').addEventListener('click', function (e) {
   if (e.target === this && _progressPhase !== 'loading') closeProgressModal();
@@ -517,15 +507,13 @@ async function saveAddModal() {
     .map(t => t.trim()).filter(t => t.length > 0);
   if (wordList.length === 0) return;
 
-  const useAI   = document.getElementById('autofill-check').checked;
-  const aiModel = document.getElementById('ai-model-select').value;
   closeAddModal();
 
   _progressPhase = 'loading';
   _progressAdded = [];
   _progressSkipped = 0;
   _progressTotal = wordList.length;
-  _autofillEnabled = useAI;
+  _pendingGenerates = 0;
   _abortController = new AbortController();
 
   const progressBody = document.getElementById('progress-modal-body');
@@ -567,8 +555,7 @@ async function saveAddModal() {
 
   const form = new FormData();
   form.append('words', wordList.join('\n'));
-  form.append('autofill', useAI ? 'on' : 'off');
-  form.append('ai_model', aiModel);
+  form.append('autofill', 'off');
 
   try {
     const res = await fetch('/admin/words/batch', {
@@ -592,6 +579,7 @@ async function saveAddModal() {
         if (data.done) {
           _progressPhase = 'done';
           clearAutofillSpinners();
+          sortProgressRows();
           renderStatus();
           await reloadWords();
           updateProgressFooter();
@@ -624,6 +612,17 @@ async function saveAddModal() {
   }
 }
 
+function sortProgressRows() {
+  const body = document.getElementById('progress-modal-body');
+  const rows = Array.from(body.children);
+  rows.sort((a, b) => {
+    const aLexicon = a.dataset.reason === 'already in lexicon' ? 0 : 1;
+    const bLexicon = b.dataset.reason === 'already in lexicon' ? 0 : 1;
+    return aLexicon - bLexicon;
+  });
+  rows.forEach(r => body.appendChild(r));
+}
+
 function appendProgressResult(data) {
   // Find the pre-inserted placeholder row for this word; fall back to appending a new one
   const body = document.getElementById('progress-modal-body');
@@ -638,15 +637,22 @@ function appendProgressResult(data) {
   row._pendingWord = null;
   row._resolvedWord = data.word;
   row.className = 'word-result-row ' + (data.added ? 'result-added' : 'result-skipped');
+  row.dataset.reason = data.added ? 'added' : (data.reason || '');
 
   const badge = data.added
-    ? '<span class="result-badge badge-added">added</span>' +
-      (_autofillEnabled ? '<span class="result-autofill-spinner"><span class="spinner"></span></span>' : '')
+    ? '<span class="result-badge badge-added">added</span>'
     : '<span class="result-badge badge-skipped">' + esc(data.reason) + '</span>';
 
   const removeBtn =
     '<button class="btn-delete btn-word-remove" data-tooltip="Remove word"' +
       ' data-word="' + esc(data.word) + '" onmousedown="removeProgressWord(event,this)">✕</button>';
+  const hasProviders = _providers && (_providers.anthropic || _providers.openai);
+  const generateBtn = data.word_id
+    ? '<button class="btn-generate"' +
+        (hasProviders ? '' : ' disabled') +
+        ' data-tooltip="Uses an AI API request to get the word\'s part-of-speech, meaning, and an example sentence"' +
+        ' onmousedown="generateWordAutofill(event,' + data.word_id + ',\'' + esc(data.word) + '\',this)">generate</button>'
+    : '';
   let inlineExtra;
   if (data.word_id) {
     const correct   = data.drill_count     ?? 0;
@@ -654,6 +660,7 @@ function appendProgressResult(data) {
     const target    = data.drill_target    ?? 0;
     inlineExtra =
       '<span class="word-result-drill">' +
+        generateBtn +
         removeBtn +
         '<span class="drill-correct" data-tooltip="Times answered correctly">✓ ' + correct + '</span>' +
         '<span class="drill-incorrect" data-tooltip="Times answered incorrectly">✗ ' + incorrect + '</span>' +
@@ -704,8 +711,51 @@ function updateProgressRowDetails(data) {
       detailItemRaw('ex.',     exText,                                                !data.example_jp,     'detail-ex') +
     '</div>';
   row.querySelector('.word-result-details').outerHTML = newDetails;
-  const spinner = row.querySelector('.result-autofill-spinner');
-  if (spinner) spinner.remove();
+  const genBtn = row.querySelector('.btn-generate');
+  if (genBtn && genBtn.classList.contains('btn-generate--busy') && !genBtn._generateAbort) {
+    genBtn.classList.remove('btn-generate--busy');
+    genBtn.innerHTML = 'generate';
+    _pendingGenerates = Math.max(0, _pendingGenerates - 1);
+    renderStatus();
+  }
+}
+
+async function generateWordAutofill(event, wordId, word, btn) {
+  event.stopPropagation();
+  if (btn._generateAbort) {
+    btn._generateAbort.abort();
+    return; // ongoing call's finally handles cleanup
+  }
+  if (btn.classList.contains('btn-generate--busy')) return; // batch autofill in progress
+  const abort = new AbortController();
+  btn._generateAbort = abort;
+  btn.classList.add('btn-generate--busy', 'btn-generate--cancellable');
+  btn.innerHTML = '<span class="spinner"></span><span class="btn-gen-label">generating\u2026</span><span class="btn-gen-cancel">cancel generation</span>';
+  _pendingGenerates++;
+  renderStatus();
+  const aiModel = document.getElementById('progress-ai-model-select').value;
+  try {
+    const res = await fetch('/api/words/' + wordId + '/autofill', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ word, ai_model: aiModel }),
+      signal: abort.signal,
+    });
+    if (!res.ok) throw new Error(await res.text());
+    const data = await res.json();
+    data.word = word;
+    updateProgressRowDetails(data);
+  } finally {
+    if (btn._generateAbort === abort) {
+      btn._generateAbort = null;
+      if (btn.classList.contains('btn-generate--busy')) {
+        btn.classList.remove('btn-generate--busy', 'btn-generate--cancellable');
+        btn.innerHTML = 'generate';
+        _pendingGenerates = Math.max(0, _pendingGenerates - 1);
+        renderStatus();
+      }
+    }
+  }
 }
 
 async function removeProgressWord(event, btn) {
@@ -765,24 +815,62 @@ function esc(s) {
 }
 
 function clearAutofillSpinners() {
-  document.querySelectorAll('#progress-modal-body .result-autofill-spinner').forEach(s => s.remove());
+  document.querySelectorAll('#progress-modal-body .btn-generate--busy').forEach(btn => {
+    btn._generateAbort = null;
+    btn.classList.remove('btn-generate--busy', 'btn-generate--cancellable');
+    btn.innerHTML = 'generate';
+  });
+  _pendingGenerates = 0;
+}
+
+function cancelAllGenerates() {
+  document.querySelectorAll('#progress-modal-body .btn-generate--cancellable').forEach(btn => {
+    if (btn._generateAbort) btn._generateAbort.abort();
+  });
+  clearAutofillSpinners();
+  renderStatus();
+}
+
+function generateAllAdded() {
+  document.querySelectorAll('#progress-modal-body .result-added .btn-generate:not(.btn-generate--busy):not([disabled])').forEach(btn => {
+    btn.dispatchEvent(new MouseEvent('mousedown'));
+  });
 }
 
 function renderStatus() {
+  const sel = document.getElementById('progress-ai-model-select');
+  if (sel) {
+    const busyLock = _pendingGenerates > 0;
+    sel.disabled = busyLock || !(_providers && (_providers.anthropic || _providers.openai));
+    if (busyLock) {
+      sel.dataset.tooltip = 'Unavailable while generation is in progress';
+    } else {
+      delete sel.dataset.tooltip;
+    }
+  }
   const el = document.getElementById('progress-modal-status');
   const skippedHtml = _progressSkipped > 0
     ? ', <span class="status-skipped">' + _progressSkipped + ' skipped</span>'
     : '';
   const countsHtml = '<span>' + _progressAdded.length + ' added' + skippedHtml + '</span>';
+  const hasProviders = _providers && (_providers.anthropic || _providers.openai);
+  const actionHtml = _pendingGenerates > 0
+    ? '<button class="btn-generate btn-generate--cancel" onmousedown="cancelAllGenerates()">' +
+        '<span class="spinner"></span>cancel generation' +
+      '</button>'
+    : '<button class="btn-generate btn-generate--all"' +
+        (_progressAdded.length > 0 && hasProviders && _progressPhase !== 'loading' ? '' : ' disabled') +
+        ' data-tooltip="Uses an AI API request to get part-of-speech, meaning, and an example sentence for each newly added word"' +
+        ' onmousedown="generateAllAdded()">generate all</button>';
   if (_progressPhase === 'loading') {
     el.className = 'modal-status modal-status-loading';
-    el.innerHTML = countsHtml + '<span class="spinner"></span>';
+    el.innerHTML = countsHtml + actionHtml + (_pendingGenerates === 0 ? '<span class="spinner"></span>' : '');
   } else if (_progressPhase === 'cancelled') {
     el.className = 'modal-status modal-status-cancelled';
-    el.innerHTML = countsHtml + '<span class="status-cancelled-note"> — cancelled</span>';
+    el.innerHTML = countsHtml + actionHtml + (_pendingGenerates === 0 ? '<span class="status-cancelled-note"> — cancelled</span>' : '');
   } else {
-    el.className = 'modal-status modal-status-done';
-    el.innerHTML = countsHtml;
+    el.className = 'modal-status ' + (_pendingGenerates > 0 ? 'modal-status-loading' : 'modal-status-done');
+    el.innerHTML = countsHtml + actionHtml;
   }
 }
 
@@ -795,14 +883,31 @@ function setProgressStatus(type, text) {
 
 function initProgressFooter() {
   const footer = document.getElementById('progress-modal-footer');
+  const hasProviders = _providers && (_providers.anthropic || _providers.openai);
+  const progTip = _providers ? providerSelectTooltip(_providers) : null;
   footer.innerHTML =
-    '<button id="btn-prog-cancel" class="btn-cancel">Cancel request</button>' +
     '<button id="btn-prog-remove" class="btn-danger">Remove added words</button>' +
-    '<button id="btn-prog-close" class="btn-save">Close</button>';
+    '<select id="progress-ai-model-select" class="prog-model-select"' +
+      (hasProviders ? '' : ' disabled') +
+    '>' +
+      '<optgroup label="' + (_providers && !_providers.anthropic ? 'Anthropic — no API key' : 'Anthropic') + '"' + (_providers && !_providers.anthropic ? ' disabled' : '') + '>' +
+        '<option value="anthropic/claude-haiku-4-5-20251001">claude-haiku (fast)</option>' +
+        '<option value="anthropic/claude-sonnet-4-6">claude-sonnet (better)</option>' +
+      '</optgroup>' +
+      '<optgroup label="' + (_providers && !_providers.openai ? 'OpenAI — no API key' : 'OpenAI') + '"' + (_providers && !_providers.openai ? ' disabled' : '') + '>' +
+        '<option value="openai/gpt-4o-mini">gpt-4o-mini (fast)</option>' +
+        '<option value="openai/gpt-4o">gpt-4o (better)</option>' +
+      '</optgroup>' +
+    '</select>' +
+    (progTip ? '<span class="provider-info-icon" data-tooltip="' + progTip + '">?</span>' : '') +
+    '<button id="btn-prog-close" class="btn-save" style="margin-left:auto">Close</button>';
 
-  document.getElementById('btn-prog-cancel').onclick = function () {
-    _abortController.abort();
-  };
+  if (hasProviders) {
+    const sel = document.getElementById('progress-ai-model-select');
+    const first = sel.querySelector('optgroup:not([disabled]) option');
+    if (first) sel.value = first.value;
+  }
+
   document.getElementById('btn-prog-remove').onclick = async function () {
     const toRemove = _progressAdded.slice();
     if (_progressPhase === 'loading') {
@@ -827,11 +932,9 @@ function initProgressFooter() {
 }
 
 function updateProgressFooter() {
-  const btnCancel = document.getElementById('btn-prog-cancel');
   const btnRemove = document.getElementById('btn-prog-remove');
   const btnClose  = document.getElementById('btn-prog-close');
-  if (!btnCancel) return;
-  btnCancel.disabled = _progressPhase !== 'loading';
+  if (!btnRemove) return;
   btnRemove.disabled = _progressAdded.length === 0;
   btnRemove.textContent = _progressAdded.length > 0
     ? 'Remove the ' + _progressAdded.length + ' added word' + (_progressAdded.length === 1 ? '' : 's')

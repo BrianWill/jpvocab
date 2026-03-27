@@ -267,26 +267,26 @@
 .modal-field textarea:focus { outline: 1px solid #89b4fa; }
 .modal-field textarea::placeholder { color: #313244; }
 
-.add-modal-options {
-  display: flex;
+
+/* Provider info icon (? badge next to model selects) */
+.provider-info-icon {
+  display: inline-flex;
   align-items: center;
-  gap: 0.75rem;
-  flex-wrap: wrap;
+  justify-content: center;
+  width: 1rem;
+  height: 1rem;
+  border-radius: 50%;
+  border: 1px solid #45475a;
+  color: #585b70;
+  font-size: 0.65rem;
+  cursor: default;
+  flex-shrink: 0;
+  line-height: 1;
 }
-.checkbox-label {
-  display: flex;
-  align-items: center;
-  gap: 0.4rem;
-  font-size: 0.82rem;
-  color: #cdd6f4;
-  cursor: pointer;
-  white-space: nowrap;
-}
-.checkbox-label input[type="checkbox"] {
-  accent-color: #89b4fa;
-  cursor: pointer;
-}
-.add-modal-options select {
+.provider-info-icon:hover { border-color: #89b4fa; color: #89b4fa; }
+
+/* Progress modal footer model select */
+.prog-model-select {
   background: #11111b;
   border: 1px solid #313244;
   border-radius: 4px;
@@ -296,9 +296,8 @@
   padding: 0.3rem 0.5rem;
   cursor: pointer;
 }
-.add-modal-options select:disabled { opacity: 0.4; cursor: default; }
-.add-modal-options select:focus { outline: 1px solid #89b4fa; }
-.autofill-msg { font-size: 0.75rem; color: #585b70; }
+.prog-model-select:disabled { opacity: 0.4; cursor: default; }
+.prog-model-select:focus { outline: 1px solid #89b4fa; }
 
 /* --- Progress modal --- */
 .modal-wide { max-width: 860px; }
@@ -413,6 +412,32 @@
 
 .word-result-main .btn-delete { visibility: visible; }
 .btn-word-remove { width: 1.1rem; height: 1.1rem; font-size: 0.65rem; }
+.btn-generate {
+  visibility: visible;
+  height: 1.1rem;
+  padding: 0 0.35rem;
+  font-size: 0.6rem;
+  background: transparent;
+  border: 1px solid #45475a;
+  border-radius: 3px;
+  color: #585b70;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  white-space: nowrap;
+  line-height: 1;
+}
+.btn-generate:hover:not(.btn-generate--busy):not(:disabled) { border-color: #89b4fa; color: #89b4fa; }
+.btn-generate:disabled { opacity: 0.35; cursor: default; pointer-events: none; }
+.btn-generate--all { border-color: rgba(166,227,161,0.35); color: rgba(166,227,161,0.8); }
+.btn-generate--all:hover:not(:disabled) { border-color: #a6e3a1; color: #a6e3a1; }
+.btn-generate .spinner { width: 0.55rem; height: 0.55rem; }
+.btn-gen-cancel { display: none; }
+.btn-generate--cancellable:hover { border-color: #f38ba8; color: #f38ba8; cursor: pointer; }
+.btn-generate--cancel             { border-color: #f38ba8; color: #f38ba8; }
+.btn-generate--cancellable:hover .btn-gen-label { display: none; }
+.btn-generate--cancellable:hover .btn-gen-cancel { display: inline; }
 
 .result-autofill-spinner {
   display: inline-flex;

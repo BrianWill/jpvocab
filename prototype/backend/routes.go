@@ -50,6 +50,7 @@ func serverInit(db *sql.DB) {
 	r.Delete("/api/words/{id}", apiDeleteWord(db))
 	r.Post("/api/words/{id}/reroll-meaning", apiRerollMeaning())
 	r.Post("/api/words/{id}/reroll-examples", apiRerollExamples())
+	r.Post("/api/words/{id}/autofill", apiAutofillWord(db))
 
 	r.Get("/api/kanji", apiGetKanji(db))
 	r.Post("/api/drill/sessions", apiCreateDrillSession(db))
@@ -234,6 +235,55 @@ func apiRerollExamples() http.HandlerFunc {
 		}
 		w.Header().Set("Content-Type", "application/json")
 		json.NewEncoder(w).Encode(map[string]any{"alternatives": alternatives})
+	}
+}
+
+func apiAutofillWord(db *sql.DB) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		id, err := strconv.ParseInt(chi.URLParam(r, "id"), 10, 64)
+		if err != nil {
+			http.Error(w, "bad id", http.StatusBadRequest)
+			return
+		}
+		var body struct {
+			Word    string `json:"word"`
+			AIModel string `json:"ai_model"`
+		}
+		if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+			http.Error(w, "bad request", http.StatusBadRequest)
+			return
+		}
+		filled, err := autoFillWord(body.Word, body.AIModel)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		type kdEntry struct {
+			ID      int64  `json:"id"`
+			Reading string `json:"reading"`
+		}
+		kd := make([]kdEntry, 0, len(filled.Kanji))
+		for _, k := range filled.Kanji {
+			kID, kErr := upsertKanji(db, k.Character, k.Meanings)
+			if kErr != nil {
+				continue
+			}
+			kd = append(kd, kdEntry{ID: kID, Reading: k.Reading})
+		}
+		b, _ := json.Marshal(kd)
+		if err := updateWordFill(db, id, filled.Reading, filled.PartOfSpeech, filled.Meaning, filled.ExampleJP, filled.ExampleEN, string(b)); err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(map[string]any{
+			"word":           body.Word,
+			"reading":        filled.Reading,
+			"part_of_speech": filled.PartOfSpeech,
+			"meaning":        filled.Meaning,
+			"example_jp":     filled.ExampleJP,
+			"example_en":     filled.ExampleEN,
+		})
 	}
 }
 

@@ -46,6 +46,16 @@ The frontend is being wired up to the prototype backend (`prototype/backend/`), 
 ## Commands
 
 ```bash
+# --- Prototype backend (primary development target) ---
+
+# Run with hot-reload (from prototype/backend/)
+cd prototype/backend && air
+
+# Run backend tests
+cd prototype/backend && go test ./...
+
+# --- Legacy Wails app ---
+
 # Development (hot reload for both frontend and backend)
 wails dev
 
@@ -57,20 +67,17 @@ cd frontend && npm install && npm run dev
 
 # Go dependencies
 go mod tidy
-
-# Run backend tests (from prototype/backend/)
-cd prototype/backend && go test ./...
 ```
 
 The Go backend has a test suite; the frontend does not. When writing tests, only write them for Go backend code — do not write tests for frontend JS or HTML.
 
-## Planned Lexicon Features (not yet implemented)
+## Planned Lexicon Features
 
-- **Add words flow** — the lexicon has an "add words" modal where the user pastes Japanese words (one per line). When wired to the backend:
-  - Words are normalised to their dictionary base form via grammatical analysis (e.g. conjugated verbs → dictionary form) to prevent duplicates across inflections
-  - Duplicates (same base form already in lexicon) are silently skipped
-  - AI is used to auto-generate: reading (hiragana), meaning (English), example sentence (Japanese + English translation)
-  - Optionally, audio of the word and example sentence is generated via VoiceVox and stored alongside the word
+- **Add words flow** — the lexicon has an "add words" modal where the user pastes Japanese words (one per line). Backend infrastructure exists; full end-to-end wiring is in progress:
+  - **Implemented:** Words are normalised to their dictionary base form via `morphology.go` (e.g. conjugated verbs → dictionary form) to prevent duplicates across inflections
+  - **Implemented:** Duplicates (same base form already in lexicon) are silently skipped
+  - **Implemented:** AI is used to auto-generate reading (hiragana), meaning (English), example sentence (Japanese + English translation) — see `ai.go` and the `/api/words/{id}/autofill`, `/api/words/{id}/reroll-meaning`, `/api/words/{id}/reroll-examples` endpoints
+  - **Not yet implemented:** Audio of the word and example sentence generated via VoiceVox (`tts-demo.html` exists as a sandbox for this)
 
 ## Frontend Pages
 
@@ -79,18 +86,7 @@ The HTML/CSS/JS frontend files live in `prototype/backend/static/` and are serve
 - **drill.html** — the drill view
 - **lexicon.html** — the lexicon/word management view
 - **activity.html** — the activity/stats view
-
-### Dummy data
-
-`dummy_data.js` (in `prototype/backend/static/`) holds hardcoded data used by pages not yet wired to the backend. It exports:
-
-- `lexiconWords` — word list used by the lexicon page (includes correct/incorrect/target/createdAt/lastDrilled fields)
-- `drillWords` — word list used by the drill page (leaner shape, no stat fields)
-- `W` — word dictionary used by the activity page (`word → [reading, meaning]`)
-- `dr()` / `wr()` — helpers for building activity entries
-- `activityData` — date-keyed drill/add/clear history for the activity calendar
-- `stats` — headline stat numbers for the activity stats section
-When adding or changing dummy data, edit `dummy_data.js` only — do not put data back into the page JS files. As pages are wired to real backend endpoints, their dummy data dependencies can be removed.
+- **tts-demo.html** — sandbox page for testing VoiceVox TTS audio generation (not a production view)
 
 ### Backend prototype
 
@@ -99,9 +95,22 @@ When adding or changing dummy data, edit `dummy_data.js` only — do not put dat
 - **`main.go`** — entry point; opens the DB and starts the server
 - **`db.go`** — all database access: `initDB`, `migrate`, `seedDB`, and one function per query or write operation. No SQL appears outside this file.
 - **`routes.go`** — Chi router and HTTP handlers only; no direct DB access. Handlers call functions from `db.go` and pass results to `renderTemplate`.
+- **`ai.go`** — AI provider calls: word autofill, reroll meaning, reroll examples. No direct DB access.
+- **`morphology.go`** — word normalisation to dictionary base form (used in the add-words flow).
 - **`templates/`** — HTML templates parsed from disk on every request (live-editable without restart); `base.html` is the shared shell, each page has its own file
 - **`static/`** — HTML pages, CSS, and JS, served from disk (live-editable without restart)
 - **`seed.json`** — fixture data loaded on first startup (or after a DB reset); contains `words` and `sessions` arrays
+
+Key API endpoints (beyond CRUD on `/api/words` and `/api/kanji`):
+
+| Method | Path | Purpose |
+|--------|------|---------|
+| `GET` | `/api/providers` | Check which AI providers are configured/available |
+| `POST` | `/api/words/{id}/autofill` | AI-generate reading, meaning, and examples for a word |
+| `POST` | `/api/words/{id}/reroll-meaning` | Regenerate just the meaning via AI |
+| `POST` | `/api/words/{id}/reroll-examples` | Regenerate just the example sentences via AI |
+| `POST` | `/api/drill/sessions` | Start a new drill session |
+| `POST` | `/api/drill/sessions/{id}/answers` | Record an answer within a session |
 
 Run with hot-reload from the `backend/` directory:
 
@@ -131,7 +140,9 @@ Styles shared across pages belong in `common.css`, which is loaded first by all 
 - **Scope changes to this project directory.** Do not read or write files outside `D:\code\jpvocab\` without explicit instruction.
 - **Ask before touching unfamiliar files.** If a file has not been part of the current conversation and has not been recently discussed, confirm with the user before editing it. This applies especially to Go source files, config files, and anything outside `prototype/backend/`.
 
-## Architecture
+## Architecture (Legacy Wails app)
+
+> This section describes the root-level Wails application. The active development target is `prototype/backend/`, which runs as a plain Go HTTP server (no Wails). The sections above cover its architecture.
 
 The app runs as a Wails desktop window. On startup, a Go HTTP server starts on port **1337** and the frontend redirects the WebView to it.
 

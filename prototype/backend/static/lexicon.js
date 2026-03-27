@@ -157,42 +157,45 @@ function providerSelectTooltip(providers) {
 function applyProviderAvailability(providers) {
   _providers = providers;
 
-  // Apply to edit modal AI select and reroll buttons
-  const editSelect       = document.getElementById('edit-ai-model-select');
-  const editAnthropicGrp = editSelect.querySelector('optgroup[label="Anthropic"]');
-  const editOpenaiGrp    = editSelect.querySelector('optgroup[label="OpenAI"]');
-  const btnMeaning       = document.getElementById('btn-reroll-meaning');
-  const btnExamples      = document.getElementById('btn-reroll-examples');
+  // Apply to edit modal AI select and reroll buttons (elements exist when the edit modal is open)
+  const editSelect = document.getElementById('edit-ai-model-select');
+  if (editSelect) {
+    const editAnthropicGrp = editSelect.querySelector('optgroup[label="Anthropic"]');
+    const editOpenaiGrp    = editSelect.querySelector('optgroup[label="OpenAI"]');
+    const btnMeaning       = document.getElementById('btn-reroll-meaning');
+    const btnExamples      = document.getElementById('btn-reroll-examples');
 
-  if (!providers.anthropic) {
-    editAnthropicGrp.disabled = true;
-    editAnthropicGrp.label = 'Anthropic — no API key';
-  }
-  if (!providers.openai) {
-    editOpenaiGrp.disabled = true;
-    editOpenaiGrp.label = 'OpenAI — no API key';
-  }
+    if (!providers.anthropic && editAnthropicGrp) {
+      editAnthropicGrp.disabled = true;
+      editAnthropicGrp.label = 'Anthropic — no API key';
+    }
+    if (!providers.openai && editOpenaiGrp) {
+      editOpenaiGrp.disabled = true;
+      editOpenaiGrp.label = 'OpenAI — no API key';
+    }
 
-  const editTip = providerSelectTooltip(providers);
-  if (editTip) {
-    const icon = document.createElement('span');
-    icon.className = 'provider-info-icon';
-    icon.dataset.tooltip = editTip;
-    icon.textContent = '?';
-    editSelect.insertAdjacentElement('afterend', icon);
-  }
+    const editTip = providerSelectTooltip(providers);
+    if (editTip) {
+      const icon = document.createElement('span');
+      icon.className = 'provider-info-icon';
+      icon.dataset.tooltip = editTip;
+      icon.textContent = '?';
+      editSelect.insertAdjacentElement('afterend', icon);
+    }
 
-  if (!providers.anthropic && !providers.openai) {
-    editSelect.disabled = true;
-    btnMeaning.disabled = true;
-    btnExamples.disabled = true;
-    document.getElementById('edit-sidebar-empty').innerHTML =
-      '<span class="sidebar-no-providers">No AI providers configured.<br><br>' +
-      'Set <code>ANTHROPIC_API_KEY</code> or <code>OPENAI_API_KEY</code> ' +
-      'as environment variables and restart the program.</span>';
-  } else {
-    const firstEdit = editSelect.querySelector('optgroup:not([disabled]) option');
-    if (firstEdit) editSelect.value = firstEdit.value;
+    if (!providers.anthropic && !providers.openai) {
+      editSelect.disabled = true;
+      if (btnMeaning)  btnMeaning.disabled  = true;
+      if (btnExamples) btnExamples.disabled = true;
+      const sidebarEmpty = document.getElementById('edit-sidebar-empty');
+      if (sidebarEmpty) sidebarEmpty.innerHTML =
+        '<span class="sidebar-no-providers">No AI providers configured.<br><br>' +
+        'Set <code>ANTHROPIC_API_KEY</code> or <code>OPENAI_API_KEY</code> ' +
+        'as environment variables and restart the program.</span>';
+    } else {
+      const firstEdit = editSelect.querySelector('optgroup:not([disabled]) option');
+      if (firstEdit) editSelect.value = firstEdit.value;
+    }
   }
 }
 
@@ -328,6 +331,18 @@ let _providers = null;
 
 document.getElementById('progress-modal-backdrop').addEventListener('click', function (e) {
   if (e.target === this && _progressPhase !== 'loading' && _pendingGenerates === 0) closeProgressModal();
+});
+
+// Auto-save word info edits in the progress modal
+document.getElementById('progress-modal-body').addEventListener('focusout', function(e) {
+  if (!e.target.classList.contains('detail-input')) return;
+  const row = e.target.closest('.word-result-row');
+  if (row) saveProgressRowEdits(row);
+});
+document.getElementById('progress-modal-body').addEventListener('change', function(e) {
+  if (!e.target.classList.contains('detail-pos-select')) return;
+  const row = e.target.closest('.word-result-row');
+  if (row) saveProgressRowEdits(row);
 });
 
 async function closeProgressModal() {
@@ -473,6 +488,7 @@ function appendProgressResult(data) {
   }
   row._pendingWord = null;
   row._resolvedWord = data.word;
+  row._wordId = data.word_id || null;
   row.className = 'word-result-row ' + (data.added ? 'result-added' : 'result-skipped');
   row.dataset.reason = data.added ? 'added' : (data.reason || '');
 
@@ -605,6 +621,23 @@ async function removeProgressWord(event, btn) {
   if (idx !== -1) _progressAdded.splice(idx, 1);
   renderStatus();
   updateProgressFooter();
+}
+
+function saveProgressRowEdits(row) {
+  if (!row._wordId) return;
+  const reading   = (row.querySelector('.detail-reading .detail-input')?.textContent ?? '').trim();
+  const type      = row.querySelector('.detail-pos-select')?.value ?? '';
+  const meaning   = (row.querySelector('.detail-meaning .detail-input')?.textContent ?? '').trim();
+  const exInputs  = row.querySelectorAll('.detail-ex .detail-input');
+  const exampleJp = (exInputs[0]?.textContent ?? '').trim();
+  const exampleEn = (exInputs[1]?.textContent ?? '').trim();
+  const targetEl  = row.querySelector('.drill-target-val');
+  const target    = targetEl ? (parseInt(targetEl.dataset.target, 10) || 0) : 0;
+  fetch('/api/words/' + row._wordId, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ reading, type, meaning, exampleJp, exampleEn, target }),
+  });
 }
 
 async function adjustProgressTarget(event, wordId, delta, btn) {

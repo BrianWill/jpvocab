@@ -14,6 +14,7 @@ const typeLabels = {
   'i-adjective':  'い-adjective (い形容詞)',
   'na-adjective': 'な-adjective (な形容詞)',
   'adverb':       'Adverb (副詞)',
+  'other':        'Other',
 };
 
 function timeAgo(dateStr) {
@@ -511,16 +512,12 @@ function appendProgressResult(data) {
     inlineExtra = '<span class="word-result-drill">' + removeBtn + '</span>';
   }
 
-  const dash = '<span class="detail-dash">\u2014</span>';
-  const exText = data.example_jp
-    ? esc(data.example_jp) + (data.example_en ? '  <em>' + esc(data.example_en) + '</em>' : '')
-    : dash;
   const details =
     '<div class="word-result-details">' +
-      detailItemRaw('reading', data.reading        ? esc(data.reading)        : dash, !data.reading,        'detail-reading') +
-      detailItemRaw('pos',     data.part_of_speech ? esc(data.part_of_speech) : dash, !data.part_of_speech, 'detail-pos') +
-      detailItemRaw('meaning', data.meaning        ? esc(data.meaning)        : dash, !data.meaning,        'detail-meaning') +
-      detailItemRaw('ex.',     exText,                                                !data.example_jp,     'detail-ex') +
+      detailItemInput('reading', data.reading,        'detail-reading') +
+      detailItemPosSelect(data.part_of_speech) +
+      detailItemInput('meaning', data.meaning,        'detail-meaning') +
+      detailItemExInput(data.example_jp, data.example_en) +
     '</div>';
 
   row.innerHTML =
@@ -535,16 +532,12 @@ function updateProgressRowDetails(data) {
     if (el._resolvedWord === data.word) { row = el; break; }
   }
   if (!row) return;
-  const dash = '<span class="detail-dash">\u2014</span>';
-  const exText = data.example_jp
-    ? esc(data.example_jp) + (data.example_en ? '  <em>' + esc(data.example_en) + '</em>' : '')
-    : dash;
   const newDetails =
     '<div class="word-result-details">' +
-      detailItemRaw('reading', data.reading        ? esc(data.reading)        : dash, !data.reading,        'detail-reading') +
-      detailItemRaw('pos',     data.part_of_speech ? esc(data.part_of_speech) : dash, !data.part_of_speech, 'detail-pos') +
-      detailItemRaw('meaning', data.meaning        ? esc(data.meaning)        : dash, !data.meaning,        'detail-meaning') +
-      detailItemRaw('ex.',     exText,                                                !data.example_jp,     'detail-ex') +
+      detailItemInput('reading', data.reading,        'detail-reading') +
+      detailItemPosSelect(data.part_of_speech) +
+      detailItemInput('meaning', data.meaning,        'detail-meaning') +
+      detailItemExInput(data.example_jp, data.example_en) +
     '</div>';
   row.querySelector('.word-result-details').outerHTML = newDetails;
   const genBtn = row.querySelector('.btn-generate');
@@ -644,6 +637,34 @@ async function adjustProgressTarget(event, wordId, delta, btn) {
 function detailItemRaw(label, html, muted, cls) {
   return '<span class="detail-item' + (cls ? ' ' + cls : '') + (muted ? ' detail-item--muted' : '') + '">' +
     '<span class="detail-label">' + esc(label) + '</span> ' + html + '</span>';
+}
+
+function detailItemPosSelect(value) {
+  const known = value in typeLabels;
+  let options = known ? '' : '<option value="" selected>—</option>';
+  options += Object.entries(typeLabels).map(([key, label]) => {
+    const short = label.split(' — ')[0].split(' (')[0];
+    return '<option value="' + esc(key) + '"' + (value === key ? ' selected' : '') + '>' + esc(short) + '</option>';
+  }).join('');
+  return '<span class="detail-item detail-pos">' +
+    '<span class="detail-label">pos</span> ' +
+    '<select class="detail-pos-select">' + options + '</select>' +
+    '</span>';
+}
+
+function detailItemInput(label, value, cls) {
+  return '<span class="detail-item ' + cls + '">' +
+    '<span class="detail-label">' + esc(label) + '</span> ' +
+    '<span class="detail-input" contenteditable="true">' + esc(value || '') + '</span>' +
+    '</span>';
+}
+
+function detailItemExInput(exJp, exEn) {
+  return '<span class="detail-item detail-ex">' +
+    '<span class="detail-label">ex.</span> ' +
+    '<span class="detail-input" contenteditable="true">' + esc(exJp || '') + '</span>' +
+    ' <span class="detail-input detail-input--en" contenteditable="true">' + esc(exEn || '') + '</span>' +
+    '</span>';
 }
 
 function esc(s) {

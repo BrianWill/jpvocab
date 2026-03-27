@@ -247,6 +247,45 @@
 }
 .detail-item--muted { color: #313244; }
 .detail-dash { color: #313244; }
+
+.detail-input {
+  border-bottom: 1px solid transparent;
+  color: #45475a;
+  outline: none;
+  cursor: text;
+}
+.detail-input:hover {
+  color: #9399b2;
+  border-bottom-color: #9399b2;
+}
+.detail-input:focus {
+  border-bottom-color: #89b4fa;
+  color: #cdd6f4;
+}
+.detail-input--en {
+  font-style: italic;
+}
+.detail-pos-select {
+  background: transparent;
+  border: none;
+  border-bottom: 1px solid transparent;
+  color: #45475a;
+  font-size: 0.72rem;
+  font-family: inherit;
+  padding: 0;
+  outline: none;
+  cursor: pointer;
+  appearance: none;
+  -webkit-appearance: none;
+}
+.detail-pos-select:hover {
+  color: #9399b2;
+  border-bottom-color: #9399b2;
+}
+.detail-pos-select:focus {
+  border-bottom-color: #89b4fa;
+  color: #cdd6f4;
+}
 .detail-label {
   text-transform: uppercase;
   letter-spacing: 0.06em;

@@ -26,9 +26,21 @@ type wordAutoFill struct {
 	Kanji        []kanjiAutoFillEntry `json:"kanji"`
 }
 
-const autoFillSystemPrompt = `You are a Japanese dictionary assistant. Given a Japanese word or phrase, return a JSON object with exactly these fields:
+// validPartsOfSpeech is the canonical closed set of part-of-speech values used throughout the app.
+// The AI is instructed to use only these; anything that doesn't fit maps to "other".
+var validPartsOfSpeech = []string{
+	"godan-verb",
+	"ichidan-verb",
+	"noun",
+	"i-adjective",
+	"na-adjective",
+	"adverb",
+	"other",
+}
+
+var autoFillSystemPrompt = `You are a Japanese dictionary assistant. Given a Japanese word or phrase, return a JSON object with exactly these fields:
 - "reading": the word's reading in hiragana (use katakana only for loanwords)
-- "part_of_speech": e.g. "noun", "godan-verb", "ichidan-verb", "i-adjective", "na-adjective", "adverb", etc.
+- "part_of_speech": must be exactly one of: ` + strings.Join(validPartsOfSpeech, ", ") + `. Always prefer the closest matching category; only use "other" if the word genuinely fits none of them.
 - "meaning": concise English meaning (one short phrase or sentence)
 - "example_jp": a short, natural example sentence in Japanese using the word
 - "example_en": English translation of the example sentence

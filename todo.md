@@ -2,6 +2,8 @@
 
 This file is random notes of possible features and bug fixes.
 
+- the set of POS should be constrained to an enum
+    - tell AI to stick to the defined categories (or as fallback label a word as "other")
 
 - words in lexicon page list shift layout by a couple pixels when hovering (the edit / delete buttons should be visibility hidden, not display none)
 

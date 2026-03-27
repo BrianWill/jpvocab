@@ -122,8 +122,6 @@
 /* Day detail modal */
 .modal { max-width: 680px; }
 .modal .modal-body {
-  display: flex;
-  flex-direction: column;
   gap: 1rem;
   max-height: 65vh;
   overflow-y: auto;

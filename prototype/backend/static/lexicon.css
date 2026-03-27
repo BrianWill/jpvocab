@@ -78,11 +78,7 @@
   font-weight: 700;
   color: #cdd6f4;
 }
-.modal-body {
-  display: flex;
-  flex-direction: column;
-  gap: 0.85rem;
-}
+.modal-body { gap: 0.85rem; }
 .modal-field {
   display: flex;
   flex-direction: column;
@@ -164,32 +160,9 @@
   flex-direction: column;
   gap: 0;
 }
-.modal-status {
-  display: flex;
-  align-items: center;
-  gap: 0.6rem;
-  padding: 0.6rem 1.25rem;
-  font-size: 0.8rem;
-  border-bottom: 1px solid #313244;
-  color: #585b70;
-}
-.modal-status-loading { color: #89b4fa; }
-.modal-status-done    { color: #a6e3a1; }
+/* lexicon-specific status variants */
 .status-skipped { color: #f9e2af; }
-.modal-status-cancelled, .modal-status-error { color: #f38ba8; }
 .status-cancelled-note { opacity: 0.7; }
-
-@keyframes spin { to { transform: rotate(360deg); } }
-.spinner {
-  display: inline-block;
-  width: 0.8rem;
-  height: 0.8rem;
-  border: 2px solid rgba(137,180,250,0.25);
-  border-top-color: #89b4fa;
-  border-radius: 50%;
-  animation: spin 0.7s linear infinite;
-  flex-shrink: 0;
-}
 
 .word-result-row {
   padding: 0.5rem 0;

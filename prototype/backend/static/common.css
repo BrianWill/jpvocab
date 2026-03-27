@@ -55,6 +55,13 @@ body {
 }
 .btn-header:hover { background: rgba(137,180,250,0.2); }
 
+/* --- Page body (flex container below header) --- */
+.page-body {
+  flex: 1;
+  display: flex;
+  min-height: 0;
+}
+
 /* --- Floating tooltips --- */
 .tooltip,
 .lex-tooltip {
@@ -156,6 +163,8 @@ body {
 .modal-close:disabled { opacity: 0.35; cursor: not-allowed; }
 .modal-body {
   padding: 1.25rem;
+  display: flex;
+  flex-direction: column;
 }
 .modal-footer {
   display: flex;
@@ -212,3 +221,31 @@ body {
 }
 .btn-danger:hover { background: rgba(243,139,168,0.2); }
 .btn-danger:disabled { opacity: 0.35; cursor: default; pointer-events: none; }
+
+/* --- Spinner --- */
+@keyframes spin { to { transform: rotate(360deg); } }
+.spinner {
+  display: inline-block;
+  width: 0.8rem;
+  height: 0.8rem;
+  border: 2px solid rgba(137,180,250,0.25);
+  border-top-color: #89b4fa;
+  border-radius: 50%;
+  animation: spin 0.7s linear infinite;
+  flex-shrink: 0;
+}
+
+/* --- Modal status bar --- */
+.modal-status {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.6rem 1.25rem;
+  font-size: 0.8rem;
+  border-bottom: 1px solid #313244;
+  color: #585b70;
+}
+.modal-status-loading   { color: #89b4fa; }
+.modal-status-done      { color: #a6e3a1; }
+.modal-status-cancelled,
+.modal-status-error     { color: #f38ba8; }

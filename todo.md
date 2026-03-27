@@ -3,6 +3,8 @@
 This file is random notes of possible features and bug fixes.
 
 - in the edit words modal
+    - when opened for an individual word, it shouldn't say "added"
+        - should it say "already in lexicon"? Or maybe not say anything?
     - the gap between the generate and remove buttons should be shrunk 
     - when the user hovers the word type pulldown and when it has focus, it should look like a button rather than be underlined
     - the word type pulldown isn't wide enough to display every word type; some are cut off

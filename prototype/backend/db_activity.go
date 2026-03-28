@@ -11,9 +11,10 @@ type activityStats struct {
 	ActiveWords     int `json:"activeWords"`
 	ClearedLifetime int `json:"clearedLifetime"`
 	DrillsCleared   int `json:"drillsCleared"`
-	DrillsClose     int `json:"drillsClose"`
-	DrillsMid       int `json:"drillsMid"`
-	DrillsFar       int `json:"drillsFar"`
+	// close - mid - far = buckets of how many target drills remaining; close <= x drills, mid <= y drills
+	DrillsClose int `json:"drillsClose"`
+	DrillsMid   int `json:"drillsMid"`
+	DrillsFar   int `json:"drillsFar"`
 }
 
 // activityWordEntry is one word entry within a calendar day section.

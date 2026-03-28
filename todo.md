@@ -19,6 +19,20 @@ This file is random notes of possible features and bug fixes.
 - the set of POS should be constrained to an enum
     - tell AI to stick to the defined categories (or as fallback label a word as "other")
 
+- settings menu
+    - gear next to nav links in header
+    - saved in db
+    - default drill size preference
+    - preferred AI provider/model
+    - preferred male and female voices
+
+- enable wails in the prototype
+    - once ready, we'll move the prototype project to main dir
+
+- support other AI providers
+    - Google
+    - GLM?
+    - who else? ask AI
 
 - when adding words, user should be able to enter any Japanese text to add all words 
     - filters out particles, conjunctions, and other small parts of speech
@@ -27,6 +41,7 @@ This file is random notes of possible features and bug fixes.
 
 - translate stories and generate audio via voicevox
     - can voicevox generate a single audio file but give timemarks for each line?
+        - apparently yes https://gemini.google.com/app/64285ccfa674d709
     - e.g. given chapter of novel, produce audio
     - experiment with openAI audio generation. Might be better quality than voicevox
 
@@ -42,6 +57,10 @@ This file is random notes of possible features and bug fixes.
     - drill page: button and hotkey to play the example sentence if audio is available
         - second and third sets of hotkeys to play at slower speeds
     - lexicon page: button to play word audio / sentence audio
+
+- training chatbot
+
+    - user types, chatbot responds with generated audio (voicevox?)
 
 - AI images
     - generate or find relevant images to associate with words

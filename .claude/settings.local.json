@@ -12,7 +12,8 @@
       "Bash(find /d/code/jpvocab -type f -name common.css -o -name *modal*)",
       "Bash(node --test prototype/backend/static/tests/)",
       "Bash(node --test prototype/backend/static/tests/lexicon-utils.test.js)",
-      "Bash(node:*)"
+      "Bash(node:*)",
+      "Bash(find /d/code/jpvocab -type f -name *drill*)"
     ]
   },
   "outputStyle": "Explanatory"

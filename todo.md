@@ -2,6 +2,15 @@
 
 This file is random notes of possible features and bug fixes.
 
+- When readings for words with kanji are generated, the kana for the kanji readings should be separated by spaces from the rest of the word
+    - Onyomi readings are in katakana and one color
+    - kunyomi in hiragana in another color
+    - kana remains same as in the word and is shown in a third color
+    - the reading data will have to markup the components to distinguish between 
+    - if the user manually edits a reading, their text is saved as is, though we should validate that it is all kana possibly with separating spaces    
+    - e.g. 会う becomes "あ う”, and 大好き becomes "ダイ す き"
+    - update the seed data accordingly with this new scheme for readings
+
 - in the edit words modal
     - when opened for an individual word, it shouldn't say "added"
         - should it say "already in lexicon"? Or maybe not say anything?
@@ -9,12 +18,6 @@ This file is random notes of possible features and bug fixes.
     - when the user hovers the word type pulldown and when it has focus, it should look like a button rather than be underlined
     - the word type pulldown isn't wide enough to display every word type; some are cut off
 
-- in the new drill menu, the Total words should be "max total words"
-    - currently, toggling word type chips can modify the "total words", but this should not be the case
-    - if "max total words" exceeds the sum of words in the selected categories, the pool size is just that size (i.e. which ever is smaller)
-
-- in the drills, words marked wrong are being sorted to the top as we answer
-    - isn't this sorting supposed to happen just at start of round rather than during the round?
 
 - the set of POS should be constrained to an enum
     - tell AI to stick to the defined categories (or as fallback label a word as "other")
@@ -33,6 +36,13 @@ This file is random notes of possible features and bug fixes.
     - Google
     - GLM?
     - who else? ask AI
+
+- should words spelt in katakana have hiragana readings? 
+    - what if word is partly kanji? maybe simplest to just stick with hiragana readings
+    - what if word is kanji but the kanji are katakana?
+    
+
+- add words from common word lists
 
 - when adding words, user should be able to enter any Japanese text to add all words 
     - filters out particles, conjunctions, and other small parts of speech

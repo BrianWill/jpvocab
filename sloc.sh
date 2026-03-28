@@ -4,12 +4,17 @@
 
 DIR="$(cd "$(dirname "$0")/prototype/backend" && pwd)"
 
-go_files=("$DIR"/*.go)
-js_files=("$DIR"/static/*.js "$DIR"/static/tests/*.js)
+go_src_files=()
+go_test_files=()
+for f in "$DIR"/*.go; do
+    [[ "$f" == *_test.go ]] && go_test_files+=("$f") || go_src_files+=("$f")
+done
+js_src_files=("$DIR"/static/*.js)
+js_test_files=("$DIR"/static/tests/*.js)
 html_files=("$DIR"/static/*.html "$DIR"/templates/*.html)
 css_files=("$DIR"/static/*.css)
 
-all_files=("${go_files[@]}" "${js_files[@]}")
+all_files=("${go_src_files[@]}" "${go_test_files[@]}" "${js_src_files[@]}" "${js_test_files[@]}")
 
 echo "Lines  File"
 echo "-----  ----"
@@ -21,14 +26,24 @@ done | sort -rn
 
 echo ""
 
-go_total=0
-for f in "${go_files[@]}"; do
-    go_total=$((go_total + $(wc -l < "$f")))
+go_src_total=0
+for f in "${go_src_files[@]}"; do
+    go_src_total=$((go_src_total + $(wc -l < "$f")))
 done
 
-js_total=0
-for f in "${js_files[@]}"; do
-    js_total=$((js_total + $(wc -l < "$f")))
+go_test_total=0
+for f in "${go_test_files[@]}"; do
+    go_test_total=$((go_test_total + $(wc -l < "$f")))
+done
+
+js_src_total=0
+for f in "${js_src_files[@]}"; do
+    js_src_total=$((js_src_total + $(wc -l < "$f")))
+done
+
+js_test_total=0
+for f in "${js_test_files[@]}"; do
+    js_test_total=$((js_test_total + $(wc -l < "$f")))
 done
 
 html_total=0
@@ -41,7 +56,9 @@ for f in "${css_files[@]}"; do
     css_total=$((css_total + $(wc -l < "$f")))
 done
 
-printf "Go total:   %d\n" "$go_total"
-printf "JS total:   %d\n" "$js_total"
-printf "HTML total: %d\n" "$html_total"
-printf "CSS total:  %d\n" "$css_total"
+printf "Go (src) total:  %d\n" "$go_src_total"
+printf "Go (test) total: %d\n" "$go_test_total"
+printf "JS (src) total:  %d\n" "$js_src_total"
+printf "JS (test) total: %d\n" "$js_test_total"
+printf "HTML total:      %d\n" "$html_total"
+printf "CSS total:       %d\n" "$css_total"

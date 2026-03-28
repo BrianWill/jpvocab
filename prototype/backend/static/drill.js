@@ -65,6 +65,7 @@ let kanjiMap = {};
 let words = [];
 let sessionId = null;
 let poolSize = 0;
+let maxPoolSize = 0;
 let roundSize = DEFAULT_ROUND_SIZE;
 let pool = [];
 let round = 1;
@@ -135,6 +136,7 @@ async function init() {
   sessionId = await createSession();
 
   poolSize = words.length;
+  maxPoolSize = words.length;
   pool = shuffle([...words]);
   remaining = buildRound();
   currentWord = remaining[0];
@@ -206,34 +208,24 @@ function initSidebar() {
 
 function addToSidebar(word, knew) {
   const list = document.getElementById('sidebar-list');
-
-  // Remove existing entry for this word if present
   const existing = list.querySelector('[data-id="' + word.word + '"]');
-  if (existing) existing.remove();
 
+  if (existing) {
+    // Update in place — sorting only happens at round boundaries
+    existing.className = 'sidebar-item ' + (knew ? 'known flash-known' : 'missed flash-missed');
+    existing.dataset.word = JSON.stringify(word);
+    existing.addEventListener('animationend', () => existing.classList.remove('flash-known', 'flash-missed'), { once: true });
+    return;
+  }
+
+  // Fallback: append new entry (not expected mid-round)
   const li = document.createElement('li');
   li.className = 'sidebar-item ' + (knew ? 'known flash-known' : 'missed flash-missed');
   li.textContent = word.word;
   li.dataset.word = JSON.stringify(word);
   li.dataset.id = word.word;
   li.addEventListener('animationend', () => li.classList.remove('flash-known', 'flash-missed'));
-
-  // Order: missed, then known, then unseen-redo, then unseen
-  if (!knew) {
-    const firstNonMissed = list.querySelector('.sidebar-item.known, .sidebar-item.unseen-redo, .sidebar-item.unseen');
-    if (firstNonMissed) {
-      list.insertBefore(li, firstNonMissed);
-    } else {
-      list.appendChild(li);
-    }
-  } else {
-    const firstUnseen = list.querySelector('.sidebar-item.unseen-redo, .sidebar-item.unseen');
-    if (firstUnseen) {
-      list.insertBefore(li, firstUnseen);
-    } else {
-      list.appendChild(li);
-    }
-  }
+  list.appendChild(li);
 }
 
 function renderKanjiInfo(container, word) {
@@ -331,7 +323,7 @@ function capRestartInput(input) {
 }
 
 function openRestartModal() {
-  document.getElementById('restart-total-words').value = poolSize;
+  document.getElementById('restart-total-words').value = maxPoolSize;
   document.getElementById('restart-round-size').value = roundSize;
   updateFilterHint();
   document.getElementById('restart-modal-backdrop').classList.remove('hidden');
@@ -344,7 +336,8 @@ function handleRestartBackdropClick(e) {
 }
 async function confirmRestart() {
   const filtered = getFilteredWords();
-  const total = Math.max(1, Math.min(parseInt(document.getElementById('restart-total-words').value, 10) || filtered.length, filtered.length));
+  maxPoolSize = Math.max(1, parseInt(document.getElementById('restart-total-words').value, 10) || filtered.length);
+  const total = Math.min(maxPoolSize, filtered.length);
   const rSize = Math.max(1, Math.min(total, parseInt(document.getElementById('restart-round-size').value, 10) || roundSize));
   closeRestartModal();
   sessionId = await createSession();

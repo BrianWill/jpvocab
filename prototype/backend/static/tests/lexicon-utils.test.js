@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { esc, timeAgo, getSortedWords } from '../lexicon-utils.js';
+import { esc, timeAgo, getSortedWords, renderReading } from '../lexicon-utils.js';
 
 // ---------------------------------------------------------------------------
 // esc
@@ -186,4 +186,68 @@ test('getSortedWords: does not mutate the input array', () => {
   const original = words.map(w => w.word);
   getSortedWords(words, 'correct', 'asc');
   assert.deepEqual(words.map(w => w.word), original);
+});
+
+// ---------------------------------------------------------------------------
+// renderReading
+// ---------------------------------------------------------------------------
+
+test('renderReading: empty reading returns empty string', () => {
+  assert.equal(renderReading('', '会う', [{ id: 1, reading: 'あ' }]), '');
+});
+
+test('renderReading: no kanji data → plain text', () => {
+  assert.equal(renderReading('あう', '会う', []), 'あう');
+});
+
+test('renderReading: pure kana word → plain text', () => {
+  assert.equal(renderReading('きれい', 'きれい', []), 'きれい');
+});
+
+test('renderReading: kun\'yomi verb — 会う: 会(kun あ) + う(kana)', () => {
+  const result = renderReading('あう', '会う', [{ id: 1, reading: 'あ' }]);
+  assert.equal(result,
+    '<span class="reading-seg reading-kun">あ</span>' +
+    '<span class="reading-seg reading-kana">う</span>');
+});
+
+test('renderReading: adjacent kana grouped — 忘れる: 忘(kun わす) + れる(kana)', () => {
+  const result = renderReading('わすれる', '忘れる', [{ id: 1, reading: 'わす' }]);
+  assert.equal(result,
+    '<span class="reading-seg reading-kun">わす</span>' +
+    '<span class="reading-seg reading-kana">れる</span>');
+});
+
+test('renderReading: on\'yomi noun — 電話: 電(on デン) + 話(on ワ)', () => {
+  const result = renderReading('でんわ', '電話', [
+    { id: 1, reading: 'デン' },
+    { id: 2, reading: 'ワ' },
+  ]);
+  assert.equal(result,
+    '<span class="reading-seg reading-on">デン</span>' +
+    '<span class="reading-seg reading-on">ワ</span>');
+});
+
+test('renderReading: mixed on+kun — 大好き: 大(on ダイ) + 好(kun す) + き(kana)', () => {
+  const result = renderReading('だいすき', '大好き', [
+    { id: 1, reading: 'ダイ' },
+    { id: 2, reading: 'す' },
+  ]);
+  assert.equal(result,
+    '<span class="reading-seg reading-on">ダイ</span>' +
+    '<span class="reading-seg reading-kun">す</span>' +
+    '<span class="reading-seg reading-kana">き</span>');
+});
+
+test('renderReading: reading field content is ignored when kanjiData present', () => {
+  // The reading param value does not affect the coloured output
+  const r1 = renderReading('だいすき', '大好き', [{ id: 1, reading: 'ダイ' }, { id: 2, reading: 'す' }]);
+  const r2 = renderReading('anything', '大好き', [{ id: 1, reading: 'ダイ' }, { id: 2, reading: 'す' }]);
+  assert.equal(r1, r2);
+});
+
+test('renderReading: extra kanji in word beyond kanjiData entries are skipped', () => {
+  // Only one kanji entry but word has two kanji
+  const result = renderReading('てんき', '天気', [{ id: 1, reading: 'テン' }]);
+  assert.equal(result, '<span class="reading-seg reading-on">テン</span>');
 });

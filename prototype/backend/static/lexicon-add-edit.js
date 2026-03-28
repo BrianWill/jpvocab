@@ -1,5 +1,5 @@
 import { defaultDrillTarget, typeLabels, _providers, reloadWords, renderTable, getSortedWords, closeAddModal } from './lexicon.js';
-import { esc } from './lexicon-utils.js';
+import { esc, isKanji } from './lexicon-utils.js';
 
 // --- Add/edit modal ---
 // Handles two scenarios:
@@ -36,6 +36,7 @@ export function openEditModal(event) {
     drill_count: w.correct,
     drill_incorrect: w.incorrect,
     drill_target: w.target,
+    kanji_data: w.kanjiData,
   });
 
   document.getElementById('add-result-modal-backdrop').classList.remove('hidden');
@@ -258,6 +259,7 @@ function appendWordRow(data) {
   const details =
     '<div class="word-result-details">' +
       detailItemInput('reading', data.reading,        'detail-reading') +
+      detailItemKanjiReadings(data.word, data.kanji_data) +
       detailItemPosSelect(data.part_of_speech) +
       detailItemInput('meaning', data.meaning,        'detail-meaning') +
       detailItemExInput(data.example_jp, data.example_en) +
@@ -290,6 +292,7 @@ function updateWordRowDetails(data) {
   const newDetails =
     '<div class="word-result-details">' +
       detailItemInput('reading', data.reading,        'detail-reading') +
+      detailItemKanjiReadings(row._resolvedWord, data.kanji_data) +
       detailItemPosSelect(data.part_of_speech) +
       detailItemInput('meaning', data.meaning,        'detail-meaning') +
       detailItemExInput(data.example_jp, data.example_en) +
@@ -372,10 +375,14 @@ function saveWordRowEdits(row) {
   const exampleEn = (exInputs[1]?.textContent ?? '').trim();
   const targetEl  = row.querySelector('.drill-target-val');
   const target    = targetEl ? (parseInt(targetEl.dataset.target, 10) || 0) : 0;
+  const kanjiData = Array.from(row.querySelectorAll('.kanji-reading-input')).map(el => ({
+    id: parseInt(el.dataset.kanjiId, 10),
+    reading: el.textContent.trim(),
+  }));
   fetch('/api/words/' + row._wordId, {
     method: 'PATCH',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ reading, type, meaning, exampleJp, exampleEn, target }),
+    body: JSON.stringify({ reading, type, meaning, exampleJp, exampleEn, target, kanjiData }),
   });
 }
 
@@ -421,6 +428,27 @@ function detailItemPosSelect(value) {
   return '<span class="detail-item detail-pos">' +
     '<span class="detail-label">pos</span> ' +
     '<select class="detail-pos-select">' + options + '</select>' +
+    '</span>';
+}
+
+function detailItemKanjiReadings(word, kanjiData) {
+  if (!word || !kanjiData || kanjiData.length === 0) return '';
+  let kanjiIdx = 0;
+  let pairs = '';
+  for (const ch of word) {
+    if (isKanji(ch) && kanjiIdx < kanjiData.length) {
+      const entry = kanjiData[kanjiIdx++];
+      pairs +=
+        '<span class="kanji-reading-pair">' +
+          '<span class="kanji-reading-char">' + esc(ch) + '</span>' +
+          '<span class="detail-input kanji-reading-input" contenteditable="true"' +
+            ' data-kanji-id="' + entry.id + '">' + esc(entry.reading) + '</span>' +
+        '</span>';
+    }
+  }
+  if (!pairs) return '';
+  return '<span class="detail-item detail-kanji">' +
+    '<span class="detail-label">kanji readings</span> ' + pairs +
     '</span>';
 }
 

@@ -202,16 +202,17 @@
 
 .word-result-details {
   display: grid;
-  grid-template-columns: 11rem 9rem 1fr;
-  grid-template-rows: auto auto;
+  grid-template-columns: 10rem 1fr;
+  grid-template-rows: auto auto auto;
   column-gap: 1.25rem;
   row-gap: 0.2rem;
   margin-top: 0.35rem;
 }
-.detail-reading { grid-column: 1; grid-row: 1; }
-.detail-pos     { grid-column: 2; grid-row: 1; }
-.detail-meaning { grid-column: 3; grid-row: 1; }
-.detail-ex      { grid-column: 1 / -1; grid-row: 2; }
+.detail-reading { grid-column: 1;      grid-row: 1; }
+.detail-kanji   { grid-column: 2;      grid-row: 1; }
+.detail-pos     { grid-column: 1;      grid-row: 2; }
+.detail-meaning { grid-column: 2;      grid-row: 2; }
+.detail-ex      { grid-column: 1 / -1; grid-row: 3; }
 
 .detail-item {
   font-size: 0.72rem;
@@ -258,6 +259,16 @@
   font-size: 0.65rem;
   color: #45475a;
   margin-right: 0.2rem;
+}
+
+.kanji-reading-pair {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 0.45em;
+  margin-right: 0.5em;
+}
+.kanji-reading-char {
+  color: #5f5d53;
 }
 
 .word-pending-badge {

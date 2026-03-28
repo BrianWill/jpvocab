@@ -249,3 +249,12 @@ body {
 .modal-status-done      { color: #a6e3a1; }
 .modal-status-cancelled,
 .modal-status-error     { color: #f38ba8; }
+
+/* Segmented reading colour coding (on'yomi / kun'yomi / plain kana) */
+.reading-on  + .reading-seg,
+.reading-kun + .reading-seg,
+.reading-kana + .reading-on,
+.reading-kana + .reading-kun { margin-left: 0.4em; }
+.reading-on   { color: #f9e2af; }  /* katakana on'yomi  — matches .kanji-on  */
+.reading-kun  { color: #89b4fa; }  /* hiragana kun'yomi — matches .kanji-kun */
+.reading-kana { color: #a6adc8; }  /* plain kana in the word                 */

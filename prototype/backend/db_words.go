@@ -253,12 +253,15 @@ func listWords(db *sql.DB) ([]wordJSON, error) {
 }
 
 // updateWord saves editable fields for an existing word by ID.
-func updateWord(db *sql.DB, id int64, reading, partOfSpeech, meaning, exampleJp, exampleEn string, target int) error {
+func updateWord(db *sql.DB, id int64, reading, partOfSpeech, meaning, exampleJp, exampleEn, kanjiData string, target int) error {
+	if kanjiData == "" {
+		kanjiData = "[]"
+	}
 	_, err := db.Exec(`
 		UPDATE words
-		SET reading=?, part_of_speech=?, meaning=?, example_jp=?, example_en=?, drill_target=?
+		SET reading=?, part_of_speech=?, meaning=?, example_jp=?, example_en=?, kanji_data=?, drill_target=?
 		WHERE id=?
-	`, reading, partOfSpeech, meaning, exampleJp, exampleEn, target, id)
+	`, reading, partOfSpeech, meaning, exampleJp, exampleEn, kanjiData, target, id)
 	return err
 }
 

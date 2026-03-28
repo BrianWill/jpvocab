@@ -664,7 +664,7 @@ func TestUpdateWord(t *testing.T) {
 	db := testDB(t)
 	id := insertTestWord(t, db, "雨", 3)
 
-	if err := updateWord(db, id, "あめ", "noun", "rain", "雨が降る。", "It rains.", 5); err != nil {
+	if err := updateWord(db, id, "あめ", "noun", "rain", "雨が降る。", "It rains.", `[{"id":1,"reading":"あめ"}]`, 5); err != nil {
 		t.Fatal(err)
 	}
 

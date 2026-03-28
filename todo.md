@@ -2,15 +2,6 @@
 
 This file is random notes of possible features and bug fixes.
 
-- When readings for words with kanji are generated, the kana for the kanji readings should be separated by spaces from the rest of the word
-    - Onyomi readings are in katakana and one color
-    - kunyomi in hiragana in another color
-    - kana remains same as in the word and is shown in a third color
-    - the reading data will have to markup the components to distinguish between 
-    - if the user manually edits a reading, their text is saved as is, though we should validate that it is all kana possibly with separating spaces    
-    - e.g. 会う becomes "あ う”, and 大好き becomes "ダイ す き"
-    - update the seed data accordingly with this new scheme for readings
-
 - in the edit words modal
     - when opened for an individual word, it shouldn't say "added"
         - should it say "already in lexicon"? Or maybe not say anything?

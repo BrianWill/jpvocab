@@ -49,7 +49,7 @@ var validPartsOfSpeech = []string{
 }
 
 var autoFillSystemPrompt = `You are a Japanese dictionary assistant. Given a Japanese word or phrase, return a JSON object with exactly these fields:
-- "reading": the word's reading in hiragana (use katakana only for loanwords)
+- "reading": the word's reading in hiragana (use katakana only for loanwords); always include this even when the word has kanji — it is the full phonetic reading of the whole word
 - "part_of_speech": must be exactly one of: ` + strings.Join(validPartsOfSpeech, ", ") + `. Always prefer the closest matching category; only use "other" if the word genuinely fits none of them.
 - "meaning": concise English meaning (one short phrase or sentence)
 - "example_jp": a short, natural example sentence in Japanese using the word

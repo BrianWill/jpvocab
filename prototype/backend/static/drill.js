@@ -1,3 +1,5 @@
+import { renderReading } from './lexicon-utils.js';
+
 const placeholder = '<span class="detail-placeholder">- - -</span>';
 
 // ── Word-type filters ──────────────────────────────────────────────────────
@@ -170,7 +172,7 @@ function reveal(knew) {
   const lastWordEl = document.getElementById('last-word-jp');
   lastWordEl.textContent = answered.word;
   lastWordEl.className = 'tooltip-word ' + (knew ? 'knew' : 'missed');
-  document.getElementById('last-reading').textContent = answered.reading;
+  document.getElementById('last-reading').innerHTML = renderReading(answered.reading, answered.word, answered.kanjiData);
   document.getElementById('last-pos').textContent = answered.type;
   document.getElementById('last-meaning').textContent = answered.meaning;
   document.getElementById('last-example-jp').textContent = answered.exampleJp;
@@ -254,7 +256,7 @@ document.getElementById('sidebar-list').addEventListener('mouseover', e => {
   if (!item || !item.dataset.word) return;
   const data = JSON.parse(item.dataset.word);
   document.getElementById('tip-word').textContent = data.word;
-  document.getElementById('tip-reading').textContent = data.reading;
+  document.getElementById('tip-reading').innerHTML = renderReading(data.reading, data.word, data.kanjiData);
   document.getElementById('tip-pos').textContent = data.type;
   document.getElementById('tip-meaning').textContent = data.meaning;
   document.getElementById('tip-example').textContent = data.exampleJp || '';

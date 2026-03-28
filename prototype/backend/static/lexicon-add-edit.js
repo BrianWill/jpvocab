@@ -41,7 +41,10 @@ export function openEditModal(event) {
 
   document.getElementById('add-result-modal-backdrop').classList.remove('hidden');
   initAddResultFooter();
+  document.getElementById('btn-add-result-remove').style.display = 'none';
   renderStatus();
+  document.getElementById('add-result-modal-status').style.display = 'none';
+  resultBody.querySelector('.result-badge').style.display = 'none';
 }
 
 export let _addPhase = 'idle'; // 'loading' | 'done' | 'cancelled'
@@ -55,6 +58,89 @@ document.getElementById('add-result-modal-backdrop').addEventListener('click', f
 });
 document.getElementById('add-result-modal-close').addEventListener('click', closeAddResultModal);
 document.querySelector('#add-modal-backdrop .btn-save').addEventListener('click', saveAddModal);
+
+// Prevent newlines in contenteditable fields; Enter blurs instead
+document.getElementById('add-result-modal-body').addEventListener('keydown', function(e) {
+  if (e.key !== 'Enter') return;
+  if (e.isComposing) return; // let IME handle its own Enter (commit keystroke)
+  if (!e.target.classList.contains('detail-input')) return;
+  e.preventDefault();
+  e.target.blur();
+});
+
+// Language enforcement for detail input fields
+function _getFieldLanguageFilter(el) {
+  if (el.closest('.detail-ex')) {
+    const isEn = el.classList.contains('detail-input--en');
+    return text => isEn
+      ? text.replace(/[\u3040-\u30FF\u4E00-\u9FFF\u3400-\u4DBF\uFF01-\uFF9F]/g, '')
+      : text.replace(/[a-zA-Z]/g, '');
+  }
+  if (el.closest('.detail-reading') || el.classList.contains('kanji-reading-input')) {
+    return text => text.replace(/[a-zA-Z]/g, '');
+  }
+  return null;
+}
+function _getFieldLanguageErrorMsg(el) {
+  if (el.closest('.detail-ex') && el.classList.contains('detail-input--en')) return 'English only — Japanese characters are not allowed here';
+  return 'Japanese only — Latin letters are not allowed here';
+}
+let _fieldErrorTimer = null;
+function _showFieldError(el, msg) {
+  el.classList.remove('detail-input--flash-error');
+  void el.offsetWidth; // force reflow to restart animation
+  el.classList.add('detail-input--flash-error');
+  el.addEventListener('animationend', () => el.classList.remove('detail-input--flash-error'), { once: true });
+
+  const footer = document.getElementById('add-result-modal-footer');
+  let errEl = footer.querySelector('.footer-field-error');
+  if (!errEl) {
+    errEl = document.createElement('span');
+    errEl.className = 'footer-field-error';
+    const closeBtn = document.getElementById('btn-add-result-close');
+    footer.insertBefore(errEl, closeBtn);
+  }
+  errEl.textContent = msg;
+  clearTimeout(_fieldErrorTimer);
+  _fieldErrorTimer = setTimeout(() => errEl.remove(), 3000);
+}
+function _enforceFieldLanguage(el) {
+  const filter = _getFieldLanguageFilter(el);
+  if (!filter) return;
+  const original = el.textContent;
+  const filtered = filter(original);
+  if (filtered === original) return;
+  const sel = window.getSelection();
+  const rawOffset = sel.rangeCount > 0 ? sel.getRangeAt(0).startOffset : 0;
+  const removedBefore = rawOffset - filter(original.slice(0, rawOffset)).length;
+  const newOffset = Math.max(0, rawOffset - removedBefore);
+  el.textContent = filtered;
+  if (el.firstChild) {
+    const range = document.createRange();
+    range.setStart(el.firstChild, Math.min(newOffset, filtered.length));
+    range.collapse(true);
+    sel.removeAllRanges();
+    sel.addRange(range);
+  }
+  _showFieldError(el, _getFieldLanguageErrorMsg(el));
+}
+const _modalBody = document.getElementById('add-result-modal-body');
+_modalBody.addEventListener('input', function(e) {
+  if (e.isComposing) return;
+  if (e.target.classList.contains('detail-input')) _enforceFieldLanguage(e.target);
+});
+_modalBody.addEventListener('compositionend', function(e) {
+  if (e.target.classList.contains('detail-input')) _enforceFieldLanguage(e.target);
+});
+_modalBody.addEventListener('paste', function(e) {
+  const el = e.target;
+  if (!el.classList.contains('detail-input')) return;
+  const filter = _getFieldLanguageFilter(el);
+  if (!filter) return;
+  e.preventDefault();
+  const text = (e.clipboardData || window.clipboardData).getData('text/plain');
+  document.execCommand('insertText', false, filter(text));
+});
 
 // Auto-save word info edits in the add-result modal
 document.getElementById('add-result-modal-body').addEventListener('focusout', function(e) {
@@ -101,6 +187,7 @@ async function saveAddModal() {
 
   closeAddModal();
 
+  document.getElementById('add-result-modal-status').style.display = '';
   _addPhase = 'loading';
   _addedWords = [];
   _skippedCount = 0;
@@ -462,8 +549,10 @@ function detailItemInput(label, value, cls) {
 function detailItemExInput(exJp, exEn) {
   return '<span class="detail-item detail-ex">' +
     '<span class="detail-label">ex.</span> ' +
-    '<span class="detail-input" contenteditable="true">' + esc(exJp || '') + '</span>' +
-    ' <span class="detail-input detail-input--en" contenteditable="true">' + esc(exEn || '') + '</span>' +
+    '<span class="detail-ex-inputs">' +
+      '<span class="detail-input" contenteditable="true">' + esc(exJp || '') + '</span>' +
+      ' <span class="detail-input detail-input--en" contenteditable="true">' + esc(exEn || '') + '</span>' +
+    '</span>' +
     '</span>';
 }
 

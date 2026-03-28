@@ -213,6 +213,12 @@
 .detail-pos     { grid-column: 1;      grid-row: 2; }
 .detail-meaning { grid-column: 2;      grid-row: 2; }
 .detail-ex      { grid-column: 1 / -1; grid-row: 3; }
+.detail-ex-inputs {
+  flex: 1;
+  min-width: 0;
+  white-space: normal;
+  overflow-wrap: break-word;
+}
 
 .detail-item {
   font-size: 0.72rem;
@@ -222,14 +228,27 @@
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+.detail-item.detail-ex { overflow: visible; white-space: normal; text-overflow: clip; display: flex; align-items: baseline; }
 .detail-item--muted { color: #313244; }
 .detail-dash { color: #313244; }
 
+@keyframes detail-input-flash-error {
+  0%   { border-bottom-color: #f38ba8; }
+  70%  { border-bottom-color: #f38ba8; }
+  100% { border-bottom-color: transparent; }
+}
 .detail-input {
   border-bottom: 1px solid transparent;
   color: #45475a;
   outline: none;
   cursor: text;
+}
+.detail-input--flash-error {
+  animation: detail-input-flash-error 0.6s ease forwards;
+}
+.footer-field-error {
+  font-size: 0.72rem;
+  color: #f38ba8;
 }
 .detail-input--en {
   font-style: italic;

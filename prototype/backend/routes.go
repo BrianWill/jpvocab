@@ -182,7 +182,7 @@ func adminAddWordsBatch(db *sql.DB) http.HandlerFunc {
 			http.Error(w, "bad request", http.StatusBadRequest)
 			return
 		}
-		rawWords := parseWordList(r.FormValue("words"))
+		rawWords := extractContentWords(r.FormValue("words"))
 		if len(rawWords) == 0 {
 			w.WriteHeader(http.StatusNoContent)
 			return

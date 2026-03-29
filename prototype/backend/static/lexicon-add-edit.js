@@ -188,8 +188,8 @@ async function saveAddModal() {
     const body = document.getElementById('add-result-modal-body');
     const rows = Array.from(body.children);
     rows.sort((a, b) => {
-      const aLexicon = a.dataset.reason === 'already in lexicon' ? 0 : 1;
-      const bLexicon = b.dataset.reason === 'already in lexicon' ? 0 : 1;
+      const aLexicon = a.dataset.reason === 'already in lexicon' ? 1 : 0;
+      const bLexicon = b.dataset.reason === 'already in lexicon' ? 1 : 0;
       return aLexicon - bLexicon;
     });
     rows.forEach(r => body.appendChild(r));
@@ -201,10 +201,8 @@ async function saveAddModal() {
     el.innerHTML = spinner + '<span>' + esc(text) + '</span>';
   }
 
-  const wordList = document.getElementById('add-words-input').value
-    .split(/[\s,、。・;:!?()（）「」【】『』\[\]]+/)
-    .map(t => t.trim()).filter(t => t.length > 0);
-  if (wordList.length === 0) return;
+  const rawText = document.getElementById('add-words-input').value.trim();
+  if (!rawText) return;
 
   closeAddModal();
 
@@ -217,43 +215,12 @@ async function saveAddModal() {
 
   const resultBody = document.getElementById('add-result-modal-body');
   resultBody.innerHTML = '';
-  const pendingDash = '<span class="detail-dash">\u2014</span>';
-  const pendingDetails =
-    '<div class="word-result-details">' +
-      detailItemRaw('reading', pendingDash, true, 'detail-reading') +
-      detailItemRaw('pos',     pendingDash, true, 'detail-pos') +
-      detailItemRaw('meaning', pendingDash, true, 'detail-meaning') +
-      detailItemRaw('ex.',     pendingDash, true, 'detail-ex') +
-    '</div>';
-  const pendingDrillDisplay =
-    '<span class="word-result-drill">' +
-      '<span class="drill-correct" data-tooltip="Times answered correctly">✓ 0</span>' +
-      '<span class="target-stepper" data-tooltip="Remaining drills to target">' +
-        '<span class="drill-target-label">🎯</span>' +
-        '<span class="drill-target-val">' + defaultDrillTarget + '</span>' +
-        '<button class="btn-target-adj" disabled>−</button>' +
-        '<button class="btn-target-adj" disabled>+</button>' +
-      '</span>' +
-    '</span>';
-  wordList.forEach(word => {
-    const row = document.createElement('div');
-    row.className = 'word-result-row word-result-pending';
-    row._pendingWord = word;
-    row.innerHTML =
-      '<div class="word-result-main">' +
-        '<span class="result-word">' + esc(word) + '</span>' +
-        '<span class="word-pending-badge"><span class="spinner"></span></span>' +
-        pendingDrillDisplay +
-      '</div>' +
-      pendingDetails;
-    resultBody.appendChild(row);
-  });
   document.getElementById('add-result-modal-backdrop').classList.remove('hidden');
   renderStatus();
   initAddResultFooter();
 
   const form = new FormData();
-  form.append('words', wordList.join('\n'));
+  form.append('words', rawText);
   form.append('autofill', 'off');
 
   try {

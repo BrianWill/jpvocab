@@ -349,8 +349,7 @@ function appendWordRow(data) {
     const target    = data.drill_target    ?? 0;
     inlineExtra =
       '<span class="word-result-drill">' +
-        generateBtn +
-        removeBtn +
+        '<span class="word-result-actions">' + generateBtn + removeBtn + '</span>' +
         '<span class="drill-correct" data-tooltip="Times answered correctly">✓ ' + correct + '</span>' +
         '<span class="drill-incorrect" data-tooltip="Times answered incorrectly">✗ ' + incorrect + '</span>' +
         '<span class="target-stepper" data-tooltip="Remaining drills to target">' +

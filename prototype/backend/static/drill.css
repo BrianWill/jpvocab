@@ -187,6 +187,10 @@
   color: #585b70;
   margin-top: 0.5rem;
 }
+.example-jp:empty::after {
+  content: '　';
+  visibility: hidden;
+}
 
 .detail-section {
   padding: 1.5rem 2rem;

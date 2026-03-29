@@ -91,6 +91,12 @@ export function getSortedWords(words, key, dir) {
         const d = asc ? a.target - b.target : b.target - a.target;
         return d || new Date(b.createdAt) - new Date(a.createdAt);
       }
+      case 'reading': {
+        const ra = a.reading || '';
+        const rb = b.reading || '';
+        const d = asc ? ra.localeCompare(rb, 'ja') : rb.localeCompare(ra, 'ja');
+        return d || new Date(b.createdAt) - new Date(a.createdAt);
+      }
       case 'type': {
         if (a.type < b.type) return -1;
         if (a.type > b.type) return  1;

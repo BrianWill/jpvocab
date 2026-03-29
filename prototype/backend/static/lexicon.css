@@ -337,6 +337,11 @@
 .btn-generate--cancellable:hover .btn-gen-label { display: none; }
 .btn-generate--cancellable:hover .btn-gen-cancel { display: inline; }
 
+.word-result-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+}
 .word-result-drill {
   display: flex;
   align-items: center;

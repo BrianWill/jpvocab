@@ -259,4 +259,4 @@ body {
 .reading-on  + .reading-seg,
 .reading-kun + .reading-seg,
 .reading-kana + .reading-on,
-.reading-kana + .reading-kun { margin-left: 0.4em; }
+.reading-kana + .reading-kun { margin-left: 0.55em; }

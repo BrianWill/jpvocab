@@ -328,7 +328,7 @@ function appendWordRow(data) {
   const removeBtn =
     '<button class="btn-delete btn-word-remove" data-tooltip="Remove word"' +
       ' data-word="' + esc(data.word) + '">✕</button>';
-  const hasProviders = _providers && (_providers.anthropic || _providers.openai || _providers.google || _providers.mistral);
+  const hasProviders = _providers && (_providers.anthropic || _providers.openai || _providers.google || _providers.mistral || _providers.glm);
   const generateBtn = data.word_id
     ? '<button class="btn-generate"' +
         (hasProviders ? '' : ' disabled') +
@@ -622,7 +622,7 @@ function renderStatus() {
   const sel = document.getElementById('add-result-model-select');
   if (sel) {
     const busyLock = _pendingGenerates > 0;
-    sel.disabled = busyLock || !(_providers && (_providers.anthropic || _providers.openai || _providers.google || _providers.mistral));
+    sel.disabled = busyLock || !(_providers && (_providers.anthropic || _providers.openai || _providers.google || _providers.mistral || _providers.glm));
     if (busyLock) {
       sel.dataset.tooltip = 'Unavailable while generation is in progress';
     } else {
@@ -634,7 +634,7 @@ function renderStatus() {
     ? ', <span class="status-skipped">' + _skippedCount + ' skipped</span>'
     : '';
   const countsHtml = '<span>' + _addedWords.length + ' added' + skippedHtml + '</span>';
-  const hasProviders = _providers && (_providers.anthropic || _providers.openai || _providers.google || _providers.mistral);
+  const hasProviders = _providers && (_providers.anthropic || _providers.openai || _providers.google || _providers.mistral || _providers.glm);
   const actionHtml = _pendingGenerates > 0
     ? '<button class="btn-generate btn-generate--cancel">' +
         '<span class="spinner"></span>cancel generation' +
@@ -665,12 +665,13 @@ function initAddResultFooter() {
     if (!providers.openai)    lines.push('OpenAI: set OPENAI_API_KEY to enable');
     if (!providers.google)    lines.push('Google: set GOOGLE_API_KEY to enable');
     if (!providers.mistral)   lines.push('Mistral: set MISTRAL_API_KEY to enable');
+    if (!providers.glm)       lines.push('GLM: set GLM_API_KEY to enable');
     if (lines.length === 0) return null;
-    return lines.join(' · ') + ' — then restart the program';
+    return lines.join('\n') + '\n— then restart the program';
   }
 
   const footer = document.getElementById('add-result-modal-footer');
-  const hasProviders = _providers && (_providers.anthropic || _providers.openai || _providers.google || _providers.mistral);
+  const hasProviders = _providers && (_providers.anthropic || _providers.openai || _providers.google || _providers.mistral || _providers.glm);
   const progTip = _providers ? providerSelectTooltip(_providers) : null;
   footer.innerHTML =
     '<button id="btn-add-result-remove" class="btn-danger">Remove added words</button>' +
@@ -692,6 +693,10 @@ function initAddResultFooter() {
       '<optgroup label="' + (_providers && !_providers.mistral ? 'Mistral — no API key' : 'Mistral') + '"' + (_providers && !_providers.mistral ? ' disabled' : '') + '>' +
         '<option value="mistral/mistral-small-latest">mistral-small (fast)</option>' +
         '<option value="mistral/mistral-large-latest">mistral-large (better)</option>' +
+      '</optgroup>' +
+      '<optgroup label="' + (_providers && !_providers.glm ? 'GLM — no API key' : 'GLM') + '"' + (_providers && !_providers.glm ? ' disabled' : '') + '>' +
+        '<option value="glm/glm-4">glm-4 (better)</option>' +
+        '<option value="glm/glm-3-turbo">glm-3-turbo (fast)</option>' +
       '</optgroup>' +
     '</select>' +
     (progTip ? '<span class="provider-info-icon" data-tooltip="' + progTip + '">?</span>' : '') +

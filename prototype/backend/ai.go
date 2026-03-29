@@ -100,6 +100,7 @@ type aiProviders struct {
 	OpenAIAvail    bool
 	GoogleAvail    bool
 	MistralAvail   bool
+	GLMAvail       bool
 }
 
 // checkAIProviders reports which providers have API keys set in the environment.
@@ -109,6 +110,7 @@ func checkAIProviders() aiProviders {
 		OpenAIAvail:    os.Getenv("OPENAI_API_KEY") != "",
 		GoogleAvail:    os.Getenv("GOOGLE_API_KEY") != "",
 		MistralAvail:   os.Getenv("MISTRAL_API_KEY") != "",
+		GLMAvail:       os.Getenv("GLM_API_KEY") != "",
 	}
 }
 
@@ -126,6 +128,8 @@ func autoFillWord(word, providerModel string) (*wordAutoFill, error) {
 		return autoFillWordGoogle(word, parts[1])
 	case "mistral":
 		return autoFillWordMistral(word, parts[1])
+	case "glm":
+		return autoFillWordGLM(word, parts[1])
 	default:
 		return autoFillWordAnthropic(word, parts[1])
 	}
@@ -144,6 +148,8 @@ func rerollMeaning(word, currentMeaning, providerModel string) ([]string, error)
 		return rerollMeaningGoogle(word, currentMeaning, parts[1])
 	case "mistral":
 		return rerollMeaningMistral(word, currentMeaning, parts[1])
+	case "glm":
+		return rerollMeaningGLM(word, currentMeaning, parts[1])
 	default:
 		return rerollMeaningAnthropic(word, currentMeaning, parts[1])
 	}
@@ -162,6 +168,8 @@ func rerollExamples(word, providerModel string) ([]examplePair, error) {
 		return rerollExamplesGoogle(word, parts[1])
 	case "mistral":
 		return rerollExamplesMistral(word, parts[1])
+	case "glm":
+		return rerollExamplesGLM(word, parts[1])
 	default:
 		return rerollExamplesAnthropic(word, parts[1])
 	}

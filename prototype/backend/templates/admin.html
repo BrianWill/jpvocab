@@ -1,0 +1,88 @@
+{{define "content"}}
+<div class="page-header">
+  <h1>jpvocab — admin</h1>
+  <form method="POST" action="/admin/reset-db" onsubmit="return confirm('Drop all tables and reinitialise? This cannot be undone.')">
+    <button class="btn-danger" type="submit">Reset DB</button>
+  </form>
+</div>
+
+<details class="add-word-panel">
+  <summary class="add-word-toggle">Add words</summary>
+
+  <div class="add-word-body">
+
+    <form class="add-word-form" method="POST" action="/admin/words/batch">
+      <label class="label-block">
+        Words
+        <textarea name="words" rows="4" placeholder="One word per line, or comma-separated&#10;e.g. 食べる, 飲む&#10;走る"></textarea>
+      </label>
+      <div class="batch-footer">
+        <label class="checkbox-label">
+          <input type="checkbox" name="autofill" id="autofill-check"
+            {{if or .Providers.AnthropicAvail .Providers.OpenAIAvail}}checked{{else}}disabled{{end}}>
+          Auto-fill via AI
+        </label>
+        <select name="ai_model">
+          <optgroup label="Anthropic{{if not .Providers.AnthropicAvail}} — ANTHROPIC_API_KEY not set{{end}}"{{if not .Providers.AnthropicAvail}} disabled{{end}}>
+            <option value="anthropic/claude-haiku-4-5-20251001">claude-haiku (fast)</option>
+            <option value="anthropic/claude-sonnet-4-6">claude-sonnet (better)</option>
+          </optgroup>
+          <optgroup label="OpenAI{{if not .Providers.OpenAIAvail}} — OPENAI_API_KEY not set{{end}}"{{if not .Providers.OpenAIAvail}} disabled{{end}}>
+            <option value="openai/gpt-4o-mini">gpt-4o-mini (fast)</option>
+            <option value="openai/gpt-4o">gpt-4o (better)</option>
+          </optgroup>
+        </select>
+        <button type="submit">Add words</button>
+      </div>
+    </form>
+
+  </div>
+</details>
+
+{{if .Error}}
+<p class="form-error">{{.Error}}</p>
+{{end}}
+{{if .Success}}
+<p class="form-success">{{.Success}}</p>
+{{end}}
+
+<div class="modal-overlay" id="batch-modal" style="display:none">
+  <div class="modal modal-wide">
+    <div class="modal-header">
+      <span>Add words</span>
+    </div>
+    <div id="batch-modal-status" class="modal-status"></div>
+    <div class="modal-body" id="batch-modal-body"></div>
+    <div class="modal-footer" id="batch-modal-footer"></div>
+  </div>
+</div>
+
+<script type="module" src="/static/admin.js"></script>
+
+<h2>Tables</h2>
+{{if .Tables}}
+{{range .Tables}}
+<div class="table-card">
+  <div class="table-card-header">
+    <a href="/admin/tables/{{.Name}}">{{.Name}}</a>
+    <span class="badge">{{.Rows}} rows</span>
+  </div>
+  <div class="col-list">
+    {{range .Columns}}
+    <div class="col-row">
+      <span class="col-name">{{.Name}}</span>
+      <span class="col-type">{{.Type}}</span>
+      <span class="col-flags">
+        {{if .PK}}<span class="flag flag-pk">PK</span>{{end}}
+        {{if .Unique}}<span class="flag flag-unique">UNIQUE</span>{{end}}
+        {{if .NotNull}}<span class="flag flag-notnull">NOT NULL</span>{{end}}
+      </span>
+    </div>
+    {{end}}
+  </div>
+</div>
+{{end}}
+{{else}}
+<p class="empty">No tables found.</p>
+{{end}}
+{{end}}

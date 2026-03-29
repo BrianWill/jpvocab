@@ -170,7 +170,7 @@ func adminIndex(db *sql.DB) http.HandlerFunc {
 		if n := r.URL.Query().Get("added"); n != "" {
 			success = fmt.Sprintf("Added %s word(s).", n)
 		}
-		renderTemplate(w, "index", indexData{
+		renderTemplate(w, "admin", indexData{
 			Tables:    infos,
 			Error:     r.URL.Query().Get("error"),
 			Success:   success,

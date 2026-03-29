@@ -16,7 +16,8 @@
       "Bash(find /d/code/jpvocab -type f -name *drill*)",
       "Bash(echo \"exit: $?\")",
       "Bash(/c/Users/Brian/.nvm/versions/node/v25.4.0/bin/node --version)",
-      "Bash(/c/Users/Brian/.nvm/versions/node/v25.4.0/bin/node --test \"D:/code/jpvocab/prototype/backend/static/tests/lexicon-utils.test.js\")"
+      "Bash(/c/Users/Brian/.nvm/versions/node/v25.4.0/bin/node --test \"D:/code/jpvocab/prototype/backend/static/tests/lexicon-utils.test.js\")",
+      "Bash(git mv:*)"
     ]
   },
   "outputStyle": "Explanatory"

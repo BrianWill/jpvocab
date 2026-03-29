@@ -54,6 +54,9 @@ cd prototype/backend && air
 # Run backend tests
 cd prototype/backend && go test ./...
 
+# Run AI integration tests (makes real API calls — ask the user for permission first)
+cd prototype/backend && go test -tags integration ./...
+
 # --- Legacy Wails app ---
 
 # Development (hot reload for both frontend and backend)
@@ -70,6 +73,8 @@ go mod tidy
 ```
 
 The Go backend has a test suite. The frontend has tests for pure JS business logic (no DOM) using the Node.js built-in test runner (`node:test`). Do not write tests for DOM operations, HTML, or browser-specific behaviour.
+
+AI integration tests live in `prototype/backend/ai_integration_test.go` and are gated behind the `integration` build tag so they are excluded from normal runs. They make real API calls to OpenAI and/or Anthropic. **Always ask the user for explicit permission before running them.**
 
 - **Frontend test location:** `prototype/backend/static/tests/`
 - **Run frontend tests:** `node --test "prototype/backend/static/tests/*.test.js"`

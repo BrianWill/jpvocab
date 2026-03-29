@@ -109,6 +109,26 @@
   </div>
 </div>
 
+<div id="generate-confirm-modal-backdrop" class="modal-backdrop hidden">
+  <div class="modal">
+    <div class="modal-body">
+      <p>Generate readings, POS, meanings, and sentences for:</p>
+      <label class="generate-confirm-option">
+        <input type="checkbox" id="generate-confirm-added-checkbox">
+        <span id="generate-confirm-added-text"></span>
+      </label>
+      <label class="generate-confirm-option">
+        <input type="checkbox" id="generate-confirm-skipped-checkbox">
+        <span id="generate-confirm-skipped-text"></span>
+      </label>
+    </div>
+    <div class="modal-footer">
+      <button class="btn-cancel" id="generate-confirm-cancel">Cancel</button>
+      <button id="generate-confirm-ok" class="btn-save">Generate</button>
+    </div>
+  </div>
+</div>
+
 <div id="remove-confirm-modal-backdrop" class="modal-backdrop hidden">
   <div class="modal">
     <div class="modal-body">

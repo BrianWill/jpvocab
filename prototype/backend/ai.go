@@ -56,7 +56,7 @@ var autoFillSystemPrompt = `You are a Japanese dictionary assistant. Given a Jap
 - "example_en": English translation of the example sentence
 - "kanji": array of objects, one per kanji character in the word in order of appearance, each with:
   - "character": the kanji character
-  - "reading": this kanji's reading in this specific word — use hiragana for kun'yomi, katakana for on'yomi
+  - "reading": this kanji's reading in this specific word — use hiragana for kun'yomi, katakana for on'yomi; the readings of all kanji, taken in order, must concatenate to spell out the word's full reading exactly (e.g. for 日本語 read as にほんご, the readings must be ニ + ホン + ゴ, not ニチ + ホン + ゴ)
   - "meanings": array of concise English meanings for this kanji (2–4 entries)
   For words with no kanji (e.g. pure kana or katakana loanwords), use an empty array.
 Return only a valid JSON object with no markdown, no code fences, and no extra commentary.`
@@ -81,6 +81,12 @@ var autoFillExamples = []autoFillExample{
 	{
 		word: "きれい",
 		result: `{"reading":"きれい","part_of_speech":"na-adjective","meaning":"beautiful; clean; pretty","example_jp":"この花はきれいですね。","example_en":"This flower is beautiful, isn't it?","kanji":[]}`,
+	},
+	{
+		// Demonstrates that kanji readings must match the word's actual pronunciation,
+		// not the kanji's most common standalone reading (日 → ニ here, not ニチ).
+		word: "日本語",
+		result: `{"reading":"にほんご","part_of_speech":"noun","meaning":"Japanese language","example_jp":"日本語を毎日勉強しています。","example_en":"I study Japanese every day.","kanji":[{"character":"日","reading":"ニ","meanings":["sun","day","Japan"]},{"character":"本","reading":"ホン","meanings":["book","origin","Japan"]},{"character":"語","reading":"ゴ","meanings":["language","word","speech"]}]}`,
 	},
 }
 

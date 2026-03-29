@@ -124,6 +124,21 @@
 .modal-field textarea::placeholder { color: #313244; }
 
 
+/* Generate-confirm modal checkbox option */
+.generate-confirm-option {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-top: 0.75rem;
+  font-size: 0.85rem;
+  color: #cdd6f4;
+  cursor: pointer;
+}
+.generate-confirm-option input[type="checkbox"] {
+  cursor: pointer;
+  accent-color: #89b4fa;
+}
+
 /* Provider info icon (? badge next to model selects) */
 .provider-info-icon {
   display: inline-flex;

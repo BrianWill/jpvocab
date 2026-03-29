@@ -78,6 +78,32 @@ document.getElementById('remove-confirm-ok').addEventListener('click', () => {
   closeRemoveConfirm();
   if (action) action();
 });
+// --- Generate-confirm mini-modal ---
+function openGenerateConfirm() {
+  const addedCount   = document.querySelectorAll('#add-result-modal-body .result-added .btn-generate:not(.btn-generate--busy):not([disabled])').length;
+  const skippedCount = document.querySelectorAll('#add-result-modal-body .result-skipped .btn-generate:not(.btn-generate--busy):not([disabled])').length;
+
+  document.getElementById('generate-confirm-added-text').textContent   = addedCount   + ' newly added words';
+  document.getElementById('generate-confirm-skipped-text').textContent = skippedCount + ' already existing words';
+  document.getElementById('generate-confirm-added-checkbox').checked   = true;
+  document.getElementById('generate-confirm-skipped-checkbox').checked = false;
+
+  document.getElementById('generate-confirm-modal-backdrop').classList.remove('hidden');
+}
+function closeGenerateConfirm() {
+  document.getElementById('generate-confirm-modal-backdrop').classList.add('hidden');
+}
+document.getElementById('generate-confirm-modal-backdrop').addEventListener('click', e => {
+  if (e.target === document.getElementById('generate-confirm-modal-backdrop')) closeGenerateConfirm();
+});
+document.getElementById('generate-confirm-cancel').addEventListener('click', closeGenerateConfirm);
+document.getElementById('generate-confirm-ok').addEventListener('click', () => {
+  const includeAdded   = document.getElementById('generate-confirm-added-checkbox').checked;
+  const includeSkipped = document.getElementById('generate-confirm-skipped-checkbox').checked;
+  closeGenerateConfirm();
+  generateAll(includeAdded, includeSkipped);
+});
+
 document.querySelector('#add-modal-backdrop .btn-save').addEventListener('click', saveAddModal);
 
 // Prevent newlines in contenteditable fields; Enter blurs instead
@@ -564,10 +590,11 @@ function cancelAllGenerates() {
   renderStatus();
 }
 
-function generateAllAdded() {
-  document.querySelectorAll('#add-result-modal-body .result-added .btn-generate:not(.btn-generate--busy):not([disabled])').forEach(btn => {
-    btn.dispatchEvent(new MouseEvent('mousedown'));
-  });
+function generateAll(includeAdded, includeSkipped) {
+  if (includeAdded)
+    document.querySelectorAll('#add-result-modal-body .result-added .btn-generate:not(.btn-generate--busy):not([disabled])').forEach(btn => btn.dispatchEvent(new MouseEvent('mousedown')));
+  if (includeSkipped)
+    document.querySelectorAll('#add-result-modal-body .result-skipped .btn-generate:not(.btn-generate--busy):not([disabled])').forEach(btn => btn.dispatchEvent(new MouseEvent('mousedown')));
 }
 
 function renderStatus() {
@@ -613,8 +640,8 @@ function renderStatus() {
         '<span class="spinner"></span>cancel generation' +
       '</button>'
     : '<button class="btn-generate btn-generate--all"' +
-        (_addedWords.length > 0 && hasProviders && _addPhase !== 'loading' ? '' : ' disabled') +
-        ' data-tooltip="Uses an AI API request to get the reading, part-of-speech, meaning, and an example sentence for each newly added word"' +
+        (document.querySelectorAll('#add-result-modal-body .word-result-row .btn-generate:not(.btn-generate--busy):not([disabled])').length > 0 && hasProviders && _addPhase !== 'loading' ? '' : ' disabled') +
+        ' data-tooltip="Uses an AI API request to get the reading, part-of-speech, meaning, and an example sentence for each word"' +
         '>generate all</button>';
   if (_addPhase === 'loading') {
     el.className = 'modal-status modal-status-loading';
@@ -627,7 +654,7 @@ function renderStatus() {
     el.innerHTML = countsHtml + actionHtml;
   }
   const actionBtn = el.querySelector('.btn-generate');
-  if (actionBtn) actionBtn.addEventListener('mousedown', _pendingGenerates > 0 ? cancelAllGenerates : generateAllAdded);
+  if (actionBtn) actionBtn.addEventListener('mousedown', _pendingGenerates > 0 ? cancelAllGenerates : openGenerateConfirm);
   updateAddResultFooter();
 }
 

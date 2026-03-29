@@ -48,25 +48,17 @@ body {
   display: flex;
 }
 
-/* Settings button container and styling */
-.btn-settings-container {
-  align-self: stretch;
-  display: flex;
-  margin-top: -0.75rem;
-  margin-bottom: -0.75rem;
-  background: #181825;
-  border-left: 1px solid #313244;
-}
-
 .btn-settings {
   align-self: stretch;
   display: flex;
   align-items: center;
+  margin-top: -0.75rem;
+  margin-bottom: -0.75rem;
   padding: 0 1.5rem;
-  border-right: 1px solid #313244;
   background: #181825;
-  color: #585b70;
   border: none;
+  border-left: 1px solid #313244;
+  color: #585b70;
   font-size: 1.1rem;
   cursor: pointer;
   line-height: 1;

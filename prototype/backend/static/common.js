@@ -2,22 +2,16 @@
 function initializeSettings() {
   const settingsBtn = document.getElementById('settings-btn');
   const settingsModal = document.getElementById('settings-modal-backdrop');
-  const settingsCloseBtn = document.getElementById('settings-close-btn');
 
-  if (!settingsBtn || !settingsModal || !settingsCloseBtn) return;
+  if (!settingsBtn || !settingsModal) return;
 
-  settingsBtn.addEventListener('click', () => {
-    settingsModal.classList.remove('hidden');
-  });
+  const closeModal = () => settingsModal.classList.add('hidden');
 
-  settingsCloseBtn.addEventListener('click', () => {
-    settingsModal.classList.add('hidden');
-  });
-
+  settingsBtn.addEventListener('click', () => settingsModal.classList.remove('hidden'));
+  settingsModal.querySelector('.modal-close')?.addEventListener('click', closeModal);
+  document.getElementById('settings-close-btn')?.addEventListener('click', closeModal);
   settingsModal.addEventListener('click', (e) => {
-    if (e.target === settingsModal) {
-      settingsModal.classList.add('hidden');
-    }
+    if (e.target === settingsModal) closeModal();
   });
 }
 

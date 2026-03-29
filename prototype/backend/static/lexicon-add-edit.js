@@ -1,5 +1,5 @@
 import { defaultDrillTarget, typeLabels, _providers, reloadWords, renderTable, getSortedWords, closeAddModal } from './lexicon.js';
-import { esc, isKanji } from './lexicon-utils.js';
+import { esc, isKanji, detailItemPosSelect, detailItemKanjiReadings, detailItemInput, detailItemExInput } from './lexicon-utils.js';
 
 // --- Add/edit modal ---
 // Handles two scenarios:
@@ -360,7 +360,7 @@ function appendWordRow(data) {
     '<div class="word-result-details">' +
       detailItemInput('reading', data.reading,        'detail-reading') +
       detailItemKanjiReadings(data.word, data.kanji_data) +
-      detailItemPosSelect(data.part_of_speech) +
+      detailItemPosSelect(data.part_of_speech, typeLabels) +
       detailItemInput('meaning', data.meaning,        'detail-meaning') +
       detailItemExInput(data.example_jp, data.example_en) +
     '</div>';
@@ -393,7 +393,7 @@ function updateWordRowDetails(data) {
     '<div class="word-result-details">' +
       detailItemInput('reading', data.reading,        'detail-reading') +
       detailItemKanjiReadings(row._resolvedWord, data.kanji_data) +
-      detailItemPosSelect(data.part_of_speech) +
+      detailItemPosSelect(data.part_of_speech, typeLabels) +
       detailItemInput('meaning', data.meaning,        'detail-meaning') +
       detailItemExInput(data.example_jp, data.example_en) +
     '</div>';
@@ -517,61 +517,6 @@ async function adjustWordTarget(event, wordId, delta, btn) {
   }
 }
 
-function detailItemRaw(label, html, muted, cls) {
-  return '<span class="detail-item' + (cls ? ' ' + cls : '') + (muted ? ' detail-item--muted' : '') + '">' +
-    '<span class="detail-label">' + esc(label) + '</span> ' + html + '</span>';
-}
-
-function detailItemPosSelect(value) {
-  const known = value in typeLabels;
-  let options = known ? '' : '<option value="" selected>—</option>';
-  options += Object.entries(typeLabels).map(([key, label]) => {
-    const short = label.split(' — ')[0].split(' (')[0].toUpperCase();
-    return '<option value="' + esc(key) + '"' + (value === key ? ' selected' : '') + '>' + esc(short) + '</option>';
-  }).join('');
-  return '<span class="detail-item detail-pos">' +
-    '<span class="detail-label">pos</span> ' +
-    '<select class="detail-pos-select">' + options + '</select>' +
-    '</span>';
-}
-
-function detailItemKanjiReadings(word, kanjiData) {
-  if (!word || !kanjiData || kanjiData.length === 0) return '';
-  let kanjiIdx = 0;
-  let pairs = '';
-  for (const ch of word) {
-    if (isKanji(ch) && kanjiIdx < kanjiData.length) {
-      const entry = kanjiData[kanjiIdx++];
-      pairs +=
-        '<span class="kanji-reading-pair">' +
-          '<span class="kanji-reading-char">' + esc(ch) + '</span>' +
-          '<span class="detail-input kanji-reading-input" contenteditable="true"' +
-            ' data-kanji-id="' + entry.id + '">' + esc((entry.reading || '').trim()) + '</span>' +
-        '</span>';
-    }
-  }
-  if (!pairs) return '';
-  return '<span class="detail-item detail-kanji">' +
-    '<span class="detail-label">kanji readings</span> ' + pairs +
-    '</span>';
-}
-
-function detailItemInput(label, value, cls) {
-  return '<span class="detail-item ' + cls + '">' +
-    '<span class="detail-label">' + esc(label) + '</span> ' +
-    '<span class="detail-input" contenteditable="true">' + esc((value || '').trim()) + '</span>' +
-    '</span>';
-}
-
-function detailItemExInput(exJp, exEn) {
-  return '<span class="detail-item detail-ex">' +
-    '<span class="detail-label">example</span> ' +
-    '<span class="detail-ex-inputs">' +
-      '<span class="detail-ex-flag">🇯🇵</span><span class="detail-input" contenteditable="true">' + esc((exJp || '').trim()) + '</span>' +
-      '<span class="detail-ex-sep">🏴󠁧󠁢󠁥󠁮󠁧󠁿</span><span class="detail-input detail-input--en" contenteditable="true">' + esc((exEn || '').trim()) + '</span>' +
-    '</span>' +
-    '</span>';
-}
 
 function clearAutofillSpinners() {
   document.querySelectorAll('#add-result-modal-body .btn-generate--busy').forEach(btn => {

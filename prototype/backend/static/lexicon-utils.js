@@ -66,6 +66,57 @@ export function timeAgo(dateStr) {
   return yr + ' year' + (yr === 1 ? '' : 's') + ' ago';
 }
 
+export function detailItemPosSelect(value, typeLabels) {
+  const known = value in typeLabels;
+  let options = known ? '' : '<option value="" selected>—</option>';
+  options += Object.entries(typeLabels).map(([key, label]) => {
+    const short = label.split(' — ')[0].split(' (')[0].toUpperCase();
+    return '<option value="' + esc(key) + '"' + (value === key ? ' selected' : '') + '>' + esc(short) + '</option>';
+  }).join('');
+  return '<span class="detail-item detail-pos">' +
+    '<span class="detail-label">pos</span> ' +
+    '<select class="detail-pos-select">' + options + '</select>' +
+    '</span>';
+}
+
+export function detailItemKanjiReadings(word, kanjiData) {
+  if (!word || !kanjiData || kanjiData.length === 0) return '';
+  let kanjiIdx = 0;
+  let pairs = '';
+  for (const ch of word) {
+    if (isKanji(ch) && kanjiIdx < kanjiData.length) {
+      const entry = kanjiData[kanjiIdx++];
+      pairs +=
+        '<span class="kanji-reading-pair">' +
+          '<span class="kanji-reading-char">' + esc(ch) + '</span>' +
+          '<span class="detail-input kanji-reading-input" contenteditable="true"' +
+            ' data-kanji-id="' + entry.id + '">' + esc((entry.reading || '').trim()) + '</span>' +
+        '</span>';
+    }
+  }
+  if (!pairs) return '';
+  return '<span class="detail-item detail-kanji">' +
+    '<span class="detail-label">kanji readings</span> ' + pairs +
+    '</span>';
+}
+
+export function detailItemInput(label, value, cls) {
+  return '<span class="detail-item ' + cls + '">' +
+    '<span class="detail-label">' + esc(label) + '</span> ' +
+    '<span class="detail-input" contenteditable="true">' + esc((value || '').trim()) + '</span>' +
+    '</span>';
+}
+
+export function detailItemExInput(exJp, exEn) {
+  return '<span class="detail-item detail-ex">' +
+    '<span class="detail-label">example</span> ' +
+    '<span class="detail-ex-inputs">' +
+      '<span class="detail-ex-flag">🇯🇵</span><span class="detail-input" contenteditable="true">' + esc((exJp || '').trim()) + '</span>' +
+      '<span class="detail-ex-sep">🏴󠁧󠁢󠁥󠁮󠁧󠁿</span><span class="detail-input detail-input--en" contenteditable="true">' + esc((exEn || '').trim()) + '</span>' +
+    '</span>' +
+    '</span>';
+}
+
 export function getSortedWords(words, key, dir) {
   const asc = dir === 'asc';
   const byDate = (a, b, field) => {

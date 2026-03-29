@@ -78,7 +78,7 @@ AI integration tests live in `prototype/backend/ai_integration_test.go` and are 
 
 - **Frontend test location:** `prototype/backend/static/tests/`
 - **Run frontend tests:** `node --test "prototype/backend/static/tests/*.test.js"`
-- **Pure utility functions** that have no DOM dependencies live in `lexicon-utils.js` and are the primary target for frontend tests.
+- **Pure utility functions** that have no DOM dependencies live in `lexicon-utils.js` and are the primary target for frontend tests. Current exports: `isKanji`, `esc`, `renderReading`, `timeAgo`, `getSortedWords`, and the detail item HTML builders (`detailItemPosSelect`, `detailItemKanjiReadings`, `detailItemInput`, `detailItemExInput`).
 
 ## Lexicon Features
 
@@ -113,7 +113,7 @@ The HTML/CSS/JS frontend files live in `prototype/backend/static/` and are serve
 - **`db_schema.go`** — `initDB`, `migrate`, `resetDB`, `seedDB`, and schema-introspection helpers (`listTableInfos`, `queryTable`, etc.). No SQL appears outside the `db_*.go` files.
 - **`db_words.go`** — all word and kanji database operations: insert, update, delete, list, upsert kanji.
 - **`db_activity.go`** — drill session and answer recording (`createDrillSession`, `recordDrillAnswer`), plus activity stats and calendar queries.
-- **`db_settings.go`** — user settings: `getDrillSettings` and `putDrillSettings` read/write the `user_settings` table using key/value pairs.
+- **`db_settings.go`** — user settings: `getDrillSettings` and `putDrillSettings` read/write the `user_settings` table using key/value pairs. `drillSettings` always returns fully-populated values with no null fields — `MaxWords` defaults to `100`, `RoundSize` to `10`, `WordTypes` to all four types. `MaxWords` is always ≥ 1; `0` is not a valid value. The frontend should treat the `GET /api/settings/drill` response as always having concrete values and needs no null-handling.
 - **`routes.go`** — `serverInit` (router setup), activity/drill/admin HTTP handlers, and `renderTemplate`. No direct DB access; handlers call functions from the `db_*.go` files.
 - **`routes_words.go`** — word and kanji API handlers: GET/PATCH/DELETE words, autofill, reroll meaning/examples, GET kanji.
 - **`ai.go`** — Shared AI types, prompts, few-shot examples, and provider-dispatch functions (`autoFillWord`, `rerollMeaning`, `rerollExamples`). No direct DB access. Environment variables: `ANTHROPIC_API_KEY`, `OPENAI_API_KEY`, `GOOGLE_API_KEY`, `MISTRAL_API_KEY`.
@@ -123,7 +123,7 @@ The HTML/CSS/JS frontend files live in `prototype/backend/static/` and are serve
 - **`ai_mistral.go`** — Mistral Chat API (OpenAI-compatible): `callMistral` HTTP helper + autofill/reroll implementations.
 - **`morphology.go`** — word normalisation to dictionary base form (used in the add-words flow).
 - **`templates/`** — HTML templates parsed from disk on every request (live-editable without restart); `base.html` is the shared shell, each page has its own file
-- **`static/`** — HTML pages, CSS, and JS, served from disk (live-editable without restart). JS files for the lexicon page are split across two files: `lexicon.js` (table state/rendering, sorting, delete modal, tooltip) and `lexicon-add-edit.js` (add/edit result modal, word row builders, autofill, status/footer). `lexicon.js` must load first as `lexicon-add-edit.js` reads globals it defines (`words`, `defaultDrillTarget`, `typeLabels`, `reloadWords`, `renderTable`, `getSortedWords`).
+- **`static/`** — HTML pages, CSS, and JS, served from disk (live-editable without restart). JS files for the lexicon page are split across three files: `lexicon.js` (table state/rendering, sorting, delete modal, tooltip), `lexicon-add-edit.js` (add/edit result modal, autofill, status/footer, streaming), and `lexicon-utils.js` (pure helpers and detail item HTML builders). `lexicon.js` must load first as `lexicon-add-edit.js` reads globals it defines (`words`, `defaultDrillTarget`, `typeLabels`, `reloadWords`, `renderTable`, `getSortedWords`). The settings modal HTML (`#settings-modal-backdrop`) is injected into `<body>` at runtime by `injectSettingsModal()` in `common.js` — do not add it to any page's HTML.
 - **`seed.json`** — fixture data loaded on first startup (or after a DB reset); contains `words` and `sessions` arrays
 
 Key API endpoints (beyond CRUD on `/api/words` and `/api/kanji`):
@@ -157,7 +157,7 @@ Table definitions live in the `migrate()` function in `db.go`. Schema is version
 - **`kanji`** — one row per kanji character with `character` and `meanings` (JSON array of English meanings). Readings (on/kun) are stored per-word in the `kanji_data` column of `words`, not on the kanji row itself. Served via `/api/kanji`.
 - **`drill_sessions`** — one row per drill session with a `started_at` timestamp.
 - **`drill_answers`** — one row per answer within a session; references `words` and `drill_sessions`; stores `correct` (0/1) and `answered_at`.
-- **`user_settings`** — key/value store for user preferences. Current keys: `drill_max_words` (int), `drill_round_size` (int), `drill_word_types` (JSON string array).
+- **`user_settings`** — key/value store for user preferences. Current keys: `drill_max_words` (int, always ≥ 1; absent from the table means the default of `100` is used), `drill_round_size` (int), `drill_word_types` (JSON string array).
 
 The admin UI at `http://localhost:1338/admin` shows live table schemas (column names, types, PK/UNIQUE/NOT NULL flags) and row counts, and links through to full table data views.
 

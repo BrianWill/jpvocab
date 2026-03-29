@@ -3,9 +3,6 @@
 This file is random notes of possible features and bug fixes.
 
 - settings menu
-    - gear next to nav links in header
-    - saved in db
-    - default drill size preference
     - preferred AI provider/model
 
 - some way to sync db state

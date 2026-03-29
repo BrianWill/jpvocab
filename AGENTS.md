@@ -158,6 +158,12 @@ The admin UI at `http://localhost:1338/admin` shows live table schemas (column n
 
 Styles shared across pages belong in `common.css`, which is loaded first by all pages. Page-specific files only contain styles unique to that page. When adding new styles, prefer extending `common.css` over duplicating rules across page stylesheets. Current shared styles include: CSS reset, `body` base, page header, nav link, `.btn-header` (the header icon button), and the full modal system.
 
+The edit modal uses two distinct field styles to signal interaction type:
+- **Underline** (`border-bottom` only) — free-text editable fields (`.detail-input`)
+- **Bordered button** (full border, rounded corners) — dropdown selects (`.detail-pos-select`)
+
+When adding new fields to the word edit/add modal, follow whichever convention matches the field type. Do not use CSS `text-transform` or `letter-spacing` on `<select>` elements — browsers exclude these from intrinsic width calculations, causing text to overflow. Apply transforms in JS when generating `<option>` text instead.
+
 ## Working conventions
 
 - **Scope changes to this project directory.** Do not read or write files outside `D:\code\jpvocab\` without explicit instruction.

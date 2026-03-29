@@ -2,12 +2,11 @@
 
 This file is random notes of possible features and bug fixes.
 
-- in the edit words modal
-    - the gap between the generate and remove buttons should be shrunk 
-    - when the user hovers the word type pulldown and when it has focus, it should look like a button rather than be underlined
-    - the word type pulldown isn't wide enough to display every word type; some are cut off
-    - the word type pulldown height varies slightly for different types, shifting the layout
 
+- when adding words, user should be able to enter any Japanese text to add all words 
+    - filters out particles, conjunctions, and other small parts of speech
+    - no longer required to separate words by newlines or whitespace
+        - instead just tries to analyze the text for all discrete words  
 
 - the set of POS should be constrained to an enum
     - tell AI to stick to the defined categories (or as fallback label a word as "other")
@@ -33,11 +32,6 @@ This file is random notes of possible features and bug fixes.
     
 
 - add words from common word lists
-
-- when adding words, user should be able to enter any Japanese text to add all words 
-    - filters out particles, conjunctions, and other small parts of speech
-    - no longer required to separate words by newlines or whitespace
-        - instead just tries to analyze the text for all discrete words  
 
 - translate stories and generate audio via voicevox
     - can voicevox generate a single audio file but give timemarks for each line?

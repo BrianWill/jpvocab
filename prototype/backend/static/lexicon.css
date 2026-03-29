@@ -208,7 +208,7 @@
   grid-template-columns: 10rem 1fr;
   grid-template-rows: auto auto auto;
   column-gap: 1.25rem;
-  row-gap: 0.2rem;
+  row-gap: 0.5rem;
   margin-top: 0.35rem;
 }
 .detail-reading { grid-column: 1;      grid-row: 1; }
@@ -261,24 +261,27 @@
   font-style: italic;
 }
 .detail-pos-select {
-  background: transparent;
-  border: none;
-  border-bottom: 1px solid transparent;
+  background: transparent url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='8' height='5' viewBox='0 0 8 5'%3E%3Cpath d='M0 0l4 5 4-5z' fill='%2345475a'/%3E%3C/svg%3E") no-repeat right 0.45em center;
+  border: 1px solid #45475a;
+  border-radius: 0.25em;
   color: #5e6072;
   font-size: 0.72rem;
   font-family: inherit;
-  padding: 0;
+  padding: 0.15em 1.4em 0.15em 0.5em;
+  min-width: max-content;
+  line-height: 1.5;
+  white-space: nowrap;
   outline: none;
   cursor: pointer;
   appearance: none;
   -webkit-appearance: none;
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
 }
 .detail-input:hover,
 .detail-pos-select:hover { color: #9399b2; border-bottom-color: #9399b2; }
+.detail-pos-select:hover { border-color: #9399b2; }
 .detail-input:focus,
 .detail-pos-select:focus  { border-bottom-color: #89b4fa; color: #cdd6f4; }
+.detail-pos-select:focus  { border-color: #89b4fa; }
 .detail-label {
   text-transform: uppercase;
   letter-spacing: 0.06em;

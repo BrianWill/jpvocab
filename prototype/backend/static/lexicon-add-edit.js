@@ -533,7 +533,7 @@ function detailItemPosSelect(value) {
   const known = value in typeLabels;
   let options = known ? '' : '<option value="" selected>—</option>';
   options += Object.entries(typeLabels).map(([key, label]) => {
-    const short = label.split(' — ')[0].split(' (')[0];
+    const short = label.split(' — ')[0].split(' (')[0].toUpperCase();
     return '<option value="' + esc(key) + '"' + (value === key ? ' selected' : '') + '>' + esc(short) + '</option>';
   }).join('');
   return '<span class="detail-item detail-pos">' +

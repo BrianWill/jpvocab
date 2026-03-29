@@ -11,10 +11,15 @@
 <body>
 
 <div class="page-header">
-  <div class="page-nav-links">
-    <a class="page-nav-link page-nav-link--current" href="/activity">Activity</a>
-    <a class="page-nav-link" href="/lexicon">Lexicon →</a>
-    <a class="page-nav-link" href="/drill">Drill →</a>
+  <div class="nav-and-settings">
+    <div class="btn-settings-container">
+      <button class="btn-settings" id="settings-btn" aria-label="Settings">⚙</button>
+    </div>
+    <div class="page-nav-links">
+      <a class="page-nav-link page-nav-link--current" href="/activity">Activity</a>
+      <a class="page-nav-link" href="/lexicon">Lexicon →</a>
+      <a class="page-nav-link" href="/drill">Drill →</a>
+    </div>
   </div>
 </div>
 
@@ -36,6 +41,19 @@
   </div>
 </div>
 
+<div id="settings-modal-backdrop" class="modal-backdrop hidden">
+  <div class="modal">
+    <div class="modal-header">
+      <span>Settings</span>
+      <button class="modal-close" id="settings-close-btn">✕</button>
+    </div>
+    <div class="modal-body">
+      <p style="color: #a6adc8;">Settings coming soon…</p>
+    </div>
+  </div>
+</div>
+
+<script type="module" src="/static/common.js"></script>
 <script type="module" src="/static/activity.js"></script>
 </body>
 </html>

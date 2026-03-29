@@ -208,12 +208,19 @@ const lexTooltip = document.createElement('div');
 lexTooltip.className = 'lex-tooltip';
 document.body.appendChild(lexTooltip);
 
+let _activeTooltipEl = null;
+
 document.addEventListener('mouseover', e => {
   const el = e.target.closest('[data-tooltip]');
+  _activeTooltipEl = el ?? null;
   if (!el) { lexTooltip.classList.remove('visible'); return; }
   lexTooltip.textContent = el.dataset.tooltip;
   lexTooltip.classList.add('visible');
 });
+
+export function refreshTooltip(el) {
+  if (_activeTooltipEl === el) lexTooltip.textContent = el.dataset.tooltip;
+}
 document.addEventListener('mousemove', e => {
   if (!lexTooltip.classList.contains('visible')) return;
   const x = e.clientX + 14;
@@ -236,6 +243,98 @@ deleteModalBackdrop.addEventListener('click', e => onBackdropClick(e, closeDelet
 deleteModalBackdrop.querySelector('.modal-close').addEventListener('click', closeDeleteModal);
 deleteModalBackdrop.querySelector('.btn-cancel').addEventListener('click', closeDeleteModal);
 document.getElementById('btn-delete-confirm').addEventListener('click', confirmDelete);
+
+// --- Word list sidebar ---
+// Per-list cache: slug → { remaining, total, inLexicon, initialAvailable }
+const _wordListCache = new Map();
+
+function setAddModalStatus(msg) {
+  document.getElementById('add-modal-status').textContent = msg;
+}
+
+function listItemTooltip(slug, total, inLexicon) {
+  const c = _wordListCache.get(slug);
+  const lexCount = c ? c.inLexicon : inLexicon;
+  const available = total - lexCount;
+  const added = c ? (c.initialAvailable - c.remaining.length) : 0;
+  const remaining = c ? c.remaining.length : available;
+  let s = total + ' total · ' + lexCount + ' in lexicon · ' + added + ' added · ' + remaining + ' remaining';
+  return s;
+}
+
+async function initWordListSidebar() {
+  const sidebar = document.getElementById('add-modal-sidebar');
+  try {
+    const res = await fetch('/api/wordlists');
+    if (!res.ok) return;
+    const lists = await res.json();
+
+    const title = document.createElement('div');
+    title.className = 'add-modal-sidebar-title';
+    title.textContent = 'Word lists';
+    sidebar.appendChild(title);
+
+    for (const list of lists) {
+      const item = document.createElement('div');
+      item.className = 'add-modal-sidebar-item';
+      item.dataset.tooltip = listItemTooltip(list.slug, list.total, list.in_lexicon);
+
+      const btn = document.createElement('button');
+      btn.className = 'add-modal-sidebar-add-btn';
+      btn.textContent = '+';
+      btn.addEventListener('click', () => addWordFromList(list.slug, list.name, list.total, list.in_lexicon, btn, item));
+
+      const label = document.createElement('span');
+      label.className = 'add-modal-sidebar-name';
+      label.textContent = list.name;
+
+      item.appendChild(btn);
+      item.appendChild(label);
+      sidebar.appendChild(item);
+    }
+  } catch (_) { /* fail silently — sidebar stays empty */ }
+}
+
+async function addWordFromList(slug, name, total, inLexicon, btn, item) {
+  btn.disabled = true;
+  try {
+    // Fetch and cache the available words on first click.
+    if (!_wordListCache.has(slug)) {
+      const res = await fetch('/api/wordlists/' + encodeURIComponent(slug) + '/words');
+      if (!res.ok) { setAddModalStatus('Failed to load the ' + name + ' list.'); return; }
+      const data = await res.json();
+      const words = data.words ?? [];
+      _wordListCache.set(slug, {
+        remaining: words,
+        total: data.total ?? total,
+        inLexicon: data.in_lexicon ?? inLexicon,
+        initialAvailable: words.length,
+      });
+    }
+
+    const c = _wordListCache.get(slug);
+    if (c.remaining.length === 0) {
+      setAddModalStatus('No more words to add from the ' + name + ' list.');
+      return;
+    }
+
+    const idx = Math.floor(Math.random() * c.remaining.length);
+    const word = c.remaining.splice(idx, 1)[0];
+
+    const textarea = document.getElementById('add-words-input');
+    textarea.value = textarea.value ? word + '\n' + textarea.value : word;
+    textarea.scrollTop = 0;
+    setAddModalStatus('One random word added from the ' + name + ' list.');
+    item.dataset.tooltip = listItemTooltip(slug, c.total, c.inLexicon);
+    refreshTooltip(item);
+  } catch (_) {
+    setAddModalStatus('Failed to load the ' + name + ' list.');
+  } finally {
+    btn.disabled = false;
+  }
+}
+
+initWordListSidebar();
 
 // --- Add words modal ---
 function openAddModal() {

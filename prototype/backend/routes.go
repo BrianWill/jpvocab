@@ -45,6 +45,9 @@ func serverInit(db *sql.DB) {
 			"default_drill_target": defaultDrillTarget,
 		})
 	})
+	r.Get("/api/wordlists", apiGetWordLists(db))
+	r.Get("/api/wordlists/{slug}/words", apiGetWordListWords(db))
+
 	r.Get("/api/words", apiGetWords(db))
 	r.Patch("/api/words/{id}", apiUpdateWord(db))
 	r.Patch("/api/words/{id}/target", apiUpdateWordTarget(db))

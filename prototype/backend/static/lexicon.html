@@ -79,18 +79,22 @@
 </div>
 
 <div id="add-modal-backdrop" class="modal-backdrop hidden">
-  <div class="modal">
+  <div class="modal modal--add">
     <div class="modal-header">
       <span class="modal-word-label">Add words</span>
       <button class="modal-close">✕</button>
     </div>
-    <div class="modal-body">
-      <div class="modal-field">
-        <label for="add-words-input">Japanese text to extract words from — nouns, verbs, adjectives, and adverbs will be added</label>
-        <textarea id="add-words-input" rows="8" placeholder="今日は天気がいいので、公園で走ったり、美しい花を見たりした。"></textarea>
+    <div class="modal-body add-modal-body">
+      <div class="add-modal-sidebar" id="add-modal-sidebar"></div>
+      <div class="add-modal-main">
+        <div class="modal-field">
+          <label for="add-words-input">Japanese text to extract words from — nouns, verbs, adjectives, and adverbs will be added</label>
+          <textarea id="add-words-input" rows="8" placeholder="今日は天気がいいので、公園で走ったり、美しい花を見たりした。"></textarea>
+        </div>
       </div>
     </div>
     <div class="modal-footer">
+      <span id="add-modal-status" class="add-modal-status"></span>
       <button class="btn-cancel">Cancel</button>
       <button class="btn-save">Add</button>
     </div>

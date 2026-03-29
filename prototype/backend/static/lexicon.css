@@ -124,6 +124,67 @@
 .modal-field textarea::placeholder { color: #313244; }
 
 
+/* Add-words modal with sidebar */
+.modal--add { max-width: 680px; }
+
+.add-modal-body {
+  flex-direction: row;
+  padding: 0;
+  gap: 0;
+}
+.add-modal-sidebar {
+  width: 140px;
+  flex-shrink: 0;
+  border-right: 1px solid #313244;
+  padding: 0.75rem 0.4rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+}
+.add-modal-sidebar-title {
+  font-size: 0.65rem;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  color: #585b70;
+  padding: 0 0.4rem 0.4rem;
+}
+.add-modal-sidebar-item {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.15rem 0.4rem;
+}
+.add-modal-sidebar-add-btn {
+  background: none;
+  border: 1px solid #45475a;
+  color: #89b4fa;
+  border-radius: 4px;
+  width: 1.4rem;
+  height: 1.4rem;
+  font-size: 1rem;
+  line-height: 1;
+  flex-shrink: 0;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.add-modal-sidebar-add-btn:hover:not(:disabled) { background: rgba(137,180,250,0.15); }
+.add-modal-sidebar-add-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+.add-modal-sidebar-name {
+  font-size: 0.85rem;
+  color: #cdd6f4;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.add-modal-main { flex: 1; padding: 1.25rem; }
+.add-modal-status {
+  margin-right: auto;
+  font-size: 0.8rem;
+  color: #585b70;
+}
+
 /* Generate-confirm modal checkbox option */
 .generate-confirm-option {
   display: flex;

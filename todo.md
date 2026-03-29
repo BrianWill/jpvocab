@@ -3,13 +3,10 @@
 This file is random notes of possible features and bug fixes.
 
 
-- when adding words, user should be able to enter any Japanese text to add all words 
-    - filters out particles, conjunctions, and other small parts of speech
-    - no longer required to separate words by newlines or whitespace
-        - instead just tries to analyze the text for all discrete words  
-
-- the set of POS should be constrained to an enum
-    - tell AI to stick to the defined categories (or as fallback label a word as "other")
+- support other AI providers
+    - Google
+    - GLM?
+    - who else? ask AI
 
 - settings menu
     - gear next to nav links in header
@@ -20,18 +17,6 @@ This file is random notes of possible features and bug fixes.
 
 - enable wails in the prototype
     - once ready, we'll move the prototype project to main dir
-
-- support other AI providers
-    - Google
-    - GLM?
-    - who else? ask AI
-
-- should words spelt in katakana have hiragana readings? 
-    - what if word is partly kanji? maybe simplest to just stick with hiragana readings
-    - what if word is kanji but the kanji are katakana?
-    
-
-- add words from common word lists
 
 - translate stories and generate audio via voicevox
     - can voicevox generate a single audio file but give timemarks for each line?
@@ -52,8 +37,7 @@ This file is random notes of possible features and bug fixes.
         - second and third sets of hotkeys to play at slower speeds
     - lexicon page: button to play word audio / sentence audio
 
-- training chatbot
-
+- speaking tutor chatbot
     - user types, chatbot responds with generated audio (voicevox?)
 
 - AI images

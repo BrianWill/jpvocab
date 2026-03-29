@@ -42,6 +42,8 @@ func serverInit(db *sql.DB) {
 		json.NewEncoder(w).Encode(map[string]any{
 			"anthropic":            p.AnthropicAvail,
 			"openai":               p.OpenAIAvail,
+			"google":               p.GoogleAvail,
+			"mistral":              p.MistralAvail,
 			"default_drill_target": defaultDrillTarget,
 		})
 	})

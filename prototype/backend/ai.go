@@ -98,6 +98,8 @@ const rerollExamplesSystemPrompt = `You are a Japanese dictionary assistant. Giv
 type aiProviders struct {
 	AnthropicAvail bool
 	OpenAIAvail    bool
+	GoogleAvail    bool
+	MistralAvail   bool
 }
 
 // checkAIProviders reports which providers have API keys set in the environment.
@@ -105,6 +107,8 @@ func checkAIProviders() aiProviders {
 	return aiProviders{
 		AnthropicAvail: os.Getenv("ANTHROPIC_API_KEY") != "",
 		OpenAIAvail:    os.Getenv("OPENAI_API_KEY") != "",
+		GoogleAvail:    os.Getenv("GOOGLE_API_KEY") != "",
+		MistralAvail:   os.Getenv("MISTRAL_API_KEY") != "",
 	}
 }
 
@@ -118,6 +122,10 @@ func autoFillWord(word, providerModel string) (*wordAutoFill, error) {
 	switch parts[0] {
 	case "openai":
 		return autoFillWordOpenAI(word, parts[1])
+	case "google":
+		return autoFillWordGoogle(word, parts[1])
+	case "mistral":
+		return autoFillWordMistral(word, parts[1])
 	default:
 		return autoFillWordAnthropic(word, parts[1])
 	}
@@ -132,6 +140,10 @@ func rerollMeaning(word, currentMeaning, providerModel string) ([]string, error)
 	switch parts[0] {
 	case "openai":
 		return rerollMeaningOpenAI(word, currentMeaning, parts[1])
+	case "google":
+		return rerollMeaningGoogle(word, currentMeaning, parts[1])
+	case "mistral":
+		return rerollMeaningMistral(word, currentMeaning, parts[1])
 	default:
 		return rerollMeaningAnthropic(word, currentMeaning, parts[1])
 	}
@@ -146,6 +158,10 @@ func rerollExamples(word, providerModel string) ([]examplePair, error) {
 	switch parts[0] {
 	case "openai":
 		return rerollExamplesOpenAI(word, parts[1])
+	case "google":
+		return rerollExamplesGoogle(word, parts[1])
+	case "mistral":
+		return rerollExamplesMistral(word, parts[1])
 	default:
 		return rerollExamplesAnthropic(word, parts[1])
 	}

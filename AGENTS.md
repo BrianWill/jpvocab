@@ -74,7 +74,7 @@ go mod tidy
 
 The Go backend has a test suite. The frontend has tests for pure JS business logic (no DOM) using the Node.js built-in test runner (`node:test`). Do not write tests for DOM operations, HTML, or browser-specific behaviour.
 
-AI integration tests live in `prototype/backend/ai_integration_test.go` and are gated behind the `integration` build tag so they are excluded from normal runs. They make real API calls to OpenAI and/or Anthropic. **Always ask the user for explicit permission before running them.**
+AI integration tests live in `prototype/backend/ai_integration_test.go` and are gated behind the `integration` build tag so they are excluded from normal runs. They make real API calls to OpenAI, Anthropic, Google, and/or Mistral. **Always ask the user for explicit permission before running them.**
 
 - **Frontend test location:** `prototype/backend/static/tests/`
 - **Run frontend tests:** `node --test "prototype/backend/static/tests/*.test.js"`
@@ -115,9 +115,11 @@ The HTML/CSS/JS frontend files live in `prototype/backend/static/` and are serve
 - **`db_activity.go`** — drill session and answer recording (`createDrillSession`, `recordDrillAnswer`), plus activity stats and calendar queries.
 - **`routes.go`** — `serverInit` (router setup), activity/drill/admin HTTP handlers, and `renderTemplate`. No direct DB access; handlers call functions from the `db_*.go` files.
 - **`routes_words.go`** — word and kanji API handlers: GET/PATCH/DELETE words, autofill, reroll meaning/examples, GET kanji.
-- **`ai.go`** — Shared AI types, prompts, few-shot examples, and provider-dispatch functions (`autoFillWord`, `rerollMeaning`, `rerollExamples`). No direct DB access.
+- **`ai.go`** — Shared AI types, prompts, few-shot examples, and provider-dispatch functions (`autoFillWord`, `rerollMeaning`, `rerollExamples`). No direct DB access. Environment variables: `ANTHROPIC_API_KEY`, `OPENAI_API_KEY`, `GOOGLE_API_KEY`, `MISTRAL_API_KEY`.
 - **`ai_anthropic.go`** — Anthropic Messages API: `callAnthropic` HTTP helper + autofill/reroll implementations.
 - **`ai_openai.go`** — OpenAI Chat Completions API: `callOpenAI` HTTP helper + autofill/reroll implementations.
+- **`ai_google.go`** — Google Generative Language API: `callGoogle` HTTP helper + autofill/reroll implementations.
+- **`ai_mistral.go`** — Mistral Chat API (OpenAI-compatible): `callMistral` HTTP helper + autofill/reroll implementations.
 - **`morphology.go`** — word normalisation to dictionary base form (used in the add-words flow).
 - **`templates/`** — HTML templates parsed from disk on every request (live-editable without restart); `base.html` is the shared shell, each page has its own file
 - **`static/`** — HTML pages, CSS, and JS, served from disk (live-editable without restart). JS files for the lexicon page are split across two files: `lexicon.js` (table state/rendering, sorting, delete modal, tooltip) and `lexicon-add-edit.js` (add/edit result modal, word row builders, autofill, status/footer). `lexicon.js` must load first as `lexicon-add-edit.js` reads globals it defines (`words`, `defaultDrillTarget`, `typeLabels`, `reloadWords`, `renderTable`, `getSortedWords`).

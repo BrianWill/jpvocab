@@ -7,7 +7,7 @@ package main
 //
 //	go test -tags integration ./...
 //
-// Both ANTHROPIC_API_KEY and OPENAI_API_KEY must be set in the environment
+// ANTHROPIC_API_KEY, OPENAI_API_KEY, GOOGLE_API_KEY, and MISTRAL_API_KEY must be set in the environment
 // for the respective subtests to run; others are skipped automatically.
 
 import (
@@ -58,7 +58,7 @@ func TestAutoFillWord_Integration(t *testing.T) {
 		desc         string
 		word         string
 		providerModel string
-		needsProvider string // "anthropic" or "openai"
+		needsProvider string // "anthropic", "openai", "google", or "mistral"
 		extraChecks  func(t *testing.T, result *wordAutoFill)
 	}{
 		{
@@ -111,6 +111,56 @@ func TestAutoFillWord_Integration(t *testing.T) {
 				}
 			},
 		},
+		{
+			desc:          "Google gemini-2.0-flash: 日本語 kanji readings must concatenate to にほんご",
+			word:          "日本語",
+			providerModel: "google/gemini-2.0-flash",
+			needsProvider: "google",
+			extraChecks: func(t *testing.T, result *wordAutoFill) {
+				if len(result.Kanji) != 3 {
+					t.Errorf("expected 3 kanji entries for 日本語, got %d", len(result.Kanji))
+				}
+				if result.Reading != "にほんご" {
+					t.Errorf("reading: got %q, want にほんご", result.Reading)
+				}
+			},
+		},
+		{
+			desc:          "Google gemini-2.0-flash: 食べる basic fields",
+			word:          "食べる",
+			providerModel: "google/gemini-2.0-flash",
+			needsProvider: "google",
+			extraChecks: func(t *testing.T, result *wordAutoFill) {
+				if result.PartOfSpeech != "ichidan-verb" {
+					t.Errorf("part_of_speech: got %q, want ichidan-verb", result.PartOfSpeech)
+				}
+			},
+		},
+		{
+			desc:          "Mistral mistral-small: 日本語 kanji readings must concatenate to にほんご",
+			word:          "日本語",
+			providerModel: "mistral/mistral-small-latest",
+			needsProvider: "mistral",
+			extraChecks: func(t *testing.T, result *wordAutoFill) {
+				if len(result.Kanji) != 3 {
+					t.Errorf("expected 3 kanji entries for 日本語, got %d", len(result.Kanji))
+				}
+				if result.Reading != "にほんご" {
+					t.Errorf("reading: got %q, want にほんご", result.Reading)
+				}
+			},
+		},
+		{
+			desc:          "Mistral mistral-small: 食べる basic fields",
+			word:          "食べる",
+			providerModel: "mistral/mistral-small-latest",
+			needsProvider: "mistral",
+			extraChecks: func(t *testing.T, result *wordAutoFill) {
+				if result.PartOfSpeech != "ichidan-verb" {
+					t.Errorf("part_of_speech: got %q, want ichidan-verb", result.PartOfSpeech)
+				}
+			},
+		},
 	}
 
 	for _, tc := range cases {
@@ -120,6 +170,12 @@ func TestAutoFillWord_Integration(t *testing.T) {
 			}
 			if tc.needsProvider == "anthropic" && !providers.AnthropicAvail {
 				t.Skip("ANTHROPIC_API_KEY not set")
+			}
+			if tc.needsProvider == "google" && !providers.GoogleAvail {
+				t.Skip("GOOGLE_API_KEY not set")
+			}
+			if tc.needsProvider == "mistral" && !providers.MistralAvail {
+				t.Skip("MISTRAL_API_KEY not set")
 			}
 
 			result, err := autoFillWord(tc.word, tc.providerModel)

@@ -61,6 +61,9 @@
   border-radius: 4px;
   color: #585b70;
   cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   line-height: 1;
 }
 .btn-edit:hover, .btn-delete:hover,
@@ -219,6 +222,8 @@
   white-space: normal;
   overflow-wrap: break-word;
 }
+.detail-ex-flag { margin-right: 0.2rem; opacity: 0.45; }
+.detail-ex-sep  { margin: 0 0.4rem; opacity: 0.45; }
 
 .detail-item {
   font-size: 0.72rem;
@@ -231,6 +236,8 @@
 .detail-item.detail-ex { overflow: visible; white-space: normal; text-overflow: clip; display: flex; align-items: baseline; }
 .detail-item--muted { color: #313244; }
 .detail-dash { color: #313244; }
+.detail-input:empty::before { content: '—'; color: #585b70; pointer-events: none; }
+.detail-input:empty:focus::before { content: none; }
 
 @keyframes detail-input-flash-error {
   0%   { border-bottom-color: #f38ba8; }
@@ -239,7 +246,7 @@
 }
 .detail-input {
   border-bottom: 1px solid transparent;
-  color: #45475a;
+  color: #5e6072;
   outline: none;
   cursor: text;
 }
@@ -257,7 +264,7 @@
   background: transparent;
   border: none;
   border-bottom: 1px solid transparent;
-  color: #45475a;
+  color: #5e6072;
   font-size: 0.72rem;
   font-family: inherit;
   padding: 0;
@@ -277,7 +284,7 @@
   letter-spacing: 0.06em;
   font-size: 0.65rem;
   color: #45475a;
-  margin-right: 0.2rem;
+  margin-right: 0.3rem;
 }
 
 .kanji-reading-pair {
@@ -287,7 +294,7 @@
   margin-right: 0.5em;
 }
 .kanji-reading-char {
-  color: #5f5d53;
+  color: #726e5a;
 }
 
 .word-pending-badge {
@@ -301,12 +308,12 @@
 .word-pending-badge::after { content: 'Processing\2026'; }
 
 .word-result-main .btn-delete { visibility: visible; }
-.btn-word-remove { width: 1.1rem; height: 1.1rem; font-size: 0.65rem; }
+.btn-word-remove { width: 1.1rem; height: 1.1rem; font-size: 0.65rem; padding-bottom: 0.1rem; }
 .btn-word-remove:hover { color: #f38ba8; border-color: rgba(243,139,168,0.5); }
 .btn-generate {
   visibility: visible;
   height: 1.1rem;
-  padding: 0 0.35rem;
+  padding: 0 0.35rem 0.12rem;
   font-size: 0.6rem;
   background: transparent;
   border: 1px solid #45475a;
@@ -351,6 +358,8 @@
 }
 .cell-ex { text-align: right; }
 .cell-ex-jp { color: #9a7050; }
+.cell-ex-flag { opacity: 0.45; }
+.cell-ex-sep { display: inline-block; margin: 0 0.3rem 0 1rem; opacity: 0.45; }
 .cell-ex-en { color: #745040; font-style: italic; }
 .cell-date {
   white-space: nowrap;
@@ -360,7 +369,7 @@
 .cell-date-sep   { color: #313244; }
 .cell-date-drilled { color: #6c7086; font-style: italic; }
 
-.cell-reading { color: #89b4fa; white-space: nowrap; }
+.cell-reading { color: #a6adc8; white-space: nowrap; }
 
 .type-badge {
   font-size: 0.65rem;
@@ -394,7 +403,7 @@
 .btn-target-adj {
   visibility: hidden;
   font-size: 0.7rem;
-  padding: 0.05rem 0.2rem;
+  padding: 0.05rem 0.2rem 0.17rem;
 }
 .row-main:hover .btn-target-adj { visibility: visible; }
 

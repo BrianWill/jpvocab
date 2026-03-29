@@ -65,8 +65,8 @@ function renderRow(w, trMain, trEx) {
         : '<span class="cell-date-drilled cell-date-never">never drilled</span>') +
     '</td>' +
     '<td colspan="5" class="cell-ex">' +
-      '<span class="cell-ex-jp" data-tooltip="Example sentence">' + w.exampleJp + '</span> ' +
-      '<span class="cell-ex-en" data-tooltip="Example sentence">' + w.exampleEn + '</span>' +
+      (w.exampleJp?.trim() ? '<span class="cell-ex-flag">🇯🇵</span> <span class="cell-ex-jp" data-tooltip="Example sentence">' + w.exampleJp + '</span>' : '') +
+      (w.exampleEn?.trim() ? '<span class="cell-ex-sep">🏴󠁧󠁢󠁥󠁮󠁧󠁿</span><span class="cell-ex-en" data-tooltip="Example sentence">' + w.exampleEn + '</span>' : '') +
     '</td>' +
     '<td></td>';
 }

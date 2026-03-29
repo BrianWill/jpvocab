@@ -57,6 +57,27 @@ document.getElementById('add-result-modal-backdrop').addEventListener('click', f
   if (e.target === this && _addPhase !== 'loading' && _pendingGenerates === 0) closeAddResultModal();
 });
 document.getElementById('add-result-modal-close').addEventListener('click', closeAddResultModal);
+
+// --- Remove-confirm mini-modal ---
+let _pendingRemoveAction = null;
+function openRemoveConfirm(message, action) {
+  _pendingRemoveAction = action;
+  document.getElementById('remove-confirm-text').textContent = message;
+  document.getElementById('remove-confirm-modal-backdrop').classList.remove('hidden');
+}
+function closeRemoveConfirm() {
+  _pendingRemoveAction = null;
+  document.getElementById('remove-confirm-modal-backdrop').classList.add('hidden');
+}
+document.getElementById('remove-confirm-modal-backdrop').addEventListener('click', e => {
+  if (e.target === document.getElementById('remove-confirm-modal-backdrop')) closeRemoveConfirm();
+});
+document.getElementById('remove-confirm-cancel').addEventListener('click', closeRemoveConfirm);
+document.getElementById('remove-confirm-ok').addEventListener('click', () => {
+  const action = _pendingRemoveAction;
+  closeRemoveConfirm();
+  if (action) action();
+});
 document.querySelector('#add-modal-backdrop .btn-save').addEventListener('click', saveAddModal);
 
 // Prevent newlines in contenteditable fields; Enter blurs instead
@@ -432,24 +453,28 @@ async function generateWordAutofill(event, wordId, word, btn) {
   }
 }
 
-async function removeWordRow(event, btn) {
+function removeWordRow(event, btn) {
   const word = btn.dataset.word;
   event.stopPropagation();
-  btn.disabled = true;
-  const res = await fetch('/admin/words/delete', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ words: [word] }),
+  openRemoveConfirm('Remove "' + word + '" from the lexicon?', async () => {
+    btn.disabled = true;
+    const res = await fetch('/admin/words/delete', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ words: [word] }),
+    });
+    if (!res.ok) { btn.disabled = false; return; }
+    const row = btn.closest('.word-result-row');
+    row.remove();
+    const idx = _addedWords.indexOf(word);
+    if (idx !== -1) _addedWords.splice(idx, 1);
+    if (document.querySelectorAll('#add-result-modal-body .word-result-row').length === 0) {
+      closeAddResultModal();
+      return;
+    }
+    renderStatus();
+    updateAddResultFooter();
   });
-  if (!res.ok) { btn.disabled = false; return; }
-
-  const row = btn.closest('.word-result-row');
-  row.remove();
-
-  const idx = _addedWords.indexOf(word);
-  if (idx !== -1) _addedWords.splice(idx, 1);
-  renderStatus();
-  updateAddResultFooter();
 }
 
 function saveWordRowEdits(row) {
@@ -529,7 +554,7 @@ function detailItemKanjiReadings(word, kanjiData) {
         '<span class="kanji-reading-pair">' +
           '<span class="kanji-reading-char">' + esc(ch) + '</span>' +
           '<span class="detail-input kanji-reading-input" contenteditable="true"' +
-            ' data-kanji-id="' + entry.id + '">' + esc(entry.reading) + '</span>' +
+            ' data-kanji-id="' + entry.id + '">' + esc((entry.reading || '').trim()) + '</span>' +
         '</span>';
     }
   }
@@ -542,16 +567,16 @@ function detailItemKanjiReadings(word, kanjiData) {
 function detailItemInput(label, value, cls) {
   return '<span class="detail-item ' + cls + '">' +
     '<span class="detail-label">' + esc(label) + '</span> ' +
-    '<span class="detail-input" contenteditable="true">' + esc(value || '') + '</span>' +
+    '<span class="detail-input" contenteditable="true">' + esc((value || '').trim()) + '</span>' +
     '</span>';
 }
 
 function detailItemExInput(exJp, exEn) {
   return '<span class="detail-item detail-ex">' +
-    '<span class="detail-label">ex.</span> ' +
+    '<span class="detail-label">example</span> ' +
     '<span class="detail-ex-inputs">' +
-      '<span class="detail-input" contenteditable="true">' + esc(exJp || '') + '</span>' +
-      ' <span class="detail-input detail-input--en" contenteditable="true">' + esc(exEn || '') + '</span>' +
+      '<span class="detail-ex-flag">🇯🇵</span><span class="detail-input" contenteditable="true">' + esc((exJp || '').trim()) + '</span>' +
+      '<span class="detail-ex-sep">🏴󠁧󠁢󠁥󠁮󠁧󠁿</span><span class="detail-input detail-input--en" contenteditable="true">' + esc((exEn || '').trim()) + '</span>' +
     '</span>' +
     '</span>';
 }
@@ -675,24 +700,33 @@ function initAddResultFooter() {
     if (first) sel.value = first.value;
   }
 
-  document.getElementById('btn-add-result-remove').onclick = async function () {
-    const toRemove = _addedWords.slice();
-    if (_addPhase === 'loading') {
-      _addPhase = 'done'; // mark before abort so the AbortError catch is a no-op
-      _abortController.abort();
-    }
-    await fetch('/admin/words/delete', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ words: toRemove }),
+  document.getElementById('btn-add-result-remove').onclick = function () {
+    const count = _addedWords.length;
+    const label = count === 1 ? '"' + _addedWords[0] + '"' : count + ' added words';
+    openRemoveConfirm('Remove ' + label + ' from the lexicon?', async () => {
+      const toRemove = _addedWords.slice();
+      if (_addPhase === 'loading') {
+        _addPhase = 'done'; // mark before abort so the AbortError catch is a no-op
+        _abortController.abort();
+      }
+      await fetch('/admin/words/delete', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ words: toRemove }),
+      });
+      _addedWords = [];
+      document.querySelectorAll('#add-result-modal-body .badge-added').forEach(badge => {
+        badge.closest('.word-result-row').remove();
+      });
+      if (document.querySelectorAll('#add-result-modal-body .word-result-row').length === 0) {
+        closeAddResultModal();
+        await reloadWords();
+        return;
+      }
+      renderStatus();
+      await reloadWords();
+      updateAddResultFooter();
     });
-    _addedWords = [];
-    document.querySelectorAll('#add-result-modal-body .badge-added').forEach(badge => {
-      badge.closest('.word-result-row').remove();
-    });
-    renderStatus();
-    await reloadWords();
-    updateAddResultFooter();
   };
   document.getElementById('btn-add-result-close').onclick = closeAddResultModal;
   updateAddResultFooter();

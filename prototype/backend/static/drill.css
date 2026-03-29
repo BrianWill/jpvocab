@@ -82,7 +82,7 @@
 }
 .tooltip-reading {
   font-size: 0.85rem;
-  color: #89b4fa;
+  color: #a6adc8;
   margin-bottom: 0.2rem;
 }
 .tooltip-pos {
@@ -282,8 +282,6 @@
   font-size: 0.78rem;
   min-height: 1.1em;
 }
-.kanji-on  { color: #f9e2af; }
-.kanji-kun { color: #89b4fa; }
 .kanji-meanings {
   font-size: 0.68rem;
   color: #585b70;

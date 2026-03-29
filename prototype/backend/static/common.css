@@ -250,11 +250,13 @@ body {
 .modal-status-cancelled,
 .modal-status-error     { color: #f38ba8; }
 
-/* Segmented reading colour coding (on'yomi / kun'yomi / plain kana) */
+/* Reading colour coding (on'yomi / kun'yomi / plain kana) — shared by kanji-detail and segmented-reading displays */
+.reading-on   { color: #f9e2af; }  /* katakana on'yomi  */
+.reading-kun  { color: #89b4fa; }  /* hiragana kun'yomi */
+.reading-kana { color: #a6adc8; }  /* plain kana        */
+.kanji-on     { color: #f9e2af; }
+.kanji-kun    { color: #89b4fa; }
 .reading-on  + .reading-seg,
 .reading-kun + .reading-seg,
 .reading-kana + .reading-on,
 .reading-kana + .reading-kun { margin-left: 0.4em; }
-.reading-on   { color: #f9e2af; }  /* katakana on'yomi  — matches .kanji-on  */
-.reading-kun  { color: #89b4fa; }  /* hiragana kun'yomi — matches .kanji-kun */
-.reading-kana { color: #a6adc8; }  /* plain kana in the word                 */

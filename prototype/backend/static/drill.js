@@ -68,6 +68,7 @@ let words = [];
 let sessionId = null;
 let poolSize = 0;
 let maxPoolSize = 0;
+let settingsMaxWords = null;  // raw saved preference, null means "all"
 let roundSize = DEFAULT_ROUND_SIZE;
 let pool = [];
 let round = 1;
@@ -123,23 +124,39 @@ function postAnswer(wordId, correct) {
 // ── Init ───────────────────────────────────────────────────────────────────
 
 async function init() {
-  const [wordsResp, kanjiResp] = await Promise.all([
+  const [wordsResp, kanjiResp, settingsResp] = await Promise.all([
     fetch('/api/words'),
     fetch('/api/kanji'),
+    fetch('/api/settings/drill'),
   ]);
   const allWords = await wordsResp.json();
   const kanjiList = await kanjiResp.json();
+  const settings = await settingsResp.json();
+
   kanjiMap = {};
   kanjiList.forEach(k => { kanjiMap[k.id] = k; });
 
   // Only drill active words (drill_count < target)
   words = allWords.filter(w => w.correct < w.target);
 
+  // Apply saved settings before starting
+  settingsMaxWords = settings.maxWords;
+  if (settings.roundSize > 0) roundSize = settings.roundSize;
+  if (Array.isArray(settings.wordTypes) && settings.wordTypes.length > 0) {
+    activeFilters.clear();
+    settings.wordTypes.forEach(f => activeFilters.add(f));
+    document.querySelectorAll('#restart-modal-backdrop .filter-chip[data-filter]').forEach(btn => {
+      btn.classList.toggle('active', activeFilters.has(btn.dataset.filter));
+    });
+  }
+
   sessionId = await createSession();
 
-  poolSize = words.length;
-  maxPoolSize = words.length;
-  pool = shuffle([...words]);
+  const filtered = getFilteredWords();
+  const source = filtered.length > 0 ? filtered : words;
+  maxPoolSize = Math.min(settings.maxWords, source.length);
+  poolSize = maxPoolSize;
+  pool = shuffle([...source]).slice(0, poolSize);
   remaining = buildRound();
   currentWord = remaining[0];
 
@@ -325,7 +342,7 @@ function capRestartInput(input) {
 }
 
 function openRestartModal() {
-  document.getElementById('restart-total-words').value = maxPoolSize;
+  document.getElementById('restart-total-words').value = settingsMaxWords;
   document.getElementById('restart-round-size').value = roundSize;
   updateFilterHint();
   document.getElementById('restart-modal-backdrop').classList.remove('hidden');
@@ -381,7 +398,7 @@ document.addEventListener('keydown', e => {
   if (e.key === 'a' || e.key === 'A') reveal(false);
 });
 
-document.querySelectorAll('.filter-chip').forEach(btn => {
+document.querySelectorAll('#restart-modal-backdrop .filter-chip').forEach(btn => {
   btn.addEventListener('click', () => {
     const f = btn.dataset.filter;
     if (activeFilters.has(f)) activeFilters.delete(f);
@@ -421,3 +438,4 @@ roundPlus.addEventListener('mousedown', () => startStep(adjustRestart, 'restart-
 roundPlus.addEventListener('mouseup', stopStep);
 roundPlus.addEventListener('mouseleave', stopStep);
 roundInput.addEventListener('input', () => capRestartInput(roundInput));
+

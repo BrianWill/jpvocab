@@ -62,6 +62,9 @@ func serverInit(db *sql.DB) {
 	r.Post("/api/drill/sessions", apiCreateDrillSession(db))
 	r.Post("/api/drill/sessions/{id}/answers", apiRecordDrillAnswer(db))
 
+	r.Get("/api/settings/drill", apiGetDrillSettings(db))
+	r.Put("/api/settings/drill", apiPutDrillSettings(db))
+
 	r.Route("/admin", func(r chi.Router) {
 		r.Get("/", adminIndex(db))
 		r.Get("/tables/{table}", adminTable(db))
@@ -152,6 +155,33 @@ func apiRecordDrillAnswer(db *sql.DB) http.HandlerFunc {
 			return
 		}
 		if err := recordDrillAnswer(db, sessionID, body.WordID, body.Correct); err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		w.WriteHeader(http.StatusNoContent)
+	}
+}
+
+func apiGetDrillSettings(db *sql.DB) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		s, err := getDrillSettings(db)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(s)
+	}
+}
+
+func apiPutDrillSettings(db *sql.DB) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		var s drillSettings
+		if err := json.NewDecoder(r.Body).Decode(&s); err != nil {
+			http.Error(w, "bad request", http.StatusBadRequest)
+			return
+		}
+		if err := putDrillSettings(db, s); err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
 		}

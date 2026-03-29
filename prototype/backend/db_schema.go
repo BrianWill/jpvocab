@@ -66,6 +66,10 @@ func migrate(db *sql.DB) {
 			character TEXT    NOT NULL UNIQUE,
 			meanings  TEXT    NOT NULL
 		)`,
+		`CREATE TABLE IF NOT EXISTS user_settings (
+			key   TEXT NOT NULL PRIMARY KEY,
+			value TEXT NOT NULL
+		)`,
 	}
 
 	var version int

@@ -113,6 +113,7 @@ The HTML/CSS/JS frontend files live in `prototype/backend/static/` and are serve
 - **`db_schema.go`** — `initDB`, `migrate`, `resetDB`, `seedDB`, and schema-introspection helpers (`listTableInfos`, `queryTable`, etc.). No SQL appears outside the `db_*.go` files.
 - **`db_words.go`** — all word and kanji database operations: insert, update, delete, list, upsert kanji.
 - **`db_activity.go`** — drill session and answer recording (`createDrillSession`, `recordDrillAnswer`), plus activity stats and calendar queries.
+- **`db_settings.go`** — user settings: `getDrillSettings` and `putDrillSettings` read/write the `user_settings` table using key/value pairs.
 - **`routes.go`** — `serverInit` (router setup), activity/drill/admin HTTP handlers, and `renderTemplate`. No direct DB access; handlers call functions from the `db_*.go` files.
 - **`routes_words.go`** — word and kanji API handlers: GET/PATCH/DELETE words, autofill, reroll meaning/examples, GET kanji.
 - **`ai.go`** — Shared AI types, prompts, few-shot examples, and provider-dispatch functions (`autoFillWord`, `rerollMeaning`, `rerollExamples`). No direct DB access. Environment variables: `ANTHROPIC_API_KEY`, `OPENAI_API_KEY`, `GOOGLE_API_KEY`, `MISTRAL_API_KEY`.
@@ -137,6 +138,8 @@ Key API endpoints (beyond CRUD on `/api/words` and `/api/kanji`):
 | `POST` | `/api/words/{id}/reroll-examples` | Regenerate just the example sentences via AI *(may be unused — see Lexicon Features note)* |
 | `POST` | `/api/drill/sessions` | Start a new drill session |
 | `POST` | `/api/drill/sessions/{id}/answers` | Record an answer within a session |
+| `GET` | `/api/settings/drill` | Retrieve saved drill defaults (maxWords, roundSize, wordTypes) |
+| `PUT` | `/api/settings/drill` | Save drill defaults |
 
 Run with hot-reload from the `backend/` directory:
 
@@ -154,6 +157,7 @@ Table definitions live in the `migrate()` function in `db.go`. Schema is version
 - **`kanji`** — one row per kanji character with `character` and `meanings` (JSON array of English meanings). Readings (on/kun) are stored per-word in the `kanji_data` column of `words`, not on the kanji row itself. Served via `/api/kanji`.
 - **`drill_sessions`** — one row per drill session with a `started_at` timestamp.
 - **`drill_answers`** — one row per answer within a session; references `words` and `drill_sessions`; stores `correct` (0/1) and `answered_at`.
+- **`user_settings`** — key/value store for user preferences. Current keys: `drill_max_words` (int), `drill_round_size` (int), `drill_word_types` (JSON string array).
 
 The admin UI at `http://localhost:1338/admin` shows live table schemas (column names, types, PK/UNIQUE/NOT NULL flags) and row counts, and links through to full table data views.
 

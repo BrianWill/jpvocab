@@ -356,55 +356,11 @@
 .word-jp.knew { color: #a6e3a1; }
 .word-jp.missed { color: #f38ba8; }
 
-/* Modal — restart fields */
-.restart-field {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 1rem;
-}
-.restart-field label {
-  font-size: 0.8rem;
-  color: #585b70;
-}
-
-/* Filter chips */
-.restart-field-filter { align-items: flex-start; padding-top: 0.1rem; }
-.filter-chips {
-  display: flex;
-  gap: 0.4rem;
-}
-.filter-chip {
-  background: #11111b;
-  border: 1px solid #313244;
-  color: #585b70;
-  border-radius: 4px;
-  padding: 0.3rem 0.65rem;
-  font-size: 0.75rem;
-  font-family: inherit;
-  cursor: pointer;
-  transition: border-color 0.1s, color 0.1s, background 0.1s;
-}
-.filter-chip:hover { border-color: #6c7086; color: #cdd6f4; }
-.filter-chip.active {
-  background: rgba(137,180,250,0.12);
-  border-color: rgba(137,180,250,0.4);
-  color: #89b4fa;
-}
-.filter-hint {
-  font-size: 0.72rem;
-  color: #45475a;
-  text-align: right;
-  min-height: 1.1em;
-}
-.filter-hint.error { color: #f38ba8; }
-
 /* Nav links: cancel common.css auto-margin (header-progress owns it here) */
 .page-nav-links { margin-left: 0; }
 
 /* Modal — drill-specific overrides */
-.modal { max-width: 520px; }
-.modal .modal-body { gap: 0.75rem; }
+.restart-modal .modal-body { gap: 0.75rem; }
 .modal-word-label {
   font-size: 1.1rem;
   font-weight: 700;

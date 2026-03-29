@@ -115,8 +115,8 @@
 .badge-cleared .badge-dot { background: #f9e2af; }
 
 /* Day detail modal */
-.modal { max-width: 680px; }
-.modal .modal-body {
+#day-modal-backdrop .modal { max-width: 680px; }
+#day-modal-backdrop .modal .modal-body {
   gap: 1rem;
   max-height: 65vh;
   overflow-y: auto;

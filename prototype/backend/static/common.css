@@ -188,6 +188,7 @@ body {
   padding: 1.25rem;
   display: flex;
   flex-direction: column;
+  gap: 0.85rem;
 }
 .modal-footer {
   display: flex;
@@ -232,6 +233,12 @@ body {
 }
 .btn-save:hover { background: rgba(137,180,250,0.2); }
 .btn-save:disabled { opacity: 0.35; cursor: not-allowed; pointer-events: none; }
+.btn-save--dirty {
+  background: rgba(166,227,161,0.15);
+  border-color: rgba(166,227,161,0.45);
+  color: #a6e3a1;
+}
+.btn-save--dirty:hover { background: rgba(166,227,161,0.25); }
 .btn-danger {
   background: rgba(243,139,168,0.1);
   border: 1px solid rgba(243,139,168,0.3);
@@ -283,3 +290,52 @@ body {
 .reading-kun + .reading-seg,
 .reading-kana + .reading-on,
 .reading-kana + .reading-kun { margin-left: 0.55em; }
+
+/* --- Settings / restart modal fields (shared by settings modal on all pages and drill restart modal) --- */
+.settings-section-label {
+  font-size: 0.7rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: #45475a;
+  margin-bottom: 0.25rem;
+}
+.restart-field {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+}
+.restart-field label {
+  font-size: 0.8rem;
+  color: #585b70;
+}
+.restart-field-filter { align-items: flex-start; padding-top: 0.1rem; }
+.filter-chips {
+  display: flex;
+  gap: 0.4rem;
+}
+.filter-chip {
+  background: #11111b;
+  border: 1px solid #313244;
+  color: #585b70;
+  border-radius: 4px;
+  padding: 0.3rem 0.65rem;
+  font-size: 0.75rem;
+  font-family: inherit;
+  cursor: pointer;
+  transition: border-color 0.1s, color 0.1s, background 0.1s;
+}
+.filter-chip:hover { border-color: #6c7086; color: #cdd6f4; }
+.filter-chip.active {
+  background: rgba(137,180,250,0.12);
+  border-color: rgba(137,180,250,0.4);
+  color: #89b4fa;
+}
+.filter-hint {
+  font-size: 0.72rem;
+  color: #45475a;
+  text-align: right;
+  min-height: 1.1em;
+}
+.filter-hint.error { color: #f38ba8; }

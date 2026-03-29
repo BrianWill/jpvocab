@@ -89,7 +89,6 @@
   font-weight: 700;
   color: #cdd6f4;
 }
-.modal-body { gap: 0.85rem; }
 .modal-field {
   display: flex;
   flex-direction: column;

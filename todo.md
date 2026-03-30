@@ -35,10 +35,10 @@ This file is random notes of possible features and bug fixes.
     - e.g. given chapter of novel, produce audio
     - experiment with openAI audio generation. Might be better quality than voicevox
 
-
-
 - speaking tutor chatbot
     - user types, chatbot responds with generated audio (voicevox?)
+    - instruct bot to use words that are in users drill set
+        - these encounters could be tallied as correct drills? 
 
 
 - make a mobile app (sync through turso)

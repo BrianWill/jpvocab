@@ -34,10 +34,15 @@ This file is random notes of possible features and bug fixes.
         - apparently yes https://gemini.google.com/app/64285ccfa674d709
     - e.g. given chapter of novel, produce audio
     - experiment with openAI audio generation. Might be better quality than voicevox
+ 
+- translation exercise:
+    - use words from users lexicon     
+    - present sentence in Japanese to translate to English
+    - present English trnaslation to translate to Japanese
 
 - speaking tutor chatbot
     - user types, chatbot responds with generated audio (voicevox?)
-    - instruct bot to use words that are in users drill set
+    - instruct bot to use words that are in user's active lexicon
         - these encounters could be tallied as correct drills? 
 
 

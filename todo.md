@@ -2,11 +2,27 @@
 
 This file is random notes of possible features and bug fixes.
 
+- preserve drill state in db
+    - would allow user to switch away to different pages without worrying about losing their progress
+
+- play with visual styles
+    - use simple organic textures instead of solid background colors
+        - e.g. wood, paper, leaves
+        - what textures are uniquely Japanese?
+    - noise background textures?
+    - need mascot character(s)?
+        - marble animals? 
+    - shadcn
+
 - settings menu
     - preferred AI provider/model
 
 - some way to sync db state
     - use turso?
+    - syncthing?
+    - litestream
+    - rqlite
+    - litefs
     - main use case for now: sync between desktop and laptop
 
 - generate audio for the words

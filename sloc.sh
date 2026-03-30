@@ -56,9 +56,7 @@ for f in "${css_files[@]}"; do
     css_total=$((css_total + $(wc -l < "$f")))
 done
 
-printf "Go (src) total:  %d\n" "$go_src_total"
-printf "Go (test) total: %d\n" "$go_test_total"
-printf "JS (src) total:  %d\n" "$js_src_total"
-printf "JS (test) total: %d\n" "$js_test_total"
+printf "Go total:  %d (src) + %d (test)\n" "$go_src_total" "$go_test_total"
+printf "JS total:  %d (src) + %d (test)\n" "$js_src_total" "$js_test_total"
 printf "HTML total:      %d\n" "$html_total"
 printf "CSS total:       %d\n" "$css_total"

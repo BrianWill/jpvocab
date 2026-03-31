@@ -7,7 +7,12 @@ This file is random notes of possible features and bug fixes.
 
 - some way to sync db state
     - use turso?
+        - but optional...(annoying if users would be required to sign up for an account)
     - main use case for now: sync between desktop and laptop
+    - maybe simpler solution: just always sync db to a server instead of p2p?
+        - p2p requires both systems on and connected
+    - maybe just use rcloud and google drive?
+        - create script to help you setup rcloud on mac or windows?
 
 - generate audio for the words
     - pulldown options: either no audio, browser tts, or voicevox

@@ -60,8 +60,8 @@ The Go backend has a test suite. The frontend has tests for pure JS business log
 AI integration tests live in `backend/ai_integration_test.go` and are gated behind the `integration` build tag so they are excluded from normal runs. They make real API calls to OpenAI, Anthropic, Google, and/or Mistral. **Always ask the user for explicit permission before running them.**
 
 - **Frontend test location:** `backend/static/tests/`
-- **Run frontend tests:** `node --test "backend/static/tests/*.test.js"`
-- **Pure utility functions** that have no DOM dependencies live in `lexicon-utils.js` and are the primary target for frontend tests. Current exports: `isKanji`, `esc`, `renderReading`, `timeAgo`, `getSortedWords`, and the detail item HTML builders (`detailItemPosSelect`, `detailItemKanjiReadings`, `detailItemInput`, `detailItemExInput`).
+- **Run frontend tests:** `node --test "backend/static/tests/*.test.js"` does not expand reliably in PowerShell. Prefer an explicit file list such as `$files = Get-ChildItem 'backend/static/tests' -Filter '*.test.js' | ForEach-Object { $_.FullName }; node --test $files`
+- **Pure utility functions** that have no DOM dependencies live in `lexicon-utils.js` and `drill-state.js` and are the primary target for frontend tests. Current exports under test include `isKanji`, `esc`, `renderReading`, `timeAgo`, `getSortedWords`, the detail item HTML builders (`detailItemPosSelect`, `detailItemKanjiReadings`, `detailItemInput`, `detailItemExInput`), and drill state helpers such as `createDrillState`, `matchesFilter`, `getFilteredWords`, `createSidebarItems`, `applySidebarAnswer`, `isSessionComplete`, `buildRoundState`, `getNextRevealState`, and `serializeSessionState`.
 
 ## Lexicon Features
 

@@ -581,16 +581,16 @@ function renderStatus() {
   const countsHtml = '<span>' + _addedWords.length + ' added' + skippedHtml + '</span>';
   const hasProviders = _providers && (_providers.anthropic || _providers.openai || _providers.google || _providers.mistral || _providers.glm);
   const actionHtml = _pendingGenerates > 0
-    ? '<button class="btn-generate btn-generate--cancel">' +
-        '<span class="spinner"></span>cancel generation' +
+    ? '<button class="btn-danger btn-generate--cancel">' +
+        '<span class="spinner"></span>Cancel generation' +
       '</button>'
-    : '<button class="btn-generate btn-generate--all"' +
+    : '<button class="btn-save btn-generate--all"' +
         (document.querySelectorAll('#add-result-modal-body .word-result-row .btn-generate:not(.btn-generate--busy):not([disabled])').length > 0 && hasProviders && _addPhase !== 'loading' ? '' : ' disabled') +
         ' data-tooltip="Uses an AI API request to get the reading, part-of-speech, meaning, and an example sentence for each word"' +
-        '>generate all</button>';
+        '>Generate all</button>';
   if (actionEl) {
     actionEl.innerHTML = actionHtml;
-    const actionBtn = actionEl.querySelector('.btn-generate');
+    const actionBtn = actionEl.querySelector('button');
     if (actionBtn) actionBtn.addEventListener('mousedown', _pendingGenerates > 0 ? cancelAllGenerates : openGenerateConfirm);
   }
   if (_addPhase === 'loading') {
@@ -647,9 +647,14 @@ function initAddResultFooter() {
       '</optgroup>' +
     '</select>' +
     (progTip ? '<span class="provider-info-icon" data-tooltip="' + progTip + '">?</span>' : '') +
-    '<div id="add-result-modal-action"></div>' +
+    '<select id="add-result-generate-type" class="add-result-model-select">' +
+      '<option value="word-info">word info</option>' +
+      '<option value="image">image</option>' +
+      '<option value="audio">audio</option>' +
+    '</select>' +
+    '<div id="add-result-modal-action" style="margin-left:0.4rem"></div>' +
     '<div id="add-result-modal-status" class="modal-status" style="padding:0;border:none;margin-left:auto"></div>' +
-    '<button id="btn-add-result-remove" class="btn-danger">Remove added words</button>' +
+    '<button id="btn-add-result-remove" class="btn-danger">Remove the added words</button>' +
     '<button id="btn-add-result-close" class="btn-save">Close</button>';
 
   if (hasProviders) {
@@ -695,8 +700,6 @@ function updateAddResultFooter() {
   const btnClose  = document.getElementById('btn-add-result-close');
   if (!btnRemove) return;
   btnRemove.disabled = _addedWords.length === 0;
-  btnRemove.textContent = _addedWords.length > 0
-    ? 'Remove the ' + _addedWords.length + ' added word' + (_addedWords.length === 1 ? '' : 's')
-    : 'Remove added words';
+  btnRemove.textContent = 'Remove the added words';
   btnClose.disabled = _addPhase === 'loading' || _pendingGenerates > 0;
 }

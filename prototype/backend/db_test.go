@@ -30,7 +30,13 @@ func TestMigrate_CreatesAllTables(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	want := map[string]bool{"words": true, "drill_sessions": true, "drill_answers": true, "kanji": true}
+	want := map[string]bool{
+		"words":          true,
+		"drill_sessions": true,
+		"drill_answers":  true,
+		"kanji":          true,
+		"user_settings":  true,
+	}
 	for _, table := range tables {
 		delete(want, table)
 	}
@@ -483,6 +489,23 @@ func TestCreateDrillSession_StoresStateAndClosesPrevious(t *testing.T) {
 	}
 }
 
+func TestCreateDrillSession_NormalisesNilSlicesInStoredState(t *testing.T) {
+	db := testDB(t)
+	sessionID, err := createDrillSession(db, drillSessionState{Round: 3})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	var stateJSON string
+	if err := db.QueryRow(`SELECT state_json FROM drill_sessions WHERE id = ?`, sessionID).Scan(&stateJSON); err != nil {
+		t.Fatal(err)
+	}
+	want := `{"poolSize":0,"roundSize":0,"round":3,"doneCount":0,"activeFilters":[],"pool":[],"redo":[],"remaining":[],"sidebarItems":[]}`
+	if stateJSON != want {
+		t.Errorf("state_json: got %s, want %s", stateJSON, want)
+	}
+}
+
 func TestRecordDrillAnswer_UpdatesSessionStateAndCompletion(t *testing.T) {
 	db := testDB(t)
 	wordID := insertTestWord(t, db, "æµ·", 2)
@@ -524,6 +547,44 @@ func TestRecordDrillAnswer_UpdatesSessionStateAndCompletion(t *testing.T) {
 	}
 	if current != nil {
 		t.Fatalf("expected no active drill session, got %+v", current)
+	}
+}
+
+func TestGetCurrentDrillSession_NormalisesSparseStoredJSON(t *testing.T) {
+	db := testDB(t)
+	res, err := db.Exec(`INSERT INTO drill_sessions (state_json) VALUES ('{"round":4}')`)
+	if err != nil {
+		t.Fatal(err)
+	}
+	sessionID, err := res.LastInsertId()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	current, err := getCurrentDrillSession(db)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if current == nil || current.ID != sessionID {
+		t.Fatalf("current session: got %+v, want id %d", current, sessionID)
+	}
+	if current.State.Round != 4 {
+		t.Errorf("round: got %d, want 4", current.State.Round)
+	}
+	if current.State.ActiveFilters == nil || len(current.State.ActiveFilters) != 0 {
+		t.Errorf("ActiveFilters: got %#v, want empty slice", current.State.ActiveFilters)
+	}
+	if current.State.Pool == nil || len(current.State.Pool) != 0 {
+		t.Errorf("Pool: got %#v, want empty slice", current.State.Pool)
+	}
+	if current.State.Redo == nil || len(current.State.Redo) != 0 {
+		t.Errorf("Redo: got %#v, want empty slice", current.State.Redo)
+	}
+	if current.State.Remaining == nil || len(current.State.Remaining) != 0 {
+		t.Errorf("Remaining: got %#v, want empty slice", current.State.Remaining)
+	}
+	if current.State.SidebarItems == nil || len(current.State.SidebarItems) != 0 {
+		t.Errorf("SidebarItems: got %#v, want empty slice", current.State.SidebarItems)
 	}
 }
 
@@ -654,6 +715,111 @@ func TestUpdateWordTarget(t *testing.T) {
 	db.QueryRow(`SELECT drill_target FROM words WHERE id = ?`, id).Scan(&target)
 	if target != 7 {
 		t.Errorf("drill_target: got %d, want 7", target)
+	}
+}
+
+// --- drill settings ---
+
+func TestGetDrillSettings_Defaults(t *testing.T) {
+	db := testDB(t)
+
+	settings, err := getDrillSettings(db)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if settings.MaxWords != 100 {
+		t.Errorf("MaxWords: got %d, want 100", settings.MaxWords)
+	}
+	if settings.RoundSize != 10 {
+		t.Errorf("RoundSize: got %d, want 10", settings.RoundSize)
+	}
+	wantTypes := []string{"katakana", "verbs", "nouns", "other"}
+	if len(settings.WordTypes) != len(wantTypes) {
+		t.Fatalf("WordTypes length: got %d, want %d (%v)", len(settings.WordTypes), len(wantTypes), settings.WordTypes)
+	}
+	for i := range wantTypes {
+		if settings.WordTypes[i] != wantTypes[i] {
+			t.Errorf("WordTypes[%d]: got %q, want %q", i, settings.WordTypes[i], wantTypes[i])
+		}
+	}
+}
+
+func TestGetDrillSettings_IgnoresInvalidStoredValues(t *testing.T) {
+	db := testDB(t)
+	if _, err := db.Exec(`INSERT INTO user_settings (key, value) VALUES
+		('drill_max_words', '"bad"'),
+		('drill_round_size', '0'),
+		('drill_word_types', 'not-json')`); err != nil {
+		t.Fatal(err)
+	}
+
+	settings, err := getDrillSettings(db)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if settings.MaxWords != 100 {
+		t.Errorf("MaxWords: got %d, want default 100", settings.MaxWords)
+	}
+	if settings.RoundSize != 10 {
+		t.Errorf("RoundSize: got %d, want default 10", settings.RoundSize)
+	}
+	wantTypes := []string{"katakana", "verbs", "nouns", "other"}
+	for i := range wantTypes {
+		if settings.WordTypes[i] != wantTypes[i] {
+			t.Errorf("WordTypes[%d]: got %q, want %q", i, settings.WordTypes[i], wantTypes[i])
+		}
+	}
+}
+
+func TestPutDrillSettings_RoundTripsAndDeletesInvalidMaxWords(t *testing.T) {
+	db := testDB(t)
+	if err := putDrillSettings(db, drillSettings{
+		MaxWords:  25,
+		RoundSize: 7,
+		WordTypes: []string{"verbs", "nouns"},
+	}); err != nil {
+		t.Fatal(err)
+	}
+
+	settings, err := getDrillSettings(db)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if settings.MaxWords != 25 || settings.RoundSize != 7 {
+		t.Errorf("settings: got %+v, want MaxWords=25 RoundSize=7", settings)
+	}
+	if len(settings.WordTypes) != 2 || settings.WordTypes[0] != "verbs" || settings.WordTypes[1] != "nouns" {
+		t.Errorf("WordTypes: got %v", settings.WordTypes)
+	}
+
+	if err := putDrillSettings(db, drillSettings{
+		MaxWords:  0,
+		RoundSize: 9,
+		WordTypes: []string{"other"},
+	}); err != nil {
+		t.Fatal(err)
+	}
+
+	var count int
+	if err := db.QueryRow(`SELECT COUNT(*) FROM user_settings WHERE key = 'drill_max_words'`).Scan(&count); err != nil {
+		t.Fatal(err)
+	}
+	if count != 0 {
+		t.Fatalf("expected drill_max_words row to be deleted, got count %d", count)
+	}
+
+	settings, err = getDrillSettings(db)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if settings.MaxWords != 100 {
+		t.Errorf("MaxWords after delete: got %d, want default 100", settings.MaxWords)
+	}
+	if settings.RoundSize != 9 {
+		t.Errorf("RoundSize after overwrite: got %d, want 9", settings.RoundSize)
+	}
+	if len(settings.WordTypes) != 1 || settings.WordTypes[0] != "other" {
+		t.Errorf("WordTypes after overwrite: got %v", settings.WordTypes)
 	}
 }
 

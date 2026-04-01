@@ -6,9 +6,9 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 Japanese vocabulary drilling desktop app built with Go backend + web frontend. For now, assume a single user with no user login or need for security. The app has three core views:
 
-- **Lexicon** — displays the user's full vocabulary set with word info (reading, part of speech, meaning, example sentences) and per-word correct/incorrect drill counts accumulated over all sessions.
-- **Drill** — a round-based flashcard drill. Each round presents 10 words randomly drawn from the lexicon. The user marks each word as known or unknown; unknown words carry over to the next round alongside fresh picks. The current in-progress drill is persisted to SQLite so refreshing `/drill` or restarting the server restores the same round state, sidebar state, and last answered card.
-- **Activity** — displays headline stats and a week-by-week calendar of recent drill activity. Each day cell shows how many words were drilled, added, and cleared. Clicking a day opens a detail modal listing the words involved.
+- **Lexicon** ï¿½ displays the user's full vocabulary set with word info (reading, part of speech, meaning, example sentences) and per-word correct/incorrect drill counts accumulated over all sessions.
+- **Drill** ï¿½ a round-based flashcard drill. Each round presents 10 words randomly drawn from the lexicon. The user marks each word as known or unknown; unknown words carry over to the next round alongside fresh picks. The current in-progress drill is persisted to SQLite so refreshing `/drill` or restarting the server restores the same round state, sidebar state, and last answered card.
+- **Activity** ï¿½ displays headline stats and a week-by-week calendar of recent drill activity. Each day cell shows how many words were drilled, added, and cleared. Clicking a day opens a detail modal listing the words involved.
 
 Word data (lexicon) is stored in a SQLite database. Per-word drill counts (correct/incorrect) are persisted there, and the current in-progress drill session is also stored in SQLite as a serialized state snapshot on the active `drill_sessions` row.
 
@@ -19,7 +19,7 @@ Each word has two integers:
 
 When words are randomly selected from the lexicon to drill, only active words are chosen.
 
-Incorrect answers are not penalised beyond incrementing the word's lifetime incorrect count. There is no spaced-repetition penalty, cooldown, or demotion mechanic — a wrong answer simply carries the word forward to the next round as normal.
+Incorrect answers are not penalised beyond incrementing the word's lifetime incorrect count. There is no spaced-repetition penalty, cooldown, or demotion mechanic ï¿½ a wrong answer simply carries the word forward to the next round as normal.
 
 A word tracks three timestamps:
 
@@ -29,9 +29,9 @@ A word tracks three timestamps:
 
 ## Terminology
 
-- **Lexicon** — the user's full set of vocabulary words (stored in SQLite)
-- **Pool** — the working set of words for the current drill session
-- **Round** — one cycle of up to 10 words within a drill session
+- **Lexicon** ï¿½ the user's full set of vocabulary words (stored in SQLite)
+- **Pool** ï¿½ the working set of words for the current drill session
+- **Round** ï¿½ one cycle of up to 10 words within a drill session
 
 ## Tech Stack
 
@@ -48,7 +48,7 @@ cd backend && air
 # Run backend tests
 cd backend && go test ./...
 
-# Run AI integration tests (makes real API calls — ask the user for permission first)
+# Run AI integration tests (makes real API calls ï¿½ ask the user for permission first)
 cd backend && go test -tags integration ./...
 
 # Go dependencies
@@ -65,52 +65,53 @@ AI integration tests live in `backend/ai_integration_test.go` and are gated behi
 
 ## Lexicon Features
 
-- **Add words flow** — the user pastes Japanese words into an "add words" modal; the backend streams results back via SSE, adding words one by one and displaying them in the add-result modal. Implemented:
+- **Add words flow** ï¿½ the user pastes Japanese words into an "add words" modal; the backend streams results back via SSE, adding words one by one and displaying them in the add-result modal. Implemented:
   - Words are normalised to their dictionary base form via `morphology.go` (e.g. conjugated verbs ? dictionary form) to prevent duplicates across inflections
   - Duplicates (same base form already in lexicon) are silently skipped with a reason badge
-  - AI auto-generates reading (hiragana), meaning (English), and example sentence (JP + EN) — see `ai.go` and the `/api/words/{id}/autofill` endpoint
+  - AI auto-generates reading (hiragana), meaning (English), and example sentence (JP + EN) ï¿½ see `ai.go` and the `/api/words/{id}/autofill` endpoint
   - All generated fields are editable inline in the add-result modal; changes are auto-saved on blur via `PATCH /api/words/{id}`
 
-- **Edit words** — clicking the ? button on any lexicon row opens the same add-result modal with just that word, allowing the user to edit reading, part of speech, meaning, and example sentences. Changes auto-save on blur.
+- **Edit words** ï¿½ clicking the ? button on any lexicon row opens the same add-result modal with just that word, allowing the user to edit reading, part of speech, meaning, and example sentences. Changes auto-save on blur.
 
-- **Part of speech (POS)** — the current category set (`godan-verb`, `ichidan-verb`, `noun`, `i-adjective`, `na-adjective`, `adverb`, `other`) may need revisiting: check whether the categories cover all desired word types and that AI autofill is classifying words accurately. The canonical list lives in `typeLabels` in `lexicon.js`.
+- **Part of speech (POS)** ï¿½ the current category set (`godan-verb`, `ichidan-verb`, `noun`, `i-adjective`, `na-adjective`, `adverb`, `other`) may need revisiting: check whether the categories cover all desired word types and that AI autofill is classifying words accurately. The canonical list lives in `typeLabels` in `lexicon.js`.
 
-- **Audio** — not yet implemented. Audio of the word and example sentence to be generated via VoiceVox (`tts-demo.html` exists as a sandbox for this).
+- **Audio** ï¿½ not yet implemented. Audio of the word and example sentence to be generated via VoiceVox (`tts-demo.html` exists as a sandbox for this).
 
-- **Note:** `/api/words/{id}/reroll-meaning` and `/api/words/{id}/reroll-examples` may be dead code — the old edit modal that used them was removed (commit `f119e10`). Confirm before adding new callers.
+- **Note:** `/api/words/{id}/reroll-meaning` and `/api/words/{id}/reroll-examples` may be dead code ï¿½ the old edit modal that used them was removed (commit `f119e10`). Confirm before adding new callers.
 
 ## Frontend Pages
 
 The HTML/CSS/JS frontend files live in `backend/static/` and are served by the backend.
 
-- **drill.html** — the drill view
-- **lexicon.html** — the lexicon/word management view
-- **activity.html** — the activity/stats view
-- **tts-demo.html** — sandbox page for testing VoiceVox TTS audio generation (not a production view)
+- **drill.html** ï¿½ the drill view
+- **lexicon.html** ï¿½ the lexicon/word management view
+- **activity.html** ï¿½ the activity/stats view
+- **tts-demo.html** ï¿½ sandbox page for testing VoiceVox TTS audio generation (not a production view)
 
 ### Backend
 
 `backend/` is a standalone Go module (separate `go.mod`) that runs a SQLite-backed HTTP server on port **1338**.
 
-- **`main.go`** — entry point; opens the DB and starts the server
-- **`db_schema.go`** — `initDB`, `migrate`, `resetDB`, `seedDB`, and schema-introspection helpers (`listTableInfos`, `queryTable`, etc.). No SQL appears outside the `db_*.go` files.
-- **`db_words.go`** — all word and kanji database operations: insert, update, delete, list, upsert kanji.
-- **`db_activity.go`** — drill session persistence and answer recording (`createDrillSession`, `getCurrentDrillSession`, `recordDrillAnswer`), plus activity stats and calendar queries.
-- **`db_settings.go`** — user settings: `getDrillSettings` and `putDrillSettings` read/write the `user_settings` table using key/value pairs. `drillSettings` always returns fully-populated values with no null fields — `MaxWords` defaults to `100`, `RoundSize` to `10`, `WordTypes` to all four types. `MaxWords` is always = 1; `0` is not a valid value. The frontend should treat the `GET /api/settings/drill` response as always having concrete values and needs no null-handling.
-- **`routes.go`** — `serverInit` (router setup), activity/drill/admin HTTP handlers, and `renderTemplate`. No direct DB access; handlers call functions from the `db_*.go` files.
-- **`routes_words.go`** — word and kanji API handlers: GET/PATCH/DELETE words, autofill, reroll meaning/examples, GET kanji.
-- **`ai.go`** — Shared AI types, prompts, few-shot examples, and provider-dispatch functions (`autoFillWord`, `rerollMeaning`, `rerollExamples`). No direct DB access. Environment variables: `ANTHROPIC_API_KEY`, `OPENAI_API_KEY`, `GOOGLE_API_KEY`, `MISTRAL_API_KEY`, `GLM_API_KEY`.
-- **`ai_anthropic.go`** — Anthropic Messages API: `callAnthropic` HTTP helper + autofill/reroll implementations.
-- **`ai_openai.go`** — OpenAI Chat Completions API: `callOpenAI` HTTP helper + autofill/reroll implementations.
-- **`ai_google.go`** — Google Generative Language API: `callGoogle` HTTP helper + autofill/reroll implementations.
-- **`ai_mistral.go`** — Mistral Chat API (OpenAI-compatible): `callMistral` HTTP helper + autofill/reroll implementations.
-- **`ai_glm.go`** — Zhipu GLM API (OpenAI-compatible): `callGLM` HTTP helper + autofill/reroll implementations. Environment variable: `GLM_API_KEY`.
-- **`morphology.go`** — word normalisation to dictionary base form (used in the add-words flow).
-- **`wordlists.go`** — loads JSON word-list files from the embedded `wordlists/` directory at startup (via `//go:embed wordlists`). Exposes `apiGetWordLists` and `apiGetWordListWords` handlers. Each file is `{slug}.json` with `name` (display name) and `words` (string array) fields. Current lists: `animals`, `colors`, `ichidan-verbs`.
-- **`templates/`** — HTML templates parsed from disk on every request (live-editable without restart); `base.html` is the shared shell, each page has its own file
-- **`static/images/words/`** — word images served statically. Files are named after the word text (e.g. `?.jpg`, `??.jpg`). The `image_path` column stores the path relative to `static/`; the frontend constructs the full URL as `/static/<image_path>`. Images are optional — words without images have `NULL` in `image_path`. Images are displayed in the lexicon table as a fixed-width column on the far left; the image cell uses `rowspan="2"` to span both the main and example rows, with `object-fit: cover` and `vertical-align: middle`.
-- **`static/`** — HTML pages, CSS, and JS, served from disk (live-editable without restart). Includes `admin.css` and `admin.js` for the admin UI (loaded by `templates/admin.html` and `templates/base.html`). JS files for the lexicon page are split across three files: `lexicon.js` (table state/rendering, sorting, delete modal, tooltip), `lexicon-add-edit.js` (add/edit result modal, autofill, status/footer, streaming), and `lexicon-utils.js` (pure helpers and detail item HTML builders). The drill page is now split across `drill.js` (bootstrap/event wiring), `drill-state.js` (drill state transitions, serialization, and drill API helpers), and `drill-view.js` (DOM/render helpers). Keep new drill changes aligned with that structure. Persisted drill session snapshots should contain durable progress/UI state only, not derived completion flags or settings-only values. `lexicon.js` must load first as `lexicon-add-edit.js` reads globals it defines (`words`, `defaultDrillTarget`, `typeLabels`, `reloadWords`, `renderTable`, `getSortedWords`). The lexicon table uses one `<tbody class="word-group">` per word (the `<table id="word-table">` has no static tbody in HTML); this allows `.word-group:hover` to treat both rows of a word — main row, example row, and the rowspan image cell — as a single hover target for background highlight and button visibility. The settings modal HTML (`#settings-modal-backdrop`) is injected into `<body>` at runtime by `injectSettingsModal()` in `common.js` — do not add it to any page's HTML.
-- **`seed.json`** — fixture data loaded on first startup (or after a DB reset); contains `words` and `sessions` arrays
+- **`main.go`** ï¿½ entry point; opens the DB and starts the server
+- **`db_schema.go`** ï¿½ `initDB`, `migrate`, `resetDB`, `seedDB`, and schema-introspection helpers (`listTableInfos`, `queryTable`, etc.). No SQL appears outside the `db_*.go` files.
+- **`db_words.go`** ï¿½ all word and kanji database operations: insert, update, delete, list, upsert kanji.
+- **`db_activity.go`** ï¿½ drill session persistence and answer recording (`createDrillSession`, `getCurrentDrillSession`, `recordDrillAnswer`), plus activity stats and calendar queries.
+- **`db_settings.go`** ï¿½ user settings: `getDrillSettings` and `putDrillSettings` read/write the `user_settings` table using key/value pairs. `drillSettings` always returns fully-populated values with no null fields ï¿½ `MaxWords` defaults to `100`, `RoundSize` to `10`, `WordTypes` to all four types. `MaxWords` is always = 1; `0` is not a valid value. The frontend should treat the `GET /api/settings/drill` response as always having concrete values and needs no null-handling.
+- **`routes.go`** ï¿½ `serverInit` (router setup), activity/drill/admin HTTP handlers, and `renderTemplate`. No direct DB access; handlers call functions from the `db_*.go` files.
+- **`routes_words.go`** ï¿½ word and kanji API handlers: GET/PATCH/DELETE words, autofill, reroll meaning/examples, GET kanji.
+- **`routes_handlers_test.go`** ï¿½ HTTP handler tests for backend JSON endpoints, focused on request validation, status codes, and basic success-path responses for word, drill-session, and drill-settings APIs.
+- **`ai.go`** - Shared AI types, prompts, few-shot examples, and provider-dispatch functions (`autoFillWord`, `rerollMeaning`, `rerollExamples`). No direct DB access. Environment variables: `ANTHROPIC_API_KEY`, `OPENAI_API_KEY`, `GOOGLE_API_KEY`, `MISTRAL_API_KEY`, `GLM_API_KEY`.
+- **`ai_anthropic.go`** ï¿½ Anthropic Messages API: `callAnthropic` HTTP helper + autofill/reroll implementations.
+- **`ai_openai.go`** ï¿½ OpenAI Chat Completions API: `callOpenAI` HTTP helper + autofill/reroll implementations.
+- **`ai_google.go`** ï¿½ Google Generative Language API: `callGoogle` HTTP helper + autofill/reroll implementations.
+- **`ai_mistral.go`** ï¿½ Mistral Chat API (OpenAI-compatible): `callMistral` HTTP helper + autofill/reroll implementations.
+- **`ai_glm.go`** ï¿½ Zhipu GLM API (OpenAI-compatible): `callGLM` HTTP helper + autofill/reroll implementations. Environment variable: `GLM_API_KEY`.
+- **`morphology.go`** ï¿½ word normalisation to dictionary base form (used in the add-words flow).
+- **`wordlists.go`** ï¿½ loads JSON word-list files from the embedded `wordlists/` directory at startup (via `//go:embed wordlists`). Exposes `apiGetWordLists` and `apiGetWordListWords` handlers. Each file is `{slug}.json` with `name` (display name) and `words` (string array) fields. Current lists: `animals`, `colors`, `ichidan-verbs`.
+- **`templates/`** ï¿½ HTML templates parsed from disk on every request (live-editable without restart); `base.html` is the shared shell, each page has its own file
+- **`static/images/words/`** ï¿½ word images served statically. Files are named after the word text (e.g. `?.jpg`, `??.jpg`). The `image_path` column stores the path relative to `static/`; the frontend constructs the full URL as `/static/<image_path>`. Images are optional ï¿½ words without images have `NULL` in `image_path`. Images are displayed in the lexicon table as a fixed-width column on the far left; the image cell uses `rowspan="2"` to span both the main and example rows, with `object-fit: cover` and `vertical-align: middle`.
+- **`static/`** ï¿½ HTML pages, CSS, and JS, served from disk (live-editable without restart). Includes `admin.css` and `admin.js` for the admin UI (loaded by `templates/admin.html` and `templates/base.html`). JS files for the lexicon page are split across three files: `lexicon.js` (table state/rendering, sorting, delete modal, tooltip), `lexicon-add-edit.js` (add/edit result modal, autofill, status/footer, streaming), and `lexicon-utils.js` (pure helpers and detail item HTML builders). The drill page is now split across `drill.js` (bootstrap/event wiring), `drill-state.js` (drill state transitions, serialization, and drill API helpers), and `drill-view.js` (DOM/render helpers). Keep new drill changes aligned with that structure. Persisted drill session snapshots should contain durable progress/UI state only, not derived completion flags or settings-only values. `lexicon.js` must load first as `lexicon-add-edit.js` reads globals it defines (`words`, `defaultDrillTarget`, `typeLabels`, `reloadWords`, `renderTable`, `getSortedWords`). The lexicon table uses one `<tbody class="word-group">` per word (the `<table id="word-table">` has no static tbody in HTML); this allows `.word-group:hover` to treat both rows of a word ï¿½ main row, example row, and the rowspan image cell ï¿½ as a single hover target for background highlight and button visibility. The settings modal HTML (`#settings-modal-backdrop`) is injected into `<body>` at runtime by `injectSettingsModal()` in `common.js` ï¿½ do not add it to any page's HTML.
+- **`seed.json`** ï¿½ fixture data loaded on first startup (or after a DB reset); contains `words` and `sessions` arrays
 
 Key API endpoints (beyond CRUD on `/api/words` and `/api/kanji`):
 
@@ -122,8 +123,8 @@ Key API endpoints (beyond CRUD on `/api/words` and `/api/kanji`):
 | `PATCH` | `/api/words/{id}` | Update a word's reading, type, meaning, and example sentences |
 | `PATCH` | `/api/words/{id}/target` | Update a word's target drill count |
 | `POST` | `/api/words/{id}/autofill` | AI-generate reading, meaning, and examples for a word |
-| `POST` | `/api/words/{id}/reroll-meaning` | Regenerate just the meaning via AI *(may be unused — see Lexicon Features note)* |
-| `POST` | `/api/words/{id}/reroll-examples` | Regenerate just the example sentences via AI *(may be unused — see Lexicon Features note)* |
+| `POST` | `/api/words/{id}/reroll-meaning` | Regenerate just the meaning via AI *(may be unused ï¿½ see Lexicon Features note)* |
+| `POST` | `/api/words/{id}/reroll-examples` | Regenerate just the example sentences via AI *(may be unused ï¿½ see Lexicon Features note)* |
 | `GET` | `/api/drill/sessions/current` | Return the current in-progress drill session, if one exists |
 | `POST` | `/api/drill/sessions` | Start a new drill session |
 | `POST` | `/api/drill/sessions/{id}/answers` | Record an answer within a session |
@@ -140,34 +141,34 @@ cd backend && air
 
 > **No migration compatibility required.** During development it is fine to reset the database (`/admin` ? Reset DB) whenever the schema changes. Do not spend effort on backwards-compatible migrations or backfill logic at this stage.
 
-Table definitions live in the `migrate()` function in `db.go`. Schema is versioned via `PRAGMA user_version` — each entry in the migrations slice runs exactly once. Current schema version: **8**. Current tables:
+Table definitions live in the `migrate()` function in `db.go`. Schema is versioned via `PRAGMA user_version` ï¿½ each entry in the migrations slice runs exactly once. Current schema version: **8**. Current tables:
 
-- **`words`** — the lexicon; one row per word with reading, part of speech, meaning, example sentences, audio paths (`audio_word_path`, `audio_example_path`), an optional `image_path` (relative to `static/`, e.g. `images/words/?.jpg`), drill counts, target, timestamps, and a `kanji_data` JSON column (array of `{id, reading}` linking to the `kanji` table). `word` column has a unique index. Because `word` is unique, image files are named after the word text itself (e.g. `static/images/words/?.jpg`).
-- **`kanji`** — one row per kanji character with `character` and `meanings` (JSON array of English meanings). Readings (on/kun) are stored per-word in the `kanji_data` column of `words`, not on the kanji row itself. Served via `/api/kanji`.
-- **`drill_sessions`** — one row per drill session with a `started_at` timestamp, a persisted durable UI/session snapshot in `state_json` (round/pool/redo/remaining/sidebar/last-answered state, but not derived completion flags or copied settings defaults), and `completed_at` for distinguishing the single active in-progress drill from completed sessions.
-- **`drill_answers`** — one row per answer within a session; references `words` and `drill_sessions`; stores `correct` (0/1) and `answered_at`.
-- **`user_settings`** — key/value store for user preferences. Current keys: `drill_max_words` (int, always = 1; absent from the table means the default of `100` is used), `drill_round_size` (int), `drill_word_types` (JSON string array).
+- **`words`** ï¿½ the lexicon; one row per word with reading, part of speech, meaning, example sentences, audio paths (`audio_word_path`, `audio_example_path`), an optional `image_path` (relative to `static/`, e.g. `images/words/?.jpg`), drill counts, target, timestamps, and a `kanji_data` JSON column (array of `{id, reading}` linking to the `kanji` table). `word` column has a unique index. Because `word` is unique, image files are named after the word text itself (e.g. `static/images/words/?.jpg`).
+- **`kanji`** ï¿½ one row per kanji character with `character` and `meanings` (JSON array of English meanings). Readings (on/kun) are stored per-word in the `kanji_data` column of `words`, not on the kanji row itself. Served via `/api/kanji`.
+- **`drill_sessions`** ï¿½ one row per drill session with a `started_at` timestamp, a persisted durable UI/session snapshot in `state_json` (round/pool/redo/remaining/sidebar/last-answered state, but not derived completion flags or copied settings defaults), and `completed_at` for distinguishing the single active in-progress drill from completed sessions.
+- **`drill_answers`** ï¿½ one row per answer within a session; references `words` and `drill_sessions`; stores `correct` (0/1) and `answered_at`.
+- **`user_settings`** ï¿½ key/value store for user preferences. Current keys: `drill_max_words` (int, always = 1; absent from the table means the default of `100` is used), `drill_round_size` (int), `drill_word_types` (JSON string array).
 
 The admin UI at `http://localhost:1338/admin` shows live table schemas (column names, types, PK/UNIQUE/NOT NULL flags) and row counts, and links through to full table data views.
 
 ### JavaScript conventions
 
-- **No inline event handlers.** Do not use `onclick=`, `onmousedown=`, or other `on*` HTML attributes. Use `addEventListener` instead — either on the element directly (for static elements, added once at script load time) or immediately after setting `innerHTML` (for dynamically built elements).
+- **No inline event handlers.** Do not use `onclick=`, `onmousedown=`, or other `on*` HTML attributes. Use `addEventListener` instead ï¿½ either on the element directly (for static elements, added once at script load time) or immediately after setting `innerHTML` (for dynamically built elements).
 
 ### CSS organisation
 
 Styles shared across pages belong in `common.css`, which is loaded first by all pages. Page-specific files only contain styles unique to that page. When adding new styles, prefer extending `common.css` over duplicating rules across page stylesheets. Current shared styles include: CSS reset, `body` base, page header, nav link, `.btn-header` (the header icon button), and the full modal system.
 
 The edit modal uses two distinct field styles to signal interaction type:
-- **Underline** (`border-bottom` only) — free-text editable fields (`.detail-input`)
-- **Bordered button** (full border, rounded corners) — dropdown selects (`.detail-pos-select`)
+- **Underline** (`border-bottom` only) ï¿½ free-text editable fields (`.detail-input`)
+- **Bordered button** (full border, rounded corners) ï¿½ dropdown selects (`.detail-pos-select`)
 
-When adding new fields to the word edit/add modal, follow whichever convention matches the field type. Do not use CSS `text-transform` or `letter-spacing` on `<select>` elements — browsers exclude these from intrinsic width calculations, causing text to overflow. Apply transforms in JS when generating `<option>` text instead.
+When adding new fields to the word edit/add modal, follow whichever convention matches the field type. Do not use CSS `text-transform` or `letter-spacing` on `<select>` elements ï¿½ browsers exclude these from intrinsic width calculations, causing text to overflow. Apply transforms in JS when generating `<option>` text instead.
 
 ## Working conventions
 
 - **Scope changes to this project directory.** Do not read or write files outside `D:\code\jpvocab\prototype\` without explicit instruction.
 - **Ask before touching unfamiliar files.** If a file has not been part of the current conversation and has not been recently discussed, confirm with the user before editing it. This applies especially to Go source files, config files, and anything outside `backend/`.
-- **Keep AGENTS.md current.** After any non-trivial change — new files, new endpoints, renamed functions, changed conventions, new features, or shifted architecture — proactively propose specific updates to this file. Do not wait to be asked. If you added a file, added an endpoint, or changed how something works, draft the AGENTS.md diff and offer it immediately.
+- **Keep AGENTS.md current.** After any non-trivial change ï¿½ new files, new endpoints, renamed functions, changed conventions, new features, or shifted architecture ï¿½ proactively propose specific updates to this file. Do not wait to be asked. If you added a file, added an endpoint, or changed how something works, edit AGENTS.md immediately (but be sure to tell me when you).
 - **Use `git mv` for all file moves and renames.** Never copy-and-delete or use the Write tool to recreate a file at a new path. Always use `git mv <old> <new>` so history is preserved.
 

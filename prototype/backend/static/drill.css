@@ -156,20 +156,22 @@
   flex-direction: column;
   align-items: center;
   padding: 1.5rem;
+  min-height: 0;
+  overflow-y: auto;
 }
 
 .main-area {
   width: 100%;
   max-width: 600px;
-  min-height: 175px;
   background: #181825;
   border: 1px solid #313244;
   border-radius: 8px;
   overflow: hidden;
+  flex-shrink: 0;
 }
 
 .prompt-section {
-  padding: 2.5rem 2rem;
+  padding: 2rem 2rem;
   text-align: center;
 }
 .prompt-section:not(:last-child) {
@@ -229,12 +231,14 @@
   width: 100%;
   max-width: 600px;
   margin-top: 0.75rem;
+  flex-shrink: 0;
 }
 .last-word-card {
   margin-top: 0.75rem;
   width: 100%;
   max-width: 600px;
   padding: 1.5rem 2rem;
+  flex-shrink: 0;
 }
 .last-word-cols {
   display: flex;
@@ -270,7 +274,10 @@
   padding-left: 1.5rem;
   flex: 1;
 }
-.last-kanji-info:empty { display: none; }
+.tip-kanji-info:empty { display: none; }
+.last-word-card .last-kanji-info:empty {
+  border-left-color: transparent;
+}
 .kanji-entry {
   display: flex;
   align-items: center;

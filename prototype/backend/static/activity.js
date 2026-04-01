@@ -1,4 +1,8 @@
+import { renderReading } from './lexicon-utils.js';
+
 let TODAY, HISTORY_START, activityData, stats;
+let wordMap = {};
+let kanjiMap = {};
 
 // ── Stats utilities ───────────────────────────────────────────────────────────
 
@@ -263,9 +267,11 @@ function buildSection(title, words, type, note) {
   list.className = 'day-word-list';
 
   words.forEach(entry => {
+    const fullWord = wordMap[entry.word] || null;
     const item = document.createElement('div');
     item.className = 'day-word-item';
     if (type === 'drilled') item.classList.add(entry.knew ? 'knew' : 'missed');
+    if (fullWord) item.dataset.wordInfo = JSON.stringify(fullWord);
     item.innerHTML =
       '<span class="day-word-jp">' + entry.word + '</span>' +
       '<span class="day-word-reading">' + entry.reading + '</span>' +
@@ -298,7 +304,71 @@ const actTooltip = document.createElement('div');
 actTooltip.className = 'lex-tooltip';
 document.body.appendChild(actTooltip);
 
+const wordTooltip = document.getElementById('activity-word-tooltip');
+
+function renderKanjiInfo(container, word) {
+  container.innerHTML = '';
+  if (!word.kanjiData || word.kanjiData.length === 0) return;
+  word.kanjiData.forEach(entry => {
+    const kanji = kanjiMap[entry.id];
+    if (!kanji) return;
+    const isOn = /[\u30A0-\u30FF]/.test(entry.reading);
+    const div = document.createElement('div');
+    div.className = 'kanji-entry';
+    div.innerHTML =
+      '<div class="kanji-char">' + kanji.character + '</div>' +
+      '<div class="kanji-detail">' +
+        '<div class="kanji-readings"><span class="kanji-' + (isOn ? 'on' : 'kun') + '">' + entry.reading + '</span></div>' +
+        '<div class="kanji-meanings">' + kanji.meanings.join(', ') + '</div>' +
+      '</div>';
+    container.appendChild(div);
+  });
+}
+
+function showWordTooltip(item, event) {
+  if (!item.dataset.wordInfo) return;
+  const data = JSON.parse(item.dataset.wordInfo);
+  document.getElementById('activity-tip-word').textContent = data.word;
+  document.getElementById('activity-tip-reading').innerHTML = renderReading(data.reading, data.word, data.kanjiData);
+  document.getElementById('activity-tip-pos').textContent = data.type || '';
+  document.getElementById('activity-tip-meaning').textContent = data.meaning || '';
+  document.getElementById('activity-tip-example').textContent = data.exampleJp || '';
+  document.getElementById('activity-tip-example-en').textContent = data.exampleEn || '';
+  const imgEl = document.getElementById('activity-tip-word-image');
+  if (data.imagePath) {
+    imgEl.src = '/static/' + data.imagePath;
+    imgEl.style.display = '';
+  } else {
+    imgEl.style.display = 'none';
+  }
+  renderKanjiInfo(document.getElementById('activity-tip-kanji-info'), data);
+  positionWordTooltip(item);
+  wordTooltip.classList.add('visible');
+}
+
+function positionWordTooltip(item) {
+  const modal = document.querySelector('#day-modal-backdrop .modal');
+  const itemRect = item.getBoundingClientRect();
+  const modalRect = modal.getBoundingClientRect();
+  const overlap = 162;
+
+  wordTooltip.style.visibility = 'hidden';
+  wordTooltip.classList.add('visible');
+  const height = wordTooltip.offsetHeight;
+  const maxTop = Math.max(8, window.innerHeight - height - 8);
+  const top = Math.max(8, Math.min(itemRect.top, maxTop));
+
+  wordTooltip.style.left = (modalRect.right - overlap) + 'px';
+  wordTooltip.style.top = top + 'px';
+  wordTooltip.style.visibility = '';
+}
+
 document.addEventListener('mouseover', e => {
+  const wordItem = e.target.closest('.day-word-item[data-word-info]');
+  if (wordItem) {
+    showWordTooltip(wordItem, e);
+    return;
+  }
   const target = e.target.closest('[data-tooltip]');
   if (!target) return;
   actTooltip.textContent = target.dataset.tooltip;
@@ -315,20 +385,32 @@ document.addEventListener('mousemove', e => {
 });
 
 document.addEventListener('mouseout', e => {
+  const wordItem = e.target.closest('.day-word-item[data-word-info]');
+  if (wordItem && !wordItem.contains(e.relatedTarget)) {
+    wordTooltip.classList.remove('visible');
+  }
   if (!e.target.closest('[data-tooltip]')) return;
   actTooltip.classList.remove('visible');
 });
 
 async function init() {
-  const [statsRes, calRes] = await Promise.all([
+  const [statsRes, calRes, wordsRes, kanjiRes] = await Promise.all([
     fetch('/api/activity/stats'),
     fetch('/api/activity/calendar'),
+    fetch('/api/words'),
+    fetch('/api/kanji'),
   ]);
   stats = await statsRes.json();
   const cal = await calRes.json();
+  const words = await wordsRes.json();
+  const kanjiList = await kanjiRes.json();
   TODAY = cal.today;
   HISTORY_START = cal.historyStart;
   activityData = cal.days;
+  wordMap = {};
+  words.forEach(word => { wordMap[word.word] = word; });
+  kanjiMap = {};
+  kanjiList.forEach(kanji => { kanjiMap[kanji.id] = kanji; });
   renderStats();
   renderCalendar();
 }

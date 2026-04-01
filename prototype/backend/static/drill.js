@@ -273,6 +273,25 @@ function renderKanjiInfo(container, word) {
   });
 }
 
+function positionSidebarTooltip(item) {
+  const sidebar = document.querySelector('.sidebar');
+  const itemRect = item.getBoundingClientRect();
+  const sidebarRect = sidebar.getBoundingClientRect();
+  const overlap = 14;
+
+  tip.style.left = (sidebarRect.right - overlap) + 'px';
+  tip.style.visibility = 'hidden';
+  tip.classList.add('visible');
+
+  const tooltipHeight = tip.offsetHeight;
+  const maxTop = Math.max(8, window.innerHeight - tooltipHeight - 8);
+  const preferredTop = itemRect.top;
+  const top = Math.max(8, Math.min(preferredTop, maxTop));
+
+  tip.style.top = top + 'px';
+  tip.style.visibility = '';
+}
+
 // Tooltip hover logic
 const tip = document.getElementById('tooltip');
 document.getElementById('sidebar-list').addEventListener('mouseover', e => {
@@ -293,21 +312,7 @@ document.getElementById('sidebar-list').addEventListener('mouseover', e => {
     tipImgEl.style.display = 'none';
   }
   renderKanjiInfo(document.getElementById('tip-kanji-info'), data);
-
-  const rect = item.getBoundingClientRect();
-  const sidebar = document.querySelector('.sidebar');
-  tip.style.left = sidebar.getBoundingClientRect().right + 'px';
-  tip.style.visibility = 'hidden';
-  tip.style.transform = '';
-  tip.classList.add('visible');
-  const tooltipHeight = tip.offsetHeight;
-  const topAlignedTop = rect.top;
-  const bottomAlignedTop = rect.bottom - tooltipHeight;
-  const top = topAlignedTop + tooltipHeight > window.innerHeight
-    ? Math.max(0, bottomAlignedTop)
-    : topAlignedTop;
-  tip.style.top = top + 'px';
-  tip.style.visibility = '';
+  positionSidebarTooltip(item);
 });
 document.getElementById('sidebar-list').addEventListener('mouseout', e => {
   const item = e.target.closest('.sidebar-item');

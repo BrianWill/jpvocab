@@ -151,7 +151,10 @@
   align-items: baseline;
   gap: 0.5rem;
   font-size: 1rem;
+  border-radius: 6px;
+  padding: 0.15rem 0.25rem;
 }
+.day-word-item:hover { background: rgba(137, 180, 250, 0.08); }
 
 .day-word-jp {
   color: #cdd6f4;
@@ -255,3 +258,110 @@
 .legend-close   { color: #f0cc45; }
 .legend-mid     { color: #f0854a; }
 .legend-far     { color: #585b70; }
+
+/* Rich day-word tooltip */
+.activity-word-tooltip {
+  padding: 0.6rem 0.8rem;
+  width: auto;
+  min-width: 220px;
+  max-width: 420px;
+  z-index: 120;
+}
+
+.activity-word-tooltip .tooltip-cols {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.85rem;
+}
+
+.activity-word-tooltip .tooltip-main {
+  flex: 1;
+  min-width: 180px;
+}
+
+.activity-word-tooltip .tooltip-word-image {
+  display: block;
+  width: 100%;
+  max-height: 250px;
+  height: auto;
+  object-fit: contain;
+  margin-top: 0.75rem;
+  border-radius: 4px;
+}
+
+.activity-word-tooltip .tooltip-word {
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: #cdd6f4;
+  margin-bottom: 0.25rem;
+}
+
+.activity-word-tooltip .tooltip-reading {
+  font-size: 0.85rem;
+  color: #a6adc8;
+  margin-bottom: 0.2rem;
+}
+
+.activity-word-tooltip .tooltip-pos {
+  font-size: 0.65rem;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: #585b70;
+  margin-bottom: 0.15rem;
+}
+
+.activity-word-tooltip .tooltip-meaning {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: #cdd6f4;
+  margin-bottom: 0.3rem;
+}
+
+.activity-word-tooltip .tooltip-example {
+  font-size: 0.75rem;
+  color: #585b70;
+  line-height: 1.4;
+}
+
+.activity-word-tooltip .tooltip-example-en {
+  font-style: italic;
+  color: #6c7086;
+}
+
+.activity-tip-kanji-info {
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+  flex: none;
+  border-left: 1px solid #313244;
+  padding-left: 0.85rem;
+}
+
+.activity-tip-kanji-info:empty { display: none; }
+
+.activity-tip-kanji-info .kanji-entry {
+  display: flex;
+  gap: 0.6rem;
+  align-items: flex-start;
+}
+
+.activity-tip-kanji-info .kanji-char {
+  font-size: 1.1rem;
+  color: #cdd6f4;
+  font-weight: 700;
+  min-width: 1.2rem;
+}
+
+.activity-tip-kanji-info .kanji-readings {
+  font-size: 0.72rem;
+  margin-bottom: 0.15rem;
+}
+
+.activity-tip-kanji-info .kanji-on { color: #f9e2af; }
+.activity-tip-kanji-info .kanji-kun { color: #89dceb; }
+
+.activity-tip-kanji-info .kanji-meanings {
+  font-size: 0.62rem;
+  color: #7f849c;
+  line-height: 1.35;
+}

@@ -228,12 +228,12 @@ func TestContainsKatakana(t *testing.T) {
 		input string
 		want  bool
 	}{
-		{"カタカナ", true},    // pure katakana
-		{"食べるカメラ", true}, // mixed kanji + katakana
-		{"ひらがな", false},   // hiragana only
-		{"漢字", false},       // kanji only
-		{"", false},           // empty
-		{"ABCdef123", false},  // ASCII
+		{"カタカナ", true},       // pure katakana
+		{"食べるカメラ", true},     // mixed kanji + katakana
+		{"ひらがな", false},      // hiragana only
+		{"漢字", false},        // kanji only
+		{"", false},          // empty
+		{"ABCdef123", false}, // ASCII
 	}
 	for _, tc := range cases {
 		got := containsKatakana(tc.input)
@@ -358,9 +358,9 @@ func insertTestWord(t *testing.T, db *sql.DB, word string, target int) int64 {
 func TestRecordDrillAnswer_Correct(t *testing.T) {
 	db := testDB(t)
 	wordID := insertTestWord(t, db, "水", 5)
-	sessionID, _ := createDrillSession(db)
+	sessionID, _ := createDrillSession(db, drillSessionState{})
 
-	if err := recordDrillAnswer(db, sessionID, wordID, true); err != nil {
+	if err := recordDrillAnswer(db, sessionID, wordID, true, drillSessionState{}); err != nil {
 		t.Fatal(err)
 	}
 
@@ -383,9 +383,9 @@ func TestRecordDrillAnswer_Correct(t *testing.T) {
 func TestRecordDrillAnswer_Incorrect(t *testing.T) {
 	db := testDB(t)
 	wordID := insertTestWord(t, db, "火", 5)
-	sessionID, _ := createDrillSession(db)
+	sessionID, _ := createDrillSession(db, drillSessionState{})
 
-	if err := recordDrillAnswer(db, sessionID, wordID, false); err != nil {
+	if err := recordDrillAnswer(db, sessionID, wordID, false, drillSessionState{}); err != nil {
 		t.Fatal(err)
 	}
 
@@ -408,9 +408,9 @@ func TestRecordDrillAnswer_Incorrect(t *testing.T) {
 func TestRecordDrillAnswer_TargetReachedOnFirstHit(t *testing.T) {
 	db := testDB(t)
 	wordID := insertTestWord(t, db, "木", 1) // target = 1; one correct answer clears it
-	sessionID, _ := createDrillSession(db)
+	sessionID, _ := createDrillSession(db, drillSessionState{})
 
-	if err := recordDrillAnswer(db, sessionID, wordID, true); err != nil {
+	if err := recordDrillAnswer(db, sessionID, wordID, true, drillSessionState{}); err != nil {
 		t.Fatal(err)
 	}
 
@@ -424,20 +424,107 @@ func TestRecordDrillAnswer_TargetReachedOnFirstHit(t *testing.T) {
 func TestRecordDrillAnswer_TargetReachedNotOverwritten(t *testing.T) {
 	db := testDB(t)
 	wordID := insertTestWord(t, db, "土", 1)
-	sessionID, _ := createDrillSession(db)
+	sessionID, _ := createDrillSession(db, drillSessionState{})
 
 	// First correct answer: reaches target, sets target_reached_at.
-	recordDrillAnswer(db, sessionID, wordID, true)
+	recordDrillAnswer(db, sessionID, wordID, true, drillSessionState{})
 	var first string
 	db.QueryRow(`SELECT target_reached_at FROM words WHERE id = ?`, wordID).Scan(&first)
 
 	// Subsequent correct answer: must not overwrite target_reached_at.
-	recordDrillAnswer(db, sessionID, wordID, true)
+	recordDrillAnswer(db, sessionID, wordID, true, drillSessionState{})
 	var second string
 	db.QueryRow(`SELECT target_reached_at FROM words WHERE id = ?`, wordID).Scan(&second)
 
 	if first != second {
 		t.Errorf("target_reached_at was overwritten: %q → %q", first, second)
+	}
+}
+
+func TestCreateDrillSession_StoresStateAndClosesPrevious(t *testing.T) {
+	db := testDB(t)
+	firstID, err := createDrillSession(db, drillSessionState{Round: 1})
+	if err != nil {
+		t.Fatal(err)
+	}
+	secondState := drillSessionState{
+		Round:         2,
+		ActiveFilters: []string{"verbs"},
+		Pool:          []wordJSON{{ID: 1, Word: "taberu"}},
+	}
+	secondID, err := createDrillSession(db, secondState)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if secondID == firstID {
+		t.Fatal("expected a new drill session ID")
+	}
+
+	var firstCompleted *string
+	if err := db.QueryRow(`SELECT completed_at FROM drill_sessions WHERE id = ?`, firstID).Scan(&firstCompleted); err != nil {
+		t.Fatal(err)
+	}
+	if firstCompleted == nil {
+		t.Fatal("previous active session should be marked completed")
+	}
+
+	current, err := getCurrentDrillSession(db)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if current == nil || current.ID != secondID {
+		t.Fatalf("current session: got %+v, want id %d", current, secondID)
+	}
+	if current.State.Round != 2 {
+		t.Errorf("round: got %d, want 2", current.State.Round)
+	}
+	if len(current.State.Pool) != 1 || current.State.Pool[0].Word != "taberu" {
+		t.Errorf("pool: got %+v", current.State.Pool)
+	}
+}
+
+func TestRecordDrillAnswer_UpdatesSessionStateAndCompletion(t *testing.T) {
+	db := testDB(t)
+	wordID := insertTestWord(t, db, "æµ·", 2)
+	sessionID, err := createDrillSession(db, drillSessionState{Round: 1})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	state := drillSessionState{
+		Round:     1,
+		DoneCount: 1,
+		Completed: true,
+		SidebarItems: []drillSidebarItem{
+			{Word: wordJSON{ID: wordID, Word: "umi"}, Status: "known"},
+		},
+		LastAnswered: &drillLastAnswered{
+			Word: wordJSON{ID: wordID, Word: "umi"},
+			Knew: true,
+		},
+	}
+	if err := recordDrillAnswer(db, sessionID, wordID, true, state); err != nil {
+		t.Fatal(err)
+	}
+
+	var stateJSON string
+	var completedAt *string
+	if err := db.QueryRow(`SELECT state_json, completed_at FROM drill_sessions WHERE id = ?`, sessionID).Scan(&stateJSON, &completedAt); err != nil {
+		t.Fatal(err)
+	}
+	if stateJSON != "{}" {
+		t.Errorf("state_json: got %s, want {}", stateJSON)
+	}
+	if completedAt == nil {
+		t.Fatal("completed_at should be set for completed drill state")
+	}
+
+	current, err := getCurrentDrillSession(db)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if current != nil {
+		t.Fatalf("expected no active drill session, got %+v", current)
 	}
 }
 
@@ -853,4 +940,3 @@ func TestGetActivityCalendar_HistoryStartIsContainingSunday(t *testing.T) {
 		t.Errorf("HistoryStart: got %q, want 2024-01-14 (Sunday of week containing 2024-01-17)", cal.HistoryStart)
 	}
 }
-

@@ -71,6 +71,8 @@ func migrate(db *sql.DB) {
 			value TEXT NOT NULL
 		)`,
 		`ALTER TABLE words ADD COLUMN image_path TEXT`,
+		`ALTER TABLE drill_sessions ADD COLUMN state_json TEXT NOT NULL DEFAULT '{}'`,
+		`ALTER TABLE drill_sessions ADD COLUMN completed_at DATETIME`,
 	}
 
 	var version int
@@ -429,7 +431,7 @@ func seedDB(db *sql.DB) {
 	}
 
 	// Insert sessions and their answers.
-	sessionStmt, err := tx.Prepare(`INSERT INTO drill_sessions (started_at) VALUES (?)`)
+	sessionStmt, err := tx.Prepare(`INSERT INTO drill_sessions (started_at, state_json, completed_at) VALUES (?, '{}', ?)`)
 	if err != nil {
 		log.Fatal("seed: prepare sessions:", err)
 	}
@@ -445,7 +447,7 @@ func seedDB(db *sql.DB) {
 	defer answerStmt.Close()
 
 	for _, s := range seed.Sessions {
-		res, err := sessionStmt.Exec(s.StartedAt)
+		res, err := sessionStmt.Exec(s.StartedAt, s.StartedAt)
 		if err != nil {
 			tx.Rollback()
 			log.Fatal("seed: insert session:", err)

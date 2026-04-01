@@ -59,6 +59,7 @@ func serverInit(db *sql.DB) {
 	r.Post("/api/words/{id}/autofill", apiAutofillWord(db))
 
 	r.Get("/api/kanji", apiGetKanji(db))
+	r.Get("/api/drill/sessions/current", apiGetCurrentDrillSession(db))
 	r.Post("/api/drill/sessions", apiCreateDrillSession(db))
 	r.Post("/api/drill/sessions/{id}/answers", apiRecordDrillAnswer(db))
 
@@ -131,13 +132,32 @@ func apiGetActivityCalendar(db *sql.DB) http.HandlerFunc {
 
 func apiCreateDrillSession(db *sql.DB) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		id, err := createDrillSession(db)
+		var body struct {
+			State drillSessionState `json:"state"`
+		}
+		if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+			http.Error(w, "bad request", http.StatusBadRequest)
+			return
+		}
+		id, err := createDrillSession(db, body.State)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
 		w.Header().Set("Content-Type", "application/json")
 		json.NewEncoder(w).Encode(map[string]int64{"id": id})
+	}
+}
+
+func apiGetCurrentDrillSession(db *sql.DB) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		session, err := getCurrentDrillSession(db)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(map[string]any{"session": session})
 	}
 }
 
@@ -149,14 +169,15 @@ func apiRecordDrillAnswer(db *sql.DB) http.HandlerFunc {
 			return
 		}
 		var body struct {
-			WordID  int64 `json:"wordId"`
-			Correct bool  `json:"correct"`
+			WordID  int64             `json:"wordId"`
+			Correct bool              `json:"correct"`
+			State   drillSessionState `json:"state"`
 		}
 		if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
 			http.Error(w, "bad request", http.StatusBadRequest)
 			return
 		}
-		if err := recordDrillAnswer(db, sessionID, body.WordID, body.Correct); err != nil {
+		if err := recordDrillAnswer(db, sessionID, body.WordID, body.Correct, body.State); err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
 		}

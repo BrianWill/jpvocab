@@ -2,6 +2,7 @@ package main
 
 import (
 	"database/sql"
+	"encoding/json"
 	"time"
 )
 
@@ -39,25 +40,136 @@ type activityCalendar struct {
 	Days         map[string]activityDay `json:"days"`
 }
 
-// createDrillSession inserts a new drill_sessions row and returns its ID.
-func createDrillSession(db *sql.DB) (int64, error) {
-	res, err := db.Exec(`INSERT INTO drill_sessions DEFAULT VALUES`)
+type drillSidebarItem struct {
+	Word   wordJSON `json:"word"`
+	Status string   `json:"status"`
+}
+
+type drillLastAnswered struct {
+	Word wordJSON `json:"word"`
+	Knew bool     `json:"knew"`
+}
+
+type drillSessionState struct {
+	PoolSize         int                `json:"poolSize"`
+	MaxPoolSize      int                `json:"maxPoolSize"`
+	SettingsMaxWords int                `json:"settingsMaxWords"`
+	RoundSize        int                `json:"roundSize"`
+	Round            int                `json:"round"`
+	DoneCount        int                `json:"doneCount"`
+	ActiveFilters    []string           `json:"activeFilters"`
+	Pool             []wordJSON         `json:"pool"`
+	Redo             []wordJSON         `json:"redo"`
+	Remaining        []wordJSON         `json:"remaining"`
+	SidebarItems     []drillSidebarItem `json:"sidebarItems"`
+	LastAnswered     *drillLastAnswered `json:"lastAnswered,omitempty"`
+	Completed        bool               `json:"completed"`
+}
+
+type drillSessionJSON struct {
+	ID        int64             `json:"id"`
+	StartedAt string            `json:"startedAt"`
+	State     drillSessionState `json:"state"`
+}
+
+func normaliseDrillSessionState(state *drillSessionState) {
+	if state.ActiveFilters == nil {
+		state.ActiveFilters = []string{}
+	}
+	if state.Pool == nil {
+		state.Pool = []wordJSON{}
+	}
+	if state.Redo == nil {
+		state.Redo = []wordJSON{}
+	}
+	if state.Remaining == nil {
+		state.Remaining = []wordJSON{}
+	}
+	if state.SidebarItems == nil {
+		state.SidebarItems = []drillSidebarItem{}
+	}
+}
+
+func sessionStateJSON(state drillSessionState) (string, error) {
+	normaliseDrillSessionState(&state)
+	b, err := json.Marshal(state)
+	if err != nil {
+		return "", err
+	}
+	return string(b), nil
+}
+
+// createDrillSession closes any existing active drill and inserts a new session.
+func createDrillSession(db *sql.DB, state drillSessionState) (int64, error) {
+	stateJSON, err := sessionStateJSON(state)
 	if err != nil {
 		return 0, err
 	}
+
+	tx, err := db.Begin()
+	if err != nil {
+		return 0, err
+	}
+	defer tx.Rollback()
+
+	if _, err := tx.Exec(`UPDATE drill_sessions SET state_json = '{}', completed_at = datetime('now') WHERE completed_at IS NULL`); err != nil {
+		return 0, err
+	}
+
+	res, err := tx.Exec(`INSERT INTO drill_sessions (state_json) VALUES (?)`, stateJSON)
+	if err != nil {
+		return 0, err
+	}
+	if err := tx.Commit(); err != nil {
+		return 0, err
+	}
 	return res.LastInsertId()
+}
+
+func getCurrentDrillSession(db *sql.DB) (*drillSessionJSON, error) {
+	var s drillSessionJSON
+	var stateJSON string
+	err := db.QueryRow(`
+		SELECT id, started_at, COALESCE(state_json, '{}')
+		FROM drill_sessions
+		WHERE completed_at IS NULL
+		ORDER BY started_at DESC, id DESC
+		LIMIT 1
+	`).Scan(&s.ID, &s.StartedAt, &stateJSON)
+	if err == sql.ErrNoRows {
+		return nil, nil
+	}
+	if err != nil {
+		return nil, err
+	}
+	if err := json.Unmarshal([]byte(stateJSON), &s.State); err != nil {
+		return nil, err
+	}
+	normaliseDrillSessionState(&s.State)
+	return &s, nil
 }
 
 // recordDrillAnswer inserts one row into drill_answers and updates the word's
 // counts and timestamps. For a correct answer: drill_count++, last_drilled_at,
 // and target_reached_at (first time drill_count reaches drill_target). For an
 // incorrect answer: incorrect_count++, last_drilled_at.
-func recordDrillAnswer(db *sql.DB, sessionID, wordID int64, correct bool) error {
+func recordDrillAnswer(db *sql.DB, sessionID, wordID int64, correct bool, state drillSessionState) error {
+	stateJSON, err := sessionStateJSON(state)
+	if err != nil {
+		return err
+	}
+
+	tx, err := db.Begin()
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+
 	correctInt := 0
 	if correct {
 		correctInt = 1
 	}
-	if _, err := db.Exec(
+	if _, err := tx.Exec(
 		`INSERT INTO drill_answers (session_id, word_id, correct) VALUES (?, ?, ?)`,
 		sessionID, wordID, correctInt,
 	); err != nil {
@@ -65,7 +177,7 @@ func recordDrillAnswer(db *sql.DB, sessionID, wordID int64, correct bool) error 
 	}
 
 	if correct {
-		_, err := db.Exec(`
+		_, err := tx.Exec(`
 			UPDATE words SET
 				drill_count     = drill_count + 1,
 				last_drilled_at = datetime('now'),
@@ -76,15 +188,41 @@ func recordDrillAnswer(db *sql.DB, sessionID, wordID int64, correct bool) error 
 				END
 			WHERE id = ?
 		`, wordID)
+		if err != nil {
+			return err
+		}
+	} else {
+		_, err := tx.Exec(`
+			UPDATE words SET
+				incorrect_count = incorrect_count + 1,
+				last_drilled_at = datetime('now')
+			WHERE id = ?
+		`, wordID)
+		if err != nil {
+			return err
+		}
+	}
+
+	if state.Completed {
+		if _, err := tx.Exec(`
+			UPDATE drill_sessions
+			SET state_json = '{}', completed_at = datetime('now')
+			WHERE id = ?
+		`, sessionID); err != nil {
+			return err
+		}
+		return tx.Commit()
+	}
+
+	if _, err := tx.Exec(`
+		UPDATE drill_sessions
+		SET state_json = ?, completed_at = NULL
+		WHERE id = ?
+	`, stateJSON, sessionID); err != nil {
 		return err
 	}
-	_, err := db.Exec(`
-		UPDATE words SET
-			incorrect_count = incorrect_count + 1,
-			last_drilled_at = datetime('now')
-		WHERE id = ?
-	`, wordID)
-	return err
+
+	return tx.Commit()
 }
 
 // getActivityStats returns headline statistics computed from the words table.

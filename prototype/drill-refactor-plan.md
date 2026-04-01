@@ -40,7 +40,7 @@ The persisted drill session snapshot now excludes derived completion flags and c
 ## Specific Cleanup Targets
 
 - Remove `maxPoolSize` from runtime state entirely if it remains only a temporary clamp value. Done.
-- Keep `sidebarItems` semantic and move flash classes fully into render-only behavior if a later cleanup pass touches sidebar rendering again.
+- Keep `sidebarItems` semantic and move flash classes fully into render-only behavior if a later cleanup pass touches sidebar rendering again. Done.
 - Consider moving the in-file pure drill helpers into a separate `drill-state.js` module once the shape feels stable.
 
 ## Shared Logic Opportunities

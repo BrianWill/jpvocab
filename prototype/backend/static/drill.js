@@ -55,6 +55,7 @@ const state = {
   remaining: [],
   round: 1,
   roundSize: DEFAULT_ROUND_SIZE,
+  sidebarFlash: null,
   sessionId: null,
   settingsMaxWords: null,
   sidebarItems: [],
@@ -127,12 +128,11 @@ function createSidebarItems(words, redoSet = new Set()) {
 }
 
 function applySidebarAnswer(sidebarItems, word, knew) {
-  const status = knew ? 'known flash-known' : 'missed flash-missed';
+  const status = knew ? 'known' : 'missed';
   let found = false;
   const nextItems = sidebarItems.map(item => {
-    const baseStatus = item.status.replace(/\sflash-(known|missed)\b/g, '');
     if (item.word.word !== word.word) {
-      return baseStatus === item.status ? item : { ...item, status: baseStatus };
+      return item;
     }
     found = true;
     return { ...item, word, status };
@@ -246,10 +246,19 @@ function renderSidebar() {
   state.sidebarItems.forEach(itemData => {
     const li = document.createElement('li');
     li.className = 'sidebar-item ' + itemData.status;
+    const flashClass = state.sidebarFlash?.word === itemData.word.word
+      ? (state.sidebarFlash.knew ? 'flash-known' : 'flash-missed')
+      : '';
+    if (flashClass) li.classList.add(flashClass);
     li.textContent = itemData.word.word;
     li.dataset.word = JSON.stringify(itemData.word);
     li.dataset.id = itemData.word.word;
-    li.addEventListener('animationend', () => li.classList.remove('flash-known', 'flash-missed'), { once: true });
+    if (flashClass) {
+      li.addEventListener('animationend', () => {
+        li.classList.remove('flash-known', 'flash-missed');
+        if (state.sidebarFlash?.word === itemData.word.word) state.sidebarFlash = null;
+      }, { once: true });
+    }
     els.sidebarList.appendChild(li);
   });
 }
@@ -295,10 +304,7 @@ function getSessionState() {
     pool: state.pool,
     redo: state.redo,
     remaining: state.remaining,
-    sidebarItems: state.sidebarItems.map(item => ({
-      word: item.word,
-      status: item.status.replace(/\sflash-(known|missed)\b/g, ''),
-    })),
+    sidebarItems: state.sidebarItems,
     lastAnswered: state.lastAnswered,
   };
 }
@@ -335,6 +341,7 @@ async function reveal(knew) {
 
   const answered = state.currentWord;
   Object.assign(state, getNextRevealState(state, knew));
+  state.sidebarFlash = { word: answered.word, knew };
   renderDrill();
 
   try {
@@ -367,6 +374,7 @@ function restoreSession(session) {
   state.redo = Array.isArray(sessionState.redo) ? sessionState.redo : [];
   state.remaining = Array.isArray(sessionState.remaining) ? sessionState.remaining : [];
   state.currentWord = state.remaining[0] || null;
+  state.sidebarFlash = null;
   state.sidebarItems = Array.isArray(sessionState.sidebarItems) ? sessionState.sidebarItems : [];
   state.lastAnswered = sessionState.lastAnswered || null;
 
@@ -418,6 +426,7 @@ async function init() {
   state.pool = shuffle([...source]).slice(0, state.poolSize);
   Object.assign(state, buildRoundState(state));
   state.lastAnswered = null;
+  state.sidebarFlash = null;
 
   state.sessionId = await createSession(getSessionState());
   renderDrill();
@@ -471,6 +480,7 @@ function restartDrill(totalWords, newRoundSize, sourceWords) {
   state.drillStartedAt = Date.now();
   Object.assign(state, buildRoundState(state));
   state.lastAnswered = null;
+  state.sidebarFlash = null;
 
   renderDrill();
 }

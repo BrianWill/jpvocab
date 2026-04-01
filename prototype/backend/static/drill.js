@@ -1,3 +1,4 @@
+import { populateWordTooltip, positionAnchoredWordTooltip, renderWordTooltipKanji } from './common.js';
 import { renderReading } from './lexicon-utils.js';
 
 const placeholder = '<span class="detail-placeholder">- - -</span>';
@@ -194,7 +195,7 @@ function reveal(knew) {
   document.getElementById('last-meaning').textContent = answered.meaning;
   document.getElementById('last-example-jp').textContent = answered.exampleJp;
   document.getElementById('last-example-en').textContent = answered.exampleEn;
-  renderKanjiInfo(document.getElementById('last-kanji-info'), answered);
+  renderWordTooltipKanji(document.getElementById('last-kanji-info'), answered, kanjiMap);
   const imgEl = document.getElementById('last-word-image');
   if (answered.imagePath) {
     imgEl.src = '/static/' + answered.imagePath;
@@ -254,42 +255,15 @@ function addToSidebar(word, knew) {
   list.appendChild(li);
 }
 
-function renderKanjiInfo(container, word) {
-  container.innerHTML = '';
-  if (!word.kanjiData || word.kanjiData.length === 0) return;
-  word.kanjiData.forEach(entry => {
-    const k = kanjiMap[entry.id];
-    if (!k) return;
-    const isOn = /[\u30A0-\u30FF]/.test(entry.reading);
-    const div = document.createElement('div');
-    div.className = 'kanji-entry';
-    div.innerHTML =
-      '<div class="kanji-char">' + k.character + '</div>' +
-      '<div class="kanji-detail">' +
-        '<div class="kanji-readings"><span class="kanji-' + (isOn ? 'on' : 'kun') + '">' + entry.reading + '</span></div>' +
-        '<div class="kanji-meanings">' + k.meanings.join(', ') + '</div>' +
-      '</div>';
-    container.appendChild(div);
-  });
-}
-
 function positionSidebarTooltip(item) {
   const sidebar = document.querySelector('.sidebar');
   const itemRect = item.getBoundingClientRect();
   const sidebarRect = sidebar.getBoundingClientRect();
   const overlap = 14;
-
-  tip.style.left = (sidebarRect.right - overlap) + 'px';
-  tip.style.visibility = 'hidden';
-  tip.classList.add('visible');
-
-  const tooltipHeight = tip.offsetHeight;
-  const maxTop = Math.max(8, window.innerHeight - tooltipHeight - 8);
-  const preferredTop = itemRect.top;
-  const top = Math.max(8, Math.min(preferredTop, maxTop));
-
-  tip.style.top = top + 'px';
-  tip.style.visibility = '';
+  positionAnchoredWordTooltip(tip, {
+    anchorRect: itemRect,
+    left: sidebarRect.right - overlap,
+  });
 }
 
 // Tooltip hover logic
@@ -298,20 +272,7 @@ document.getElementById('sidebar-list').addEventListener('mouseover', e => {
   const item = e.target.closest('.sidebar-item');
   if (!item || !item.dataset.word) return;
   const data = JSON.parse(item.dataset.word);
-  document.getElementById('tip-word').textContent = data.word;
-  document.getElementById('tip-reading').innerHTML = renderReading(data.reading, data.word, data.kanjiData);
-  document.getElementById('tip-pos').textContent = data.type;
-  document.getElementById('tip-meaning').textContent = data.meaning;
-  document.getElementById('tip-example').textContent = data.exampleJp || '';
-  document.getElementById('tip-example-en').textContent = data.exampleEn || '';
-  const tipImgEl = document.getElementById('tip-word-image');
-  if (data.imagePath) {
-    tipImgEl.src = '/static/' + data.imagePath;
-    tipImgEl.style.display = '';
-  } else {
-    tipImgEl.style.display = 'none';
-  }
-  renderKanjiInfo(document.getElementById('tip-kanji-info'), data);
+  populateWordTooltip(tip, data, kanjiMap, renderReading);
   positionSidebarTooltip(item);
 });
 document.getElementById('sidebar-list').addEventListener('mouseout', e => {

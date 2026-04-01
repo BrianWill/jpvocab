@@ -1,3 +1,4 @@
+import { populateWordTooltip, positionAnchoredWordTooltip } from './common.js';
 import { renderReading } from './lexicon-utils.js';
 
 let TODAY, HISTORY_START, activityData, stats;
@@ -306,42 +307,10 @@ document.body.appendChild(actTooltip);
 
 const wordTooltip = document.getElementById('activity-word-tooltip');
 
-function renderKanjiInfo(container, word) {
-  container.innerHTML = '';
-  if (!word.kanjiData || word.kanjiData.length === 0) return;
-  word.kanjiData.forEach(entry => {
-    const kanji = kanjiMap[entry.id];
-    if (!kanji) return;
-    const isOn = /[\u30A0-\u30FF]/.test(entry.reading);
-    const div = document.createElement('div');
-    div.className = 'kanji-entry';
-    div.innerHTML =
-      '<div class="kanji-char">' + kanji.character + '</div>' +
-      '<div class="kanji-detail">' +
-        '<div class="kanji-readings"><span class="kanji-' + (isOn ? 'on' : 'kun') + '">' + entry.reading + '</span></div>' +
-        '<div class="kanji-meanings">' + kanji.meanings.join(', ') + '</div>' +
-      '</div>';
-    container.appendChild(div);
-  });
-}
-
-function showWordTooltip(item, event) {
+function showWordTooltip(item) {
   if (!item.dataset.wordInfo) return;
   const data = JSON.parse(item.dataset.wordInfo);
-  document.getElementById('activity-tip-word').textContent = data.word;
-  document.getElementById('activity-tip-reading').innerHTML = renderReading(data.reading, data.word, data.kanjiData);
-  document.getElementById('activity-tip-pos').textContent = data.type || '';
-  document.getElementById('activity-tip-meaning').textContent = data.meaning || '';
-  document.getElementById('activity-tip-example').textContent = data.exampleJp || '';
-  document.getElementById('activity-tip-example-en').textContent = data.exampleEn || '';
-  const imgEl = document.getElementById('activity-tip-word-image');
-  if (data.imagePath) {
-    imgEl.src = '/static/' + data.imagePath;
-    imgEl.style.display = '';
-  } else {
-    imgEl.style.display = 'none';
-  }
-  renderKanjiInfo(document.getElementById('activity-tip-kanji-info'), data);
+  populateWordTooltip(wordTooltip, data, kanjiMap, renderReading);
   positionWordTooltip(item);
   wordTooltip.classList.add('visible');
 }
@@ -351,22 +320,16 @@ function positionWordTooltip(item) {
   const itemRect = item.getBoundingClientRect();
   const modalRect = modal.getBoundingClientRect();
   const overlap = 162;
-
-  wordTooltip.style.visibility = 'hidden';
-  wordTooltip.classList.add('visible');
-  const height = wordTooltip.offsetHeight;
-  const maxTop = Math.max(8, window.innerHeight - height - 8);
-  const top = Math.max(8, Math.min(itemRect.top, maxTop));
-
-  wordTooltip.style.left = (modalRect.right - overlap) + 'px';
-  wordTooltip.style.top = top + 'px';
-  wordTooltip.style.visibility = '';
+  positionAnchoredWordTooltip(wordTooltip, {
+    anchorRect: itemRect,
+    left: modalRect.right - overlap,
+  });
 }
 
 document.addEventListener('mouseover', e => {
   const wordItem = e.target.closest('.day-word-item[data-word-info]');
   if (wordItem) {
-    showWordTooltip(wordItem, e);
+    showWordTooltip(wordItem);
     return;
   }
   const target = e.target.closest('[data-tooltip]');

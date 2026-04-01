@@ -166,3 +166,60 @@ function initializeSettings() {
 
 injectSettingsModal();
 initializeSettings();
+
+export function renderWordTooltipKanji(container, word, kanjiMap) {
+  container.innerHTML = '';
+  if (!word.kanjiData || word.kanjiData.length === 0) return;
+  word.kanjiData.forEach(entry => {
+    const kanji = kanjiMap[entry.id];
+    if (!kanji) return;
+    const isOn = /[\u30A0-\u30FF]/.test(entry.reading);
+    const div = document.createElement('div');
+    div.className = 'kanji-entry';
+    div.innerHTML =
+      '<div class="kanji-char">' + kanji.character + '</div>' +
+      '<div class="kanji-detail">' +
+        '<div class="kanji-readings"><span class="kanji-' + (isOn ? 'on' : 'kun') + '">' + entry.reading + '</span></div>' +
+        '<div class="kanji-meanings">' + kanji.meanings.join(', ') + '</div>' +
+      '</div>';
+    container.appendChild(div);
+  });
+}
+
+export function populateWordTooltip(tooltipEl, word, kanjiMap, renderReading) {
+  tooltipEl.querySelector('[data-word-tooltip="word"]').textContent = word.word;
+  tooltipEl.querySelector('[data-word-tooltip="reading"]').innerHTML =
+    renderReading(word.reading, word.word, word.kanjiData);
+  tooltipEl.querySelector('[data-word-tooltip="pos"]').textContent = word.type || '';
+  tooltipEl.querySelector('[data-word-tooltip="meaning"]').textContent = word.meaning || '';
+  tooltipEl.querySelector('[data-word-tooltip="example"]').textContent = word.exampleJp || '';
+  tooltipEl.querySelector('[data-word-tooltip="example-en"]').textContent = word.exampleEn || '';
+
+  const imgEl = tooltipEl.querySelector('[data-word-tooltip="image"]');
+  if (word.imagePath) {
+    imgEl.src = '/static/' + word.imagePath;
+    imgEl.style.display = '';
+  } else {
+    imgEl.style.display = 'none';
+  }
+
+  renderWordTooltipKanji(
+    tooltipEl.querySelector('[data-word-tooltip="kanji"]'),
+    word,
+    kanjiMap
+  );
+}
+
+export function positionAnchoredWordTooltip(tooltipEl, options) {
+  const { anchorRect, left } = options;
+  tooltipEl.style.visibility = 'hidden';
+  tooltipEl.classList.add('visible');
+
+  const tooltipHeight = tooltipEl.offsetHeight;
+  const maxTop = Math.max(8, window.innerHeight - tooltipHeight - 8);
+  const top = Math.max(8, Math.min(anchorRect.top, maxTop));
+
+  tooltipEl.style.left = left + 'px';
+  tooltipEl.style.top = top + 'px';
+  tooltipEl.style.visibility = '';
+}

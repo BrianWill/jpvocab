@@ -34,18 +34,18 @@
 </div>
 
 <!-- Floating tooltips -->
-<div class="tooltip" id="tooltip">
+<div class="tooltip word-tooltip" id="tooltip">
   <div class="tooltip-cols">
     <div class="tooltip-main">
-      <div class="tooltip-word" id="tip-word"></div>
-      <div class="tooltip-reading" id="tip-reading"></div>
-      <div class="tooltip-pos" id="tip-pos"></div>
-      <div class="tooltip-meaning" id="tip-meaning"></div>
-      <div class="tooltip-example" id="tip-example"></div>
-      <div class="tooltip-example-en" id="tip-example-en"></div>
-      <img id="tip-word-image" class="tooltip-word-image" alt="" style="display:none">
+      <div class="tooltip-word" data-word-tooltip="word"></div>
+      <div class="tooltip-reading" data-word-tooltip="reading"></div>
+      <div class="tooltip-pos" data-word-tooltip="pos"></div>
+      <div class="tooltip-meaning" data-word-tooltip="meaning"></div>
+      <div class="tooltip-example" data-word-tooltip="example"></div>
+      <div class="tooltip-example-en" data-word-tooltip="example-en"></div>
+      <img class="tooltip-word-image" data-word-tooltip="image" alt="" style="display:none">
     </div>
-    <div id="tip-kanji-info" class="last-kanji-info tip-kanji-info"></div>
+    <div class="last-kanji-info word-tooltip-kanji" data-word-tooltip="kanji"></div>
   </div>
 </div>
 

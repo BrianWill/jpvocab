@@ -29,7 +29,11 @@ function fullDateTime(dateStr) {
 }
 
 function renderRow(w, trMain, trEx) {
+  const imgCell = w.imagePath
+    ? '<td class="cell-img" rowspan="2"><img src="/static/' + w.imagePath + '" alt=""></td>'
+    : '<td class="cell-img" rowspan="2"></td>';
   trMain.innerHTML =
+    imgCell +
     '<td><div class="cell-word" data-tooltip="Word">' + w.word +
       '<button class="btn-edit" data-tooltip="Edit word">✎</button>' +
       '<button class="btn-delete" data-tooltip="Delete word">✕</button>' +
@@ -75,18 +79,21 @@ export function getSortedWords(key, dir) {
   return _getSortedWords(words, key, dir);
 }
 
-const tbody = document.getElementById('word-tbody');
+const wordTable = document.getElementById('word-table');
 
 export function renderTable(sortedWords) {
-  tbody.innerHTML = '';
+  wordTable.querySelectorAll('tbody').forEach(b => b.remove());
   sortedWords.forEach(w => {
+    const group = document.createElement('tbody');
+    group.className = 'word-group';
     const trMain = document.createElement('tr');
     trMain.className = 'row-main';
     const trEx = document.createElement('tr');
     trEx.className = 'row-example';
     renderRow(w, trMain, trEx);
-    tbody.appendChild(trMain);
-    tbody.appendChild(trEx);
+    group.appendChild(trMain);
+    group.appendChild(trEx);
+    wordTable.appendChild(group);
   });
 }
 
@@ -144,8 +151,7 @@ async function confirmDelete() {
     const res = await fetch('/api/words/' + w.id, { method: 'DELETE' });
     if (!res.ok) throw new Error((await res.text()).trim() || res.statusText);
     words.splice(words.indexOf(w), 1);
-    _deleteTrMain._trEx.remove();
-    _deleteTrMain.remove();
+    _deleteTrMain.closest('tbody').remove();
     updateWordCount();
     closeDeleteModal();
   } catch (err) {

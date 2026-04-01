@@ -14,10 +14,11 @@
   border-collapse: collapse;
   table-layout: fixed;
 }
-.word-table th:nth-child(1) { width: 28%; }   /* Word */
-.word-table th:nth-child(2) { width: 12%; }   /* Reading */
-.word-table th:nth-child(3) { width: 11%; }   /* Type */
-/* Meaning (4th) takes all remaining space */
+.word-table th:nth-child(1) { width: 4rem; }  /* Image */
+.word-table th:nth-child(2) { width: 28%; }   /* Word */
+.word-table th:nth-child(3) { width: 12%; }   /* Reading */
+.word-table th:nth-child(4) { width: 11%; }   /* Type */
+/* Meaning (5th) takes all remaining space */
 
 .word-table th {
   background: #11111b;
@@ -41,7 +42,7 @@
 }
 .row-main td { border-bottom: none; }
 .row-example td { border-bottom: 1px solid #181825; }
-.word-table tr:hover td { background: #181825; }
+.word-group:hover td { background: #181825; }
 
 .cell-word {
   font-size: 1.15rem;
@@ -81,7 +82,7 @@
   text-align: center;
   flex-shrink: 0;
 }
-.row-main:hover .btn-edit, .row-main:hover .btn-delete { visibility: visible; }
+.word-group:hover .btn-edit, .word-group:hover .btn-delete { visibility: visible; }
 
 /* Modal — lexicon-specific overrides */
 .modal-word-label {
@@ -470,6 +471,20 @@
 .cell-meaning-inner { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; cursor: default; }
 
 
+.col-img { padding: 0; }
+.word-table .cell-img {
+  padding: 0.25rem;
+  overflow: hidden;
+  vertical-align: middle;
+  border-bottom: 1px solid #181825;
+}
+.cell-img img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
 .col-num { width: 5%; }
 .word-table .col-spacer { width: 1.0rem; padding: 0; }
 .cell-correct, .cell-incorrect, .cell-target {
@@ -492,7 +507,7 @@
   font-size: 0.7rem;
   padding: 0.05rem 0.2rem 0.17rem;
 }
-.row-main:hover .btn-target-adj { visibility: visible; }
+.word-group:hover .btn-target-adj { visibility: visible; }
 
 /* Sort buttons in column headers */
 .th-inner {

@@ -1,12 +1,373 @@
 {
-    "name": "Ichidan verbs",
-    "words": [
-        "食べる", "見る", "起きる", "寝る", "着る", "出る", "入れる", "開ける",
-        "閉める", "教える", "覚える", "忘れる", "答える", "考える", "続ける",
-        "始める", "終える", "決める", "調べる", "集める", "変える", "伝える",
-        "上げる", "下げる", "受ける", "借りる", "足りる", "落ちる", "信じる",
-        "感じる", "求める", "生きる", "負ける", "捨てる", "認める", "諦める",
-        "比べる", "支える", "育てる", "迎える", "逃げる", "並べる", "数える",
-        "見せる", "出かける", "届ける"
-    ]
+  "name": "Ichidan verbs",
+  "entries": [
+    {
+      "word": "食べる",
+      "reading": "たべる",
+      "part_of_speech": "ichidan-verb",
+      "meaning": "to eat",
+      "example_jp": "朝ごはんを食べる。",
+      "example_en": "I eat breakfast."
+    },
+    {
+      "word": "見る",
+      "reading": "みる",
+      "part_of_speech": "ichidan-verb",
+      "meaning": "to see; to watch",
+      "example_jp": "夜に映画を見る。",
+      "example_en": "I watch a movie at night."
+    },
+    {
+      "word": "起きる",
+      "reading": "おきる",
+      "part_of_speech": "ichidan-verb",
+      "meaning": "to get up; to wake up",
+      "example_jp": "毎朝六時に起きる。",
+      "example_en": "I get up at six every morning."
+    },
+    {
+      "word": "寝る",
+      "reading": "ねる",
+      "part_of_speech": "ichidan-verb",
+      "meaning": "to sleep; to go to bed",
+      "example_jp": "今日は早く寝る。",
+      "example_en": "I will go to bed early today."
+    },
+    {
+      "word": "着る",
+      "reading": "きる",
+      "part_of_speech": "ichidan-verb",
+      "meaning": "to wear; to put on",
+      "example_jp": "寒いので上着を着る。",
+      "example_en": "I put on a jacket because it is cold."
+    },
+    {
+      "word": "出る",
+      "reading": "でる",
+      "part_of_speech": "ichidan-verb",
+      "meaning": "to go out; to leave",
+      "example_jp": "七時に家を出る。",
+      "example_en": "I leave the house at seven."
+    },
+    {
+      "word": "入れる",
+      "reading": "いれる",
+      "part_of_speech": "ichidan-verb",
+      "meaning": "to put in; to insert",
+      "example_jp": "かばんに本を入れる。",
+      "example_en": "I put the book in my bag."
+    },
+    {
+      "word": "開ける",
+      "reading": "あける",
+      "part_of_speech": "ichidan-verb",
+      "meaning": "to open",
+      "example_jp": "窓を開ける。",
+      "example_en": "I open the window."
+    },
+    {
+      "word": "閉める",
+      "reading": "しめる",
+      "part_of_speech": "ichidan-verb",
+      "meaning": "to close; to shut",
+      "example_jp": "出かける前にドアを閉める。",
+      "example_en": "I close the door before going out."
+    },
+    {
+      "word": "教える",
+      "reading": "おしえる",
+      "part_of_speech": "ichidan-verb",
+      "meaning": "to teach; to tell",
+      "example_jp": "先生が文法を教える。",
+      "example_en": "The teacher explains the grammar."
+    },
+    {
+      "word": "覚える",
+      "reading": "おぼえる",
+      "part_of_speech": "ichidan-verb",
+      "meaning": "to memorize; to learn",
+      "example_jp": "新しい単語を三つ覚える。",
+      "example_en": "I memorize three new words."
+    },
+    {
+      "word": "忘れる",
+      "reading": "わすれる",
+      "part_of_speech": "ichidan-verb",
+      "meaning": "to forget",
+      "example_jp": "傘を持つのを忘れる。",
+      "example_en": "I forget to bring my umbrella."
+    },
+    {
+      "word": "答える",
+      "reading": "こたえる",
+      "part_of_speech": "ichidan-verb",
+      "meaning": "to answer",
+      "example_jp": "質問にすぐ答える。",
+      "example_en": "I answer the question right away."
+    },
+    {
+      "word": "考える",
+      "reading": "かんがえる",
+      "part_of_speech": "ichidan-verb",
+      "meaning": "to think; to consider",
+      "example_jp": "週末の予定を考える。",
+      "example_en": "I think about my weekend plans."
+    },
+    {
+      "word": "続ける",
+      "reading": "つづける",
+      "part_of_speech": "ichidan-verb",
+      "meaning": "to continue",
+      "example_jp": "毎日勉強を続ける。",
+      "example_en": "I continue studying every day."
+    },
+    {
+      "word": "始める",
+      "reading": "はじめる",
+      "part_of_speech": "ichidan-verb",
+      "meaning": "to start; to begin",
+      "example_jp": "新しい仕事を始める。",
+      "example_en": "I start a new job."
+    },
+    {
+      "word": "終える",
+      "reading": "おえる",
+      "part_of_speech": "ichidan-verb",
+      "meaning": "to finish; to complete",
+      "example_jp": "昼までに宿題を終える。",
+      "example_en": "I finish the homework by noon."
+    },
+    {
+      "word": "決める",
+      "reading": "きめる",
+      "part_of_speech": "ichidan-verb",
+      "meaning": "to decide",
+      "example_jp": "旅行の日を今日決める。",
+      "example_en": "We decide the travel date today."
+    },
+    {
+      "word": "調べる",
+      "reading": "しらべる",
+      "part_of_speech": "ichidan-verb",
+      "meaning": "to investigate; to look up",
+      "example_jp": "辞書で意味を調べる。",
+      "example_en": "I look up the meaning in a dictionary."
+    },
+    {
+      "word": "集める",
+      "reading": "あつめる",
+      "part_of_speech": "ichidan-verb",
+      "meaning": "to gather; to collect",
+      "example_jp": "机の上の紙を集める。",
+      "example_en": "I gather the papers on the desk."
+    },
+    {
+      "word": "変える",
+      "reading": "かえる",
+      "part_of_speech": "ichidan-verb",
+      "meaning": "to change",
+      "example_jp": "予定を少し変える。",
+      "example_en": "I change the schedule a little."
+    },
+    {
+      "word": "伝える",
+      "reading": "つたえる",
+      "part_of_speech": "ichidan-verb",
+      "meaning": "to convey; to tell",
+      "example_jp": "その話を家族に伝える。",
+      "example_en": "I tell my family that news."
+    },
+    {
+      "word": "上げる",
+      "reading": "あげる",
+      "part_of_speech": "ichidan-verb",
+      "meaning": "to raise; to lift",
+      "example_jp": "手を上げて答える。",
+      "example_en": "I raise my hand to answer."
+    },
+    {
+      "word": "下げる",
+      "reading": "さげる",
+      "part_of_speech": "ichidan-verb",
+      "meaning": "to lower",
+      "example_jp": "音量を少し下げる。",
+      "example_en": "I lower the volume a little."
+    },
+    {
+      "word": "受ける",
+      "reading": "うける",
+      "part_of_speech": "ichidan-verb",
+      "meaning": "to receive; to take",
+      "example_jp": "来週、試験を受ける。",
+      "example_en": "I will take the exam next week."
+    },
+    {
+      "word": "借りる",
+      "reading": "かりる",
+      "part_of_speech": "ichidan-verb",
+      "meaning": "to borrow",
+      "example_jp": "図書館で本を借りる。",
+      "example_en": "I borrow a book from the library."
+    },
+    {
+      "word": "足りる",
+      "reading": "たりる",
+      "part_of_speech": "ichidan-verb",
+      "meaning": "to be enough; to suffice",
+      "example_jp": "今日は時間が足りる。",
+      "example_en": "We have enough time today."
+    },
+    {
+      "word": "落ちる",
+      "reading": "おちる",
+      "part_of_speech": "ichidan-verb",
+      "meaning": "to fall; to drop",
+      "example_jp": "木から葉が落ちる。",
+      "example_en": "Leaves fall from the tree."
+    },
+    {
+      "word": "信じる",
+      "reading": "しんじる",
+      "part_of_speech": "ichidan-verb",
+      "meaning": "to believe; to trust",
+      "example_jp": "自分の力を信じる。",
+      "example_en": "I believe in my own ability."
+    },
+    {
+      "word": "感じる",
+      "reading": "かんじる",
+      "part_of_speech": "ichidan-verb",
+      "meaning": "to feel; to sense",
+      "example_jp": "春の気配を感じる。",
+      "example_en": "I can feel signs of spring."
+    },
+    {
+      "word": "求める",
+      "reading": "もとめる",
+      "part_of_speech": "ichidan-verb",
+      "meaning": "to seek; to request",
+      "example_jp": "より良い答えを求める。",
+      "example_en": "We seek a better answer."
+    },
+    {
+      "word": "生きる",
+      "reading": "いきる",
+      "part_of_speech": "ichidan-verb",
+      "meaning": "to live",
+      "example_jp": "祖父は九十歳まで生きると言っている。",
+      "example_en": "My grandfather says he will live to ninety."
+    },
+    {
+      "word": "負ける",
+      "reading": "まける",
+      "part_of_speech": "ichidan-verb",
+      "meaning": "to lose",
+      "example_jp": "昨日の試合で負ける。",
+      "example_en": "We lost yesterday's game."
+    },
+    {
+      "word": "捨てる",
+      "reading": "すてる",
+      "part_of_speech": "ichidan-verb",
+      "meaning": "to throw away; to discard",
+      "example_jp": "古い紙を捨てる。",
+      "example_en": "I throw away the old papers."
+    },
+    {
+      "word": "認める",
+      "reading": "みとめる",
+      "part_of_speech": "ichidan-verb",
+      "meaning": "to recognize; to admit",
+      "example_jp": "彼は自分の間違いを認める。",
+      "example_en": "He admits his mistake."
+    },
+    {
+      "word": "諦める",
+      "reading": "あきらめる",
+      "part_of_speech": "ichidan-verb",
+      "meaning": "to give up",
+      "example_jp": "最後まで諦めるな。",
+      "example_en": "Do not give up until the end."
+    },
+    {
+      "word": "比べる",
+      "reading": "くらべる",
+      "part_of_speech": "ichidan-verb",
+      "meaning": "to compare",
+      "example_jp": "二つの案を比べる。",
+      "example_en": "I compare the two plans."
+    },
+    {
+      "word": "支える",
+      "reading": "ささえる",
+      "part_of_speech": "ichidan-verb",
+      "meaning": "to support",
+      "example_jp": "家族が私を支える。",
+      "example_en": "My family supports me."
+    },
+    {
+      "word": "育てる",
+      "reading": "そだてる",
+      "part_of_speech": "ichidan-verb",
+      "meaning": "to raise; to grow",
+      "example_jp": "庭で野菜を育てる。",
+      "example_en": "I grow vegetables in the garden."
+    },
+    {
+      "word": "迎える",
+      "reading": "むかえる",
+      "part_of_speech": "ichidan-verb",
+      "meaning": "to welcome; to meet",
+      "example_jp": "駅で友だちを迎える。",
+      "example_en": "I meet my friend at the station."
+    },
+    {
+      "word": "逃げる",
+      "reading": "にげる",
+      "part_of_speech": "ichidan-verb",
+      "meaning": "to run away; to escape",
+      "example_jp": "猫が音に驚いて逃げる。",
+      "example_en": "The cat runs away after being startled by the noise."
+    },
+    {
+      "word": "並べる",
+      "reading": "ならべる",
+      "part_of_speech": "ichidan-verb",
+      "meaning": "to line up; to arrange",
+      "example_jp": "机の上に本を並べる。",
+      "example_en": "I line up the books on the desk."
+    },
+    {
+      "word": "数える",
+      "reading": "かぞえる",
+      "part_of_speech": "ichidan-verb",
+      "meaning": "to count",
+      "example_jp": "人数を数える。",
+      "example_en": "I count the number of people."
+    },
+    {
+      "word": "見せる",
+      "reading": "みせる",
+      "part_of_speech": "ichidan-verb",
+      "meaning": "to show",
+      "example_jp": "先生にノートを見せる。",
+      "example_en": "I show my notebook to the teacher."
+    },
+    {
+      "word": "出かける",
+      "reading": "でかける",
+      "part_of_speech": "ichidan-verb",
+      "meaning": "to go out; to head out",
+      "example_jp": "午後から買い物に出かける。",
+      "example_en": "I go out shopping in the afternoon."
+    },
+    {
+      "word": "届ける",
+      "reading": "とどける",
+      "part_of_speech": "ichidan-verb",
+      "meaning": "to deliver",
+      "example_jp": "午後までに荷物を届ける。",
+      "example_en": "I deliver the package by the afternoon."
+    }
+  ]
 }

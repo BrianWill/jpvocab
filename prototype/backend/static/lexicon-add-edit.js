@@ -1,5 +1,33 @@
-import { defaultDrillTarget, typeLabels, _providers, reloadWords, renderTable, getSortedWords, closeAddModal } from './lexicon.js';
+import { defaultDrillTarget, typeLabels, _providers, reloadWords, renderTable, getSortedWords, closeAddModal, updateWordImagePath } from './lexicon.js';
 import { esc, isKanji, detailItemPosSelect, detailItemKanjiReadings, detailItemInput, detailItemExInput } from './lexicon-utils.js';
+
+const imagePlaceholderSvg =
+  '<svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">' +
+    '<rect x="3" y="3" width="18" height="18" rx="2" stroke="currentColor" stroke-width="1.5"/>' +
+    '<circle cx="8.5" cy="8.5" r="1.5" fill="currentColor"/>' +
+    '<polyline points="3,21 8,14 12,18 16,13 21,18" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round"/>' +
+  '</svg>';
+
+function buildWordResultImage(imagePath, state) {
+  if (imagePath) {
+    return '<div class="word-result-image"><img src="/static/' + esc(imagePath) + '" alt=""></div>';
+  }
+  const classes = ['word-result-image', 'word-result-image--empty'];
+  let overlay = '';
+  if (state === 'loading') {
+    classes.push('word-result-image--loading');
+    overlay = '<span class="spinner word-result-image-spinner" aria-hidden="true"></span>';
+  } else if (state === 'failed') {
+    classes.push('word-result-image--failed');
+  }
+  return '<div class="' + classes.join(' ') + '">' + overlay + imagePlaceholderSvg + '</div>';
+}
+
+function setWordRowImage(row, imagePath, state = '') {
+  const imageEl = row.querySelector('.word-result-image');
+  if (!imageEl) return;
+  imageEl.outerHTML = buildWordResultImage(imagePath, state);
+}
 
 // --- Add/edit modal ---
 // Handles two scenarios:
@@ -365,15 +393,7 @@ function appendWordRow(data) {
       detailItemExInput(data.example_jp, data.example_en) +
     '</div>';
 
-  const imagePlaceholderSvg =
-    '<svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">' +
-      '<rect x="3" y="3" width="18" height="18" rx="2" stroke="currentColor" stroke-width="1.5"/>' +
-      '<circle cx="8.5" cy="8.5" r="1.5" fill="currentColor"/>' +
-      '<polyline points="3,21 8,14 12,18 16,13 21,18" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round"/>' +
-    '</svg>';
-  const imageHtml = data.image_path
-    ? '<div class="word-result-image"><img src="/static/' + esc(data.image_path) + '" alt=""></div>'
-    : '<div class="word-result-image word-result-image--empty">' + imagePlaceholderSvg + '</div>';
+  const imageHtml = buildWordResultImage(data.image_path, '');
 
   row.innerHTML =
     '<div class="word-result-main"><span class="result-word">' + esc(data.word) + '</span>' + badge + inlineExtra + '</div>' +
@@ -389,6 +409,10 @@ function appendWordRow(data) {
     const [adjMinusEl, adjPlusEl] = row.querySelectorAll('.btn-target-adj');
     if (adjMinusEl) adjMinusEl.addEventListener('mousedown', e => adjustWordTarget(e, data.word_id, -1, adjMinusEl));
     if (adjPlusEl) adjPlusEl.addEventListener('mousedown', e => adjustWordTarget(e, data.word_id, 1, adjPlusEl));
+  }
+
+  if (data.added && data.word_id && !data.image_path && data.suggested_image_url) {
+    startSuggestedImageDownload(row, data.word_id, data.suggested_image_url);
   }
 }
 
@@ -414,6 +438,26 @@ function updateWordRowDetails(data) {
     genBtn.innerHTML = 'generate';
     _pendingGenerates = Math.max(0, _pendingGenerates - 1);
     renderStatus();
+  }
+}
+
+async function startSuggestedImageDownload(row, wordId, imageURL) {
+  if (!row || !row.isConnected) return;
+  setWordRowImage(row, '', 'loading');
+  try {
+    const res = await fetch('/api/words/' + wordId + '/download-image', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ url: imageURL }),
+    });
+    if (!res.ok) throw new Error(await res.text());
+    const data = await res.json();
+    if (!row.isConnected) return;
+    setWordRowImage(row, data.image_path, '');
+    updateWordImagePath(wordId, data.image_path);
+  } catch (_) {
+    if (!row.isConnected) return;
+    setWordRowImage(row, '', 'failed');
   }
 }
 

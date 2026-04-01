@@ -14,7 +14,6 @@ import (
 	"github.com/go-chi/chi/v5/middleware"
 )
 
-
 func serverInit(db *sql.DB) {
 	r := chi.NewRouter()
 	r.Use(middleware.Logger)
@@ -54,6 +53,7 @@ func serverInit(db *sql.DB) {
 	r.Patch("/api/words/{id}", apiUpdateWord(db))
 	r.Patch("/api/words/{id}/target", apiUpdateWordTarget(db))
 	r.Delete("/api/words/{id}", apiDeleteWord(db))
+	r.Post("/api/words/{id}/download-image", apiDownloadWordImage(db))
 	r.Post("/api/words/{id}/reroll-meaning", apiRerollMeaning())
 	r.Post("/api/words/{id}/reroll-examples", apiRerollExamples())
 	r.Post("/api/words/{id}/autofill", apiAutofillWord(db))
@@ -79,16 +79,18 @@ func serverInit(db *sql.DB) {
 }
 
 type batchWordResult struct {
-	Input        string `json:"input"`
-	Word         string `json:"word"`
-	Added        bool   `json:"added"`
-	Updated      bool   `json:"updated,omitempty"`
-	Reason       string `json:"reason,omitempty"`
-	Reading      string `json:"reading,omitempty"`
-	PartOfSpeech string `json:"part_of_speech,omitempty"`
-	Meaning      string `json:"meaning,omitempty"`
-	ExampleJP    string `json:"example_jp,omitempty"`
-	ExampleEN    string `json:"example_en,omitempty"`
+	Input             string `json:"input"`
+	Word              string `json:"word"`
+	Added             bool   `json:"added"`
+	Updated           bool   `json:"updated,omitempty"`
+	Reason            string `json:"reason,omitempty"`
+	Reading           string `json:"reading,omitempty"`
+	PartOfSpeech      string `json:"part_of_speech,omitempty"`
+	Meaning           string `json:"meaning,omitempty"`
+	ExampleJP         string `json:"example_jp,omitempty"`
+	ExampleEN         string `json:"example_en,omitempty"`
+	ImagePath         string `json:"image_path,omitempty"`
+	SuggestedImageURL string `json:"suggested_image_url,omitempty"`
 	// Populated only when the word already exists in the lexicon.
 	WordID         int64 `json:"word_id,omitempty"`
 	DrillCount     int   `json:"drill_count,omitempty"`
@@ -209,7 +211,6 @@ func adminIndex(db *sql.DB) http.HandlerFunc {
 	}
 }
 
-
 func adminAddWordsBatch(db *sql.DB) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		// Parse multipart form (sent by fetch + FormData) before writing response.
@@ -296,16 +297,21 @@ func adminAddWordsBatch(db *sql.DB) http.HandlerFunc {
 				continue
 			}
 			if info, exists := existingInfo[e.norm]; exists {
+				imagePath := ""
+				if info.ImagePath != nil {
+					imagePath = *info.ImagePath
+				}
 				send(batchWordResult{
-					Input:        e.input,
-					Word:         e.norm,
-					Added:        false,
-					Reason:       "already in lexicon",
-					Reading:      info.Reading,
-					PartOfSpeech: info.PartOfSpeech,
-					Meaning:      info.Meaning,
-					ExampleJP:    info.ExampleJP,
-					ExampleEN:    info.ExampleEN,
+					Input:          e.input,
+					Word:           e.norm,
+					Added:          false,
+					Reason:         "already in lexicon",
+					Reading:        info.Reading,
+					PartOfSpeech:   info.PartOfSpeech,
+					Meaning:        info.Meaning,
+					ExampleJP:      info.ExampleJP,
+					ExampleEN:      info.ExampleEN,
+					ImagePath:      imagePath,
 					WordID:         info.ID,
 					DrillCount:     info.DrillCount,
 					DrillIncorrect: info.DrillIncorrect,
@@ -314,7 +320,8 @@ func adminAddWordsBatch(db *sql.DB) http.HandlerFunc {
 				continue
 			}
 
-			wordID, err := insertWordReturningID(db, e.norm, "", "", "", "", "", "", defaultDrillTarget)
+			listEntry, hasListEntry := wordListLookup(e.norm)
+			wordID, err := insertWordReturningID(db, e.norm, listEntry.Reading, listEntry.PartOfSpeech, listEntry.Meaning, listEntry.ExampleJP, listEntry.ExampleEN, "", defaultDrillTarget)
 			if err != nil {
 				reason := err.Error()
 				if strings.Contains(reason, "UNIQUE constraint failed") {
@@ -323,7 +330,22 @@ func adminAddWordsBatch(db *sql.DB) http.HandlerFunc {
 				send(batchWordResult{Input: e.input, Word: e.norm, Added: false, Reason: reason})
 				continue
 			}
-			send(batchWordResult{Input: e.input, Word: e.norm, Added: true, WordID: wordID, DrillTarget: defaultDrillTarget})
+			result := batchWordResult{
+				Input:        e.input,
+				Word:         e.norm,
+				Added:        true,
+				Reading:      listEntry.Reading,
+				PartOfSpeech: listEntry.PartOfSpeech,
+				Meaning:      listEntry.Meaning,
+				ExampleJP:    listEntry.ExampleJP,
+				ExampleEN:    listEntry.ExampleEN,
+				WordID:       wordID,
+				DrillTarget:  defaultDrillTarget,
+			}
+			if hasListEntry {
+				result.SuggestedImageURL = listEntry.SuggestedImageURL
+			}
+			send(result)
 			if autoFill {
 				toFill = append(toFill, insertedEntry{input: e.input, norm: e.norm, wordID: wordID})
 			}
@@ -442,7 +464,6 @@ func adminTable(db *sql.DB) http.HandlerFunc {
 		renderTemplate(w, "table", data{Table: table, Cols: cols, Rows: rows})
 	}
 }
-
 
 // renderTemplate parses templates from disk on every call so edits take effect
 // without restarting the server. Run the server from the backend/ directory so

@@ -1,8 +1,197 @@
 {
-    "name": "Colors",
-    "words": [
-        "赤", "青", "黄色", "緑", "白", "黒", "紫", "橙", "茶色", "ピンク",
-        "灰色", "金色", "銀色", "水色", "紺", "赤い", "青い", "白い", "黒い",
-        "黄色い", "緑色", "明るい", "暗い", "鮮やか"
-    ]
+  "name": "Colors",
+  "entries": [
+    {
+      "word": "赤",
+      "reading": "あか",
+      "part_of_speech": "noun",
+      "meaning": "red",
+      "example_jp": "箱に赤で印をつけた。",
+      "example_en": "I marked the box in red."
+    },
+    {
+      "word": "青",
+      "reading": "あお",
+      "part_of_speech": "noun",
+      "meaning": "blue",
+      "example_jp": "空の青がとてもきれいだ。",
+      "example_en": "The blue of the sky is very beautiful."
+    },
+    {
+      "word": "黄色",
+      "reading": "きいろ",
+      "part_of_speech": "noun",
+      "meaning": "yellow",
+      "example_jp": "黄色の花が道ばたに咲いている。",
+      "example_en": "Yellow flowers are blooming by the roadside."
+    },
+    {
+      "word": "緑",
+      "reading": "みどり",
+      "part_of_speech": "noun",
+      "meaning": "green",
+      "example_jp": "春は山の緑が濃くなる。",
+      "example_en": "The mountains grow greener in spring."
+    },
+    {
+      "word": "白",
+      "reading": "しろ",
+      "part_of_speech": "noun",
+      "meaning": "white",
+      "example_jp": "白のシャツを一枚持っている。",
+      "example_en": "I own one white shirt."
+    },
+    {
+      "word": "黒",
+      "reading": "くろ",
+      "part_of_speech": "noun",
+      "meaning": "black",
+      "example_jp": "黒のかばんが一番使いやすい。",
+      "example_en": "The black bag is the easiest to use."
+    },
+    {
+      "word": "紫",
+      "reading": "むらさき",
+      "part_of_speech": "noun",
+      "meaning": "purple",
+      "example_jp": "夕方の空が紫に見えた。",
+      "example_en": "The evening sky looked purple."
+    },
+    {
+      "word": "橙",
+      "reading": "だいだい",
+      "part_of_speech": "noun",
+      "meaning": "orange",
+      "example_jp": "看板に橙の線が入っている。",
+      "example_en": "There is an orange line on the sign."
+    },
+    {
+      "word": "茶色",
+      "reading": "ちゃいろ",
+      "part_of_speech": "noun",
+      "meaning": "brown",
+      "example_jp": "茶色の靴を毎日履いている。",
+      "example_en": "I wear brown shoes every day."
+    },
+    {
+      "word": "ピンク",
+      "reading": "ピンク",
+      "part_of_speech": "noun",
+      "meaning": "pink",
+      "example_jp": "ピンクの封筒を選んだ。",
+      "example_en": "I chose the pink envelope."
+    },
+    {
+      "word": "灰色",
+      "reading": "はいいろ",
+      "part_of_speech": "noun",
+      "meaning": "gray",
+      "example_jp": "空が灰色の雲でおおわれた。",
+      "example_en": "The sky was covered with gray clouds."
+    },
+    {
+      "word": "金色",
+      "reading": "きんいろ",
+      "part_of_speech": "noun",
+      "meaning": "golden; gold color",
+      "example_jp": "夕日で海が金色に光った。",
+      "example_en": "The sunset made the sea glow gold."
+    },
+    {
+      "word": "銀色",
+      "reading": "ぎんいろ",
+      "part_of_speech": "noun",
+      "meaning": "silver; silver color",
+      "example_jp": "銀色の自転車が止まっている。",
+      "example_en": "A silver bicycle is parked there."
+    },
+    {
+      "word": "水色",
+      "reading": "みずいろ",
+      "part_of_speech": "noun",
+      "meaning": "light blue",
+      "example_jp": "水色のノートを買った。",
+      "example_en": "I bought a light-blue notebook."
+    },
+    {
+      "word": "紺",
+      "reading": "こん",
+      "part_of_speech": "noun",
+      "meaning": "navy blue",
+      "example_jp": "紺の上着は落ち着いて見える。",
+      "example_en": "A navy jacket looks calm and neat."
+    },
+    {
+      "word": "赤い",
+      "reading": "あかい",
+      "part_of_speech": "i-adjective",
+      "meaning": "red",
+      "example_jp": "赤いりんごを二つ買った。",
+      "example_en": "I bought two red apples."
+    },
+    {
+      "word": "青い",
+      "reading": "あおい",
+      "part_of_speech": "i-adjective",
+      "meaning": "blue",
+      "example_jp": "今日は青い海が見える。",
+      "example_en": "We can see the blue sea today."
+    },
+    {
+      "word": "白い",
+      "reading": "しろい",
+      "part_of_speech": "i-adjective",
+      "meaning": "white",
+      "example_jp": "白い猫が庭を歩いている。",
+      "example_en": "A white cat is walking through the yard."
+    },
+    {
+      "word": "黒い",
+      "reading": "くろい",
+      "part_of_speech": "i-adjective",
+      "meaning": "black; dark-colored",
+      "example_jp": "黒いくつを磨いた。",
+      "example_en": "I polished my black shoes."
+    },
+    {
+      "word": "黄色い",
+      "reading": "きいろい",
+      "part_of_speech": "i-adjective",
+      "meaning": "yellow",
+      "example_jp": "黄色い葉が風で落ちた。",
+      "example_en": "Yellow leaves fell in the wind."
+    },
+    {
+      "word": "緑色",
+      "reading": "みどりいろ",
+      "part_of_speech": "noun",
+      "meaning": "green color",
+      "example_jp": "この地図では緑色が公園を表す。",
+      "example_en": "On this map, green represents parks."
+    },
+    {
+      "word": "明るい",
+      "reading": "あかるい",
+      "part_of_speech": "i-adjective",
+      "meaning": "bright; light",
+      "example_jp": "この部屋は朝になると明るい。",
+      "example_en": "This room becomes bright in the morning."
+    },
+    {
+      "word": "暗い",
+      "reading": "くらい",
+      "part_of_speech": "i-adjective",
+      "meaning": "dark; dim",
+      "example_jp": "廊下が少し暗いので気をつけて。",
+      "example_en": "Be careful because the hallway is a little dark."
+    },
+    {
+      "word": "鮮やか",
+      "reading": "あざやか",
+      "part_of_speech": "na-adjective",
+      "meaning": "vivid; bright",
+      "example_jp": "鮮やかな色の布が並んでいた。",
+      "example_en": "Pieces of vividly colored cloth were lined up."
+    }
+  ]
 }

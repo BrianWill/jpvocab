@@ -15,15 +15,26 @@ import (
 var wordListsFS embed.FS
 
 // wordList holds a loaded word list. Slug is derived from the filename and
-// used as the URL key; Name and Words come from the JSON file itself.
+// used as the URL key; Name and Entries come from the JSON file itself.
+type wordListEntry struct {
+	Word              string `json:"word"`
+	Reading           string `json:"reading"`
+	PartOfSpeech      string `json:"part_of_speech"`
+	Meaning           string `json:"meaning"`
+	ExampleJP         string `json:"example_jp"`
+	ExampleEN         string `json:"example_en"`
+	SuggestedImageURL string `json:"suggested_image_url,omitempty"`
+}
+
 type wordList struct {
-	Slug  string   `json:"-"`
-	Name  string   `json:"name"`
-	Words []string `json:"words"`
+	Slug    string          `json:"-"`
+	Name    string          `json:"name"`
+	Entries []wordListEntry `json:"entries"`
 }
 
 // loadedWordLists holds every word list parsed at startup, in directory order.
 var loadedWordLists []wordList
+var wordListEntryByWord map[string]wordListEntry
 
 func init() {
 	entries, err := wordListsFS.ReadDir("wordlists")
@@ -45,6 +56,20 @@ func init() {
 		wl.Slug = strings.TrimSuffix(entry.Name(), ".json")
 		loadedWordLists = append(loadedWordLists, wl)
 	}
+	wordListEntryByWord = make(map[string]wordListEntry)
+	for _, wl := range loadedWordLists {
+		for _, entry := range wl.Entries {
+			entry.Word = strings.TrimSpace(entry.Word)
+			if entry.Word == "" {
+				log.Fatalf("wordlists: %s contains an entry with an empty word", wl.Slug)
+			}
+			if existing, ok := wordListEntryByWord[entry.Word]; ok {
+				wordListEntryByWord[entry.Word] = mergeWordListEntry(existing, entry, entry.Word, wl.Slug)
+				continue
+			}
+			wordListEntryByWord[entry.Word] = entry
+		}
+	}
 	log.Printf("Loaded %d word list(s)", len(loadedWordLists))
 }
 
@@ -59,12 +84,12 @@ func apiGetWordLists(db *sql.DB) http.HandlerFunc {
 		}
 		items := make([]item, len(loadedWordLists))
 		for i, wl := range loadedWordLists {
-			inDB, err := wordsInfoInDB(db, wl.Words)
+			inDB, err := wordsInfoInDB(db, wordListWords(wl.Entries))
 			if err != nil {
 				http.Error(w, err.Error(), http.StatusInternalServerError)
 				return
 			}
-			items[i] = item{Slug: wl.Slug, Name: wl.Name, Total: len(wl.Words), InLexicon: len(inDB)}
+			items[i] = item{Slug: wl.Slug, Name: wl.Name, Total: len(wl.Entries), InLexicon: len(inDB)}
 		}
 		w.Header().Set("Content-Type", "application/json")
 		json.NewEncoder(w).Encode(items)
@@ -89,23 +114,60 @@ func apiGetWordListWords(db *sql.DB) http.HandlerFunc {
 			return
 		}
 
-		inDB, err := wordsInfoInDB(db, wl.Words)
+		inDB, err := wordsInfoInDB(db, wordListWords(wl.Entries))
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
-		available := make([]string, 0, len(wl.Words))
-		for _, word := range wl.Words {
-			if _, exists := inDB[word]; !exists {
-				available = append(available, word)
+		availableEntries := make([]wordListEntry, 0, len(wl.Entries))
+		availableWords := make([]string, 0, len(wl.Entries))
+		for _, entry := range wl.Entries {
+			if _, exists := inDB[entry.Word]; !exists {
+				availableEntries = append(availableEntries, entry)
+				availableWords = append(availableWords, entry.Word)
 			}
 		}
 
 		w.Header().Set("Content-Type", "application/json")
 		json.NewEncoder(w).Encode(map[string]any{
-			"words":      available,
-			"total":      len(wl.Words),
-			"in_lexicon": len(wl.Words) - len(available),
+			"words":      availableWords,
+			"entries":    availableEntries,
+			"total":      len(wl.Entries),
+			"in_lexicon": len(wl.Entries) - len(availableEntries),
 		})
 	}
+}
+
+func wordListWords(entries []wordListEntry) []string {
+	words := make([]string, 0, len(entries))
+	for _, entry := range entries {
+		words = append(words, entry.Word)
+	}
+	return words
+}
+
+func wordListLookup(word string) (wordListEntry, bool) {
+	entry, ok := wordListEntryByWord[word]
+	return entry, ok
+}
+
+func mergeWordListEntry(existing, incoming wordListEntry, word, source string) wordListEntry {
+	merged := existing
+	mergeField := func(field string, dst *string, src string) {
+		src = strings.TrimSpace(src)
+		if *dst == "" {
+			*dst = src
+			return
+		}
+		if src != "" && *dst != src {
+			log.Printf("wordlists: conflicting %s for %q in %s; keeping first value %q over %q", field, word, source, *dst, src)
+		}
+	}
+	mergeField("reading", &merged.Reading, incoming.Reading)
+	mergeField("part_of_speech", &merged.PartOfSpeech, incoming.PartOfSpeech)
+	mergeField("meaning", &merged.Meaning, incoming.Meaning)
+	mergeField("example_jp", &merged.ExampleJP, incoming.ExampleJP)
+	mergeField("example_en", &merged.ExampleEN, incoming.ExampleEN)
+	mergeField("suggested_image_url", &merged.SuggestedImageURL, incoming.SuggestedImageURL)
+	return merged
 }

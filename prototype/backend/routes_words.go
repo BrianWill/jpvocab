@@ -3,9 +3,17 @@ package main
 import (
 	"database/sql"
 	"encoding/json"
+	"errors"
+	"io"
+	"mime"
 	"net/http"
+	"net/url"
+	"os"
+	"path"
+	"path/filepath"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/go-chi/chi/v5"
 )
@@ -109,6 +117,55 @@ func apiDeleteWord(db *sql.DB) http.HandlerFunc {
 	}
 }
 
+func apiDownloadWordImage(db *sql.DB) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		id, err := strconv.ParseInt(chi.URLParam(r, "id"), 10, 64)
+		if err != nil {
+			http.Error(w, "invalid id", http.StatusBadRequest)
+			return
+		}
+		var body struct {
+			URL string `json:"url"`
+		}
+		if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+			http.Error(w, "bad request", http.StatusBadRequest)
+			return
+		}
+		body.URL = strings.TrimSpace(body.URL)
+		if body.URL == "" {
+			http.Error(w, "missing url", http.StatusBadRequest)
+			return
+		}
+
+		info, err := getWordImageInfo(db, id)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		if info == nil {
+			http.Error(w, "word not found", http.StatusNotFound)
+			return
+		}
+
+		imagePath, err := downloadWordImage(r, info.Word, body.URL)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusBadGateway)
+			return
+		}
+		if err := updateWordImagePath(db, id, imagePath); err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+
+		if info.ImagePath != nil && *info.ImagePath != "" && *info.ImagePath != imagePath {
+			_ = os.Remove(filepath.Join("static", filepath.FromSlash(*info.ImagePath)))
+		}
+
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(map[string]string{"image_path": imagePath})
+	}
+}
+
 func apiRerollMeaning() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		var body struct {
@@ -197,6 +254,112 @@ func apiAutofillWord(db *sql.DB) http.HandlerFunc {
 			"example_en":     filled.ExampleEN,
 			"kanji_data":     kd,
 		})
+	}
+}
+
+func downloadWordImage(r *http.Request, word, imageURL string) (string, error) {
+	const maxImageBytes = 10 << 20
+
+	req, err := http.NewRequestWithContext(r.Context(), http.MethodGet, imageURL, nil)
+	if err != nil {
+		return "", err
+	}
+
+	client := &http.Client{Timeout: 20 * time.Second}
+	res, err := client.Do(req)
+	if err != nil {
+		return "", err
+	}
+	defer res.Body.Close()
+
+	if res.StatusCode < 200 || res.StatusCode >= 300 {
+		return "", errors.New("image download failed: " + res.Status)
+	}
+
+	data, err := io.ReadAll(io.LimitReader(res.Body, maxImageBytes+1))
+	if err != nil {
+		return "", err
+	}
+	if len(data) > maxImageBytes {
+		return "", errors.New("image download failed: file is too large")
+	}
+
+	ext := imageExtension(res.Header.Get("Content-Type"), imageURL, data)
+	if ext == "" {
+		return "", errors.New("image download failed: unsupported image format")
+	}
+
+	dir := filepath.Join("static", "images", "words")
+	if err := os.MkdirAll(dir, 0o755); err != nil {
+		return "", err
+	}
+
+	tmp, err := os.CreateTemp(dir, "download-*"+ext)
+	if err != nil {
+		return "", err
+	}
+	tmpName := tmp.Name()
+	defer os.Remove(tmpName)
+
+	if _, err := tmp.Write(data); err != nil {
+		tmp.Close()
+		return "", err
+	}
+	if err := tmp.Close(); err != nil {
+		return "", err
+	}
+
+	fileName := word + ext
+	finalFSPath := filepath.Join(dir, fileName)
+	if _, err := os.Stat(finalFSPath); err == nil {
+		if err := os.Remove(finalFSPath); err != nil {
+			return "", err
+		}
+	} else if !errors.Is(err, os.ErrNotExist) {
+		return "", err
+	}
+	if err := os.Rename(tmpName, finalFSPath); err != nil {
+		return "", err
+	}
+
+	return path.Join("images", "words", fileName), nil
+}
+
+func imageExtension(contentType, rawURL string, data []byte) string {
+	if ext := extensionForContentType(contentType); ext != "" {
+		return ext
+	}
+	if ext := extensionForContentType(http.DetectContentType(data)); ext != "" {
+		return ext
+	}
+	parsed, err := url.Parse(rawURL)
+	if err != nil {
+		return ""
+	}
+	switch strings.ToLower(filepath.Ext(parsed.Path)) {
+	case ".jpg", ".jpeg", ".png", ".webp", ".gif":
+		return strings.ToLower(filepath.Ext(parsed.Path))
+	default:
+		return ""
+	}
+}
+
+func extensionForContentType(contentType string) string {
+	mediaType, _, err := mime.ParseMediaType(contentType)
+	if err != nil {
+		mediaType = strings.TrimSpace(strings.Split(contentType, ";")[0])
+	}
+	switch strings.ToLower(mediaType) {
+	case "image/jpeg":
+		return ".jpg"
+	case "image/png":
+		return ".png"
+	case "image/webp":
+		return ".webp"
+	case "image/gif":
+		return ".gif"
+	default:
+		return ""
 	}
 }
 

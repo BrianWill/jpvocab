@@ -14,10 +14,6 @@ This file is random notes of possible features and bug fixes.
         - marble animals? 
     - shadcn
 
-- the word lists should have pre-filled info (and images?) in their json
-    - when any word is added, the words from the lists should be checked to see if there is already info available
-        - they could also have a url to a suggested image to acquire (so we don't have to include the images in the repo)
-
 - settings menu
     - preferred AI provider/model
         - only applicable if the user has multiple available keys

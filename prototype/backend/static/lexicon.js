@@ -102,6 +102,14 @@ export async function reloadWords() {
   updateWordCount();
 }
 
+export function updateWordImagePath(wordId, imagePath) {
+  const word = words.find(w => w.id === wordId);
+  if (!word) return;
+  word.imagePath = imagePath;
+  const activeBtn = document.querySelector('.btn-sort--active');
+  renderTable(getSortedWords(activeBtn.dataset.sort, activeBtn.dataset.dir || 'desc'));
+}
+
 async function init() {
   const [wordsData, providers] = await Promise.all([
     fetch('/api/words').then(r => r.json()),
@@ -327,8 +335,9 @@ async function addWordFromList(slug, name, total, inLexicon, btn, item) {
     const idx = Math.floor(Math.random() * c.remaining.length);
     const word = c.remaining.splice(idx, 1)[0];
 
+    const displayText = word + ' (from the ' + name + ' word list)';
     const textarea = document.getElementById('add-words-input');
-    textarea.value = textarea.value ? word + '\n' + textarea.value : word;
+    textarea.value = textarea.value ? displayText + '\n' + textarea.value : displayText;
     textarea.scrollTop = 0;
     setAddModalStatus('One random word added from the ' + name + ' list.');
     item.dataset.tooltip = listItemTooltip(slug, c.total, c.inLexicon);
@@ -345,6 +354,7 @@ initWordListSidebar();
 // --- Add words modal ---
 function openAddModal() {
   document.getElementById('add-words-input').value = '';
+  document.getElementById('add-modal-status').textContent = '';
   document.getElementById('add-modal-backdrop').classList.remove('hidden');
   document.getElementById('add-words-input').focus();
 }
@@ -352,4 +362,3 @@ function openAddModal() {
 export function closeAddModal() {
   document.getElementById('add-modal-backdrop').classList.add('hidden');
 }
-

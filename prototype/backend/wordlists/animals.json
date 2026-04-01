@@ -1,9 +1,293 @@
 {
-    "name": "Animals",
-    "words": [
-        "猫", "犬", "魚", "鳥", "馬", "牛", "豚", "羊", "兎", "ねずみ",
-        "ライオン", "トラ", "ゾウ", "サル", "クマ", "キリン", "ペンギン",
-        "カメ", "ヘビ", "カエル", "鷹", "鯨", "イルカ", "タコ", "蜂",
-        "蝶", "虫", "鹿", "狼", "狐", "鶏", "アリ"
-    ]
+  "name": "Animals",
+  "entries": [
+    {
+      "word": "猫",
+      "reading": "ねこ",
+      "part_of_speech": "noun",
+      "meaning": "cat",
+      "example_jp": "猫が窓辺で昼寝している。",
+      "example_en": "The cat is napping by the window.",
+      "suggested_image_url": "https://commons.wikimedia.org/wiki/Special:FilePath/A_cat_%E7%8C%AB_(54074907433).jpg"
+    },
+    {
+      "word": "犬",
+      "reading": "いぬ",
+      "part_of_speech": "noun",
+      "meaning": "dog",
+      "example_jp": "公園で犬と散歩した。",
+      "example_en": "I took the dog for a walk in the park.",
+      "suggested_image_url": "https://commons.wikimedia.org/wiki/Special:FilePath/%E4%B8%AD%E5%8D%8E%E7%94%B0%E5%9B%AD%E7%8A%AC.jpg"
+    },
+    {
+      "word": "魚",
+      "reading": "さかな",
+      "part_of_speech": "noun",
+      "meaning": "fish",
+      "example_jp": "池で小さな魚が泳いでいる。",
+      "example_en": "Small fish are swimming in the pond.",
+      "suggested_image_url": "https://commons.wikimedia.org/wiki/Special:FilePath/Fish_(3197811987).jpg"
+    },
+    {
+      "word": "鳥",
+      "reading": "とり",
+      "part_of_speech": "noun",
+      "meaning": "bird",
+      "example_jp": "朝、鳥の声で目が覚めた。",
+      "example_en": "I woke up to the sound of birds this morning.",
+      "suggested_image_url": "https://commons.wikimedia.org/wiki/Special:FilePath/Bird_(5522301529).jpg"
+    },
+    {
+      "word": "馬",
+      "reading": "うま",
+      "part_of_speech": "noun",
+      "meaning": "horse",
+      "example_jp": "馬が草を食べている。",
+      "example_en": "The horse is eating grass.",
+      "suggested_image_url": "https://commons.wikimedia.org/wiki/Special:FilePath/Horse_(3682341767).jpg"
+    },
+    {
+      "word": "牛",
+      "reading": "うし",
+      "part_of_speech": "noun",
+      "meaning": "cow; cattle",
+      "example_jp": "牧場で牛をたくさん見た。",
+      "example_en": "I saw many cows at the ranch.",
+      "suggested_image_url": "https://commons.wikimedia.org/wiki/Special:FilePath/Cow_(10598).png"
+    },
+    {
+      "word": "豚",
+      "reading": "ぶた",
+      "part_of_speech": "noun",
+      "meaning": "pig",
+      "example_jp": "豚が泥の中で休んでいる。",
+      "example_en": "The pig is resting in the mud.",
+      "suggested_image_url": "https://commons.wikimedia.org/wiki/Special:FilePath/A_Pig.jpg"
+    },
+    {
+      "word": "羊",
+      "reading": "ひつじ",
+      "part_of_speech": "noun",
+      "meaning": "sheep",
+      "example_jp": "丘の上で羊が群れていた。",
+      "example_en": "A flock of sheep was gathered on the hill.",
+      "suggested_image_url": "https://commons.wikimedia.org/wiki/Special:FilePath/Soay_sheep_lamb.png"
+    },
+    {
+      "word": "兎",
+      "reading": "うさぎ",
+      "part_of_speech": "noun",
+      "meaning": "rabbit",
+      "example_jp": "白い兎がぴょんと跳ねた。",
+      "example_en": "A white rabbit gave a little hop.",
+      "suggested_image_url": "https://commons.wikimedia.org/wiki/Special:FilePath/Rabbit_-_1.jpg"
+    },
+    {
+      "word": "ねずみ",
+      "reading": "ねずみ",
+      "part_of_speech": "noun",
+      "meaning": "mouse; rat",
+      "example_jp": "小さなねずみが穴から出てきた。",
+      "example_en": "A small mouse came out of the hole.",
+      "suggested_image_url": "https://loremflickr.com/640/480/mouse"
+    },
+    {
+      "word": "ライオン",
+      "reading": "ライオン",
+      "part_of_speech": "noun",
+      "meaning": "lion",
+      "example_jp": "動物園でライオンの親子を見た。",
+      "example_en": "I saw a lion parent and cub at the zoo.",
+      "suggested_image_url": "https://loremflickr.com/640/480/lion"
+    },
+    {
+      "word": "トラ",
+      "reading": "トラ",
+      "part_of_speech": "noun",
+      "meaning": "tiger",
+      "example_jp": "トラのしま模様はとても目立つ。",
+      "example_en": "A tiger's stripes stand out clearly.",
+      "suggested_image_url": "https://loremflickr.com/640/480/tiger"
+    },
+    {
+      "word": "ゾウ",
+      "reading": "ゾウ",
+      "part_of_speech": "noun",
+      "meaning": "elephant",
+      "example_jp": "ゾウが長い鼻で水をかけた。",
+      "example_en": "The elephant sprayed water with its long trunk.",
+      "suggested_image_url": "https://commons.wikimedia.org/wiki/Special:FilePath/Elephant_(27484371383).jpg"
+    },
+    {
+      "word": "サル",
+      "reading": "サル",
+      "part_of_speech": "noun",
+      "meaning": "monkey",
+      "example_jp": "木の上でサルが遊んでいる。",
+      "example_en": "Monkeys are playing in the tree.",
+      "suggested_image_url": "https://loremflickr.com/640/480/monkey"
+    },
+    {
+      "word": "クマ",
+      "reading": "クマ",
+      "part_of_speech": "noun",
+      "meaning": "bear",
+      "example_jp": "森でクマに会わないように気をつけた。",
+      "example_en": "We were careful not to run into a bear in the forest.",
+      "suggested_image_url": "https://loremflickr.com/640/480/bear"
+    },
+    {
+      "word": "キリン",
+      "reading": "キリン",
+      "part_of_speech": "noun",
+      "meaning": "giraffe",
+      "example_jp": "キリンは首がとても長い。",
+      "example_en": "A giraffe has a very long neck.",
+      "suggested_image_url": "https://commons.wikimedia.org/wiki/Special:FilePath/A_Giraffe.jpg"
+    },
+    {
+      "word": "ペンギン",
+      "reading": "ペンギン",
+      "part_of_speech": "noun",
+      "meaning": "penguin",
+      "example_jp": "ペンギンが氷の上を歩いていた。",
+      "example_en": "A penguin was walking across the ice.",
+      "suggested_image_url": "https://commons.wikimedia.org/wiki/Special:FilePath/A_penguin.jpg"
+    },
+    {
+      "word": "カメ",
+      "reading": "カメ",
+      "part_of_speech": "noun",
+      "meaning": "turtle",
+      "example_jp": "カメがゆっくり池に入った。",
+      "example_en": "The turtle slowly went into the pond.",
+      "suggested_image_url": "https://loremflickr.com/640/480/turtle"
+    },
+    {
+      "word": "ヘビ",
+      "reading": "ヘビ",
+      "part_of_speech": "noun",
+      "meaning": "snake",
+      "example_jp": "道のそばでヘビを見かけた。",
+      "example_en": "I spotted a snake by the path.",
+      "suggested_image_url": "https://loremflickr.com/640/480/snake"
+    },
+    {
+      "word": "カエル",
+      "reading": "カエル",
+      "part_of_speech": "noun",
+      "meaning": "frog",
+      "example_jp": "雨のあとでカエルが鳴いていた。",
+      "example_en": "Frogs were croaking after the rain.",
+      "suggested_image_url": "https://loremflickr.com/640/480/frog"
+    },
+    {
+      "word": "鷹",
+      "reading": "たか",
+      "part_of_speech": "noun",
+      "meaning": "hawk",
+      "example_jp": "空高く鷹が輪を描いていた。",
+      "example_en": "A hawk was circling high in the sky.",
+      "suggested_image_url": "https://loremflickr.com/640/480/hawk"
+    },
+    {
+      "word": "鯨",
+      "reading": "くじら",
+      "part_of_speech": "noun",
+      "meaning": "whale",
+      "example_jp": "海で大きな鯨を見て驚いた。",
+      "example_en": "I was amazed to see a huge whale at sea.",
+      "suggested_image_url": "https://commons.wikimedia.org/wiki/Special:FilePath/Whale_(PSF).png"
+    },
+    {
+      "word": "イルカ",
+      "reading": "イルカ",
+      "part_of_speech": "noun",
+      "meaning": "dolphin",
+      "example_jp": "イルカが水面から跳び上がった。",
+      "example_en": "A dolphin leaped out of the water.",
+      "suggested_image_url": "https://commons.wikimedia.org/wiki/Special:FilePath/Dolphin_(15859977978).jpg"
+    },
+    {
+      "word": "タコ",
+      "reading": "タコ",
+      "part_of_speech": "noun",
+      "meaning": "octopus",
+      "example_jp": "市場で新鮮なタコを買った。",
+      "example_en": "I bought a fresh octopus at the market.",
+      "suggested_image_url": "https://loremflickr.com/640/480/octopus"
+    },
+    {
+      "word": "蜂",
+      "reading": "はち",
+      "part_of_speech": "noun",
+      "meaning": "bee",
+      "example_jp": "蜂が花のまわりを飛んでいる。",
+      "example_en": "A bee is flying around the flowers.",
+      "suggested_image_url": "https://loremflickr.com/640/480/bee"
+    },
+    {
+      "word": "蝶",
+      "reading": "ちょう",
+      "part_of_speech": "noun",
+      "meaning": "butterfly",
+      "example_jp": "庭で蝶がひらひら舞っていた。",
+      "example_en": "A butterfly fluttered around the garden.",
+      "suggested_image_url": "https://loremflickr.com/640/480/butterfly"
+    },
+    {
+      "word": "虫",
+      "reading": "むし",
+      "part_of_speech": "noun",
+      "meaning": "insect; bug",
+      "example_jp": "夏になると虫の声がよく聞こえる。",
+      "example_en": "You can hear insects clearly in summer.",
+      "suggested_image_url": "https://loremflickr.com/640/480/insect"
+    },
+    {
+      "word": "鹿",
+      "reading": "しか",
+      "part_of_speech": "noun",
+      "meaning": "deer",
+      "example_jp": "公園で鹿が草を食べていた。",
+      "example_en": "A deer was grazing in the park.",
+      "suggested_image_url": "https://loremflickr.com/640/480/deer"
+    },
+    {
+      "word": "狼",
+      "reading": "おおかみ",
+      "part_of_speech": "noun",
+      "meaning": "wolf",
+      "example_jp": "物語に狼が登場する。",
+      "example_en": "A wolf appears in the story.",
+      "suggested_image_url": "https://loremflickr.com/640/480/wolf"
+    },
+    {
+      "word": "狐",
+      "reading": "きつね",
+      "part_of_speech": "noun",
+      "meaning": "fox",
+      "example_jp": "山道で狐を見かけた。",
+      "example_en": "I spotted a fox on the mountain trail.",
+      "suggested_image_url": "https://commons.wikimedia.org/wiki/Special:FilePath/Fox_(43847277304).jpg"
+    },
+    {
+      "word": "鶏",
+      "reading": "にわとり",
+      "part_of_speech": "noun",
+      "meaning": "chicken; hen",
+      "example_jp": "朝早く鶏が鳴いた。",
+      "example_en": "A chicken crowed early in the morning.",
+      "suggested_image_url": "https://loremflickr.com/640/480/chicken"
+    },
+    {
+      "word": "アリ",
+      "reading": "アリ",
+      "part_of_speech": "noun",
+      "meaning": "ant",
+      "example_jp": "アリが列を作って歩いていた。",
+      "example_en": "Ants were walking in a line.",
+      "suggested_image_url": "https://loremflickr.com/640/480/ant"
+    }
+  ]
 }

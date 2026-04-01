@@ -14,6 +14,7 @@ type existingWordInfo struct {
 	Meaning        string
 	ExampleJP      string
 	ExampleEN      string
+	ImagePath      *string
 	DrillCount     int // correct answer count
 	DrillIncorrect int
 	DrillTarget    int // when correct answers meets or exceeds this number, the word is "inactive"
@@ -147,7 +148,7 @@ func wordsInfoInDB(db *sql.DB, words []string) (map[string]existingWordInfo, err
 		args[i] = w
 	}
 	rows, err := db.Query(
-		"SELECT id, word, reading, part_of_speech, meaning, example_jp, example_en, drill_count, incorrect_count, drill_target FROM words WHERE word IN ("+placeholders+")",
+		"SELECT id, word, reading, part_of_speech, meaning, example_jp, example_en, image_path, drill_count, incorrect_count, drill_target FROM words WHERE word IN ("+placeholders+")",
 		args...,
 	)
 	if err != nil {
@@ -158,7 +159,7 @@ func wordsInfoInDB(db *sql.DB, words []string) (map[string]existingWordInfo, err
 	for rows.Next() {
 		var info existingWordInfo
 		var word string
-		if err := rows.Scan(&info.ID, &word, &info.Reading, &info.PartOfSpeech, &info.Meaning, &info.ExampleJP, &info.ExampleEN, &info.DrillCount, &info.DrillIncorrect, &info.DrillTarget); err != nil {
+		if err := rows.Scan(&info.ID, &word, &info.Reading, &info.PartOfSpeech, &info.Meaning, &info.ExampleJP, &info.ExampleEN, &info.ImagePath, &info.DrillCount, &info.DrillIncorrect, &info.DrillTarget); err != nil {
 			return nil, err
 		}
 		result[word] = info
@@ -169,6 +170,28 @@ func wordsInfoInDB(db *sql.DB, words []string) (map[string]existingWordInfo, err
 // updateWordTarget updates only the drill_target for a word by ID.
 func updateWordTarget(db *sql.DB, id int64, target int) error {
 	_, err := db.Exec("UPDATE words SET drill_target=? WHERE id=?", target, id)
+	return err
+}
+
+type wordImageInfo struct {
+	Word      string
+	ImagePath *string
+}
+
+func getWordImageInfo(db *sql.DB, id int64) (*wordImageInfo, error) {
+	var info wordImageInfo
+	err := db.QueryRow("SELECT word, image_path FROM words WHERE id = ?", id).Scan(&info.Word, &info.ImagePath)
+	if err == sql.ErrNoRows {
+		return nil, nil
+	}
+	if err != nil {
+		return nil, err
+	}
+	return &info, nil
+}
+
+func updateWordImagePath(db *sql.DB, id int64, imagePath string) error {
+	_, err := db.Exec("UPDATE words SET image_path=? WHERE id=?", imagePath, id)
 	return err
 }
 

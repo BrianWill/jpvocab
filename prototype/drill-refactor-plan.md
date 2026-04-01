@@ -45,8 +45,8 @@ The persisted drill session snapshot now excludes derived completion flags and c
 
 ## Shared Logic Opportunities
 
-- Reuse or extract the numeric stepper helpers duplicated in `backend/static/drill.js` and `backend/static/common.js`.
-- Move shared filter constants to one place.
+- Reuse or extract the numeric stepper helpers duplicated in `backend/static/drill.js` and `backend/static/common.js`. Done.
+- Move shared filter constants to one place. Done.
 - Consider moving `timeAgo()` into a shared utility module if other pages will need the same formatting.
 
 ## Proposed File Split

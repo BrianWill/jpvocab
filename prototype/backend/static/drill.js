@@ -1,9 +1,7 @@
-import { populateWordTooltip, positionAnchoredWordTooltip, renderWordTooltipKanji } from './common.js';
+import { attachNumberStepper, DRILL_FILTER_KEYS, populateWordTooltip, positionAnchoredWordTooltip, renderWordTooltipKanji } from './common.js';
 import { renderReading } from './lexicon-utils.js';
 
-const FILTER_KEYS = ['katakana', 'verbs', 'nouns', 'other'];
 const DEFAULT_ROUND_SIZE = 10;
-const STEP_INTERVAL = 230;
 
 const els = {
   actionPrompt: document.getElementById('action-prompt'),
@@ -42,7 +40,7 @@ els.restartCloseBtn = els.restartBackdrop.querySelector('.modal-close');
 els.restartCancelBtn = els.restartBackdrop.querySelector('.btn-cancel');
 
 const state = {
-  activeFilters: new Set(FILTER_KEYS),
+  activeFilters: new Set(DRILL_FILTER_KEYS),
   currentWord: null,
   doneCount: 0,
   drillStartedAt: Date.now(),
@@ -59,7 +57,6 @@ const state = {
   sessionId: null,
   settingsMaxWords: null,
   sidebarItems: [],
-  stepTimer: null,
   words: [],
 };
 
@@ -75,7 +72,7 @@ function matchesFilter(w, f) {
 }
 
 function getFilteredWords() {
-  return state.words.filter(w => FILTER_KEYS.some(f => state.activeFilters.has(f) && matchesFilter(w, f)));
+  return state.words.filter(w => DRILL_FILTER_KEYS.some(f => state.activeFilters.has(f) && matchesFilter(w, f)));
 }
 
 function syncRestartFilterButtons() {
@@ -93,7 +90,7 @@ function updateFilterHint() {
   }
 
   const count = getFilteredWords().length;
-  els.filterHint.textContent = state.activeFilters.size === FILTER_KEYS.length
+  els.filterHint.textContent = state.activeFilters.size === DRILL_FILTER_KEYS.length
     ? 'All ' + count + ' words'
     : count + ' of ' + state.words.length + ' words';
   els.filterHint.classList.remove('error');
@@ -432,29 +429,6 @@ async function init() {
   renderDrill();
 }
 
-function startStep(fn, ...args) {
-  fn(...args);
-  state.stepTimer = setInterval(() => fn(...args), STEP_INTERVAL);
-}
-
-function stopStep() {
-  clearInterval(state.stepTimer);
-  state.stepTimer = null;
-}
-
-function adjustRestart(id, delta) {
-  const input = document.getElementById(id);
-  const val = parseInt(input.value, 10) || 5;
-  input.value = delta > 0
-    ? Math.min(995, Math.floor(val / 5) * 5 + 5)
-    : Math.max(5, Math.ceil(val / 5) * 5 - 5);
-}
-
-function capRestartInput(input) {
-  if (input.value.length > 3) input.value = input.value.slice(0, 3);
-  if (input.value === '0') input.value = '1';
-}
-
 function openRestartModal() {
   els.restartTotalWords.value = state.settingsMaxWords;
   els.restartRoundSize.value = state.roundSize;
@@ -543,22 +517,5 @@ els.restartCloseBtn.addEventListener('click', closeRestartModal);
 els.restartCancelBtn.addEventListener('click', closeRestartModal);
 els.restartStartBtn.addEventListener('click', confirmRestart);
 
-const totalInput = els.restartTotalWords;
-const [totalMinus, totalPlus] = totalInput.closest('.num-stepper').querySelectorAll('.num-btn');
-totalMinus.addEventListener('mousedown', () => startStep(adjustRestart, 'restart-total-words', -5));
-totalMinus.addEventListener('mouseup', stopStep);
-totalMinus.addEventListener('mouseleave', stopStep);
-totalPlus.addEventListener('mousedown', () => startStep(adjustRestart, 'restart-total-words', 5));
-totalPlus.addEventListener('mouseup', stopStep);
-totalPlus.addEventListener('mouseleave', stopStep);
-totalInput.addEventListener('input', () => capRestartInput(totalInput));
-
-const roundInput = els.restartRoundSize;
-const [roundMinus, roundPlus] = roundInput.closest('.num-stepper').querySelectorAll('.num-btn');
-roundMinus.addEventListener('mousedown', () => startStep(adjustRestart, 'restart-round-size', -5));
-roundMinus.addEventListener('mouseup', stopStep);
-roundMinus.addEventListener('mouseleave', stopStep);
-roundPlus.addEventListener('mousedown', () => startStep(adjustRestart, 'restart-round-size', 5));
-roundPlus.addEventListener('mouseup', stopStep);
-roundPlus.addEventListener('mouseleave', stopStep);
-roundInput.addEventListener('input', () => capRestartInput(roundInput));
+attachNumberStepper(els.restartTotalWords);
+attachNumberStepper(els.restartRoundSize);

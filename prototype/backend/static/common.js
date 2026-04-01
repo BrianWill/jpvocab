@@ -1,29 +1,54 @@
 // ── Settings modal step helpers ────────────────────────────────────────────
-const SETTINGS_STEP_INTERVAL = 230;
-let _settingsStepTimer = null;
-function startSettingsStep(fn, ...args) {
-  fn(...args);
-  _settingsStepTimer = setInterval(() => fn(...args), SETTINGS_STEP_INTERVAL);
-}
-function stopSettingsStep() {
-  clearInterval(_settingsStepTimer);
-  _settingsStepTimer = null;
-}
-function adjustSettingsInput(id, delta) {
-  const input = document.getElementById(id);
+const STEPPER_INTERVAL = 230;
+
+function adjustStepperInput(input, delta) {
   if (!input) return;
   const val = parseInt(input.value, 10) || 5;
   input.value = delta > 0
     ? Math.min(995, Math.floor(val / 5) * 5 + 5)
     : Math.max(5, Math.ceil(val / 5) * 5 - 5);
 }
-function capSettingsInput(input) {
+
+function capStepperInput(input) {
   if (input.value.length > 3) input.value = input.value.slice(0, 3);
   if (input.value === '0') input.value = '1';
 }
 
+export function attachNumberStepper(input, options = {}) {
+  if (!input) return;
+
+  const { onChange, onInput } = options;
+  const [minusBtn, plusBtn] = input.closest('.num-stepper').querySelectorAll('.num-btn');
+  let stepTimer = null;
+
+  const stopStep = () => {
+    clearInterval(stepTimer);
+    stepTimer = null;
+  };
+
+  const startStep = delta => {
+    adjustStepperInput(input, delta);
+    onChange?.();
+    stepTimer = setInterval(() => {
+      adjustStepperInput(input, delta);
+      onChange?.();
+    }, STEPPER_INTERVAL);
+  };
+
+  minusBtn.addEventListener('mousedown', () => startStep(-5));
+  minusBtn.addEventListener('mouseup', stopStep);
+  minusBtn.addEventListener('mouseleave', stopStep);
+  plusBtn.addEventListener('mousedown', () => startStep(5));
+  plusBtn.addEventListener('mouseup', stopStep);
+  plusBtn.addEventListener('mouseleave', stopStep);
+  input.addEventListener('input', () => {
+    capStepperInput(input);
+    onInput?.();
+  });
+}
+
 // ── Settings modal ─────────────────────────────────────────────────────────
-const SETTINGS_FILTER_KEYS = ['katakana', 'verbs', 'nouns', 'other'];
+export const DRILL_FILTER_KEYS = ['katakana', 'verbs', 'nouns', 'other'];
 
 function injectSettingsModal() {
   if (document.getElementById('settings-modal-backdrop')) return;
@@ -112,7 +137,7 @@ function initializeSettings() {
   saveBtn?.addEventListener('click', async () => {
     const totalVal = parseInt(document.getElementById('settings-total-words')?.value, 10);
     const roundVal = parseInt(document.getElementById('settings-round-size')?.value, 10);
-    const wordTypes = SETTINGS_FILTER_KEYS.filter(f =>
+    const wordTypes = DRILL_FILTER_KEYS.filter(f =>
       settingsModal.querySelector(`[data-setting-filter="${f}"]`)?.classList.contains('active')
     );
     if (wordTypes.length === 0) return;
@@ -137,30 +162,18 @@ function initializeSettings() {
   // Stepper buttons — mark dirty on adjust; inputs mark dirty on manual edit
   const totalInput = document.getElementById('settings-total-words');
   if (totalInput) {
-    const [tMinus, tPlus] = totalInput.closest('.num-stepper').querySelectorAll('.num-btn');
-    tMinus.addEventListener('mousedown', () => startSettingsStep(adjustSettingsInput, 'settings-total-words', -5));
-    tMinus.addEventListener('mouseup', stopSettingsStep);
-    tMinus.addEventListener('mouseleave', stopSettingsStep);
-    tPlus.addEventListener('mousedown', () => startSettingsStep(adjustSettingsInput, 'settings-total-words', 5));
-    tPlus.addEventListener('mouseup', stopSettingsStep);
-    tPlus.addEventListener('mouseleave', stopSettingsStep);
-    totalInput.addEventListener('input', () => { capSettingsInput(totalInput); setDirty(); });
-    tMinus.addEventListener('click', setDirty);
-    tPlus.addEventListener('click', setDirty);
+    attachNumberStepper(totalInput, {
+      onChange: setDirty,
+      onInput: setDirty,
+    });
   }
 
   const roundInput = document.getElementById('settings-round-size');
   if (roundInput) {
-    const [rMinus, rPlus] = roundInput.closest('.num-stepper').querySelectorAll('.num-btn');
-    rMinus.addEventListener('mousedown', () => startSettingsStep(adjustSettingsInput, 'settings-round-size', -5));
-    rMinus.addEventListener('mouseup', stopSettingsStep);
-    rMinus.addEventListener('mouseleave', stopSettingsStep);
-    rPlus.addEventListener('mousedown', () => startSettingsStep(adjustSettingsInput, 'settings-round-size', 5));
-    rPlus.addEventListener('mouseup', stopSettingsStep);
-    rPlus.addEventListener('mouseleave', stopSettingsStep);
-    roundInput.addEventListener('input', () => { capSettingsInput(roundInput); setDirty(); });
-    rMinus.addEventListener('click', setDirty);
-    rPlus.addEventListener('click', setDirty);
+    attachNumberStepper(roundInput, {
+      onChange: setDirty,
+      onInput: setDirty,
+    });
   }
 }
 

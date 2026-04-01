@@ -120,10 +120,94 @@ function timeAgo(date) {
   return day + ' day' + (day === 1 ? '' : 's') + ' ago';
 }
 
-function buildRound() {
-  const slots = Math.max(0, state.roundSize - state.redo.length);
-  const picked = state.pool.splice(0, slots);
-  return [...state.redo, ...picked];
+function createSidebarItems(words, redoSet = new Set()) {
+  return words.map(word => ({
+    word,
+    status: redoSet.has(word.word) ? 'unseen-redo' : 'unseen',
+  }));
+}
+
+function applySidebarAnswer(sidebarItems, word, knew) {
+  const status = knew ? 'known flash-known' : 'missed flash-missed';
+  let found = false;
+  const nextItems = sidebarItems.map(item => {
+    const baseStatus = item.status.replace(/\sflash-(known|missed)\b/g, '');
+    if (item.word.word !== word.word) {
+      return baseStatus === item.status ? item : { ...item, status: baseStatus };
+    }
+    found = true;
+    return { ...item, word, status };
+  });
+  if (!found) nextItems.push({ word, status });
+  return nextItems;
+}
+
+function isSessionComplete(sessionState) {
+  return !sessionState.currentWord &&
+    sessionState.remaining.length === 0 &&
+    sessionState.redo.length === 0 &&
+    sessionState.pool.length === 0;
+}
+
+function buildRoundState(sessionState) {
+  const slots = Math.max(0, sessionState.roundSize - sessionState.redo.length);
+  const pool = [...sessionState.pool];
+  const picked = pool.splice(0, slots);
+  const remaining = [...sessionState.redo, ...picked];
+  const redoSet = new Set(sessionState.redo.map(word => word.word));
+
+  return {
+    pool,
+    redo: [],
+    remaining,
+    currentWord: remaining[0] || null,
+    sidebarItems: createSidebarItems(remaining, redoSet),
+  };
+}
+
+function getNextRevealState(sessionState, knew) {
+  if (!sessionState.currentWord) return null;
+
+  const answered = sessionState.currentWord;
+  const remaining = sessionState.remaining.slice(1);
+  const redo = knew ? [...sessionState.redo] : [...sessionState.redo, answered];
+  const nextState = {
+    doneCount: sessionState.doneCount + (knew ? 1 : 0),
+    lastAnswered: { word: answered, knew },
+    sidebarItems: applySidebarAnswer(sessionState.sidebarItems, answered, knew),
+    redo,
+    remaining,
+  };
+
+  if (remaining.length > 0) {
+    return {
+      ...nextState,
+      currentWord: remaining[0],
+      round: sessionState.round,
+      pool: sessionState.pool,
+    };
+  }
+
+  if (redo.length > 0 || sessionState.pool.length > 0) {
+    return {
+      ...nextState,
+      round: sessionState.round + 1,
+      ...buildRoundState({
+        ...sessionState,
+        doneCount: nextState.doneCount,
+        lastAnswered: nextState.lastAnswered,
+        pool: sessionState.pool,
+        redo,
+      }),
+    };
+  }
+
+  return {
+    ...nextState,
+    currentWord: null,
+    round: sessionState.round,
+    pool: sessionState.pool,
+  };
 }
 
 function updateStats() {
@@ -135,12 +219,25 @@ function updateStats() {
   els.progressBar.style.width = pct + '%';
 }
 
-function showWord() {
+function renderPrompt() {
+  els.sidebarList.querySelectorAll('.sidebar-item.current').forEach(el => el.classList.remove('current'));
+  if (isSessionComplete(state)) {
+    if (state.poolSize === 0) {
+      els.promptWordJp.textContent = 'No words to drill';
+      els.promptExampleJp.textContent = 'There are no active words available with current drill settings.';
+    } else {
+      els.promptWordJp.textContent = 'Done!';
+      els.promptExampleJp.textContent = 'All words cleared.';
+    }
+    els.actionPrompt.style.display = 'none';
+    return;
+  }
+
+  els.actionPrompt.style.display = '';
   if (!state.currentWord) return;
+
   els.promptWordJp.textContent = state.currentWord.word;
   els.promptExampleJp.textContent = state.currentWord.exampleJp;
-
-  els.sidebarList.querySelectorAll('.sidebar-item.current').forEach(el => el.classList.remove('current'));
   const item = els.sidebarList.querySelector('[data-id="' + state.currentWord.word + '"]');
   if (item) item.classList.add('current');
 }
@@ -182,40 +279,11 @@ function renderLastAnswered() {
   }
 }
 
-function renderCompleteState() {
-  els.promptWordJp.textContent = 'Done!';
-  els.promptExampleJp.textContent = 'All words cleared.';
-  els.actionPrompt.style.display = 'none';
-}
-
-function renderInProgressState() {
-  els.actionPrompt.style.display = '';
-}
-
-function addToSidebar(word, knew) {
-  const existing = state.sidebarItems.find(item => item.word.word === word.word);
-  const status = knew ? 'known flash-known' : 'missed flash-missed';
-  if (existing) {
-    existing.word = word;
-    existing.status = status;
-    return;
-  }
-  state.sidebarItems.push({ word, status });
-}
-
-function startNextRound() {
-  state.round++;
-  const redoSet = new Set(state.redo.map(w => w.word));
-  state.remaining = buildRound();
-  state.redo = [];
-  state.currentWord = state.remaining[0] || null;
-
-  const redoWords = state.remaining.filter(w => redoSet.has(w.word));
-  const newWords = state.remaining.filter(w => !redoSet.has(w.word));
-  state.sidebarItems = [...redoWords, ...newWords].map(word => ({
-    word,
-    status: redoSet.has(word.word) ? 'unseen-redo' : 'unseen',
-  }));
+function renderDrill() {
+  renderSidebar();
+  renderLastAnswered();
+  updateStats();
+  renderPrompt();
 }
 
 function getSessionState() {
@@ -235,7 +303,7 @@ function getSessionState() {
       status: item.status.replace(/\sflash-(known|missed)\b/g, ''),
     })),
     lastAnswered: state.lastAnswered,
-    completed: !state.currentWord && state.remaining.length === 0 && state.redo.length === 0 && state.pool.length === 0,
+    completed: isSessionComplete(state),
   };
 }
 
@@ -270,33 +338,8 @@ async function reveal(knew) {
   state.isSubmittingAnswer = true;
 
   const answered = state.currentWord;
-  state.remaining.shift();
-  if (knew) {
-    state.doneCount++;
-  } else {
-    state.redo.push(answered);
-  }
-
-  addToSidebar(answered, knew);
-  state.lastAnswered = { word: answered, knew };
-
-  if (state.remaining.length === 0) {
-    if (state.redo.length > 0 || state.pool.length > 0) {
-      startNextRound();
-      renderInProgressState();
-    } else {
-      state.currentWord = null;
-      renderCompleteState();
-    }
-  } else {
-    state.currentWord = state.remaining[0];
-    renderInProgressState();
-  }
-
-  renderSidebar();
-  renderLastAnswered();
-  updateStats();
-  showWord();
+  Object.assign(state, getNextRevealState(state, knew));
+  renderDrill();
 
   try {
     await postAnswer(answered.id, knew, getSessionState());
@@ -338,14 +381,7 @@ function restoreSession(session) {
     sessionState.activeFilters.forEach(f => state.activeFilters.add(f));
   }
   syncRestartFilterButtons();
-
-  if (sessionState.completed) renderCompleteState();
-  else renderInProgressState();
-
-  renderSidebar();
-  renderLastAnswered();
-  updateStats();
-  showWord();
+  renderDrill();
 }
 
 async function init() {
@@ -386,17 +422,11 @@ async function init() {
   state.maxPoolSize = Math.min(settings.maxWords, source.length);
   state.poolSize = state.maxPoolSize;
   state.pool = shuffle([...source]).slice(0, state.poolSize);
-  state.remaining = buildRound();
-  state.currentWord = state.remaining[0] || null;
-  state.sidebarItems = state.remaining.map(word => ({ word, status: 'unseen' }));
+  Object.assign(state, buildRoundState(state));
   state.lastAnswered = null;
 
   state.sessionId = await createSession(getSessionState());
-  renderInProgressState();
-  renderSidebar();
-  renderLastAnswered();
-  showWord();
-  updateStats();
+  renderDrill();
 }
 
 function startStep(fn, ...args) {
@@ -445,16 +475,10 @@ function restartDrill(totalWords, newRoundSize, sourceWords) {
   state.redo = [];
   state.doneCount = 0;
   state.drillStartedAt = Date.now();
-  state.remaining = buildRound();
-  state.currentWord = state.remaining[0] || null;
-  state.sidebarItems = state.remaining.map(word => ({ word, status: 'unseen' }));
+  Object.assign(state, buildRoundState(state));
   state.lastAnswered = null;
 
-  renderInProgressState();
-  renderSidebar();
-  renderLastAnswered();
-  updateStats();
-  showWord();
+  renderDrill();
 }
 
 async function confirmRestart() {

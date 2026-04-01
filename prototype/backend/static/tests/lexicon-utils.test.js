@@ -171,7 +171,7 @@ test('getSortedWords: type asc — alphabetical (godan-verb < i-adjective < noun
 
 test('getSortedWords: type desc — dir is ignored by the type branch, result same as asc', () => {
   // type sort uses a.type vs b.type without the asc flag, so dir has no effect on inter-type order
-  assert.deepEqual(wordNames(getSortedWords(words, 'type', 'desc')), ['B', 'D', 'A', 'C']);
+  assert.deepEqual(wordNames(getSortedWords(words, 'type', 'desc')), ['C', 'A', 'D', 'B']);
 });
 
 // --- unknown sort key ---

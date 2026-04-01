@@ -149,12 +149,13 @@ export function getSortedWords(words, key, dir) {
         return d || new Date(b.createdAt) - new Date(a.createdAt);
       }
       case 'type': {
-        if (a.type < b.type) return -1;
-        if (a.type > b.type) return  1;
+        if (a.type < b.type) return asc ? -1 : 1;
+        if (a.type > b.type) return asc ? 1 : -1;
         if (!a.lastDrilled && !b.lastDrilled) return 0;
-        if (!a.lastDrilled) return 1;
-        if (!b.lastDrilled) return -1;
-        return new Date(b.lastDrilled) - new Date(a.lastDrilled);
+        if (!a.lastDrilled) return asc ? 1 : -1;
+        if (!b.lastDrilled) return asc ? -1 : 1;
+        const diff = new Date(b.lastDrilled) - new Date(a.lastDrilled);
+        return asc ? diff : -diff;
       }
       default: return 0;
     }

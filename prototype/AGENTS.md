@@ -169,6 +169,5 @@ When adding new fields to the word edit/add modal, follow whichever convention m
 - **Scope changes to this project directory.** Do not read or write files outside `D:\code\jpvocab\prototype\` without explicit instruction.
 - **Ask before touching unfamiliar files.** If a file has not been part of the current conversation and has not been recently discussed, confirm with the user before editing it. This applies especially to Go source files, config files, and anything outside `backend/`.
 - **Keep AGENTS.md current.** After any non-trivial change — new files, new endpoints, renamed functions, changed conventions, new features, or shifted architecture — proactively propose specific updates to this file. Do not wait to be asked. If you added a file, added an endpoint, or changed how something works, draft the AGENTS.md diff and offer it immediately.
-- **Refactor notes.** drill-refactor-plan.md in the repo root is a working note for the drill-page cleanup sequence; update it if the refactor direction changes materially.
 - **Use `git mv` for all file moves and renames.** Never copy-and-delete or use the Write tool to recreate a file at a new path. Always use `git mv <old> <new>` so history is preserved.
 

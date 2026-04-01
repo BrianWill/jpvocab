@@ -31,7 +31,12 @@
     {"character": "手", "meanings": ["hand", "arm", "skill"]},
     {"character": "伝", "meanings": ["transmit", "convey", "legend"]},
     {"character": "困", "meanings": ["troubled", "distressed"]},
-    {"character": "信", "meanings": ["believe", "trust", "faith"]}
+    {"character": "信", "meanings": ["believe", "trust", "faith"]},
+    {"character": "猫", "meanings": ["cat"]},
+    {"character": "犬", "meanings": ["dog"]},
+    {"character": "魚", "meanings": ["fish"]},
+    {"character": "鳥", "meanings": ["bird"]},
+    {"character": "馬", "meanings": ["horse"]}
   ],
   "words": [
     {
@@ -122,6 +127,7 @@
       "created_at": "2026-02-01 09:00:00",
       "last_drilled_at": "2026-03-22 14:30:00",
       "target_reached_at": "2026-03-22 14:30:00",
+      "image_path": "images/words/天気.jpg",
       "kanji_data": [{"char": "天", "reading": "テン"}, {"char": "気", "reading": "キ"}]
     },
     {
@@ -421,7 +427,8 @@
       "incorrect_count": 0,
       "created_at": "2026-01-03 09:00:00",
       "last_drilled_at": "2026-03-19 11:20:00",
-      "target_reached_at": "2026-03-19 11:20:00"
+      "target_reached_at": "2026-03-19 11:20:00",
+      "image_path": "images/words/コーヒー.jpg"
     },
     {
       "word": "パン",
@@ -435,7 +442,8 @@
       "incorrect_count": 0,
       "created_at": "2025-11-15 09:00:00",
       "last_drilled_at": "2026-03-19 11:30:00",
-      "target_reached_at": "2026-03-19 11:30:00"
+      "target_reached_at": "2026-03-19 11:30:00",
+      "image_path": "images/words/パン.jpg"
     },
     {
       "word": "ケーキ",
@@ -449,7 +457,8 @@
       "incorrect_count": 1,
       "created_at": "2025-12-05 09:00:00",
       "last_drilled_at": "2026-03-19 11:05:00",
-      "target_reached_at": null
+      "target_reached_at": null,
+      "image_path": "images/words/ケーキ.jpg"
     },
     {
       "word": "ビール",
@@ -463,7 +472,8 @@
       "incorrect_count": 0,
       "created_at": "2026-01-03 09:00:00",
       "last_drilled_at": "2026-03-24 10:00:00",
-      "target_reached_at": null
+      "target_reached_at": null,
+      "image_path": "images/words/ビール.jpg"
     },
     {
       "word": "レストラン",
@@ -477,7 +487,8 @@
       "incorrect_count": 0,
       "created_at": "2025-11-20 09:00:00",
       "last_drilled_at": "2026-03-19 11:10:00",
-      "target_reached_at": null
+      "target_reached_at": null,
+      "image_path": "images/words/レストラン.jpg"
     },
     {
       "word": "ホテル",
@@ -491,7 +502,8 @@
       "incorrect_count": 1,
       "created_at": "2026-01-12 09:00:00",
       "last_drilled_at": "2026-03-19 11:15:00",
-      "target_reached_at": null
+      "target_reached_at": null,
+      "image_path": "images/words/ホテル.jpg"
     },
     {
       "word": "タクシー",
@@ -505,7 +517,8 @@
       "incorrect_count": 0,
       "created_at": "2026-02-15 09:00:00",
       "last_drilled_at": "2026-03-24 10:05:00",
-      "target_reached_at": null
+      "target_reached_at": null,
+      "image_path": "images/words/タクシー.jpg"
     },
     {
       "word": "バス",
@@ -519,7 +532,8 @@
       "incorrect_count": 0,
       "created_at": "2025-12-20 09:00:00",
       "last_drilled_at": "2026-01-15 10:00:00",
-      "target_reached_at": "2026-01-15 10:00:00"
+      "target_reached_at": "2026-01-15 10:00:00",
+      "image_path": "images/words/バス.jpg"
     },
     {
       "word": "テレビ",
@@ -533,7 +547,8 @@
       "incorrect_count": 0,
       "created_at": "2025-11-01 09:00:00",
       "last_drilled_at": "2026-02-15 14:00:00",
-      "target_reached_at": "2026-02-15 14:00:00"
+      "target_reached_at": "2026-02-15 14:00:00",
+      "image_path": "images/words/テレビ.jpg"
     },
     {
       "word": "ラジオ",
@@ -547,7 +562,8 @@
       "incorrect_count": 1,
       "created_at": "2026-02-20 09:00:00",
       "last_drilled_at": "2026-03-24 10:30:00",
-      "target_reached_at": null
+      "target_reached_at": null,
+      "image_path": "images/words/ラジオ.jpg"
     },
     {
       "word": "カメラ",
@@ -561,7 +577,8 @@
       "incorrect_count": 0,
       "created_at": "2026-03-01 09:00:00",
       "last_drilled_at": null,
-      "target_reached_at": null
+      "target_reached_at": null,
+      "image_path": "images/words/カメラ.jpg"
     },
     {
       "word": "コンピューター",
@@ -575,7 +592,8 @@
       "incorrect_count": 1,
       "created_at": "2026-01-08 09:00:00",
       "last_drilled_at": "2026-03-19 11:25:00",
-      "target_reached_at": null
+      "target_reached_at": null,
+      "image_path": "images/words/コンピューター.jpg"
     },
     {
       "word": "スマートフォン",
@@ -589,7 +607,8 @@
       "incorrect_count": 0,
       "created_at": "2026-02-01 09:00:00",
       "last_drilled_at": "2026-03-24 10:25:00",
-      "target_reached_at": null
+      "target_reached_at": null,
+      "image_path": "images/words/スマートフォン.jpg"
     },
     {
       "word": "インターネット",
@@ -631,7 +650,8 @@
       "incorrect_count": 0,
       "created_at": "2026-03-05 09:00:00",
       "last_drilled_at": "2026-03-24 10:10:00",
-      "target_reached_at": null
+      "target_reached_at": null,
+      "image_path": "images/words/テーブル.jpg"
     },
     {
       "word": "ベッド",
@@ -645,7 +665,8 @@
       "incorrect_count": 0,
       "created_at": "2026-01-25 09:00:00",
       "last_drilled_at": "2026-03-24 10:15:00",
-      "target_reached_at": null
+      "target_reached_at": null,
+      "image_path": "images/words/ベッド.jpg"
     },
     {
       "word": "ソファ",
@@ -659,7 +680,8 @@
       "incorrect_count": 0,
       "created_at": "2026-03-10 09:00:00",
       "last_drilled_at": null,
-      "target_reached_at": null
+      "target_reached_at": null,
+      "image_path": "images/words/ソファ.jpg"
     },
     {
       "word": "アパート",
@@ -673,7 +695,8 @@
       "incorrect_count": 1,
       "created_at": "2025-12-15 09:00:00",
       "last_drilled_at": "2026-02-05 10:00:00",
-      "target_reached_at": "2026-02-05 10:00:00"
+      "target_reached_at": "2026-02-05 10:00:00",
+      "image_path": "images/words/アパート.png"
     },
     {
       "word": "ビル",
@@ -687,7 +710,8 @@
       "incorrect_count": 0,
       "created_at": "2026-02-10 09:00:00",
       "last_drilled_at": "2026-03-24 10:35:00",
-      "target_reached_at": null
+      "target_reached_at": null,
+      "image_path": "images/words/ビル.jpg"
     },
     {
       "word": "ニュース",
@@ -715,7 +739,8 @@
       "incorrect_count": 0,
       "created_at": "2025-12-01 09:00:00",
       "last_drilled_at": "2026-02-10 09:00:00",
-      "target_reached_at": "2026-02-10 09:00:00"
+      "target_reached_at": "2026-02-10 09:00:00",
+      "image_path": "images/words/サッカー.jpg"
     },
     {
       "word": "テニス",
@@ -729,7 +754,8 @@
       "incorrect_count": 0,
       "created_at": "2026-02-25 09:00:00",
       "last_drilled_at": null,
-      "target_reached_at": null
+      "target_reached_at": null,
+      "image_path": "images/words/テニス.jpg"
     },
     {
       "word": "ゴルフ",
@@ -743,7 +769,8 @@
       "incorrect_count": 0,
       "created_at": "2026-03-08 09:00:00",
       "last_drilled_at": null,
-      "target_reached_at": null
+      "target_reached_at": null,
+      "image_path": "images/words/ゴルフ.jpg"
     },
     {
       "word": "ストレス",
@@ -828,6 +855,131 @@
       "created_at": "2026-03-22 09:00:00",
       "last_drilled_at": null,
       "target_reached_at": null
+    },
+    {
+      "word": "猫",
+      "reading": "ねこ",
+      "part_of_speech": "noun",
+      "meaning": "cat",
+      "example_jp": "猫が窓の外を見ている。",
+      "example_en": "The cat is looking out the window.",
+      "drill_count": 0,
+      "drill_target": 3,
+      "incorrect_count": 0,
+      "created_at": "2026-03-25 09:00:00",
+      "last_drilled_at": null,
+      "target_reached_at": null,
+      "image_path": "images/words/猫.jpg",
+      "kanji_data": [{"char": "猫", "reading": "ねこ"}]
+    },
+    {
+      "word": "犬",
+      "reading": "いぬ",
+      "part_of_speech": "noun",
+      "meaning": "dog",
+      "example_jp": "犬と一緒に公園を散歩する。",
+      "example_en": "I walk in the park with my dog.",
+      "drill_count": 0,
+      "drill_target": 3,
+      "incorrect_count": 0,
+      "created_at": "2026-03-25 09:01:00",
+      "last_drilled_at": null,
+      "target_reached_at": null,
+      "image_path": "images/words/犬.jpg",
+      "kanji_data": [{"char": "犬", "reading": "いぬ"}]
+    },
+    {
+      "word": "魚",
+      "reading": "さかな",
+      "part_of_speech": "noun",
+      "meaning": "fish",
+      "example_jp": "川で魚を釣る。",
+      "example_en": "I fish in the river.",
+      "drill_count": 0,
+      "drill_target": 3,
+      "incorrect_count": 0,
+      "created_at": "2026-03-25 09:02:00",
+      "last_drilled_at": null,
+      "target_reached_at": null,
+      "image_path": "images/words/魚.jpg",
+      "kanji_data": [{"char": "魚", "reading": "さかな"}]
+    },
+    {
+      "word": "鳥",
+      "reading": "とり",
+      "part_of_speech": "noun",
+      "meaning": "bird",
+      "example_jp": "鳥が空を飛んでいる。",
+      "example_en": "Birds are flying in the sky.",
+      "drill_count": 0,
+      "drill_target": 3,
+      "incorrect_count": 0,
+      "created_at": "2026-03-25 09:03:00",
+      "last_drilled_at": null,
+      "target_reached_at": null,
+      "image_path": "images/words/鳥.png",
+      "kanji_data": [{"char": "鳥", "reading": "とり"}]
+    },
+    {
+      "word": "馬",
+      "reading": "うま",
+      "part_of_speech": "noun",
+      "meaning": "horse",
+      "example_jp": "馬に乗るのは楽しい。",
+      "example_en": "Riding a horse is fun.",
+      "drill_count": 0,
+      "drill_target": 3,
+      "incorrect_count": 0,
+      "created_at": "2026-03-25 09:04:00",
+      "last_drilled_at": null,
+      "target_reached_at": null,
+      "image_path": "images/words/馬.jpg",
+      "kanji_data": [{"char": "馬", "reading": "うま"}]
+    },
+    {
+      "word": "ゾウ",
+      "reading": "ぞう",
+      "part_of_speech": "noun",
+      "meaning": "elephant",
+      "example_jp": "動物園でゾウを見た。",
+      "example_en": "I saw an elephant at the zoo.",
+      "drill_count": 0,
+      "drill_target": 3,
+      "incorrect_count": 0,
+      "created_at": "2026-03-25 09:05:00",
+      "last_drilled_at": null,
+      "target_reached_at": null,
+      "image_path": "images/words/ゾウ.jpg"
+    },
+    {
+      "word": "キリン",
+      "reading": "きりん",
+      "part_of_speech": "noun",
+      "meaning": "giraffe",
+      "example_jp": "キリンは首が長い。",
+      "example_en": "Giraffes have long necks.",
+      "drill_count": 0,
+      "drill_target": 3,
+      "incorrect_count": 0,
+      "created_at": "2026-03-25 09:06:00",
+      "last_drilled_at": null,
+      "target_reached_at": null,
+      "image_path": "images/words/キリン.jpg"
+    },
+    {
+      "word": "ペンギン",
+      "reading": "ぺんぎん",
+      "part_of_speech": "noun",
+      "meaning": "penguin",
+      "example_jp": "ペンギンは泳ぐのが得意だ。",
+      "example_en": "Penguins are good at swimming.",
+      "drill_count": 0,
+      "drill_target": 3,
+      "incorrect_count": 0,
+      "created_at": "2026-03-25 09:07:00",
+      "last_drilled_at": null,
+      "target_reached_at": null,
+      "image_path": "images/words/ペンギン.jpg"
     }
   ],
   "sessions": [

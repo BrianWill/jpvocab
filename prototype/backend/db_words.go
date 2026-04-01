@@ -47,6 +47,7 @@ type wordJSON struct {
 	Target      int              `json:"target"`
 	CreatedAt   string           `json:"createdAt"`
 	LastDrilled *string          `json:"lastDrilled"`
+	ImagePath   *string          `json:"imagePath"`
 	KanjiData   []kanjiDataEntry `json:"kanjiData"`
 }
 
@@ -221,7 +222,7 @@ func listWords(db *sql.DB) ([]wordJSON, error) {
 		SELECT id, word, COALESCE(reading,''), COALESCE(part_of_speech,''), COALESCE(meaning,''),
 		       COALESCE(example_jp,''), COALESCE(example_en,''),
 		       drill_count, incorrect_count, drill_target, created_at, last_drilled_at,
-		       kanji_data
+		       image_path, kanji_data
 		FROM words
 		ORDER BY created_at DESC
 	`)
@@ -237,7 +238,7 @@ func listWords(db *sql.DB) ([]wordJSON, error) {
 		if err := rows.Scan(
 			&w.ID, &w.Word, &w.Reading, &w.Type, &w.Meaning, &w.ExampleJp, &w.ExampleEn,
 			&w.Correct, &w.Incorrect, &w.Target, &w.CreatedAt, &w.LastDrilled,
-			&kanjiDataStr,
+			&w.ImagePath, &kanjiDataStr,
 		); err != nil {
 			return nil, err
 		}

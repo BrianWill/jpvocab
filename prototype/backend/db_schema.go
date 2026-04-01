@@ -70,6 +70,7 @@ func migrate(db *sql.DB) {
 			key   TEXT NOT NULL PRIMARY KEY,
 			value TEXT NOT NULL
 		)`,
+		`ALTER TABLE words ADD COLUMN image_path TEXT`,
 	}
 
 	var version int
@@ -309,6 +310,7 @@ type seedWord struct {
 	CreatedAt       string         `json:"created_at"`
 	LastDrilledAt   *string        `json:"last_drilled_at"`
 	TargetReachedAt *string        `json:"target_reached_at"`
+	ImagePath       *string        `json:"image_path,omitempty"`
 	KanjiData       []seedKanjiRef `json:"kanji_data,omitempty"`
 }
 
@@ -383,8 +385,8 @@ func seedDB(db *sql.DB) {
 		INSERT INTO words
 			(word, reading, part_of_speech, meaning, example_jp, example_en,
 			 drill_count, drill_target, incorrect_count,
-			 created_at, last_drilled_at, target_reached_at, is_katakana, kanji_data)
-		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+			 created_at, last_drilled_at, target_reached_at, is_katakana, kanji_data, image_path)
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 	`)
 	if err != nil {
 		log.Fatal("seed: prepare words:", err)
@@ -416,7 +418,7 @@ func seedDB(db *sql.DB) {
 		res, err := wordStmt.Exec(
 			w.Word, w.Reading, w.PartOfSpeech, w.Meaning, w.ExampleJP, w.ExampleEN,
 			w.DrillCount, w.DrillTarget, w.IncorrectCount,
-			w.CreatedAt, w.LastDrilledAt, w.TargetReachedAt, kat, string(kanjiDataJSON),
+			w.CreatedAt, w.LastDrilledAt, w.TargetReachedAt, kat, string(kanjiDataJSON), w.ImagePath,
 		)
 		if err != nil {
 			tx.Rollback()

@@ -48,8 +48,8 @@ func TestMigrate_Idempotent(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(tables) != 4 {
-		t.Errorf("expected 4 tables, got %d: %v", len(tables), tables)
+	if len(tables) != 5 {
+		t.Errorf("expected 5 tables, got %d: %v", len(tables), tables)
 	}
 }
 

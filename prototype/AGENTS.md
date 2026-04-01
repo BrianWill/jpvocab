@@ -109,6 +109,7 @@ The HTML/CSS/JS frontend files live in `backend/static/` and are served by the b
 - **`morphology.go`** — word normalisation to dictionary base form (used in the add-words flow).
 - **`wordlists.go`** — loads JSON word-list files from the embedded `wordlists/` directory at startup (via `//go:embed wordlists`). Exposes `apiGetWordLists` and `apiGetWordListWords` handlers. Each file is `{slug}.json` with `name` (display name) and `words` (string array) fields. Current lists: `animals`, `colors`, `ichidan-verbs`.
 - **`templates/`** — HTML templates parsed from disk on every request (live-editable without restart); `base.html` is the shared shell, each page has its own file
+- **`static/images/words/`** — word images served statically. Files are named after the word text (e.g. `猫.jpg`, `天気.jpg`). The `image_path` column stores the path relative to `static/`; the frontend constructs the full URL as `/static/<image_path>`. Images are optional — words without images have `NULL` in `image_path`.
 - **`static/`** — HTML pages, CSS, and JS, served from disk (live-editable without restart). Includes `admin.css` and `admin.js` for the admin UI (loaded by `templates/admin.html` and `templates/base.html`). JS files for the lexicon page are split across three files: `lexicon.js` (table state/rendering, sorting, delete modal, tooltip), `lexicon-add-edit.js` (add/edit result modal, autofill, status/footer, streaming), and `lexicon-utils.js` (pure helpers and detail item HTML builders). `lexicon.js` must load first as `lexicon-add-edit.js` reads globals it defines (`words`, `defaultDrillTarget`, `typeLabels`, `reloadWords`, `renderTable`, `getSortedWords`). The settings modal HTML (`#settings-modal-backdrop`) is injected into `<body>` at runtime by `injectSettingsModal()` in `common.js` — do not add it to any page's HTML.
 - **`seed.json`** — fixture data loaded on first startup (or after a DB reset); contains `words` and `sessions` arrays
 
@@ -139,9 +140,9 @@ cd backend && air
 
 > **No migration compatibility required.** During development it is fine to reset the database (`/admin` → Reset DB) whenever the schema changes. Do not spend effort on backwards-compatible migrations or backfill logic at this stage.
 
-Table definitions live in the `migrate()` function in `db.go`. Schema is versioned via `PRAGMA user_version` — each entry in the migrations slice runs exactly once. Current tables:
+Table definitions live in the `migrate()` function in `db.go`. Schema is versioned via `PRAGMA user_version` — each entry in the migrations slice runs exactly once. Current schema version: **6**. Current tables:
 
-- **`words`** — the lexicon; one row per word with reading, part of speech, meaning, example sentences, audio paths (`audio_word_path`, `audio_example_path`), drill counts, target, timestamps, and a `kanji_data` JSON column (array of `{id, reading}` linking to the `kanji` table). `word` column has a unique index.
+- **`words`** — the lexicon; one row per word with reading, part of speech, meaning, example sentences, audio paths (`audio_word_path`, `audio_example_path`), an optional `image_path` (relative to `static/`, e.g. `images/words/猫.jpg`), drill counts, target, timestamps, and a `kanji_data` JSON column (array of `{id, reading}` linking to the `kanji` table). `word` column has a unique index. Because `word` is unique, image files are named after the word text itself (e.g. `static/images/words/猫.jpg`).
 - **`kanji`** — one row per kanji character with `character` and `meanings` (JSON array of English meanings). Readings (on/kun) are stored per-word in the `kanji_data` column of `words`, not on the kanji row itself. Served via `/api/kanji`.
 - **`drill_sessions`** — one row per drill session with a `started_at` timestamp.
 - **`drill_answers`** — one row per answer within a session; references `words` and `drill_sessions`; stores `correct` (0/1) and `answered_at`.

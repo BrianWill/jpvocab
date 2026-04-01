@@ -1,20 +1,38 @@
 import { populateWordTooltip, positionAnchoredWordTooltip, renderWordTooltipKanji } from './common.js';
 import { renderReading } from './lexicon-utils.js';
 
-const placeholder = '<span class="detail-placeholder">- - -</span>';
-
-// ── Word-type filters ──────────────────────────────────────────────────────
 const FILTER_KEYS = ['katakana', 'verbs', 'nouns', 'other'];
 const activeFilters = new Set(FILTER_KEYS);
+const DEFAULT_ROUND_SIZE = 10;
+const STEP_INTERVAL = 230;
+
+let kanjiMap = {};
+let words = [];
+let sessionId = null;
+let poolSize = 0;
+let maxPoolSize = 0;
+let settingsMaxWords = null;
+let roundSize = DEFAULT_ROUND_SIZE;
+let pool = [];
+let round = 1;
+let redo = [];
+let doneCount = 0;
+let drillStartedAt = Date.now();
+let remaining = [];
+let currentWord = null;
+let sidebarItems = [];
+let lastAnswered = null;
+let isSubmittingAnswer = false;
+let stepTimer = null;
 
 function matchesFilter(w, f) {
   const isKatakana = /^[\u30A0-\u30FF]+$/.test(w.word);
   const isVerb = w.type === 'ichidan-verb' || w.type === 'godan-verb';
   const isNoun = w.type === 'noun';
   if (f === 'katakana') return isKatakana;
-  if (f === 'verbs')    return isVerb;
-  if (f === 'nouns')    return isNoun;
-  if (f === 'other')    return !isKatakana && !isVerb && !isNoun;
+  if (f === 'verbs') return isVerb;
+  if (f === 'nouns') return isNoun;
+  if (f === 'other') return !isKatakana && !isVerb && !isNoun;
   return false;
 }
 
@@ -24,22 +42,21 @@ function getFilteredWords() {
 
 function updateFilterHint() {
   const hint = document.getElementById('filter-hint');
-  const btn  = document.getElementById('restart-start-btn');
+  const btn = document.getElementById('restart-start-btn');
   if (activeFilters.size === 0) {
     hint.textContent = 'Select at least one word type';
     hint.classList.add('error');
     btn.disabled = true;
-  } else {
-    const count = getFilteredWords().length;
-    hint.textContent = activeFilters.size === FILTER_KEYS.length
-      ? 'All ' + count + ' words'
-      : count + ' of ' + words.length + ' words';
-    hint.classList.remove('error');
-    btn.disabled = false;
+    return;
   }
-}
 
-const DEFAULT_ROUND_SIZE = 10;
+  const count = getFilteredWords().length;
+  hint.textContent = activeFilters.size === FILTER_KEYS.length
+    ? 'All ' + count + ' words'
+    : count + ' of ' + words.length + ' words';
+  hint.classList.remove('error');
+  btn.disabled = false;
+}
 
 function shuffle(arr) {
   const a = [...arr];
@@ -60,24 +77,6 @@ function timeAgo(date) {
   const day = Math.floor(hr / 24);
   return day + ' day' + (day === 1 ? '' : 's') + ' ago';
 }
-
-// Kanji reference data keyed by ID (populated by init)
-let kanjiMap = {};
-
-// Session state (populated by init / restartDrill)
-let words = [];
-let sessionId = null;
-let poolSize = 0;
-let maxPoolSize = 0;
-let settingsMaxWords = null;  // raw saved preference, null means "all"
-let roundSize = DEFAULT_ROUND_SIZE;
-let pool = [];
-let round = 1;
-let redo = [];
-let doneCount = 0;
-let drillStartedAt = Date.now();
-let remaining = [];
-let currentWord = null;
 
 function buildRound() {
   const slots = Math.max(0, roundSize - redo.length);
@@ -105,91 +104,32 @@ function showWord() {
   if (item) item.classList.add('current');
 }
 
-// ── API helpers ────────────────────────────────────────────────────────────
-
-async function createSession() {
-  const resp = await fetch('/api/drill/sessions', { method: 'POST' });
-  const data = await resp.json();
-  return data.id;
-}
-
-function postAnswer(wordId, correct) {
-  if (!sessionId) return;
-  fetch('/api/drill/sessions/' + sessionId + '/answers', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ wordId, correct }),
+function renderSidebar() {
+  const list = document.getElementById('sidebar-list');
+  list.innerHTML = '';
+  sidebarItems.forEach(itemData => {
+    const li = document.createElement('li');
+    li.className = 'sidebar-item ' + itemData.status;
+    li.textContent = itemData.word.word;
+    li.dataset.word = JSON.stringify(itemData.word);
+    li.dataset.id = itemData.word.word;
+    li.addEventListener('animationend', () => li.classList.remove('flash-known', 'flash-missed'), { once: true });
+    list.appendChild(li);
   });
 }
 
-// ── Init ───────────────────────────────────────────────────────────────────
-
-async function init() {
-  const [wordsResp, kanjiResp, settingsResp] = await Promise.all([
-    fetch('/api/words'),
-    fetch('/api/kanji'),
-    fetch('/api/settings/drill'),
-  ]);
-  const allWords = await wordsResp.json();
-  const kanjiList = await kanjiResp.json();
-  const settings = await settingsResp.json();
-
-  kanjiMap = {};
-  kanjiList.forEach(k => { kanjiMap[k.id] = k; });
-
-  // Only drill active words (drill_count < target)
-  words = allWords.filter(w => w.correct < w.target);
-
-  // Apply saved settings before starting
-  settingsMaxWords = settings.maxWords;
-  if (settings.roundSize > 0) roundSize = settings.roundSize;
-  if (Array.isArray(settings.wordTypes) && settings.wordTypes.length > 0) {
-    activeFilters.clear();
-    settings.wordTypes.forEach(f => activeFilters.add(f));
-    document.querySelectorAll('#restart-modal-backdrop .filter-chip[data-filter]').forEach(btn => {
-      btn.classList.toggle('active', activeFilters.has(btn.dataset.filter));
-    });
+function renderLastAnswered() {
+  const card = document.getElementById('last-word-card');
+  if (!lastAnswered) {
+    card.style.display = 'none';
+    return;
   }
 
-  sessionId = await createSession();
-
-  const filtered = getFilteredWords();
-  const source = filtered.length > 0 ? filtered : words;
-  maxPoolSize = Math.min(settings.maxWords, source.length);
-  poolSize = maxPoolSize;
-  pool = shuffle([...source]).slice(0, poolSize);
-  remaining = buildRound();
-  currentWord = remaining[0];
-
-  initSidebar();
-  showWord();
-  updateStats();
-}
-
-// ── Drill logic ────────────────────────────────────────────────────────────
-
-function reveal(knew) {
-  if (!currentWord) return;
-  const answered = currentWord;
-
-  postAnswer(answered.id, knew);
-
-  // Update drill state
-  remaining.shift();
-  if (knew) {
-    doneCount++;
-  } else {
-    redo.push(answered);
-  }
-
-  addToSidebar(answered, knew);
-  updateStats();
-
-  // Show answered word in last-word card
-  document.getElementById('last-word-card').style.display = '';
+  const answered = lastAnswered.word;
+  card.style.display = '';
   const lastWordEl = document.getElementById('last-word-jp');
   lastWordEl.textContent = answered.word;
-  lastWordEl.className = 'tooltip-word ' + (knew ? 'knew' : 'missed');
+  lastWordEl.className = 'tooltip-word ' + (lastAnswered.knew ? 'knew' : 'missed');
   document.getElementById('last-reading').innerHTML = renderReading(answered.reading, answered.word, answered.kanjiData);
   document.getElementById('last-pos').textContent = answered.type;
   document.getElementById('last-meaning').textContent = answered.meaning;
@@ -203,118 +143,239 @@ function reveal(knew) {
   } else {
     imgEl.style.display = 'none';
   }
-
-  // Advance
-  if (remaining.length === 0) {
-    if (redo.length > 0 || pool.length > 0) {
-      startNextRound();
-      return;
-    } else {
-      document.getElementById('prompt-word-jp').textContent = 'Done!';
-      document.getElementById('prompt-example-jp').textContent = 'All words cleared.';
-      document.getElementById('action-prompt').style.display = 'none';
-      return;
-    }
-  }
-
-  currentWord = remaining[0];
-  showWord();
 }
 
-function initSidebar() {
-  const list = document.getElementById('sidebar-list');
-  remaining.forEach(word => {
-    const li = document.createElement('li');
-    li.className = 'sidebar-item unseen';
-    li.textContent = word.word;
-    li.dataset.word = JSON.stringify(word);
-    li.dataset.id = word.word;
-    list.appendChild(li);
-  });
+function renderCompleteState() {
+  document.getElementById('prompt-word-jp').textContent = 'Done!';
+  document.getElementById('prompt-example-jp').textContent = 'All words cleared.';
+  document.getElementById('action-prompt').style.display = 'none';
+}
+
+function renderInProgressState() {
+  document.getElementById('action-prompt').style.display = '';
 }
 
 function addToSidebar(word, knew) {
-  const list = document.getElementById('sidebar-list');
-  const existing = list.querySelector('[data-id="' + word.word + '"]');
-
+  const existing = sidebarItems.find(item => item.word.word === word.word);
+  const status = knew ? 'known flash-known' : 'missed flash-missed';
   if (existing) {
-    // Update in place — sorting only happens at round boundaries
-    existing.className = 'sidebar-item ' + (knew ? 'known flash-known' : 'missed flash-missed');
-    existing.dataset.word = JSON.stringify(word);
-    existing.addEventListener('animationend', () => existing.classList.remove('flash-known', 'flash-missed'), { once: true });
+    existing.word = word;
+    existing.status = status;
     return;
   }
-
-  // Fallback: append new entry (not expected mid-round)
-  const li = document.createElement('li');
-  li.className = 'sidebar-item ' + (knew ? 'known flash-known' : 'missed flash-missed');
-  li.textContent = word.word;
-  li.dataset.word = JSON.stringify(word);
-  li.dataset.id = word.word;
-  li.addEventListener('animationend', () => li.classList.remove('flash-known', 'flash-missed'));
-  list.appendChild(li);
+  sidebarItems.push({ word, status });
 }
-
-function positionSidebarTooltip(item) {
-  const sidebar = document.querySelector('.sidebar');
-  const itemRect = item.getBoundingClientRect();
-  const sidebarRect = sidebar.getBoundingClientRect();
-  const overlap = 14;
-  positionAnchoredWordTooltip(tip, {
-    anchorRect: itemRect,
-    left: sidebarRect.right - overlap,
-  });
-}
-
-// Tooltip hover logic
-const tip = document.getElementById('tooltip');
-document.getElementById('sidebar-list').addEventListener('mouseover', e => {
-  const item = e.target.closest('.sidebar-item');
-  if (!item || !item.dataset.word) return;
-  const data = JSON.parse(item.dataset.word);
-  populateWordTooltip(tip, data, kanjiMap, renderReading);
-  positionSidebarTooltip(item);
-});
-document.getElementById('sidebar-list').addEventListener('mouseout', e => {
-  const item = e.target.closest('.sidebar-item');
-  if (!item) return;
-  if (!item.contains(e.relatedTarget)) {
-    tip.classList.remove('visible');
-  }
-});
-
 
 function startNextRound() {
   round++;
   const redoSet = new Set(redo.map(w => w.word));
-  remaining = buildRound(); // uses current redo + new picks from pool
+  remaining = buildRound();
   redo = [];
-  currentWord = remaining[0];
-  updateStats();
+  currentWord = remaining[0] || null;
 
-  const list = document.getElementById('sidebar-list');
-  list.innerHTML = '';
-
-  // Redo words first (red + blurred), then new words (gray + blurred)
   const redoWords = remaining.filter(w => redoSet.has(w.word));
   const newWords = remaining.filter(w => !redoSet.has(w.word));
-  [...redoWords, ...newWords].forEach(word => {
-    const isRedo = redoSet.has(word.word);
-    const li = document.createElement('li');
-    li.className = 'sidebar-item ' + (isRedo ? 'unseen-redo' : 'unseen');
-    li.textContent = word.word;
-    li.dataset.word = JSON.stringify(word);
-    li.dataset.id = word.word;
-    list.appendChild(li);
+  sidebarItems = [...redoWords, ...newWords].map(word => ({
+    word,
+    status: redoSet.has(word.word) ? 'unseen-redo' : 'unseen',
+  }));
+}
+
+function getSessionState() {
+  return {
+    poolSize,
+    maxPoolSize,
+    settingsMaxWords,
+    roundSize,
+    round,
+    doneCount,
+    activeFilters: [...activeFilters],
+    pool,
+    redo,
+    remaining,
+    sidebarItems: sidebarItems.map(item => ({
+      word: item.word,
+      status: item.status.replace(/\sflash-(known|missed)\b/g, ''),
+    })),
+    lastAnswered,
+    completed: !currentWord && remaining.length === 0 && redo.length === 0 && pool.length === 0,
+  };
+}
+
+async function createSession(state) {
+  const resp = await fetch('/api/drill/sessions', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ state }),
+  });
+  const data = await resp.json();
+  return data.id;
+}
+
+async function getCurrentSession() {
+  const resp = await fetch('/api/drill/sessions/current');
+  const data = await resp.json();
+  return data.session;
+}
+
+async function postAnswer(wordId, correct, state) {
+  if (!sessionId) return;
+  const resp = await fetch('/api/drill/sessions/' + sessionId + '/answers', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ wordId, correct, state }),
+  });
+  if (!resp.ok) throw new Error('failed to save drill answer');
+}
+
+async function reveal(knew) {
+  if (!currentWord || isSubmittingAnswer) return;
+  isSubmittingAnswer = true;
+
+  const answered = currentWord;
+  remaining.shift();
+  if (knew) {
+    doneCount++;
+  } else {
+    redo.push(answered);
+  }
+
+  addToSidebar(answered, knew);
+  lastAnswered = { word: answered, knew };
+
+  if (remaining.length === 0) {
+    if (redo.length > 0 || pool.length > 0) {
+      startNextRound();
+      renderInProgressState();
+    } else {
+      currentWord = null;
+      renderCompleteState();
+    }
+  } else {
+    currentWord = remaining[0];
+    renderInProgressState();
+  }
+
+  renderSidebar();
+  renderLastAnswered();
+  updateStats();
+  showWord();
+
+  try {
+    await postAnswer(answered.id, knew, getSessionState());
+  } finally {
+    isSubmittingAnswer = false;
+  }
+}
+
+function positionSidebarTooltip(item, tip) {
+  const sidebar = document.querySelector('.sidebar');
+  const itemRect = item.getBoundingClientRect();
+  const sidebarRect = sidebar.getBoundingClientRect();
+  positionAnchoredWordTooltip(tip, {
+    anchorRect: itemRect,
+    left: sidebarRect.right - 14,
+  });
+}
+
+function restoreSession(session) {
+  sessionId = session.id;
+  const startedAt = Date.parse(session.startedAt);
+  drillStartedAt = Number.isNaN(startedAt) ? Date.now() : startedAt;
+
+  const state = session.state || {};
+  poolSize = state.poolSize || 0;
+  maxPoolSize = state.maxPoolSize || 0;
+  settingsMaxWords = state.settingsMaxWords > 0 ? state.settingsMaxWords : settingsMaxWords;
+  roundSize = state.roundSize || DEFAULT_ROUND_SIZE;
+  round = state.round || 1;
+  doneCount = state.doneCount || 0;
+  pool = Array.isArray(state.pool) ? state.pool : [];
+  redo = Array.isArray(state.redo) ? state.redo : [];
+  remaining = Array.isArray(state.remaining) ? state.remaining : [];
+  currentWord = remaining[0] || null;
+  sidebarItems = Array.isArray(state.sidebarItems) ? state.sidebarItems : [];
+  lastAnswered = state.lastAnswered || null;
+
+  if (Array.isArray(state.activeFilters) && state.activeFilters.length > 0) {
+    activeFilters.clear();
+    state.activeFilters.forEach(f => activeFilters.add(f));
+  }
+  document.querySelectorAll('#restart-modal-backdrop .filter-chip[data-filter]').forEach(btn => {
+    btn.classList.toggle('active', activeFilters.has(btn.dataset.filter));
   });
 
+  if (state.completed) renderCompleteState();
+  else renderInProgressState();
+
+  renderSidebar();
+  renderLastAnswered();
+  updateStats();
   showWord();
 }
 
-const STEP_INTERVAL = 230;
-let _stepTimer = null;
-function startStep(fn, ...args) { fn(...args); _stepTimer = setInterval(() => fn(...args), STEP_INTERVAL); }
-function stopStep() { clearInterval(_stepTimer); _stepTimer = null; }
+async function init() {
+  const [wordsResp, kanjiResp, settingsResp, currentSession] = await Promise.all([
+    fetch('/api/words'),
+    fetch('/api/kanji'),
+    fetch('/api/settings/drill'),
+    getCurrentSession(),
+  ]);
+  const allWords = await wordsResp.json();
+  const kanjiList = await kanjiResp.json();
+  const settings = await settingsResp.json();
+
+  kanjiMap = {};
+  kanjiList.forEach(k => { kanjiMap[k.id] = k; });
+
+  words = allWords.filter(w => w.correct < w.target);
+
+  settingsMaxWords = settings.maxWords;
+  if (settings.roundSize > 0) roundSize = settings.roundSize;
+  if (Array.isArray(settings.wordTypes) && settings.wordTypes.length > 0) {
+    activeFilters.clear();
+    settings.wordTypes.forEach(f => activeFilters.add(f));
+  }
+  document.querySelectorAll('#restart-modal-backdrop .filter-chip[data-filter]').forEach(btn => {
+    btn.classList.toggle('active', activeFilters.has(btn.dataset.filter));
+  });
+
+  if (currentSession) {
+    const state = currentSession.state || {};
+    const hasRestorableState = (state.poolSize || 0) > 0 || (Array.isArray(state.remaining) && state.remaining.length > 0);
+    if (hasRestorableState) {
+      restoreSession(currentSession);
+      return;
+    }
+  }
+
+  const filtered = getFilteredWords();
+  const source = filtered.length > 0 ? filtered : words;
+  maxPoolSize = Math.min(settings.maxWords, source.length);
+  poolSize = maxPoolSize;
+  pool = shuffle([...source]).slice(0, poolSize);
+  remaining = buildRound();
+  currentWord = remaining[0] || null;
+  sidebarItems = remaining.map(word => ({ word, status: 'unseen' }));
+  lastAnswered = null;
+
+  sessionId = await createSession(getSessionState());
+  renderInProgressState();
+  renderSidebar();
+  renderLastAnswered();
+  showWord();
+  updateStats();
+}
+
+function startStep(fn, ...args) {
+  fn(...args);
+  stepTimer = setInterval(() => fn(...args), STEP_INTERVAL);
+}
+
+function stopStep() {
+  clearInterval(stepTimer);
+  stepTimer = null;
+}
 
 function adjustRestart(id, delta) {
   const input = document.getElementById(id);
@@ -335,43 +396,59 @@ function openRestartModal() {
   updateFilterHint();
   document.getElementById('restart-modal-backdrop').classList.remove('hidden');
 }
+
 function closeRestartModal() {
   document.getElementById('restart-modal-backdrop').classList.add('hidden');
 }
+
 function handleRestartBackdropClick(e) {
   if (e.target === document.getElementById('restart-modal-backdrop')) closeRestartModal();
 }
+
+function restartDrill(totalWords, newRoundSize, sourceWords) {
+  poolSize = totalWords;
+  roundSize = newRoundSize;
+  pool = shuffle([...(sourceWords || words)]).slice(0, poolSize);
+  round = 1;
+  redo = [];
+  doneCount = 0;
+  drillStartedAt = Date.now();
+  remaining = buildRound();
+  currentWord = remaining[0] || null;
+  sidebarItems = remaining.map(word => ({ word, status: 'unseen' }));
+  lastAnswered = null;
+
+  renderInProgressState();
+  renderSidebar();
+  renderLastAnswered();
+  updateStats();
+  showWord();
+}
+
 async function confirmRestart() {
   const filtered = getFilteredWords();
   maxPoolSize = Math.max(1, parseInt(document.getElementById('restart-total-words').value, 10) || filtered.length);
   const total = Math.min(maxPoolSize, filtered.length);
   const rSize = Math.max(1, Math.min(total, parseInt(document.getElementById('restart-round-size').value, 10) || roundSize));
   closeRestartModal();
-  sessionId = await createSession();
   restartDrill(total, rSize, filtered);
+  sessionId = await createSession(getSessionState());
 }
 
-function restartDrill(totalWords, newRoundSize, sourceWords) {
-  sourceWords = sourceWords || words;
-  poolSize = totalWords;
-  roundSize = newRoundSize;
-  pool = shuffle([...sourceWords]).slice(0, poolSize);
-  round = 1;
-  redo = [];
-  doneCount = 0;
-  drillStartedAt = Date.now();
-  remaining = buildRound();
-  currentWord = remaining[0];
+const tip = document.getElementById('tooltip');
+document.getElementById('sidebar-list').addEventListener('mouseover', e => {
+  const item = e.target.closest('.sidebar-item');
+  if (!item || !item.dataset.word) return;
+  const data = JSON.parse(item.dataset.word);
+  populateWordTooltip(tip, data, kanjiMap, renderReading);
+  positionSidebarTooltip(item, tip);
+});
+document.getElementById('sidebar-list').addEventListener('mouseout', e => {
+  const item = e.target.closest('.sidebar-item');
+  if (!item) return;
+  if (!item.contains(e.relatedTarget)) tip.classList.remove('visible');
+});
 
-  document.getElementById('sidebar-list').innerHTML = '';
-  document.getElementById('action-prompt').style.display = '';
-  document.getElementById('last-word-card').style.display = 'none';
-  initSidebar();
-  updateStats();
-  showWord();
-}
-
-// Initialize
 init();
 
 setInterval(() => {
@@ -379,7 +456,10 @@ setInterval(() => {
 }, 30_000);
 
 document.addEventListener('keydown', e => {
-  if (e.key === 'Escape') { closeRestartModal(); return; }
+  if (e.key === 'Escape') {
+    closeRestartModal();
+    return;
+  }
   const prompt = document.getElementById('action-prompt');
   if (prompt.style.display === 'none') return;
   if (e.key === 'd' || e.key === 'D') reveal(true);
@@ -396,7 +476,6 @@ document.querySelectorAll('#restart-modal-backdrop .filter-chip').forEach(btn =>
   });
 });
 
-// --- Static element event listeners ---
 document.querySelector('.btn-header').addEventListener('click', openRestartModal);
 document.querySelector('.btn-no').addEventListener('click', () => reveal(false));
 document.querySelector('.btn-yes').addEventListener('click', () => reveal(true));

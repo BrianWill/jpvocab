@@ -16,8 +16,15 @@ This file is random notes of possible features and bug fixes.
 
 - settings menu
     - preferred AI provider/model
+        - only applicable if the user has multiple available keys
+    - default value for target drill count of new words
 
 - some way to sync db state
+    - what if just one version of db in google drive for each machine
+        - manually sync between them with our own logic instead of relying on rclone or google drive 
+        - user specifies paths in settings (or they are all expected to live in one directory of google drive path)
+        - for streaming file mode, is reads / writes to sqldb going to be too slow?
+
     - use turso?
         - but optional...(annoying if users would be required to sign up for an account)
     - syncthing?
@@ -60,6 +67,10 @@ This file is random notes of possible features and bug fixes.
     - use words from users lexicon     
     - present sentence in Japanese to translate to English
     - present English trnaslation to translate to Japanese
+
+- grammatical analysis
+    - sentence breakdown
+    - isolate, classify, and explain phrases
 
 - speaking tutor chatbot
     - user types, chatbot responds with generated audio (voicevox?)

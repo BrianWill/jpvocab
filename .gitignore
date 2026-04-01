@@ -80,3 +80,5 @@ coverage/
 prototype/backend/jpvocab.db
 prototype/backend/tmp/
 prototype/backend/jpvocab-backend
+
+prototype/tmp/

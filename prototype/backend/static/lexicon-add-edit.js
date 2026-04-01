@@ -43,7 +43,6 @@ export function openEditModal(event) {
   initAddResultFooter();
   document.getElementById('btn-add-result-remove').style.display = 'none';
   renderStatus();
-  document.getElementById('add-result-modal-status').style.display = 'none';
   resultBody.querySelector('.result-badge').style.display = 'none';
 }
 
@@ -232,7 +231,6 @@ async function saveAddModal() {
 
   closeAddModal();
 
-  document.getElementById('add-result-modal-status').style.display = '';
   _addPhase = 'loading';
   _addedWords = [];
   _skippedCount = 0;
@@ -242,8 +240,9 @@ async function saveAddModal() {
   const resultBody = document.getElementById('add-result-modal-body');
   resultBody.innerHTML = '';
   document.getElementById('add-result-modal-backdrop').classList.remove('hidden');
-  renderStatus();
   initAddResultFooter();
+  document.getElementById('add-result-modal-status').style.display = '';
+  renderStatus();
 
   const form = new FormData();
   form.append('words', rawText);
@@ -575,6 +574,7 @@ function renderStatus() {
     }
   }
   const el = document.getElementById('add-result-modal-status');
+  const actionEl = document.getElementById('add-result-modal-action');
   const skippedHtml = _skippedCount > 0
     ? ', <span class="status-skipped">' + _skippedCount + ' skipped</span>'
     : '';
@@ -588,18 +588,21 @@ function renderStatus() {
         (document.querySelectorAll('#add-result-modal-body .word-result-row .btn-generate:not(.btn-generate--busy):not([disabled])').length > 0 && hasProviders && _addPhase !== 'loading' ? '' : ' disabled') +
         ' data-tooltip="Uses an AI API request to get the reading, part-of-speech, meaning, and an example sentence for each word"' +
         '>generate all</button>';
+  if (actionEl) {
+    actionEl.innerHTML = actionHtml;
+    const actionBtn = actionEl.querySelector('.btn-generate');
+    if (actionBtn) actionBtn.addEventListener('mousedown', _pendingGenerates > 0 ? cancelAllGenerates : openGenerateConfirm);
+  }
   if (_addPhase === 'loading') {
     el.className = 'modal-status modal-status-loading';
-    el.innerHTML = countsHtml + actionHtml + (_pendingGenerates === 0 ? '<span class="spinner"></span>' : '');
+    el.innerHTML = countsHtml + (_pendingGenerates === 0 ? '<span class="spinner"></span>' : '');
   } else if (_addPhase === 'cancelled') {
     el.className = 'modal-status modal-status-cancelled';
-    el.innerHTML = countsHtml + actionHtml + (_pendingGenerates === 0 ? '<span class="status-cancelled-note"> — cancelled</span>' : '');
+    el.innerHTML = countsHtml + (_pendingGenerates === 0 ? '<span class="status-cancelled-note"> — cancelled</span>' : '');
   } else {
     el.className = 'modal-status ' + (_pendingGenerates > 0 ? 'modal-status-loading' : 'modal-status-done');
-    el.innerHTML = countsHtml + actionHtml;
+    el.innerHTML = countsHtml;
   }
-  const actionBtn = el.querySelector('.btn-generate');
-  if (actionBtn) actionBtn.addEventListener('mousedown', _pendingGenerates > 0 ? cancelAllGenerates : openGenerateConfirm);
   updateAddResultFooter();
 }
 
@@ -619,7 +622,6 @@ function initAddResultFooter() {
   const hasProviders = _providers && (_providers.anthropic || _providers.openai || _providers.google || _providers.mistral || _providers.glm);
   const progTip = _providers ? providerSelectTooltip(_providers) : null;
   footer.innerHTML =
-    '<button id="btn-add-result-remove" class="btn-danger">Remove added words</button>' +
     '<select id="add-result-model-select" class="add-result-model-select"' +
       (hasProviders ? '' : ' disabled') +
     '>' +
@@ -645,7 +647,10 @@ function initAddResultFooter() {
       '</optgroup>' +
     '</select>' +
     (progTip ? '<span class="provider-info-icon" data-tooltip="' + progTip + '">?</span>' : '') +
-    '<button id="btn-add-result-close" class="btn-save" style="margin-left:auto">Close</button>';
+    '<div id="add-result-modal-action"></div>' +
+    '<div id="add-result-modal-status" class="modal-status" style="padding:0;border:none;margin-left:auto"></div>' +
+    '<button id="btn-add-result-remove" class="btn-danger">Remove added words</button>' +
+    '<button id="btn-add-result-close" class="btn-save">Close</button>';
 
   if (hasProviders) {
     const sel = document.getElementById('add-result-model-select');

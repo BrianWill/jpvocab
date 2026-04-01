@@ -7,67 +7,24 @@
 - Separate durable session state from render-only UI concerns.
 - Remove duplicated helpers that already exist elsewhere.
 
-## Recommended Refactor Sequence
-
-1. Gather all DOM nodes once into an `els` object. Done.
-   This removes repeated `document.getElementById(...)` and `querySelector(...)` calls and makes render code easier to scan.
-
-2. Replace module-level globals with a single `state` object. Done.
-   Use nested sections like `state.session`, `state.settings`, and `state.ui` if helpful, but keep one clear source of truth.
-
-3. Introduce a single `renderDrill(state)` entrypoint. Done.
-   Have it call small render helpers for prompt, stats, sidebar, last-answered card, and completion state.
-
-4. Extract pure drill progression logic into a small state module or pure helper section. Done in-file for now.
-   Functions like round building, answer application, completion checks, and restart/reset logic should not touch the DOM.
-
-5. Trim persisted session shape to durable state only. Done.
-   Persist semantic state, not transient render details or animation classes.
-
 ## Current Status
+The current drill frontend structure is:
 
-Steps 1 through 5 have now been implemented.
+- `backend/static/drill.js`
+  Bootstrap, event wiring, restart-modal orchestration, and tooltip wiring only.
 
-The current `backend/static/drill.js` structure is:
+- `backend/static/drill-state.js`
+  State creation, filtering, round building, reveal transitions, completion checks, session serialization, and drill API helpers.
 
-- `els` for cached DOM lookups
-- `state` for module-level drill state
-- Pure helper functions for sidebar updates, round construction, reveal transitions, and completion checks
-- `renderDrill()` as the main rendering entrypoint
+- `backend/static/drill-view.js`
+  DOM lookup, filter-chip syncing, filter-hint rendering, tooltip positioning, and drill rendering helpers.
 
 The persisted drill session snapshot now excludes derived completion flags and copied settings-only values.
 
 ## Specific Cleanup Targets
 
-- Remove `maxPoolSize` from runtime state entirely if it remains only a temporary clamp value. Done.
-- Keep `sidebarItems` semantic and move flash classes fully into render-only behavior if a later cleanup pass touches sidebar rendering again. Done.
-- Consider moving the in-file pure drill helpers into a separate `drill-state.js` module once the shape feels stable.
+- Consider moving the local `shuffle()` helper into shared utilities if another page ends up needing the same behavior.
 
 ## Shared Logic Opportunities
 
-- Reuse or extract the numeric stepper helpers duplicated in `backend/static/drill.js` and `backend/static/common.js`. Done.
-- Move shared filter constants to one place. Done.
 - Consider moving `timeAgo()` into a shared utility module if other pages will need the same formatting.
-
-## Proposed File Split
-
-- `drill-data.js`
-  Fetch and persistence helpers for words, kanji, settings, and session snapshots.
-
-- `drill-state.js`
-  Pure state creation and transitions like `createInitialState`, `restoreState`, `answerCurrentWord`, `restartDrill`, and `isComplete`.
-
-- `drill-view.js`
-  DOM rendering helpers for prompt, sidebar, stats, tooltip, and last answered card.
-
-- `drill.js`
-  Bootstrap, event wiring, and orchestration only.
-
-## First Increment
-
-Start with the lowest-risk cleanup:
-
-1. Centralize DOM references in an `els` object. Done.
-2. Replace scattered globals with a single `state` object. Done.
-
-Those two changes should improve readability immediately without changing behavior.

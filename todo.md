@@ -14,6 +14,8 @@ This file is random notes of possible features and bug fixes.
         - marble animals? 
     - shadcn
 
+- hovering a word in the activity page date info should show its word info (like the sidebar on the drill page)
+
 - settings menu
     - preferred AI provider/model
         - only applicable if the user has multiple available keys

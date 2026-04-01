@@ -279,13 +279,47 @@
 .badge-removed { background: rgba(243,139,168,0.12); color: #f38ba8; }
 .result-skipped .result-word { color: #45475a; }
 
+.word-result-body {
+  display: flex;
+  align-items: stretch;
+  gap: 1rem;
+  margin-top: 0.35rem;
+}
+
 .word-result-details {
   display: grid;
+  flex: 1;
+  min-width: 0;
   grid-template-columns: 10rem 1fr;
   grid-template-rows: auto auto auto;
   column-gap: 1.25rem;
   row-gap: 0.5rem;
-  margin-top: 0.35rem;
+}
+
+.word-result-image {
+  width: 88px;
+  flex-shrink: 0;
+  position: relative;
+  border-radius: 4px;
+  overflow: hidden;
+}
+.word-result-image img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+.word-result-image--empty {
+  border: 1px dashed #45475a;
+  color: #45475a;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.word-result-image--empty svg {
+  width: 24px;
+  height: 24px;
 }
 .detail-reading { grid-column: 1;      grid-row: 1; }
 .detail-kanji   { grid-column: 2;      grid-row: 1; }

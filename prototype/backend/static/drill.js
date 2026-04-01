@@ -195,6 +195,13 @@ function reveal(knew) {
   document.getElementById('last-example-jp').textContent = answered.exampleJp;
   document.getElementById('last-example-en').textContent = answered.exampleEn;
   renderKanjiInfo(document.getElementById('last-kanji-info'), answered);
+  const imgEl = document.getElementById('last-word-image');
+  if (answered.imagePath) {
+    imgEl.src = '/static/' + answered.imagePath;
+    imgEl.style.display = '';
+  } else {
+    imgEl.style.display = 'none';
+  }
 
   // Advance
   if (remaining.length === 0) {

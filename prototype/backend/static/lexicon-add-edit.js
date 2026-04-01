@@ -37,6 +37,7 @@ export function openEditModal(event) {
     drill_incorrect: w.incorrect,
     drill_target: w.target,
     kanji_data: w.kanjiData,
+    image_path: w.imagePath,
   });
 
   document.getElementById('add-result-modal-backdrop').classList.remove('hidden');
@@ -364,9 +365,19 @@ function appendWordRow(data) {
       detailItemExInput(data.example_jp, data.example_en) +
     '</div>';
 
+  const imagePlaceholderSvg =
+    '<svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">' +
+      '<rect x="3" y="3" width="18" height="18" rx="2" stroke="currentColor" stroke-width="1.5"/>' +
+      '<circle cx="8.5" cy="8.5" r="1.5" fill="currentColor"/>' +
+      '<polyline points="3,21 8,14 12,18 16,13 21,18" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round"/>' +
+    '</svg>';
+  const imageHtml = data.image_path
+    ? '<div class="word-result-image"><img src="/static/' + esc(data.image_path) + '" alt=""></div>'
+    : '<div class="word-result-image word-result-image--empty">' + imagePlaceholderSvg + '</div>';
+
   row.innerHTML =
     '<div class="word-result-main"><span class="result-word">' + esc(data.word) + '</span>' + badge + inlineExtra + '</div>' +
-    details;
+    '<div class="word-result-body">' + details + imageHtml + '</div>';
 
   const removeBtnEl = row.querySelector('.btn-word-remove');
   if (removeBtnEl) removeBtnEl.addEventListener('mousedown', e => removeWordRow(e, removeBtnEl));

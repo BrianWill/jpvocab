@@ -253,6 +253,14 @@
 .last-word-card .tooltip-example { font-size: 0.95rem; padding-top: 0.6rem; }
 .last-word-card .tooltip-example-en { font-size: 0.9rem; }
 
+.last-word-image {
+  display: block;
+  width: 100%;
+  height: auto;
+  margin-top: 0.75rem;
+  border-radius: 4px;
+}
+
 .last-kanji-info {
   display: flex;
   flex-direction: column;

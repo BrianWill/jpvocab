@@ -9,27 +9,39 @@
 
 ## Recommended Refactor Sequence
 
-1. Gather all DOM nodes once into an `els` object.
+1. Gather all DOM nodes once into an `els` object. Done.
    This removes repeated `document.getElementById(...)` and `querySelector(...)` calls and makes render code easier to scan.
 
-2. Replace module-level globals with a single `state` object.
+2. Replace module-level globals with a single `state` object. Done.
    Use nested sections like `state.session`, `state.settings`, and `state.ui` if helpful, but keep one clear source of truth.
 
-3. Introduce a single `renderDrill(state)` entrypoint.
+3. Introduce a single `renderDrill(state)` entrypoint. Done.
    Have it call small render helpers for prompt, stats, sidebar, last-answered card, and completion state.
 
-4. Extract pure drill progression logic into a small state module or pure helper section.
+4. Extract pure drill progression logic into a small state module or pure helper section. Done in-file for now.
    Functions like round building, answer application, completion checks, and restart/reset logic should not touch the DOM.
 
-5. Trim persisted session shape to durable state only.
+5. Trim persisted session shape to durable state only. Done.
    Persist semantic state, not transient render details or animation classes.
+
+## Current Status
+
+Steps 1 through 5 have now been implemented.
+
+The current `backend/static/drill.js` structure is:
+
+- `els` for cached DOM lookups
+- `state` for module-level drill state
+- Pure helper functions for sidebar updates, round construction, reveal transitions, and completion checks
+- `renderDrill()` as the main rendering entrypoint
+
+The persisted drill session snapshot now excludes derived completion flags and copied settings-only values.
 
 ## Specific Cleanup Targets
 
-- Remove `maxPoolSize` from durable session state if it remains only a temporary clamp value.
-- Remove persisted `completed` if it can be derived from the rest of the session state.
-- Revisit whether `settingsMaxWords` belongs in saved drill session state instead of being read from settings on boot.
-- Keep `sidebarItems` semantic and add flash classes only during rendering.
+- Remove `maxPoolSize` from runtime state entirely if it remains only a temporary clamp value. Done.
+- Keep `sidebarItems` semantic and move flash classes fully into render-only behavior if a later cleanup pass touches sidebar rendering again.
+- Consider moving the in-file pure drill helpers into a separate `drill-state.js` module once the shape feels stable.
 
 ## Shared Logic Opportunities
 
@@ -55,7 +67,7 @@
 
 Start with the lowest-risk cleanup:
 
-1. Centralize DOM references in an `els` object.
-2. Replace scattered globals with a single `state` object.
+1. Centralize DOM references in an `els` object. Done.
+2. Replace scattered globals with a single `state` object. Done.
 
 Those two changes should improve readability immediately without changing behavior.

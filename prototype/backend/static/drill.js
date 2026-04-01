@@ -49,7 +49,6 @@ const state = {
   isSubmittingAnswer: false,
   kanjiMap: {},
   lastAnswered: null,
-  maxPoolSize: 0,
   pool: [],
   poolSize: 0,
   redo: [],
@@ -414,8 +413,8 @@ async function init() {
 
   const filtered = getFilteredWords();
   const source = filtered.length > 0 ? filtered : state.words;
-  state.maxPoolSize = Math.min(settings.maxWords, source.length);
-  state.poolSize = state.maxPoolSize;
+  const poolSize = Math.min(settings.maxWords, source.length);
+  state.poolSize = poolSize;
   state.pool = shuffle([...source]).slice(0, state.poolSize);
   Object.assign(state, buildRoundState(state));
   state.lastAnswered = null;
@@ -478,8 +477,8 @@ function restartDrill(totalWords, newRoundSize, sourceWords) {
 
 async function confirmRestart() {
   const filtered = getFilteredWords();
-  state.maxPoolSize = Math.max(1, parseInt(els.restartTotalWords.value, 10) || filtered.length);
-  const total = Math.min(state.maxPoolSize, filtered.length);
+  const maxPoolSize = Math.max(1, parseInt(els.restartTotalWords.value, 10) || filtered.length);
+  const total = Math.min(maxPoolSize, filtered.length);
   const rSize = Math.max(1, Math.min(total, parseInt(els.restartRoundSize.value, 10) || state.roundSize));
   closeRestartModal();
   restartDrill(total, rSize, filtered);

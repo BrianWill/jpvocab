@@ -289,8 +289,6 @@ function renderDrill() {
 function getSessionState() {
   return {
     poolSize: state.poolSize,
-    maxPoolSize: state.maxPoolSize,
-    settingsMaxWords: state.settingsMaxWords,
     roundSize: state.roundSize,
     round: state.round,
     doneCount: state.doneCount,
@@ -303,7 +301,6 @@ function getSessionState() {
       status: item.status.replace(/\sflash-(known|missed)\b/g, ''),
     })),
     lastAnswered: state.lastAnswered,
-    completed: isSessionComplete(state),
   };
 }
 
@@ -364,8 +361,6 @@ function restoreSession(session) {
 
   const sessionState = session.state || {};
   state.poolSize = sessionState.poolSize || 0;
-  state.maxPoolSize = sessionState.maxPoolSize || 0;
-  state.settingsMaxWords = sessionState.settingsMaxWords > 0 ? sessionState.settingsMaxWords : state.settingsMaxWords;
   state.roundSize = sessionState.roundSize || DEFAULT_ROUND_SIZE;
   state.round = sessionState.round || 1;
   state.doneCount = sessionState.doneCount || 0;

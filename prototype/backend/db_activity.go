@@ -51,19 +51,16 @@ type drillLastAnswered struct {
 }
 
 type drillSessionState struct {
-	PoolSize         int                `json:"poolSize"`
-	MaxPoolSize      int                `json:"maxPoolSize"`
-	SettingsMaxWords int                `json:"settingsMaxWords"`
-	RoundSize        int                `json:"roundSize"`
-	Round            int                `json:"round"`
-	DoneCount        int                `json:"doneCount"`
-	ActiveFilters    []string           `json:"activeFilters"`
-	Pool             []wordJSON         `json:"pool"`
-	Redo             []wordJSON         `json:"redo"`
-	Remaining        []wordJSON         `json:"remaining"`
-	SidebarItems     []drillSidebarItem `json:"sidebarItems"`
-	LastAnswered     *drillLastAnswered `json:"lastAnswered,omitempty"`
-	Completed        bool               `json:"completed"`
+	PoolSize      int                `json:"poolSize"`
+	RoundSize     int                `json:"roundSize"`
+	Round         int                `json:"round"`
+	DoneCount     int                `json:"doneCount"`
+	ActiveFilters []string           `json:"activeFilters"`
+	Pool          []wordJSON         `json:"pool"`
+	Redo          []wordJSON         `json:"redo"`
+	Remaining     []wordJSON         `json:"remaining"`
+	SidebarItems  []drillSidebarItem `json:"sidebarItems"`
+	LastAnswered  *drillLastAnswered `json:"lastAnswered,omitempty"`
 }
 
 type drillSessionJSON struct {
@@ -97,6 +94,10 @@ func sessionStateJSON(state drillSessionState) (string, error) {
 		return "", err
 	}
 	return string(b), nil
+}
+
+func isDrillSessionComplete(state drillSessionState) bool {
+	return len(state.Pool) == 0 && len(state.Redo) == 0 && len(state.Remaining) == 0
 }
 
 // createDrillSession closes any existing active drill and inserts a new session.
@@ -203,7 +204,7 @@ func recordDrillAnswer(db *sql.DB, sessionID, wordID int64, correct bool, state 
 		}
 	}
 
-	if state.Completed {
+	if isDrillSessionComplete(state) {
 		if _, err := tx.Exec(`
 			UPDATE drill_sessions
 			SET state_json = '{}', completed_at = datetime('now')

@@ -494,7 +494,6 @@ func TestRecordDrillAnswer_UpdatesSessionStateAndCompletion(t *testing.T) {
 	state := drillSessionState{
 		Round:     1,
 		DoneCount: 1,
-		Completed: true,
 		SidebarItems: []drillSidebarItem{
 			{Word: wordJSON{ID: wordID, Word: "umi"}, Status: "known"},
 		},

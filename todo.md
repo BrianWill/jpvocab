@@ -14,6 +14,11 @@ This file is random notes of possible features and bug fixes.
         - marble animals? 
     - shadcn
 
+- the word lists should have pre-filled info (and images?) in their json
+    - when any word is added, the words from the lists should be checked to see if there is already info available
+        - they could also have a url to a suggested image to acquire (so we don't have to include the images in the repo)
+
+
 - hovering a word in the activity page date info should show its word info (like the sidebar on the drill page)
 
 - settings menu

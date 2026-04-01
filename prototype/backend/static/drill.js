@@ -285,14 +285,29 @@ document.getElementById('sidebar-list').addEventListener('mouseover', e => {
   document.getElementById('tip-meaning').textContent = data.meaning;
   document.getElementById('tip-example').textContent = data.exampleJp || '';
   document.getElementById('tip-example-en').textContent = data.exampleEn || '';
+  const tipImgEl = document.getElementById('tip-word-image');
+  if (data.imagePath) {
+    tipImgEl.src = '/static/' + data.imagePath;
+    tipImgEl.style.display = '';
+  } else {
+    tipImgEl.style.display = 'none';
+  }
   renderKanjiInfo(document.getElementById('tip-kanji-info'), data);
 
   const rect = item.getBoundingClientRect();
   const sidebar = document.querySelector('.sidebar');
   tip.style.left = sidebar.getBoundingClientRect().right + 'px';
-  tip.style.top = rect.top + 'px';
+  tip.style.visibility = 'hidden';
   tip.style.transform = '';
   tip.classList.add('visible');
+  const tooltipHeight = tip.offsetHeight;
+  const topAlignedTop = rect.top;
+  const bottomAlignedTop = rect.bottom - tooltipHeight;
+  const top = topAlignedTop + tooltipHeight > window.innerHeight
+    ? Math.max(0, bottomAlignedTop)
+    : topAlignedTop;
+  tip.style.top = top + 'px';
+  tip.style.visibility = '';
 });
 document.getElementById('sidebar-list').addEventListener('mouseout', e => {
   const item = e.target.closest('.sidebar-item');
@@ -445,4 +460,3 @@ roundPlus.addEventListener('mousedown', () => startStep(adjustRestart, 'restart-
 roundPlus.addEventListener('mouseup', stopStep);
 roundPlus.addEventListener('mouseleave', stopStep);
 roundInput.addEventListener('input', () => capRestartInput(roundInput));
-

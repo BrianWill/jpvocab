@@ -2,8 +2,9 @@
 
 This file is random notes of possible features and bug fixes.
 
-- preserve drill state in db
-    - would allow user to switch away to different pages without worrying about losing their progress
+- currently drills that include katakana words but omit nouns will still include nouns that are katakana
+    - is this desired behavior? 
+
 
 - play with visual styles
     - use simple organic textures instead of solid background colors

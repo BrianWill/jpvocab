@@ -2,28 +2,66 @@ import { populateWordTooltip, positionAnchoredWordTooltip, renderWordTooltipKanj
 import { renderReading } from './lexicon-utils.js';
 
 const FILTER_KEYS = ['katakana', 'verbs', 'nouns', 'other'];
-const activeFilters = new Set(FILTER_KEYS);
 const DEFAULT_ROUND_SIZE = 10;
 const STEP_INTERVAL = 230;
 
-let kanjiMap = {};
-let words = [];
-let sessionId = null;
-let poolSize = 0;
-let maxPoolSize = 0;
-let settingsMaxWords = null;
-let roundSize = DEFAULT_ROUND_SIZE;
-let pool = [];
-let round = 1;
-let redo = [];
-let doneCount = 0;
-let drillStartedAt = Date.now();
-let remaining = [];
-let currentWord = null;
-let sidebarItems = [];
-let lastAnswered = null;
-let isSubmittingAnswer = false;
-let stepTimer = null;
+const els = {
+  actionPrompt: document.getElementById('action-prompt'),
+  headerBegan: document.getElementById('header-began'),
+  lastExampleEn: document.getElementById('last-example-en'),
+  lastExampleJp: document.getElementById('last-example-jp'),
+  lastKanjiInfo: document.getElementById('last-kanji-info'),
+  lastMeaning: document.getElementById('last-meaning'),
+  lastPos: document.getElementById('last-pos'),
+  lastReading: document.getElementById('last-reading'),
+  lastWordCard: document.getElementById('last-word-card'),
+  lastWordImage: document.getElementById('last-word-image'),
+  lastWordJp: document.getElementById('last-word-jp'),
+  progressBar: document.querySelector('.progress-bar'),
+  promptExampleJp: document.getElementById('prompt-example-jp'),
+  promptWordJp: document.getElementById('prompt-word-jp'),
+  restartBackdrop: document.getElementById('restart-modal-backdrop'),
+  restartRoundSize: document.getElementById('restart-round-size'),
+  restartStartBtn: document.getElementById('restart-start-btn'),
+  restartTotalWords: document.getElementById('restart-total-words'),
+  sidebar: document.querySelector('.sidebar'),
+  sidebarList: document.getElementById('sidebar-list'),
+  sidebarTitle: document.getElementById('sidebar-title'),
+  statToGo: document.getElementById('stat-togo'),
+  tip: document.getElementById('tooltip'),
+  filterHint: document.getElementById('filter-hint'),
+  headerRestartBtn: document.querySelector('.btn-header'),
+  knowBtn: document.querySelector('.btn-yes'),
+  dontKnowBtn: document.querySelector('.btn-no'),
+};
+
+els.restartFilterButtons = Array.from(
+  els.restartBackdrop.querySelectorAll('.filter-chip[data-filter]')
+);
+els.restartCloseBtn = els.restartBackdrop.querySelector('.modal-close');
+els.restartCancelBtn = els.restartBackdrop.querySelector('.btn-cancel');
+
+const state = {
+  activeFilters: new Set(FILTER_KEYS),
+  currentWord: null,
+  doneCount: 0,
+  drillStartedAt: Date.now(),
+  isSubmittingAnswer: false,
+  kanjiMap: {},
+  lastAnswered: null,
+  maxPoolSize: 0,
+  pool: [],
+  poolSize: 0,
+  redo: [],
+  remaining: [],
+  round: 1,
+  roundSize: DEFAULT_ROUND_SIZE,
+  sessionId: null,
+  settingsMaxWords: null,
+  sidebarItems: [],
+  stepTimer: null,
+  words: [],
+};
 
 function matchesFilter(w, f) {
   const isKatakana = /^[\u30A0-\u30FF]+$/.test(w.word);
@@ -37,25 +75,29 @@ function matchesFilter(w, f) {
 }
 
 function getFilteredWords() {
-  return words.filter(w => FILTER_KEYS.some(f => activeFilters.has(f) && matchesFilter(w, f)));
+  return state.words.filter(w => FILTER_KEYS.some(f => state.activeFilters.has(f) && matchesFilter(w, f)));
+}
+
+function syncRestartFilterButtons() {
+  els.restartFilterButtons.forEach(btn => {
+    btn.classList.toggle('active', state.activeFilters.has(btn.dataset.filter));
+  });
 }
 
 function updateFilterHint() {
-  const hint = document.getElementById('filter-hint');
-  const btn = document.getElementById('restart-start-btn');
-  if (activeFilters.size === 0) {
-    hint.textContent = 'Select at least one word type';
-    hint.classList.add('error');
-    btn.disabled = true;
+  if (state.activeFilters.size === 0) {
+    els.filterHint.textContent = 'Select at least one word type';
+    els.filterHint.classList.add('error');
+    els.restartStartBtn.disabled = true;
     return;
   }
 
   const count = getFilteredWords().length;
-  hint.textContent = activeFilters.size === FILTER_KEYS.length
+  els.filterHint.textContent = state.activeFilters.size === FILTER_KEYS.length
     ? 'All ' + count + ' words'
-    : count + ' of ' + words.length + ' words';
-  hint.classList.remove('error');
-  btn.disabled = false;
+    : count + ' of ' + state.words.length + ' words';
+  els.filterHint.classList.remove('error');
+  els.restartStartBtn.disabled = false;
 }
 
 function shuffle(arr) {
@@ -79,103 +121,98 @@ function timeAgo(date) {
 }
 
 function buildRound() {
-  const slots = Math.max(0, roundSize - redo.length);
-  const picked = pool.splice(0, slots);
-  return [...redo, ...picked];
+  const slots = Math.max(0, state.roundSize - state.redo.length);
+  const picked = state.pool.splice(0, slots);
+  return [...state.redo, ...picked];
 }
 
 function updateStats() {
-  document.getElementById('stat-togo').textContent = (poolSize - doneCount) + ' to go of ' + poolSize;
-  document.getElementById('sidebar-title').textContent = 'Round ' + round;
-  document.getElementById('header-began').textContent = 'began ' + timeAgo(drillStartedAt);
+  els.statToGo.textContent = (state.poolSize - state.doneCount) + ' to go of ' + state.poolSize;
+  els.sidebarTitle.textContent = 'Round ' + state.round;
+  els.headerBegan.textContent = 'began ' + timeAgo(state.drillStartedAt);
 
-  const pct = poolSize > 0 ? (doneCount / poolSize) * 100 : 0;
-  document.querySelector('.progress-bar').style.width = pct + '%';
+  const pct = state.poolSize > 0 ? (state.doneCount / state.poolSize) * 100 : 0;
+  els.progressBar.style.width = pct + '%';
 }
 
 function showWord() {
-  if (!currentWord) return;
-  document.getElementById('prompt-word-jp').textContent = currentWord.word;
-  document.getElementById('prompt-example-jp').textContent = currentWord.exampleJp;
+  if (!state.currentWord) return;
+  els.promptWordJp.textContent = state.currentWord.word;
+  els.promptExampleJp.textContent = state.currentWord.exampleJp;
 
-  const list = document.getElementById('sidebar-list');
-  list.querySelectorAll('.sidebar-item.current').forEach(el => el.classList.remove('current'));
-  const item = list.querySelector('[data-id="' + currentWord.word + '"]');
+  els.sidebarList.querySelectorAll('.sidebar-item.current').forEach(el => el.classList.remove('current'));
+  const item = els.sidebarList.querySelector('[data-id="' + state.currentWord.word + '"]');
   if (item) item.classList.add('current');
 }
 
 function renderSidebar() {
-  const list = document.getElementById('sidebar-list');
-  list.innerHTML = '';
-  sidebarItems.forEach(itemData => {
+  els.sidebarList.innerHTML = '';
+  state.sidebarItems.forEach(itemData => {
     const li = document.createElement('li');
     li.className = 'sidebar-item ' + itemData.status;
     li.textContent = itemData.word.word;
     li.dataset.word = JSON.stringify(itemData.word);
     li.dataset.id = itemData.word.word;
     li.addEventListener('animationend', () => li.classList.remove('flash-known', 'flash-missed'), { once: true });
-    list.appendChild(li);
+    els.sidebarList.appendChild(li);
   });
 }
 
 function renderLastAnswered() {
-  const card = document.getElementById('last-word-card');
-  if (!lastAnswered) {
-    card.style.display = 'none';
+  if (!state.lastAnswered) {
+    els.lastWordCard.style.display = 'none';
     return;
   }
 
-  const answered = lastAnswered.word;
-  card.style.display = '';
-  const lastWordEl = document.getElementById('last-word-jp');
-  lastWordEl.textContent = answered.word;
-  lastWordEl.className = 'tooltip-word ' + (lastAnswered.knew ? 'knew' : 'missed');
-  document.getElementById('last-reading').innerHTML = renderReading(answered.reading, answered.word, answered.kanjiData);
-  document.getElementById('last-pos').textContent = answered.type;
-  document.getElementById('last-meaning').textContent = answered.meaning;
-  document.getElementById('last-example-jp').textContent = answered.exampleJp;
-  document.getElementById('last-example-en').textContent = answered.exampleEn;
-  renderWordTooltipKanji(document.getElementById('last-kanji-info'), answered, kanjiMap);
-  const imgEl = document.getElementById('last-word-image');
+  const answered = state.lastAnswered.word;
+  els.lastWordCard.style.display = '';
+  els.lastWordJp.textContent = answered.word;
+  els.lastWordJp.className = 'tooltip-word ' + (state.lastAnswered.knew ? 'knew' : 'missed');
+  els.lastReading.innerHTML = renderReading(answered.reading, answered.word, answered.kanjiData);
+  els.lastPos.textContent = answered.type;
+  els.lastMeaning.textContent = answered.meaning;
+  els.lastExampleJp.textContent = answered.exampleJp;
+  els.lastExampleEn.textContent = answered.exampleEn;
+  renderWordTooltipKanji(els.lastKanjiInfo, answered, state.kanjiMap);
   if (answered.imagePath) {
-    imgEl.src = '/static/' + answered.imagePath;
-    imgEl.style.display = '';
+    els.lastWordImage.src = '/static/' + answered.imagePath;
+    els.lastWordImage.style.display = '';
   } else {
-    imgEl.style.display = 'none';
+    els.lastWordImage.style.display = 'none';
   }
 }
 
 function renderCompleteState() {
-  document.getElementById('prompt-word-jp').textContent = 'Done!';
-  document.getElementById('prompt-example-jp').textContent = 'All words cleared.';
-  document.getElementById('action-prompt').style.display = 'none';
+  els.promptWordJp.textContent = 'Done!';
+  els.promptExampleJp.textContent = 'All words cleared.';
+  els.actionPrompt.style.display = 'none';
 }
 
 function renderInProgressState() {
-  document.getElementById('action-prompt').style.display = '';
+  els.actionPrompt.style.display = '';
 }
 
 function addToSidebar(word, knew) {
-  const existing = sidebarItems.find(item => item.word.word === word.word);
+  const existing = state.sidebarItems.find(item => item.word.word === word.word);
   const status = knew ? 'known flash-known' : 'missed flash-missed';
   if (existing) {
     existing.word = word;
     existing.status = status;
     return;
   }
-  sidebarItems.push({ word, status });
+  state.sidebarItems.push({ word, status });
 }
 
 function startNextRound() {
-  round++;
-  const redoSet = new Set(redo.map(w => w.word));
-  remaining = buildRound();
-  redo = [];
-  currentWord = remaining[0] || null;
+  state.round++;
+  const redoSet = new Set(state.redo.map(w => w.word));
+  state.remaining = buildRound();
+  state.redo = [];
+  state.currentWord = state.remaining[0] || null;
 
-  const redoWords = remaining.filter(w => redoSet.has(w.word));
-  const newWords = remaining.filter(w => !redoSet.has(w.word));
-  sidebarItems = [...redoWords, ...newWords].map(word => ({
+  const redoWords = state.remaining.filter(w => redoSet.has(w.word));
+  const newWords = state.remaining.filter(w => !redoSet.has(w.word));
+  state.sidebarItems = [...redoWords, ...newWords].map(word => ({
     word,
     status: redoSet.has(word.word) ? 'unseen-redo' : 'unseen',
   }));
@@ -183,22 +220,22 @@ function startNextRound() {
 
 function getSessionState() {
   return {
-    poolSize,
-    maxPoolSize,
-    settingsMaxWords,
-    roundSize,
-    round,
-    doneCount,
-    activeFilters: [...activeFilters],
-    pool,
-    redo,
-    remaining,
-    sidebarItems: sidebarItems.map(item => ({
+    poolSize: state.poolSize,
+    maxPoolSize: state.maxPoolSize,
+    settingsMaxWords: state.settingsMaxWords,
+    roundSize: state.roundSize,
+    round: state.round,
+    doneCount: state.doneCount,
+    activeFilters: [...state.activeFilters],
+    pool: state.pool,
+    redo: state.redo,
+    remaining: state.remaining,
+    sidebarItems: state.sidebarItems.map(item => ({
       word: item.word,
       status: item.status.replace(/\sflash-(known|missed)\b/g, ''),
     })),
-    lastAnswered,
-    completed: !currentWord && remaining.length === 0 && redo.length === 0 && pool.length === 0,
+    lastAnswered: state.lastAnswered,
+    completed: !state.currentWord && state.remaining.length === 0 && state.redo.length === 0 && state.pool.length === 0,
   };
 }
 
@@ -218,41 +255,41 @@ async function getCurrentSession() {
   return data.session;
 }
 
-async function postAnswer(wordId, correct, state) {
-  if (!sessionId) return;
-  const resp = await fetch('/api/drill/sessions/' + sessionId + '/answers', {
+async function postAnswer(wordId, correct, sessionState) {
+  if (!state.sessionId) return;
+  const resp = await fetch('/api/drill/sessions/' + state.sessionId + '/answers', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ wordId, correct, state }),
+    body: JSON.stringify({ wordId, correct, state: sessionState }),
   });
   if (!resp.ok) throw new Error('failed to save drill answer');
 }
 
 async function reveal(knew) {
-  if (!currentWord || isSubmittingAnswer) return;
-  isSubmittingAnswer = true;
+  if (!state.currentWord || state.isSubmittingAnswer) return;
+  state.isSubmittingAnswer = true;
 
-  const answered = currentWord;
-  remaining.shift();
+  const answered = state.currentWord;
+  state.remaining.shift();
   if (knew) {
-    doneCount++;
+    state.doneCount++;
   } else {
-    redo.push(answered);
+    state.redo.push(answered);
   }
 
   addToSidebar(answered, knew);
-  lastAnswered = { word: answered, knew };
+  state.lastAnswered = { word: answered, knew };
 
-  if (remaining.length === 0) {
-    if (redo.length > 0 || pool.length > 0) {
+  if (state.remaining.length === 0) {
+    if (state.redo.length > 0 || state.pool.length > 0) {
       startNextRound();
       renderInProgressState();
     } else {
-      currentWord = null;
+      state.currentWord = null;
       renderCompleteState();
     }
   } else {
-    currentWord = remaining[0];
+    state.currentWord = state.remaining[0];
     renderInProgressState();
   }
 
@@ -264,14 +301,13 @@ async function reveal(knew) {
   try {
     await postAnswer(answered.id, knew, getSessionState());
   } finally {
-    isSubmittingAnswer = false;
+    state.isSubmittingAnswer = false;
   }
 }
 
 function positionSidebarTooltip(item, tip) {
-  const sidebar = document.querySelector('.sidebar');
   const itemRect = item.getBoundingClientRect();
-  const sidebarRect = sidebar.getBoundingClientRect();
+  const sidebarRect = els.sidebar.getBoundingClientRect();
   positionAnchoredWordTooltip(tip, {
     anchorRect: itemRect,
     left: sidebarRect.right - 14,
@@ -279,33 +315,31 @@ function positionSidebarTooltip(item, tip) {
 }
 
 function restoreSession(session) {
-  sessionId = session.id;
+  state.sessionId = session.id;
   const startedAt = Date.parse(session.startedAt);
-  drillStartedAt = Number.isNaN(startedAt) ? Date.now() : startedAt;
+  state.drillStartedAt = Number.isNaN(startedAt) ? Date.now() : startedAt;
 
-  const state = session.state || {};
-  poolSize = state.poolSize || 0;
-  maxPoolSize = state.maxPoolSize || 0;
-  settingsMaxWords = state.settingsMaxWords > 0 ? state.settingsMaxWords : settingsMaxWords;
-  roundSize = state.roundSize || DEFAULT_ROUND_SIZE;
-  round = state.round || 1;
-  doneCount = state.doneCount || 0;
-  pool = Array.isArray(state.pool) ? state.pool : [];
-  redo = Array.isArray(state.redo) ? state.redo : [];
-  remaining = Array.isArray(state.remaining) ? state.remaining : [];
-  currentWord = remaining[0] || null;
-  sidebarItems = Array.isArray(state.sidebarItems) ? state.sidebarItems : [];
-  lastAnswered = state.lastAnswered || null;
+  const sessionState = session.state || {};
+  state.poolSize = sessionState.poolSize || 0;
+  state.maxPoolSize = sessionState.maxPoolSize || 0;
+  state.settingsMaxWords = sessionState.settingsMaxWords > 0 ? sessionState.settingsMaxWords : state.settingsMaxWords;
+  state.roundSize = sessionState.roundSize || DEFAULT_ROUND_SIZE;
+  state.round = sessionState.round || 1;
+  state.doneCount = sessionState.doneCount || 0;
+  state.pool = Array.isArray(sessionState.pool) ? sessionState.pool : [];
+  state.redo = Array.isArray(sessionState.redo) ? sessionState.redo : [];
+  state.remaining = Array.isArray(sessionState.remaining) ? sessionState.remaining : [];
+  state.currentWord = state.remaining[0] || null;
+  state.sidebarItems = Array.isArray(sessionState.sidebarItems) ? sessionState.sidebarItems : [];
+  state.lastAnswered = sessionState.lastAnswered || null;
 
-  if (Array.isArray(state.activeFilters) && state.activeFilters.length > 0) {
-    activeFilters.clear();
-    state.activeFilters.forEach(f => activeFilters.add(f));
+  if (Array.isArray(sessionState.activeFilters) && sessionState.activeFilters.length > 0) {
+    state.activeFilters.clear();
+    sessionState.activeFilters.forEach(f => state.activeFilters.add(f));
   }
-  document.querySelectorAll('#restart-modal-backdrop .filter-chip[data-filter]').forEach(btn => {
-    btn.classList.toggle('active', activeFilters.has(btn.dataset.filter));
-  });
+  syncRestartFilterButtons();
 
-  if (state.completed) renderCompleteState();
+  if (sessionState.completed) renderCompleteState();
   else renderInProgressState();
 
   renderSidebar();
@@ -325,24 +359,22 @@ async function init() {
   const kanjiList = await kanjiResp.json();
   const settings = await settingsResp.json();
 
-  kanjiMap = {};
-  kanjiList.forEach(k => { kanjiMap[k.id] = k; });
+  state.kanjiMap = {};
+  kanjiList.forEach(k => { state.kanjiMap[k.id] = k; });
 
-  words = allWords.filter(w => w.correct < w.target);
+  state.words = allWords.filter(w => w.correct < w.target);
 
-  settingsMaxWords = settings.maxWords;
-  if (settings.roundSize > 0) roundSize = settings.roundSize;
+  state.settingsMaxWords = settings.maxWords;
+  if (settings.roundSize > 0) state.roundSize = settings.roundSize;
   if (Array.isArray(settings.wordTypes) && settings.wordTypes.length > 0) {
-    activeFilters.clear();
-    settings.wordTypes.forEach(f => activeFilters.add(f));
+    state.activeFilters.clear();
+    settings.wordTypes.forEach(f => state.activeFilters.add(f));
   }
-  document.querySelectorAll('#restart-modal-backdrop .filter-chip[data-filter]').forEach(btn => {
-    btn.classList.toggle('active', activeFilters.has(btn.dataset.filter));
-  });
+  syncRestartFilterButtons();
 
   if (currentSession) {
-    const state = currentSession.state || {};
-    const hasRestorableState = (state.poolSize || 0) > 0 || (Array.isArray(state.remaining) && state.remaining.length > 0);
+    const sessionState = currentSession.state || {};
+    const hasRestorableState = (sessionState.poolSize || 0) > 0 || (Array.isArray(sessionState.remaining) && sessionState.remaining.length > 0);
     if (hasRestorableState) {
       restoreSession(currentSession);
       return;
@@ -350,16 +382,16 @@ async function init() {
   }
 
   const filtered = getFilteredWords();
-  const source = filtered.length > 0 ? filtered : words;
-  maxPoolSize = Math.min(settings.maxWords, source.length);
-  poolSize = maxPoolSize;
-  pool = shuffle([...source]).slice(0, poolSize);
-  remaining = buildRound();
-  currentWord = remaining[0] || null;
-  sidebarItems = remaining.map(word => ({ word, status: 'unseen' }));
-  lastAnswered = null;
+  const source = filtered.length > 0 ? filtered : state.words;
+  state.maxPoolSize = Math.min(settings.maxWords, source.length);
+  state.poolSize = state.maxPoolSize;
+  state.pool = shuffle([...source]).slice(0, state.poolSize);
+  state.remaining = buildRound();
+  state.currentWord = state.remaining[0] || null;
+  state.sidebarItems = state.remaining.map(word => ({ word, status: 'unseen' }));
+  state.lastAnswered = null;
 
-  sessionId = await createSession(getSessionState());
+  state.sessionId = await createSession(getSessionState());
   renderInProgressState();
   renderSidebar();
   renderLastAnswered();
@@ -369,12 +401,12 @@ async function init() {
 
 function startStep(fn, ...args) {
   fn(...args);
-  stepTimer = setInterval(() => fn(...args), STEP_INTERVAL);
+  state.stepTimer = setInterval(() => fn(...args), STEP_INTERVAL);
 }
 
 function stopStep() {
-  clearInterval(stepTimer);
-  stepTimer = null;
+  clearInterval(state.stepTimer);
+  state.stepTimer = null;
 }
 
 function adjustRestart(id, delta) {
@@ -391,32 +423,32 @@ function capRestartInput(input) {
 }
 
 function openRestartModal() {
-  document.getElementById('restart-total-words').value = settingsMaxWords;
-  document.getElementById('restart-round-size').value = roundSize;
+  els.restartTotalWords.value = state.settingsMaxWords;
+  els.restartRoundSize.value = state.roundSize;
   updateFilterHint();
-  document.getElementById('restart-modal-backdrop').classList.remove('hidden');
+  els.restartBackdrop.classList.remove('hidden');
 }
 
 function closeRestartModal() {
-  document.getElementById('restart-modal-backdrop').classList.add('hidden');
+  els.restartBackdrop.classList.add('hidden');
 }
 
 function handleRestartBackdropClick(e) {
-  if (e.target === document.getElementById('restart-modal-backdrop')) closeRestartModal();
+  if (e.target === els.restartBackdrop) closeRestartModal();
 }
 
 function restartDrill(totalWords, newRoundSize, sourceWords) {
-  poolSize = totalWords;
-  roundSize = newRoundSize;
-  pool = shuffle([...(sourceWords || words)]).slice(0, poolSize);
-  round = 1;
-  redo = [];
-  doneCount = 0;
-  drillStartedAt = Date.now();
-  remaining = buildRound();
-  currentWord = remaining[0] || null;
-  sidebarItems = remaining.map(word => ({ word, status: 'unseen' }));
-  lastAnswered = null;
+  state.poolSize = totalWords;
+  state.roundSize = newRoundSize;
+  state.pool = shuffle([...(sourceWords || state.words)]).slice(0, state.poolSize);
+  state.round = 1;
+  state.redo = [];
+  state.doneCount = 0;
+  state.drillStartedAt = Date.now();
+  state.remaining = buildRound();
+  state.currentWord = state.remaining[0] || null;
+  state.sidebarItems = state.remaining.map(word => ({ word, status: 'unseen' }));
+  state.lastAnswered = null;
 
   renderInProgressState();
   renderSidebar();
@@ -427,32 +459,31 @@ function restartDrill(totalWords, newRoundSize, sourceWords) {
 
 async function confirmRestart() {
   const filtered = getFilteredWords();
-  maxPoolSize = Math.max(1, parseInt(document.getElementById('restart-total-words').value, 10) || filtered.length);
-  const total = Math.min(maxPoolSize, filtered.length);
-  const rSize = Math.max(1, Math.min(total, parseInt(document.getElementById('restart-round-size').value, 10) || roundSize));
+  state.maxPoolSize = Math.max(1, parseInt(els.restartTotalWords.value, 10) || filtered.length);
+  const total = Math.min(state.maxPoolSize, filtered.length);
+  const rSize = Math.max(1, Math.min(total, parseInt(els.restartRoundSize.value, 10) || state.roundSize));
   closeRestartModal();
   restartDrill(total, rSize, filtered);
-  sessionId = await createSession(getSessionState());
+  state.sessionId = await createSession(getSessionState());
 }
 
-const tip = document.getElementById('tooltip');
-document.getElementById('sidebar-list').addEventListener('mouseover', e => {
+els.sidebarList.addEventListener('mouseover', e => {
   const item = e.target.closest('.sidebar-item');
   if (!item || !item.dataset.word) return;
   const data = JSON.parse(item.dataset.word);
-  populateWordTooltip(tip, data, kanjiMap, renderReading);
-  positionSidebarTooltip(item, tip);
+  populateWordTooltip(els.tip, data, state.kanjiMap, renderReading);
+  positionSidebarTooltip(item, els.tip);
 });
-document.getElementById('sidebar-list').addEventListener('mouseout', e => {
+els.sidebarList.addEventListener('mouseout', e => {
   const item = e.target.closest('.sidebar-item');
   if (!item) return;
-  if (!item.contains(e.relatedTarget)) tip.classList.remove('visible');
+  if (!item.contains(e.relatedTarget)) els.tip.classList.remove('visible');
 });
 
 init();
 
 setInterval(() => {
-  document.getElementById('header-began').textContent = 'began ' + timeAgo(drillStartedAt);
+  els.headerBegan.textContent = 'began ' + timeAgo(state.drillStartedAt);
 }, 30_000);
 
 document.addEventListener('keydown', e => {
@@ -460,33 +491,31 @@ document.addEventListener('keydown', e => {
     closeRestartModal();
     return;
   }
-  const prompt = document.getElementById('action-prompt');
-  if (prompt.style.display === 'none') return;
+  if (els.actionPrompt.style.display === 'none') return;
   if (e.key === 'd' || e.key === 'D') reveal(true);
   if (e.key === 'a' || e.key === 'A') reveal(false);
 });
 
-document.querySelectorAll('#restart-modal-backdrop .filter-chip').forEach(btn => {
+els.restartFilterButtons.forEach(btn => {
   btn.addEventListener('click', () => {
     const f = btn.dataset.filter;
-    if (activeFilters.has(f)) activeFilters.delete(f);
-    else activeFilters.add(f);
+    if (state.activeFilters.has(f)) state.activeFilters.delete(f);
+    else state.activeFilters.add(f);
     btn.classList.toggle('active');
     updateFilterHint();
   });
 });
 
-document.querySelector('.btn-header').addEventListener('click', openRestartModal);
-document.querySelector('.btn-no').addEventListener('click', () => reveal(false));
-document.querySelector('.btn-yes').addEventListener('click', () => reveal(true));
+els.headerRestartBtn.addEventListener('click', openRestartModal);
+els.dontKnowBtn.addEventListener('click', () => reveal(false));
+els.knowBtn.addEventListener('click', () => reveal(true));
 
-const restartBackdrop = document.getElementById('restart-modal-backdrop');
-restartBackdrop.addEventListener('click', handleRestartBackdropClick);
-restartBackdrop.querySelector('.modal-close').addEventListener('click', closeRestartModal);
-restartBackdrop.querySelector('.btn-cancel').addEventListener('click', closeRestartModal);
-document.getElementById('restart-start-btn').addEventListener('click', confirmRestart);
+els.restartBackdrop.addEventListener('click', handleRestartBackdropClick);
+els.restartCloseBtn.addEventListener('click', closeRestartModal);
+els.restartCancelBtn.addEventListener('click', closeRestartModal);
+els.restartStartBtn.addEventListener('click', confirmRestart);
 
-const totalInput = document.getElementById('restart-total-words');
+const totalInput = els.restartTotalWords;
 const [totalMinus, totalPlus] = totalInput.closest('.num-stepper').querySelectorAll('.num-btn');
 totalMinus.addEventListener('mousedown', () => startStep(adjustRestart, 'restart-total-words', -5));
 totalMinus.addEventListener('mouseup', stopStep);
@@ -496,7 +525,7 @@ totalPlus.addEventListener('mouseup', stopStep);
 totalPlus.addEventListener('mouseleave', stopStep);
 totalInput.addEventListener('input', () => capRestartInput(totalInput));
 
-const roundInput = document.getElementById('restart-round-size');
+const roundInput = els.restartRoundSize;
 const [roundMinus, roundPlus] = roundInput.closest('.num-stepper').querySelectorAll('.num-btn');
 roundMinus.addEventListener('mousedown', () => startStep(adjustRestart, 'restart-round-size', -5));
 roundMinus.addEventListener('mouseup', stopStep);

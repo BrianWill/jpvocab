@@ -90,6 +90,10 @@ function injectSettingsModal() {
         </div>
         <div class="settings-section-label settings-section-label--spaced">TTS voices</div>
         <div class="restart-field">
+          <label>Auto-play word in drill</label>
+          <input type="checkbox" id="settings-tts-autoplay" class="settings-tts-autoplay">
+        </div>
+        <div class="restart-field">
           <label>Japanese voice</label>
           <select id="settings-tts-jp" class="settings-tts-select"></select>
         </div>
@@ -137,6 +141,31 @@ export function getTtsVoice(lang) {
   return voices.find(v => v.name === preferredName) ?? null;
 }
 
+export const WORD_TTS_RATE = 0.85;
+
+export function isTtsAutoplayEnabled() {
+  return localStorage.getItem('tts-autoplay') !== 'off';
+}
+
+function waitForVoices() {
+  return new Promise(resolve => {
+    const voices = speechSynthesis.getVoices();
+    if (voices.length > 0) { resolve(); return; }
+    speechSynthesis.addEventListener('voiceschanged', () => resolve(), { once: true });
+  });
+}
+
+export async function playTts(text, lang, rate = 1) {
+  await waitForVoices();
+  const utt = new SpeechSynthesisUtterance(text);
+  utt.lang = lang;
+  utt.rate = rate;
+  const voice = getTtsVoice(lang);
+  if (voice) utt.voice = voice;
+  speechSynthesis.cancel();
+  speechSynthesis.speak(utt);
+}
+
 function initializeSettings() {
   const settingsBtn = document.getElementById('settings-btn');
   const settingsModal = document.getElementById('settings-modal-backdrop');
@@ -163,6 +192,8 @@ function initializeSettings() {
     });
 
     populateTtsSelects();
+    const autoplayEl = document.getElementById('settings-tts-autoplay');
+    if (autoplayEl) autoplayEl.checked = localStorage.getItem('tts-autoplay') !== 'off';
     clearDirty();
     settingsModal.classList.remove('hidden');
   });
@@ -199,6 +230,9 @@ function initializeSettings() {
     else localStorage.removeItem('tts-voice-ja');
     if (enVoice) localStorage.setItem('tts-voice-en', enVoice);
     else localStorage.removeItem('tts-voice-en');
+    const autoplay = document.getElementById('settings-tts-autoplay')?.checked ?? true;
+    if (autoplay) localStorage.removeItem('tts-autoplay');
+    else localStorage.setItem('tts-autoplay', 'off');
 
     closeModal();
   });
@@ -236,6 +270,7 @@ function initializeSettings() {
     speechSynthesis.speak(utt);
   };
 
+  document.getElementById('settings-tts-autoplay')?.addEventListener('change', setDirty);
   document.getElementById('settings-tts-jp')?.addEventListener('change', e => {
     setDirty();
     previewVoice(e.target.value, 'ja-JP', 'こんにちは、よろしくお願いします。');

@@ -1,4 +1,4 @@
-import { positionAnchoredWordTooltip, renderWordTooltipKanji } from './common.js';
+import { isTtsAutoplayEnabled, playTts, positionAnchoredWordTooltip, renderWordTooltipKanji, WORD_TTS_RATE } from './common.js';
 import { renderReading } from './lexicon-utils.js';
 import { isSessionComplete } from './drill-state.js';
 
@@ -129,6 +129,8 @@ function renderLastAnswered(els, state) {
   }
 }
 
+let _lastAutoPlayedId = null;
+
 function renderPrompt(els, state) {
   els.sidebarList.querySelectorAll('.sidebar-item.current').forEach(el => el.classList.remove('current'));
   if (isSessionComplete(state)) {
@@ -148,6 +150,10 @@ function renderPrompt(els, state) {
 
   els.promptWordJp.textContent = state.currentWord.word;
   els.promptExampleJp.textContent = state.currentWord.exampleJp;
+  if (isTtsAutoplayEnabled() && state.currentWord.id !== _lastAutoPlayedId) {
+    _lastAutoPlayedId = state.currentWord.id;
+    playTts(state.currentWord.word, 'ja-JP', WORD_TTS_RATE);
+  }
   const item = els.sidebarList.querySelector('[data-id="' + state.currentWord.word + '"]');
   if (item) item.classList.add('current');
 }

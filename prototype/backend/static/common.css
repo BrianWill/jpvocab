@@ -407,6 +407,7 @@ body {
   margin-bottom: 0.25rem;
 }
 .settings-section-label--spaced { margin-top: 1rem; }
+.settings-tts-autoplay { cursor: pointer; accent-color: #89b4fa; }
 .settings-tts-select {
   background: #11111b;
   border: 1px solid #313244;

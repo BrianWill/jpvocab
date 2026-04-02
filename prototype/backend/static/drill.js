@@ -1,7 +1,9 @@
 import {
   attachNumberStepper,
   DRILL_FILTER_KEYS,
+  playTts,
   populateWordTooltip,
+  WORD_TTS_RATE,
 } from './common.js';
 import {
   buildRoundState,
@@ -166,6 +168,13 @@ async function confirmRestart() {
   state.sessionId = await createSession(serializeSessionState(state));
 }
 
+els.sidebarList.addEventListener('click', event => {
+  const item = event.target.closest('.sidebar-item');
+  if (!item?.dataset.word) return;
+  const word = JSON.parse(item.dataset.word);
+  playTts(word.word, 'ja-JP', WORD_TTS_RATE);
+});
+
 els.sidebarList.addEventListener('mouseover', event => {
   const item = event.target.closest('.sidebar-item');
   if (!item || !item.dataset.word) return;
@@ -198,6 +207,22 @@ els.restartFilterButtons.forEach(btn => {
     btn.classList.toggle('active');
     refreshFilterHint();
   });
+});
+
+els.promptWordJp.addEventListener('click', () => {
+  if (state.currentWord) playTts(state.currentWord.word, 'ja-JP', WORD_TTS_RATE);
+});
+els.promptExampleJp.addEventListener('click', () => {
+  if (state.currentWord?.exampleJp) playTts(state.currentWord.exampleJp, 'ja-JP', 0.75);
+});
+els.lastWordJp.addEventListener('click', () => {
+  if (state.lastAnswered) playTts(state.lastAnswered.word.word, 'ja-JP', WORD_TTS_RATE);
+});
+els.lastExampleJp.addEventListener('click', () => {
+  if (state.lastAnswered?.word.exampleJp) playTts(state.lastAnswered.word.exampleJp, 'ja-JP', 0.75);
+});
+els.lastExampleEn.addEventListener('click', () => {
+  if (state.lastAnswered?.word.exampleEn) playTts(state.lastAnswered.word.exampleEn, 'en-US');
 });
 
 els.headerRestartBtn.addEventListener('click', openRestartModal);

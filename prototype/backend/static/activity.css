@@ -159,6 +159,7 @@
 .day-word-jp {
   color: #cdd6f4;
   font-weight: 600;
+  cursor: pointer;
 }
 .day-word-item.knew .day-word-jp  { color: #a6e3a1; }
 .day-word-item.missed .day-word-jp { color: #f38ba8; }

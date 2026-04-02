@@ -1,6 +1,6 @@
 ﻿import { openEditModal, closeAddResultModal, _addPhase, _pendingGenerates } from './lexicon-add-edit.js';
 import { timeAgo, getSortedWords as _getSortedWords, renderReading } from './lexicon-utils.js';
-import { getTtsVoice } from './common.js';
+import { playTts, WORD_TTS_RATE } from './common.js';
 
 let words = [];
 export let defaultDrillTarget = 8; // updated from /api/providers at init
@@ -30,16 +30,6 @@ function fullDateTime(dateStr) {
   });
 }
 
-function playTts(text, lang, rate = 1) {
-  const utt = new SpeechSynthesisUtterance(text);
-  utt.lang = lang;
-  utt.rate = rate;
-  const voice = getTtsVoice(lang);
-  if (voice) utt.voice = voice;
-  speechSynthesis.cancel();
-  speechSynthesis.speak(utt);
-}
-
 function renderRow(w, trMain, trEx) {
   const imgCell = w.imagePath
     ? '<td class="cell-img" rowspan="2"><img src="/static/' + w.imagePath + '" alt=""></td>'
@@ -66,7 +56,7 @@ function renderRow(w, trMain, trEx) {
   trMain._word = w;
   trMain._trEx  = trEx;
 
-  trMain.querySelector('.cell-word').addEventListener('click', () => playTts(w.word, 'ja-JP'));
+  trMain.querySelector('.cell-word').addEventListener('click', () => playTts(w.word, 'ja-JP', WORD_TTS_RATE));
   trMain.querySelector('.btn-edit').addEventListener('click', openEditModal);
   trMain.querySelector('.btn-delete').addEventListener('click', openDeleteModal);
   const [adjMinus, adjPlus] = trMain.querySelectorAll('.btn-target-adj');

@@ -23,7 +23,7 @@
 .sidebar-item {
   padding: 0.35rem 0.75rem;
   font-size: 0.95rem;
-  cursor: default;
+  cursor: pointer;
   transition: background-color 120ms ease, box-shadow 120ms ease, transform 120ms ease;
 }
 .sidebar-item.unseen { color: #585b70; filter: blur(1.5px); user-select: none; }
@@ -131,13 +131,17 @@
   font-size: 2.8rem;
   font-weight: 700;
   color: #cdd6f4;
+  cursor: pointer;
 }
+.word-jp:hover { color: #b4befe; }
 
 .example-jp {
   font-size: 0.95rem;
   color: #585b70;
   margin-top: 0.5rem;
+  cursor: pointer;
 }
+.example-jp:hover { color: #7f849c; }
 .example-jp:empty::after {
   content: '　';
   visibility: hidden;
@@ -199,12 +203,15 @@
 }
 .last-word-card .tooltip-word.knew { color: #a6e3a1; }
 .last-word-card .tooltip-word.missed { color: #f38ba8; }
-.last-word-card .tooltip-word { font-size: 1.4rem; }
+.last-word-card .tooltip-word { font-size: 1.4rem; cursor: pointer; }
+.last-word-card .tooltip-word:hover { filter: brightness(1.25); }
 .last-word-card .tooltip-reading { font-size: 1rem; }
 .last-word-card .tooltip-pos { font-size: 0.75rem; padding-top: 0.4rem; }
 .last-word-card .tooltip-meaning { font-size: 1.05rem; }
-.last-word-card .tooltip-example { font-size: 0.95rem; padding-top: 0.6rem; }
-.last-word-card .tooltip-example-en { font-size: 0.9rem; }
+.last-word-card .tooltip-example { font-size: 0.95rem; padding-top: 0.6rem; cursor: pointer; }
+.last-word-card .tooltip-example:hover { color: #7f849c; }
+.last-word-card .tooltip-example-en { font-size: 0.9rem; cursor: pointer; }
+.last-word-card .tooltip-example-en:hover { color: #a07060; }
 
 .last-word-image {
   display: block;

@@ -37,12 +37,22 @@ func serverInit(db *sql.DB) {
 
 	r.Get("/api/providers", func(w http.ResponseWriter, r *http.Request) {
 		p := checkAIProviders()
+		s := checkImageSources()
 		w.Header().Set("Content-Type", "application/json")
 		json.NewEncoder(w).Encode(map[string]any{
-			"anthropic":            p.AnthropicAvail,
-			"openai":               p.OpenAIAvail,
-			"google":               p.GoogleAvail,
-			"mistral":              p.MistralAvail,
+			"ai": map[string]bool{
+				"anthropic": p.AnthropicAvail,
+				"openai":    p.OpenAIAvail,
+				"google":    p.GoogleAvail,
+				"mistral":   p.MistralAvail,
+				"glm":       p.GLMAvail,
+			},
+			"image_sources": map[string]bool{
+				"unsplash": s.UnsplashAvail,
+				"pexels":   s.PexelsAvail,
+				"pixabay":  s.PixabayAvail,
+				"bing":     s.BingAvail,
+			},
 			"default_drill_target": defaultDrillTarget,
 		})
 	})

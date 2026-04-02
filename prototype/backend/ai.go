@@ -94,7 +94,58 @@ const rerollMeaningSystemPrompt = `You are a Japanese dictionary assistant. Give
 
 const rerollExamplesSystemPrompt = `You are a Japanese dictionary assistant. Given a Japanese word, return a JSON array of exactly 3 natural example sentences using that word. Each entry must have "jp" (the Japanese sentence) and "en" (its English translation). Return only the JSON array with no markdown, no code fences, and no extra commentary.`
 
+const suggestImageSearchQuerySystemPrompt = `You are a helpful assistant. Given a Japanese word and its English meaning, return a JSON object with a single field "query" containing a concise English search query (2-5 words) suitable for finding a clear, representative photo on a stock photo site. Prefer concrete, visual terms. Return only the JSON object with no markdown, no code fences, and no extra commentary.`
+
 const suggestImageSystemPrompt = `You are a helpful assistant. Given a Japanese word and its English meaning, return a JSON object with a single field "url" containing a URL to a freely licensed image on Wikimedia Commons using the Special:FilePath format: https://commons.wikimedia.org/wiki/Special:FilePath/<filename>. Choose a well-known, unambiguous photo that directly represents the concept. Return only a valid JSON object with no markdown, no code fences, and no extra commentary.`
+
+// suggestImageSearchQuery asks the AI for a short English search query for the given word.
+func suggestImageSearchQuery(word, meaning, providerModel string) (string, error) {
+	parts := strings.SplitN(providerModel, "/", 2)
+	if len(parts) != 2 {
+		return "", fmt.Errorf("invalid ai_model value %q", providerModel)
+	}
+	provider, model := parts[0], parts[1]
+	userMsg := marshalUserMsg(map[string]string{"word": word, "meaning": meaning})
+
+	var text, jsonPrefix string
+	var err error
+	if provider == "anthropic" {
+		messages := []message{
+			{Role: "user", Content: userMsg},
+			{Role: "assistant", Content: "{"},
+		}
+		text, err = callAnthropic(model, suggestImageSearchQuerySystemPrompt, messages, 64)
+		jsonPrefix = "{"
+	} else {
+		messages := []message{
+			{Role: "system", Content: suggestImageSearchQuerySystemPrompt},
+			{Role: "user", Content: userMsg},
+		}
+		switch provider {
+		case "openai":
+			text, err = callOpenAI(model, messages)
+		case "google":
+			text, err = callGoogle(model, "", messages)
+		case "mistral":
+			text, err = callMistral(model, messages)
+		default: // glm
+			text, err = callGLM(model, messages)
+		}
+	}
+	if err != nil {
+		return "", err
+	}
+	var result struct {
+		Query string `json:"query"`
+	}
+	if err := json.Unmarshal([]byte(jsonPrefix+text), &result); err != nil {
+		return "", fmt.Errorf("parse image search query JSON: %w", err)
+	}
+	if result.Query == "" {
+		return "", fmt.Errorf("empty query in image search response")
+	}
+	return result.Query, nil
+}
 
 // suggestImageURL asks the AI to suggest a Wikimedia Commons image URL for the given word.
 func suggestImageURL(word, meaning, providerModel string) (string, error) {

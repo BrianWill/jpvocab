@@ -1,4 +1,4 @@
-import { defaultDrillTarget, typeLabels, _providers, reloadWords, renderTable, getSortedWords, closeAddModal, updateWordImagePath } from './lexicon.js';
+import { defaultDrillTarget, typeLabels, _providers, _imageSources, reloadWords, renderTable, getSortedWords, closeAddModal, updateWordImagePath } from './lexicon.js';
 import { esc, isKanji, detailItemPosSelect, detailItemKanjiReadings, detailItemInput, detailItemExInput } from './lexicon-utils.js';
 
 const imagePlaceholderSvg =
@@ -471,6 +471,10 @@ function getGenerateType() {
   return document.getElementById('add-result-generate-type')?.value ?? 'word-info';
 }
 
+function getImageSource() {
+  return document.getElementById('add-result-image-source-select')?.value ?? 'wikimedia';
+}
+
 function updateGenerateBtnStates() {
   const type = getGenerateType();
   const hasProviders = _providers && (_providers.anthropic || _providers.openai || _providers.google || _providers.mistral || _providers.glm);
@@ -546,7 +550,7 @@ async function generateWordImage(event, wordId, word, btn) {
     const res = await fetch('/api/words/' + wordId + '/find-image', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ word, meaning, ai_model: aiModel }),
+      body: JSON.stringify({ word, meaning, ai_model: aiModel, image_source: getImageSource() }),
       signal: abort.signal,
     });
     if (!res.ok) throw new Error(await res.text());
@@ -744,6 +748,11 @@ function renderStatus() {
   }
   updateAddResultFooter();
   updateGenerateBtnStates();
+  const sourceDisplay = genType === 'image' ? '' : 'none';
+  const sourceSel  = document.getElementById('add-result-image-source-select');
+  const sourceIcon = document.getElementById('add-result-image-source-icon');
+  if (sourceSel)  sourceSel.style.display  = sourceDisplay;
+  if (sourceIcon) sourceIcon.style.display = sourceDisplay;
 }
 
 function initAddResultFooter() {
@@ -770,6 +779,13 @@ function initAddResultFooter() {
     ]},
   ];
 
+  const imageSources = [
+    { key: 'unsplash', label: 'Unsplash', envKey: 'UNSPLASH_ACCESS_KEY' },
+    { key: 'pexels',   label: 'Pexels',   envKey: 'PEXELS_API_KEY'      },
+    { key: 'pixabay',  label: 'Pixabay',  envKey: 'PIXABAY_API_KEY'     },
+    { key: 'bing',     label: 'Bing',     envKey: 'BING_API_KEY'        },
+  ];
+
   const footer = document.getElementById('add-result-modal-footer');
   const hasProviders = _providers && providerModels.some(p => _providers[p.key]);
   const progTip = _providers
@@ -786,6 +802,23 @@ function initAddResultFooter() {
     const options = models.map(([val, text]) => '<option value="' + val + '">' + text + '</option>').join('');
     return '<optgroup label="' + groupLabel + '"' + (avail ? '' : ' disabled') + '>' + options + '</optgroup>';
   }).join('');
+
+  const imageSourceOptions =
+    '<option value="wikimedia">Wikimedia</option>' +
+    imageSources.map(({ key, label }) => {
+      const avail = _imageSources && _imageSources[key];
+      return '<option value="' + key + '"' + (avail ? '' : ' disabled') + '>' +
+        label + (avail ? '' : ' — no key') + '</option>';
+    }).join('');
+  const imageSourceTip = _imageSources
+    ? (() => {
+        const lines = imageSources
+          .filter(s => !_imageSources[s.key])
+          .map(s => s.label + ': set ' + s.envKey + ' to enable');
+        return lines.length ? lines.join('\n') + '\n— then restart the program' : null;
+      })()
+    : null;
+
   footer.innerHTML =
     '<select id="add-result-model-select" class="add-result-model-select"' +
       (hasProviders ? '' : ' disabled') +
@@ -799,6 +832,10 @@ function initAddResultFooter() {
       '<option value="image">image</option>' +
       '<option value="audio">audio</option>' +
     '</select>' +
+    '<select id="add-result-image-source-select" class="add-result-model-select" style="display:none">' +
+      imageSourceOptions +
+    '</select>' +
+    (imageSourceTip ? '<span id="add-result-image-source-icon" class="provider-info-icon" style="display:none" data-tooltip="' + imageSourceTip + '">?</span>' : '') +
     '<div id="add-result-modal-action" style="margin-left:0.4rem"></div>' +
     '<div id="add-result-modal-status" class="modal-status" style="padding:0;border:none;margin-left:auto"></div>' +
     '<button id="btn-add-result-remove" class="btn-danger">Remove the added words</button>' +

@@ -174,9 +174,10 @@ func apiFindWordImage(db *sql.DB) http.HandlerFunc {
 			return
 		}
 		var body struct {
-			Word    string `json:"word"`
-			Meaning string `json:"meaning"`
-			AIModel string `json:"ai_model"`
+			Word        string `json:"word"`
+			Meaning     string `json:"meaning"`
+			AIModel     string `json:"ai_model"`
+			ImageSource string `json:"image_source"` // "wikimedia" | "unsplash" | "pexels" | "pixabay"
 		}
 		if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
 			http.Error(w, "bad request", http.StatusBadRequest)
@@ -193,10 +194,34 @@ func apiFindWordImage(db *sql.DB) http.HandlerFunc {
 			return
 		}
 
-		imageURL, err := suggestImageURL(body.Word, body.Meaning, body.AIModel)
-		if err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
-			return
+		var imageURL string
+		switch body.ImageSource {
+		case "unsplash", "pexels", "pixabay", "bing":
+			query, qErr := suggestImageSearchQuery(body.Word, body.Meaning, body.AIModel)
+			if qErr != nil {
+				http.Error(w, qErr.Error(), http.StatusInternalServerError)
+				return
+			}
+			switch body.ImageSource {
+			case "unsplash":
+				imageURL, err = searchUnsplash(r.Context(), query)
+			case "pexels":
+				imageURL, err = searchPexels(r.Context(), query)
+			case "pixabay":
+				imageURL, err = searchPixabay(r.Context(), query)
+			case "bing":
+				imageURL, err = searchBing(r.Context(), query)
+			}
+			if err != nil {
+				http.Error(w, err.Error(), http.StatusBadGateway)
+				return
+			}
+		default: // "wikimedia"
+			imageURL, err = suggestImageURL(body.Word, body.Meaning, body.AIModel)
+			if err != nil {
+				http.Error(w, err.Error(), http.StatusInternalServerError)
+				return
+			}
 		}
 
 		imagePath, err := downloadWordImage(r, info.Word, imageURL)

@@ -4,6 +4,7 @@ import { timeAgo, getSortedWords as _getSortedWords, renderReading } from './lex
 let words = [];
 export let defaultDrillTarget = 8; // updated from /api/providers at init
 export let _providers = null;
+export let _imageSources = null;
 
 function updateWordCount() {
   const active = words.filter(w => w.correct < w.target).length;
@@ -119,7 +120,8 @@ async function init() {
   if (providers.default_drill_target) defaultDrillTarget = providers.default_drill_target;
   updateWordCount();
   renderTable(getSortedWords('added', 'desc'));
-  _providers = providers;
+  _providers = providers.ai;
+  _imageSources = providers.image_sources;
 }
 
 init();

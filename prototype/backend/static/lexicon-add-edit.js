@@ -404,7 +404,10 @@ function appendWordRow(data) {
 
   if (data.word_id) {
     const genBtnEl = row.querySelector('.btn-generate');
-    if (genBtnEl) genBtnEl.addEventListener('mousedown', e => generateWordAutofill(e, data.word_id, data.word, genBtnEl));
+    if (genBtnEl) genBtnEl.addEventListener('mousedown', e => {
+      if (getGenerateType() === 'image') generateWordImage(e, data.word_id, data.word, genBtnEl);
+      else generateWordAutofill(e, data.word_id, data.word, genBtnEl);
+    });
 
     const [adjMinusEl, adjPlusEl] = row.querySelectorAll('.btn-target-adj');
     if (adjMinusEl) adjMinusEl.addEventListener('mousedown', e => adjustWordTarget(e, data.word_id, -1, adjMinusEl));
@@ -461,6 +464,25 @@ async function startSuggestedImageDownload(row, wordId, imageURL) {
   }
 }
 
+function getGenerateType() {
+  return document.getElementById('add-result-generate-type')?.value ?? 'word-info';
+}
+
+function updateGenerateBtnStates() {
+  const type = getGenerateType();
+  const hasProviders = _providers && (_providers.anthropic || _providers.openai || _providers.google || _providers.mistral || _providers.glm);
+  const disabled = type === 'audio' || !hasProviders;
+  const tooltip = type === 'audio'
+    ? 'Audio generation is not yet implemented'
+    : type === 'image'
+      ? 'Uses an AI API request to find and download an image for this word'
+      : 'Uses an AI API request to get the word\'s reading, part-of-speech, meaning, and an example sentence';
+  document.querySelectorAll('#add-result-modal-body .btn-generate:not(.btn-generate--busy)').forEach(btn => {
+    btn.disabled = disabled;
+    btn.dataset.tooltip = tooltip;
+  });
+}
+
 async function generateWordAutofill(event, wordId, word, btn) {
   event.stopPropagation();
   if (btn._generateAbort) {
@@ -486,6 +508,51 @@ async function generateWordAutofill(event, wordId, word, btn) {
     const data = await res.json();
     data.word = word;
     updateWordRowDetails(data);
+  } finally {
+    if (btn._generateAbort === abort) {
+      btn._generateAbort = null;
+      if (btn.classList.contains('btn-generate--busy')) {
+        btn.classList.remove('btn-generate--busy', 'btn-generate--cancellable');
+        btn.innerHTML = 'generate';
+        _pendingGenerates = Math.max(0, _pendingGenerates - 1);
+        renderStatus();
+      }
+    }
+  }
+}
+
+async function generateWordImage(event, wordId, word, btn) {
+  event.stopPropagation();
+  if (btn._generateAbort) {
+    btn._generateAbort.abort();
+    return;
+  }
+  if (btn.classList.contains('btn-generate--busy')) return;
+  const row = btn.closest('.word-result-row');
+  const abort = new AbortController();
+  btn._generateAbort = abort;
+  btn.classList.add('btn-generate--busy', 'btn-generate--cancellable');
+  btn.innerHTML = '<span class="spinner"></span><span class="btn-gen-label">finding image\u2026</span><span class="btn-gen-cancel">cancel</span>';
+  _pendingGenerates++;
+  renderStatus();
+  const aiModel = document.getElementById('add-result-model-select').value;
+  const meaning = (row?.querySelector('.detail-meaning .detail-input')?.textContent ?? '').trim();
+  setWordRowImage(row, '', 'loading');
+  try {
+    const res = await fetch('/api/words/' + wordId + '/find-image', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ word, meaning, ai_model: aiModel }),
+      signal: abort.signal,
+    });
+    if (!res.ok) throw new Error(await res.text());
+    const data = await res.json();
+    if (row?.isConnected) {
+      setWordRowImage(row, data.image_path, '');
+      updateWordImagePath(wordId, data.image_path);
+    }
+  } catch (_) {
+    if (row?.isConnected) setWordRowImage(row, '', 'failed');
   } finally {
     if (btn._generateAbort === abort) {
       btn._generateAbort = null;
@@ -635,13 +702,22 @@ function renderStatus() {
     : '';
   const countsHtml = '<span>' + _addedWords.length + ' added' + skippedHtml + '</span>';
   const hasProviders = _providers && (_providers.anthropic || _providers.openai || _providers.google || _providers.mistral || _providers.glm);
+  const genType = getGenerateType();
+  const genAllTooltip = genType === 'audio'
+    ? 'Audio generation is not yet implemented'
+    : genType === 'image'
+      ? 'Uses an AI API request to find and download an image for each word'
+      : 'Uses an AI API request to get the reading, part-of-speech, meaning, and an example sentence for each word';
+  const genAllEnabled = genType !== 'audio' &&
+    document.querySelectorAll('#add-result-modal-body .word-result-row .btn-generate:not(.btn-generate--busy):not([disabled])').length > 0 &&
+    hasProviders && _addPhase !== 'loading';
   const actionHtml = _pendingGenerates > 0
     ? '<button class="btn-danger btn-generate--cancel">' +
         '<span class="spinner"></span>Cancel generation' +
       '</button>'
     : '<button class="btn-save btn-generate--all"' +
-        (document.querySelectorAll('#add-result-modal-body .word-result-row .btn-generate:not(.btn-generate--busy):not([disabled])').length > 0 && hasProviders && _addPhase !== 'loading' ? '' : ' disabled') +
-        ' data-tooltip="Uses an AI API request to get the reading, part-of-speech, meaning, and an example sentence for each word"' +
+        (genAllEnabled ? '' : ' disabled') +
+        ' data-tooltip="' + genAllTooltip + '"' +
         '>Generate all</button>';
   if (actionEl) {
     actionEl.innerHTML = actionHtml;
@@ -659,6 +735,7 @@ function renderStatus() {
     el.innerHTML = countsHtml;
   }
   updateAddResultFooter();
+  updateGenerateBtnStates();
 }
 
 function initAddResultFooter() {
@@ -724,6 +801,8 @@ function initAddResultFooter() {
     const first = sel.querySelector('optgroup:not([disabled]) option');
     if (first) sel.value = first.value;
   }
+
+  document.getElementById('add-result-generate-type').addEventListener('change', () => renderStatus());
 
   document.getElementById('btn-add-result-remove').onclick = function () {
     const count = _addedWords.length;

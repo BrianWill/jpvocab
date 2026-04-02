@@ -166,6 +166,58 @@ func apiDownloadWordImage(db *sql.DB) http.HandlerFunc {
 	}
 }
 
+func apiFindWordImage(db *sql.DB) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		id, err := strconv.ParseInt(chi.URLParam(r, "id"), 10, 64)
+		if err != nil {
+			http.Error(w, "invalid id", http.StatusBadRequest)
+			return
+		}
+		var body struct {
+			Word    string `json:"word"`
+			Meaning string `json:"meaning"`
+			AIModel string `json:"ai_model"`
+		}
+		if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+			http.Error(w, "bad request", http.StatusBadRequest)
+			return
+		}
+
+		info, err := getWordImageInfo(db, id)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		if info == nil {
+			http.Error(w, "word not found", http.StatusNotFound)
+			return
+		}
+
+		imageURL, err := suggestImageURL(body.Word, body.Meaning, body.AIModel)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+
+		imagePath, err := downloadWordImage(r, info.Word, imageURL)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusBadGateway)
+			return
+		}
+		if err := updateWordImagePath(db, id, imagePath); err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+
+		if info.ImagePath != nil && *info.ImagePath != "" && *info.ImagePath != imagePath {
+			_ = os.Remove(filepath.Join("static", filepath.FromSlash(*info.ImagePath)))
+		}
+
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(map[string]string{"image_path": imagePath})
+	}
+}
+
 func apiRerollMeaning() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		var body struct {

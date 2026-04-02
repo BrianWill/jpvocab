@@ -44,6 +44,7 @@ export function openEditModal(event) {
   const w = trMain._word;
 
   _addPhase = 'done';
+  _isSingleEdit = true;
   _addedWords = [];
   _skippedCount = 0;
   _pendingGenerates = 0;
@@ -76,6 +77,7 @@ export function openEditModal(event) {
 }
 
 export let _addPhase = 'idle'; // 'loading' | 'done' | 'cancelled'
+let _isSingleEdit = false;
 let _addedWords = [];
 let _skippedCount = 0;
 export let _pendingGenerates = 0;
@@ -261,6 +263,7 @@ async function saveAddModal() {
   closeAddModal();
 
   _addPhase = 'loading';
+  _isSingleEdit = false;
   _addedWords = [];
   _skippedCount = 0;
   _pendingGenerates = 0;
@@ -718,11 +721,11 @@ function renderStatus() {
     : '<button class="btn-save btn-generate--all"' +
         (genAllEnabled ? '' : ' disabled') +
         ' data-tooltip="' + genAllTooltip + '"' +
-        '>Generate all</button>';
+        '>Generate' + (_isSingleEdit ? '' : ' all') + '</button>';
   if (actionEl) {
     actionEl.innerHTML = actionHtml;
     const actionBtn = actionEl.querySelector('button');
-    if (actionBtn) actionBtn.addEventListener('mousedown', _pendingGenerates > 0 ? cancelAllGenerates : openGenerateConfirm);
+    if (actionBtn) actionBtn.addEventListener('mousedown', _pendingGenerates > 0 ? cancelAllGenerates : (_isSingleEdit ? () => generateAll(true, true) : openGenerateConfirm));
   }
   if (_addPhase === 'loading') {
     el.className = 'modal-status modal-status-loading';

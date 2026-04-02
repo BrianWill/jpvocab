@@ -264,6 +264,7 @@ func downloadWordImage(r *http.Request, word, imageURL string) (string, error) {
 	if err != nil {
 		return "", err
 	}
+	req.Header.Set("User-Agent", "jpvocab/1.0 (https://github.com/BrianWill/jpvocab; image download bot)")
 
 	client := &http.Client{Timeout: 20 * time.Second}
 	res, err := client.Do(req)

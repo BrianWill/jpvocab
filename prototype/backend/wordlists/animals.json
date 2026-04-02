@@ -89,7 +89,7 @@
       "meaning": "mouse; rat",
       "example_jp": "小さなねずみが穴から出てきた。",
       "example_en": "A small mouse came out of the hole.",
-      "suggested_image_url": "https://loremflickr.com/640/480/mouse"
+      "suggested_image_url": "https://commons.wikimedia.org/wiki/Special:FilePath/House_mouse.jpg"
     },
     {
       "word": "ライオン",
@@ -98,7 +98,7 @@
       "meaning": "lion",
       "example_jp": "動物園でライオンの親子を見た。",
       "example_en": "I saw a lion parent and cub at the zoo.",
-      "suggested_image_url": "https://loremflickr.com/640/480/lion"
+      "suggested_image_url": "https://commons.wikimedia.org/wiki/Special:FilePath/Lion_waiting_in_Namibia.jpg"
     },
     {
       "word": "トラ",
@@ -107,7 +107,7 @@
       "meaning": "tiger",
       "example_jp": "トラのしま模様はとても目立つ。",
       "example_en": "A tiger's stripes stand out clearly.",
-      "suggested_image_url": "https://loremflickr.com/640/480/tiger"
+      "suggested_image_url": "https://commons.wikimedia.org/wiki/Special:FilePath/Siberian_Tiger.jpg"
     },
     {
       "word": "ゾウ",
@@ -125,7 +125,7 @@
       "meaning": "monkey",
       "example_jp": "木の上でサルが遊んでいる。",
       "example_en": "Monkeys are playing in the tree.",
-      "suggested_image_url": "https://loremflickr.com/640/480/monkey"
+      "suggested_image_url": "https://commons.wikimedia.org/wiki/Special:FilePath/Macaca_nigra_self-portrait_large.jpg"
     },
     {
       "word": "クマ",
@@ -134,7 +134,7 @@
       "meaning": "bear",
       "example_jp": "森でクマに会わないように気をつけた。",
       "example_en": "We were careful not to run into a bear in the forest.",
-      "suggested_image_url": "https://loremflickr.com/640/480/bear"
+      "suggested_image_url": "https://commons.wikimedia.org/wiki/Special:FilePath/Brown_bear.jpg"
     },
     {
       "word": "キリン",
@@ -161,7 +161,7 @@
       "meaning": "turtle",
       "example_jp": "カメがゆっくり池に入った。",
       "example_en": "The turtle slowly went into the pond.",
-      "suggested_image_url": "https://loremflickr.com/640/480/turtle"
+      "suggested_image_url": "https://commons.wikimedia.org/wiki/Special:FilePath/Florida_Box_Turtle_Digon3.jpg"
     },
     {
       "word": "ヘビ",
@@ -170,7 +170,7 @@
       "meaning": "snake",
       "example_jp": "道のそばでヘビを見かけた。",
       "example_en": "I spotted a snake by the path.",
-      "suggested_image_url": "https://loremflickr.com/640/480/snake"
+      "suggested_image_url": "https://commons.wikimedia.org/wiki/Special:FilePath/Natrix_natrix_2.jpg"
     },
     {
       "word": "カエル",
@@ -179,7 +179,7 @@
       "meaning": "frog",
       "example_jp": "雨のあとでカエルが鳴いていた。",
       "example_en": "Frogs were croaking after the rain.",
-      "suggested_image_url": "https://loremflickr.com/640/480/frog"
+      "suggested_image_url": "https://commons.wikimedia.org/wiki/Special:FilePath/Red_eyed_tree_frog.jpg"
     },
     {
       "word": "鷹",
@@ -188,7 +188,7 @@
       "meaning": "hawk",
       "example_jp": "空高く鷹が輪を描いていた。",
       "example_en": "A hawk was circling high in the sky.",
-      "suggested_image_url": "https://loremflickr.com/640/480/hawk"
+      "suggested_image_url": "https://commons.wikimedia.org/wiki/Special:FilePath/Red-tailed_hawk.jpg"
     },
     {
       "word": "鯨",
@@ -215,7 +215,7 @@
       "meaning": "octopus",
       "example_jp": "市場で新鮮なタコを買った。",
       "example_en": "I bought a fresh octopus at the market.",
-      "suggested_image_url": "https://loremflickr.com/640/480/octopus"
+      "suggested_image_url": "https://commons.wikimedia.org/wiki/Special:FilePath/Octopus_vulgaris.jpg"
     },
     {
       "word": "蜂",
@@ -224,7 +224,7 @@
       "meaning": "bee",
       "example_jp": "蜂が花のまわりを飛んでいる。",
       "example_en": "A bee is flying around the flowers.",
-      "suggested_image_url": "https://loremflickr.com/640/480/bee"
+      "suggested_image_url": "https://commons.wikimedia.org/wiki/Special:FilePath/Apis_mellifera_flying2.jpg"
     },
     {
       "word": "蝶",
@@ -233,7 +233,7 @@
       "meaning": "butterfly",
       "example_jp": "庭で蝶がひらひら舞っていた。",
       "example_en": "A butterfly fluttered around the garden.",
-      "suggested_image_url": "https://loremflickr.com/640/480/butterfly"
+      "suggested_image_url": "https://commons.wikimedia.org/wiki/Special:FilePath/Papilio_machaon.jpg"
     },
     {
       "word": "虫",
@@ -242,7 +242,7 @@
       "meaning": "insect; bug",
       "example_jp": "夏になると虫の声がよく聞こえる。",
       "example_en": "You can hear insects clearly in summer.",
-      "suggested_image_url": "https://loremflickr.com/640/480/insect"
+      "suggested_image_url": "https://commons.wikimedia.org/wiki/Special:FilePath/Grasshopper_2.jpg"
     },
     {
       "word": "鹿",
@@ -251,7 +251,7 @@
       "meaning": "deer",
       "example_jp": "公園で鹿が草を食べていた。",
       "example_en": "A deer was grazing in the park.",
-      "suggested_image_url": "https://loremflickr.com/640/480/deer"
+      "suggested_image_url": "https://commons.wikimedia.org/wiki/Special:FilePath/Deer_in_Phoenix_Park.jpg"
     },
     {
       "word": "狼",
@@ -260,7 +260,7 @@
       "meaning": "wolf",
       "example_jp": "物語に狼が登場する。",
       "example_en": "A wolf appears in the story.",
-      "suggested_image_url": "https://loremflickr.com/640/480/wolf"
+      "suggested_image_url": "https://commons.wikimedia.org/wiki/Special:FilePath/Canis_lupus_laying.jpg"
     },
     {
       "word": "狐",
@@ -278,7 +278,7 @@
       "meaning": "chicken; hen",
       "example_jp": "朝早く鶏が鳴いた。",
       "example_en": "A chicken crowed early in the morning.",
-      "suggested_image_url": "https://loremflickr.com/640/480/chicken"
+      "suggested_image_url": "https://commons.wikimedia.org/wiki/Special:FilePath/Chicken.jpg"
     },
     {
       "word": "アリ",
@@ -287,7 +287,7 @@
       "meaning": "ant",
       "example_jp": "アリが列を作って歩いていた。",
       "example_en": "Ants were walking in a line.",
-      "suggested_image_url": "https://loremflickr.com/640/480/ant"
+      "suggested_image_url": "https://commons.wikimedia.org/wiki/Special:FilePath/Ant_on_a_leaf.jpg"
     }
   ]
 }

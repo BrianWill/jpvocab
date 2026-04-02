@@ -2,9 +2,14 @@
 
 This file is random notes of possible features and bug fixes.
 
-- currently drills that include katakana words but omit nouns will still include nouns that are katakana
-    - is this desired behavior? 
+- AI images
+    - generate or find relevant images to associate with words
+    - maybe just for nouns and verbs but not for other parts of speech
+    - favor certain pics within certain aspect ratio ranges
+    - rescale to target res
+        - images that are too low res to be effectively upscaled will be rejected
 
+- pitch accent info on readings
 
 - play with visual styles
     - use simple organic textures instead of solid background colors
@@ -48,12 +53,7 @@ This file is random notes of possible features and bug fixes.
     - in settings, pick preferred male and female voices
         - settings menu let's you play sample of the voices
 
-- AI images
-    - generate or find relevant images to associate with words
-    - maybe just for nouns and verbs but not for other parts of speech
-    - favor certain pics within certain aspect ratio ranges
-    - rescale to target res
-        - images that are too low res to be effectively upscaled will be rejected
+
 
 - enable wails in the prototype
     - once ready, we'll move the prototype project to main dir
@@ -63,7 +63,9 @@ This file is random notes of possible features and bug fixes.
         - apparently yes https://gemini.google.com/app/64285ccfa674d709
     - e.g. given chapter of novel, produce audio
     - experiment with openAI audio generation. Might be better quality than voicevox
- 
+
+- scan text to find most frequently occuring words that are candidates for the lexicon
+
 - translation exercise:
     - use words from users lexicon     
     - present sentence in Japanese to translate to English

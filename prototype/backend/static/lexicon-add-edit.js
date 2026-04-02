@@ -662,44 +662,51 @@ function renderStatus() {
 }
 
 function initAddResultFooter() {
-  function providerSelectTooltip(providers) {
-    const lines = [];
-    if (!providers.anthropic) lines.push('Anthropic: set ANTHROPIC_API_KEY to enable');
-    if (!providers.openai)    lines.push('OpenAI: set OPENAI_API_KEY to enable');
-    if (!providers.google)    lines.push('Google: set GOOGLE_API_KEY to enable');
-    if (!providers.mistral)   lines.push('Mistral: set MISTRAL_API_KEY to enable');
-    if (!providers.glm)       lines.push('GLM: set GLM_API_KEY to enable');
-    if (lines.length === 0) return null;
-    return lines.join('\n') + '\n— then restart the program';
-  }
+  const providerModels = [
+    { key: 'anthropic', label: 'Anthropic', envKey: 'ANTHROPIC_API_KEY', models: [
+      ['anthropic/claude-haiku-4-5-20251001', 'claude-haiku (fast)'],
+      ['anthropic/claude-sonnet-4-6',         'claude-sonnet (better)'],
+    ]},
+    { key: 'openai',   label: 'OpenAI',   envKey: 'OPENAI_API_KEY',   models: [
+      ['openai/gpt-4o-mini', 'gpt-4o-mini (fast)'],
+      ['openai/gpt-4o',      'gpt-4o (better)'],
+    ]},
+    { key: 'google',   label: 'Google',   envKey: 'GOOGLE_API_KEY',   models: [
+      ['google/gemini-2.0-flash', 'gemini-2.0-flash (fast)'],
+      ['google/gemini-1.5-pro',   'gemini-1.5-pro (better)'],
+    ]},
+    { key: 'mistral',  label: 'Mistral',  envKey: 'MISTRAL_API_KEY',  models: [
+      ['mistral/mistral-small-latest', 'mistral-small (fast)'],
+      ['mistral/mistral-large-latest', 'mistral-large (better)'],
+    ]},
+    { key: 'glm',      label: 'GLM',      envKey: 'GLM_API_KEY',      models: [
+      ['glm/glm-4',       'glm-4 (better)'],
+      ['glm/glm-3-turbo', 'glm-3-turbo (fast)'],
+    ]},
+  ];
 
   const footer = document.getElementById('add-result-modal-footer');
-  const hasProviders = _providers && (_providers.anthropic || _providers.openai || _providers.google || _providers.mistral || _providers.glm);
-  const progTip = _providers ? providerSelectTooltip(_providers) : null;
+  const hasProviders = _providers && providerModels.some(p => _providers[p.key]);
+  const progTip = _providers
+    ? (() => {
+        const lines = providerModels
+          .filter(p => !_providers[p.key])
+          .map(p => p.label + ': set ' + p.envKey + ' to enable');
+        return lines.length ? lines.join('\n') + '\n— then restart the program' : null;
+      })()
+    : null;
+  const optgroupsHtml = providerModels.map(({ key, label, models }) => {
+    const avail = _providers && _providers[key];
+    const groupLabel = avail ? label : label + ' — no API key';
+    const options = models.map(([val, text]) => '<option value="' + val + '">' + text + '</option>').join('');
+    return '<optgroup label="' + groupLabel + '"' + (avail ? '' : ' disabled') + '>' + options + '</optgroup>';
+  }).join('');
   footer.innerHTML =
     '<select id="add-result-model-select" class="add-result-model-select"' +
       (hasProviders ? '' : ' disabled') +
     '>' +
-      '<optgroup label="' + (_providers && !_providers.anthropic ? 'Anthropic — no API key' : 'Anthropic') + '"' + (_providers && !_providers.anthropic ? ' disabled' : '') + '>' +
-        '<option value="anthropic/claude-haiku-4-5-20251001">claude-haiku (fast)</option>' +
-        '<option value="anthropic/claude-sonnet-4-6">claude-sonnet (better)</option>' +
-      '</optgroup>' +
-      '<optgroup label="' + (_providers && !_providers.openai ? 'OpenAI — no API key' : 'OpenAI') + '"' + (_providers && !_providers.openai ? ' disabled' : '') + '>' +
-        '<option value="openai/gpt-4o-mini">gpt-4o-mini (fast)</option>' +
-        '<option value="openai/gpt-4o">gpt-4o (better)</option>' +
-      '</optgroup>' +
-      '<optgroup label="' + (_providers && !_providers.google ? 'Google — no API key' : 'Google') + '"' + (_providers && !_providers.google ? ' disabled' : '') + '>' +
-        '<option value="google/gemini-2.0-flash">gemini-2.0-flash (fast)</option>' +
-        '<option value="google/gemini-1.5-pro">gemini-1.5-pro (better)</option>' +
-      '</optgroup>' +
-      '<optgroup label="' + (_providers && !_providers.mistral ? 'Mistral — no API key' : 'Mistral') + '"' + (_providers && !_providers.mistral ? ' disabled' : '') + '>' +
-        '<option value="mistral/mistral-small-latest">mistral-small (fast)</option>' +
-        '<option value="mistral/mistral-large-latest">mistral-large (better)</option>' +
-      '</optgroup>' +
-      '<optgroup label="' + (_providers && !_providers.glm ? 'GLM — no API key' : 'GLM') + '"' + (_providers && !_providers.glm ? ' disabled' : '') + '>' +
-        '<option value="glm/glm-4">glm-4 (better)</option>' +
-        '<option value="glm/glm-3-turbo">glm-3-turbo (fast)</option>' +
-      '</optgroup>' +
+      (!hasProviders ? '<option value="" selected>no API keys configured</option>' : '') +
+      optgroupsHtml +
     '</select>' +
     (progTip ? '<span class="provider-info-icon" data-tooltip="' + progTip + '">?</span>' : '') +
     '<select id="add-result-generate-type" class="add-result-model-select">' +

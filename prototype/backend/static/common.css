@@ -406,6 +406,19 @@ body {
   color: #45475a;
   margin-bottom: 0.25rem;
 }
+.settings-section-label--spaced { margin-top: 1rem; }
+.settings-tts-select {
+  background: #11111b;
+  border: 1px solid #313244;
+  border-radius: 4px;
+  color: #cdd6f4;
+  font-family: inherit;
+  font-size: 0.8rem;
+  padding: 0.25rem 0.5rem;
+  max-width: 18rem;
+  cursor: pointer;
+}
+.settings-tts-select:focus { outline: none; border-color: #6c7086; }
 .restart-field {
   display: flex;
   align-items: center;

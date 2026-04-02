@@ -51,7 +51,9 @@
   display: flex;
   align-items: center;
   gap: 0.5rem;
+  cursor: pointer;
 }
+.cell-word:hover { color: #b4befe; }
 
 /* Shared ghost-button base */
 .btn-edit, .btn-delete,
@@ -493,10 +495,12 @@
   font-size: 0.8rem;
 }
 .cell-ex { text-align: right; }
-.cell-ex-jp { color: #9a7050; }
+.cell-ex-jp { color: #9a7050; cursor: pointer; }
+.cell-ex-jp:hover { color: #c49060; }
 .cell-ex-flag { opacity: 0.45; }
 .cell-ex-sep { display: inline-block; margin: 0 0.3rem 0 1rem; opacity: 0.45; }
-.cell-ex-en { color: #745040; font-style: italic; }
+.cell-ex-en { color: #745040; font-style: italic; cursor: pointer; }
+.cell-ex-en:hover { color: #a07060; }
 .cell-date {
   white-space: nowrap;
   cursor: default;

@@ -2,14 +2,19 @@
 
 This file is random notes of possible features and bug fixes.
 
-- clicking the image placeholder or thumbnail shoudl open a file dialog to upload an image file
+- play audio for words and sentences using browser TTS
 
-- AI images
-    - generate or find relevant images to associate with words
-    - maybe just for nouns and verbs but not for other parts of speech
-    - favor certain pics within certain aspect ratio ranges
-    - rescale to target res
-        - images that are too low res to be effectively upscaled will be rejected
+- generate audio for the words
+    - pulldown options: either no audio, browser tts, or voicevox
+        - selecting voicevox triggers error message if the voicevox server is not found
+            - give detailed message explaining what user must do, including expected port number
+    - drill page: button and hotkey to play the example sentence if audio is available
+        - second and third sets of hotkeys to play at slower speeds
+    - lexicon page: button to play word audio / sentence audio
+    - in settings, pick preferred male and female voices
+        - settings menu let's you play sample of the voices
+
+- clicking the image placeholder or thumbnail shoudl open a file dialog to upload an image file
 
 - pitch accent info on readings
 
@@ -45,15 +50,7 @@ This file is random notes of possible features and bug fixes.
     - maybe just use rcloud and google drive?
         - create script to help you setup rcloud on mac or windows?
 
-- generate audio for the words
-    - pulldown options: either no audio, browser tts, or voicevox
-        - selecting voicevox triggers error message if the voicevox server is not found
-            - give detailed message explaining what user must do, including expected port number
-    - drill page: button and hotkey to play the example sentence if audio is available
-        - second and third sets of hotkeys to play at slower speeds
-    - lexicon page: button to play word audio / sentence audio
-    - in settings, pick preferred male and female voices
-        - settings menu let's you play sample of the voices
+
 
 
 

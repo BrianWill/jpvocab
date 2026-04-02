@@ -1,5 +1,6 @@
 ﻿import { openEditModal, closeAddResultModal, _addPhase, _pendingGenerates } from './lexicon-add-edit.js';
 import { timeAgo, getSortedWords as _getSortedWords, renderReading } from './lexicon-utils.js';
+import { getTtsVoice } from './common.js';
 
 let words = [];
 export let defaultDrillTarget = 8; // updated from /api/providers at init
@@ -29,6 +30,16 @@ function fullDateTime(dateStr) {
   });
 }
 
+function playTts(text, lang, rate = 1) {
+  const utt = new SpeechSynthesisUtterance(text);
+  utt.lang = lang;
+  utt.rate = rate;
+  const voice = getTtsVoice(lang);
+  if (voice) utt.voice = voice;
+  speechSynthesis.cancel();
+  speechSynthesis.speak(utt);
+}
+
 function renderRow(w, trMain, trEx) {
   const imgCell = w.imagePath
     ? '<td class="cell-img" rowspan="2"><img src="/static/' + w.imagePath + '" alt=""></td>'
@@ -55,6 +66,7 @@ function renderRow(w, trMain, trEx) {
   trMain._word = w;
   trMain._trEx  = trEx;
 
+  trMain.querySelector('.cell-word').addEventListener('click', () => playTts(w.word, 'ja-JP'));
   trMain.querySelector('.btn-edit').addEventListener('click', openEditModal);
   trMain.querySelector('.btn-delete').addEventListener('click', openDeleteModal);
   const [adjMinus, adjPlus] = trMain.querySelectorAll('.btn-target-adj');
@@ -74,6 +86,11 @@ function renderRow(w, trMain, trEx) {
       (w.exampleEn?.trim() ? '<span class="cell-ex-sep">🏴󠁧󠁢󠁥󠁮󠁧󠁿</span><span class="cell-ex-en" data-tooltip="Example sentence">' + w.exampleEn + '</span>' : '') +
     '</td>' +
     '<td></td>';
+
+  const elJp = trEx.querySelector('.cell-ex-jp');
+  if (elJp) elJp.addEventListener('click', () => playTts(w.exampleJp, 'ja-JP', 0.75));
+  const elEn = trEx.querySelector('.cell-ex-en');
+  if (elEn) elEn.addEventListener('click', () => playTts(w.exampleEn, 'en-US'));
 }
 
 export function getSortedWords(key, dir) {

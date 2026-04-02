@@ -88,6 +88,15 @@ function injectSettingsModal() {
             <button type="button" class="filter-chip" data-setting-filter="other">Other</button>
           </div>
         </div>
+        <div class="settings-section-label settings-section-label--spaced">TTS voices</div>
+        <div class="restart-field">
+          <label>Japanese voice</label>
+          <select id="settings-tts-jp" class="settings-tts-select"></select>
+        </div>
+        <div class="restart-field">
+          <label>English voice</label>
+          <select id="settings-tts-en" class="settings-tts-select"></select>
+        </div>
       </div>
       <div class="modal-footer">
         <button class="btn-cancel" id="settings-cancel-btn">Cancel</button>
@@ -95,6 +104,37 @@ function injectSettingsModal() {
       </div>
     </div>`;
   document.body.appendChild(el);
+}
+
+function populateTtsSelects() {
+  const voices = speechSynthesis.getVoices();
+  const fill = (selId, langPrefix, storageKey) => {
+    const sel = document.getElementById(selId);
+    if (!sel) return;
+    const saved = localStorage.getItem(storageKey) ?? '';
+    sel.innerHTML = '<option value="">Default</option>';
+    voices.filter(v => v.lang.startsWith(langPrefix)).forEach(v => {
+      const opt = document.createElement('option');
+      opt.value = v.voiceURI;
+      opt.textContent = v.name + (v.localService ? '' : ' ☁');
+      opt.selected = v.voiceURI === saved;
+      sel.appendChild(opt);
+    });
+  };
+  fill('settings-tts-jp', 'ja', 'tts-voice-ja');
+  fill('settings-tts-en', 'en', 'tts-voice-en');
+}
+
+const TTS_DEFAULTS = { ja: 'Kyoko', en: 'Daniel' };
+
+export function getTtsVoice(lang) {
+  const isJa = lang.startsWith('ja');
+  const key = isJa ? 'tts-voice-ja' : 'tts-voice-en';
+  const voices = speechSynthesis.getVoices();
+  const uri = localStorage.getItem(key);
+  if (uri) return voices.find(v => v.voiceURI === uri) ?? null;
+  const preferredName = TTS_DEFAULTS[isJa ? 'ja' : 'en'];
+  return voices.find(v => v.name === preferredName) ?? null;
 }
 
 function initializeSettings() {
@@ -122,6 +162,7 @@ function initializeSettings() {
       btn.classList.toggle('active', settings.wordTypes.includes(btn.dataset.settingFilter));
     });
 
+    populateTtsSelects();
     clearDirty();
     settingsModal.classList.remove('hidden');
   });
@@ -151,6 +192,14 @@ function initializeSettings() {
         wordTypes,
       }),
     });
+
+    const jpVoice = document.getElementById('settings-tts-jp')?.value ?? '';
+    const enVoice = document.getElementById('settings-tts-en')?.value ?? '';
+    if (jpVoice) localStorage.setItem('tts-voice-ja', jpVoice);
+    else localStorage.removeItem('tts-voice-ja');
+    if (enVoice) localStorage.setItem('tts-voice-en', enVoice);
+    else localStorage.removeItem('tts-voice-en');
+
     closeModal();
   });
 
@@ -175,6 +224,26 @@ function initializeSettings() {
       onInput: setDirty,
     });
   }
+
+  const previewVoice = (voiceURI, lang, sample) => {
+    const voice = voiceURI
+      ? speechSynthesis.getVoices().find(v => v.voiceURI === voiceURI)
+      : null;
+    const utt = new SpeechSynthesisUtterance(sample);
+    utt.lang = lang;
+    if (voice) utt.voice = voice;
+    speechSynthesis.cancel();
+    speechSynthesis.speak(utt);
+  };
+
+  document.getElementById('settings-tts-jp')?.addEventListener('change', e => {
+    setDirty();
+    previewVoice(e.target.value, 'ja-JP', 'こんにちは、よろしくお願いします。');
+  });
+  document.getElementById('settings-tts-en')?.addEventListener('change', e => {
+    setDirty();
+    previewVoice(e.target.value, 'en-US', 'This is a sample of the selected voice.');
+  });
 }
 
 injectSettingsModal();

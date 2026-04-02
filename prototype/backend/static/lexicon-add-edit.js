@@ -8,9 +8,9 @@ const imagePlaceholderSvg =
     '<polyline points="3,21 8,14 12,18 16,13 21,18" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round"/>' +
   '</svg>';
 
-function buildWordResultImage(imagePath, state) {
+function buildWordResultImage(imagePath, state, bust = '') {
   if (imagePath) {
-    return '<div class="word-result-image"><img src="/static/' + esc(imagePath) + '" alt=""></div>';
+    return '<div class="word-result-image"><img src="/static/' + esc(imagePath) + (bust ? '?v=' + bust : '') + '" alt=""></div>';
   }
   const classes = ['word-result-image', 'word-result-image--empty'];
   let overlay = '';
@@ -23,10 +23,10 @@ function buildWordResultImage(imagePath, state) {
   return '<div class="' + classes.join(' ') + '">' + overlay + imagePlaceholderSvg + '</div>';
 }
 
-function setWordRowImage(row, imagePath, state = '') {
+function setWordRowImage(row, imagePath, state = '', bust = '') {
   const imageEl = row.querySelector('.word-result-image');
   if (!imageEl) return;
-  imageEl.outerHTML = buildWordResultImage(imagePath, state);
+  imageEl.outerHTML = buildWordResultImage(imagePath, state, bust);
 }
 
 // --- Add/edit modal ---
@@ -459,7 +459,7 @@ async function startSuggestedImageDownload(row, wordId, imageURL) {
     if (!res.ok) throw new Error(await res.text());
     const data = await res.json();
     if (!row.isConnected) return;
-    setWordRowImage(row, data.image_path, '');
+    setWordRowImage(row, data.image_path, '', Date.now());
     updateWordImagePath(wordId, data.image_path);
   } catch (_) {
     if (!row.isConnected) return;
@@ -540,6 +540,7 @@ async function generateWordImage(event, wordId, word, btn) {
   renderStatus();
   const aiModel = document.getElementById('add-result-model-select').value;
   const meaning = (row?.querySelector('.detail-meaning .detail-input')?.textContent ?? '').trim();
+  const prevImageHtml = row?.querySelector('.word-result-image')?.outerHTML ?? null;
   setWordRowImage(row, '', 'loading');
   try {
     const res = await fetch('/api/words/' + wordId + '/find-image', {
@@ -551,11 +552,15 @@ async function generateWordImage(event, wordId, word, btn) {
     if (!res.ok) throw new Error(await res.text());
     const data = await res.json();
     if (row?.isConnected) {
-      setWordRowImage(row, data.image_path, '');
+      setWordRowImage(row, data.image_path, '', Date.now());
       updateWordImagePath(wordId, data.image_path);
     }
   } catch (_) {
-    if (row?.isConnected) setWordRowImage(row, '', 'failed');
+    if (row?.isConnected) {
+      const imageEl = row.querySelector('.word-result-image');
+      if (imageEl && prevImageHtml) imageEl.outerHTML = prevImageHtml;
+      else setWordRowImage(row, '', 'failed');
+    }
   } finally {
     if (btn._generateAbort === abort) {
       btn._generateAbort = null;

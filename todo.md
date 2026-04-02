@@ -2,10 +2,7 @@
 
 This file is random notes of possible features and bug fixes.
 
-- somehow "open image in new tab" sometimes shows a different image
-    - the image is set from image data, but the url is still the old suggested one?
-
-- when editing a single word, the "generate all" button should be not present / hidden / display none
+- clicking the image placeholder or thumbnail shoudl open a file dialog to upload an image file
 
 - AI images
     - generate or find relevant images to associate with words

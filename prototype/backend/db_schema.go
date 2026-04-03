@@ -39,8 +39,8 @@ func migrate(db *sql.DB) {
 			meaning           TEXT,
 			example_jp        TEXT,
 			example_en        TEXT,
-			audio_word_path    TEXT,
-			audio_example_path TEXT,
+			has_word_audio INTEGER NOT NULL DEFAULT 0,
+			has_sentence_audio INTEGER NOT NULL DEFAULT 0,
 			drill_count       INTEGER  NOT NULL DEFAULT 0,
 			drill_target      INTEGER  NOT NULL DEFAULT 1,
 			incorrect_count   INTEGER  NOT NULL DEFAULT 0,
@@ -48,11 +48,14 @@ func migrate(db *sql.DB) {
 			kanji_data        TEXT,
 			created_at        DATETIME NOT NULL DEFAULT (datetime('now')),
 			last_drilled_at   DATETIME,
-			target_reached_at DATETIME
+			target_reached_at DATETIME,
+			image_path TEXT
 		)`,
 		`CREATE TABLE IF NOT EXISTS drill_sessions (
 			id         INTEGER  PRIMARY KEY AUTOINCREMENT,
-			started_at DATETIME NOT NULL DEFAULT (datetime('now'))
+			started_at DATETIME NOT NULL DEFAULT (datetime('now')),
+			state_json TEXT NOT NULL DEFAULT '{}',
+			completed_at DATETIME
 		)`,
 		`CREATE TABLE IF NOT EXISTS drill_answers (
 			id          INTEGER  PRIMARY KEY AUTOINCREMENT,
@@ -70,9 +73,6 @@ func migrate(db *sql.DB) {
 			key   TEXT NOT NULL PRIMARY KEY,
 			value TEXT NOT NULL
 		)`,
-		`ALTER TABLE words ADD COLUMN image_path TEXT`,
-		`ALTER TABLE drill_sessions ADD COLUMN state_json TEXT NOT NULL DEFAULT '{}'`,
-		`ALTER TABLE drill_sessions ADD COLUMN completed_at DATETIME`,
 	}
 
 	var version int

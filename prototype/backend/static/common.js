@@ -155,7 +155,13 @@ function waitForVoices() {
   });
 }
 
+let _currentAudio = null;
+
 export async function playTts(text, lang, rate = 1) {
+  if (_currentAudio) {
+    _currentAudio.pause();
+    _currentAudio = null;
+  }
   await waitForVoices();
   const utt = new SpeechSynthesisUtterance(text);
   utt.lang = lang;
@@ -164,6 +170,30 @@ export async function playTts(text, lang, rate = 1) {
   if (voice) utt.voice = voice;
   speechSynthesis.cancel();
   speechSynthesis.speak(utt);
+}
+
+// playWordAudio plays a word's generated audio file if available, else falls back to TTS.
+export function playWordAudio(word) {
+  if (word.hasWordAudio) {
+    speechSynthesis.cancel();
+    if (_currentAudio) { _currentAudio.pause(); }
+    _currentAudio = new Audio(`/static/audio/${encodeURIComponent(word.word)}.wav`);
+    _currentAudio.play();
+  } else {
+    playTts(word.word, 'ja-JP', WORD_TTS_RATE);
+  }
+}
+
+// playSentenceAudio plays a word's generated sentence audio file if available, else falls back to TTS.
+export function playSentenceAudio(word) {
+  if (word.hasSentenceAudio) {
+    speechSynthesis.cancel();
+    if (_currentAudio) { _currentAudio.pause(); }
+    _currentAudio = new Audio(`/static/audio/${encodeURIComponent(word.word)}_sentence.wav`);
+    _currentAudio.play();
+  } else if (word.exampleJp) {
+    playTts(word.exampleJp, 'ja-JP', 0.75);
+  }
 }
 
 function initializeSettings() {

@@ -75,7 +75,7 @@ AI integration tests live in `backend/ai_integration_test.go` and are gated behi
 
 - **Part of speech (POS)** � the current category set (`godan-verb`, `ichidan-verb`, `noun`, `i-adjective`, `na-adjective`, `adverb`, `other`) may need revisiting: check whether the categories cover all desired word types and that AI autofill is classifying words accurately. The canonical list lives in `typeLabels` in `lexicon.js`.
 
-- **Audio** � not yet implemented. Audio of the word and example sentence to be generated via VoiceVox (`tts-demo.html` exists as a sandbox for this).
+- **Audio** — selecting "audio" in the generate-type dropdown and clicking generate calls `POST /api/words/{id}/generate-audio`, which synthesizes WAV files via the local VoiceVox engine (must be running at `http://localhost:50021`). Word audio is saved as `static/audio/{word}.wav`; sentence audio as `static/audio/{word}_sentence.wav`. The DB stores `has_word_audio` and `has_sentence_audio` boolean flags (not paths, which are derivable from the word text). When a word or sentence is played, the WAV file is used if the flag is set; otherwise falls back to Web Speech API TTS.
 
 - **Note:** `/api/words/{id}/reroll-meaning` and `/api/words/{id}/reroll-examples` may be dead code � the old edit modal that used them was removed (commit `f119e10`). Confirm before adding new callers.
 
@@ -123,6 +123,7 @@ Key API endpoints (beyond CRUD on `/api/words` and `/api/kanji`):
 | `PATCH` | `/api/words/{id}` | Update a word's reading, type, meaning, and example sentences |
 | `PATCH` | `/api/words/{id}/target` | Update a word's target drill count |
 | `POST` | `/api/words/{id}/autofill` | AI-generate reading, meaning, and examples for a word |
+| `POST` | `/api/words/{id}/generate-audio` | Generate WAV audio via local VoiceVox engine; sets `has_word_audio`/`has_sentence_audio` flags |
 | `POST` | `/api/words/{id}/reroll-meaning` | Regenerate just the meaning via AI *(may be unused � see Lexicon Features note)* |
 | `POST` | `/api/words/{id}/reroll-examples` | Regenerate just the example sentences via AI *(may be unused � see Lexicon Features note)* |
 | `GET` | `/api/drill/sessions/current` | Return the current in-progress drill session, if one exists |
@@ -141,9 +142,9 @@ cd backend && air
 
 > **No migration compatibility required.** During development it is fine to reset the database (`/admin` ? Reset DB) whenever the schema changes. Do not spend effort on backwards-compatible migrations or backfill logic at this stage.
 
-Table definitions live in the `migrate()` function in `db.go`. Schema is versioned via `PRAGMA user_version` � each entry in the migrations slice runs exactly once. Current schema version: **8**. Current tables:
+Table definitions live in the `migrate()` function in `db.go`. Schema is versioned via `PRAGMA user_version` � each entry in the migrations slice runs exactly once. Current schema version: **12**. Current tables:
 
-- **`words`** � the lexicon; one row per word with reading, part of speech, meaning, example sentences, audio paths (`audio_word_path`, `audio_example_path`), an optional `image_path` (relative to `static/`, e.g. `images/words/?.jpg`), drill counts, target, timestamps, and a `kanji_data` JSON column (array of `{id, reading}` linking to the `kanji` table). `word` column has a unique index. Because `word` is unique, image files are named after the word text itself (e.g. `static/images/words/?.jpg`).
+- **`words`** � the lexicon; one row per word with reading, part of speech, meaning, example sentences, audio flags (`has_word_audio`, `has_sentence_audio` INTEGER booleans — paths are derived as `static/audio/{word}.wav` / `static/audio/{word}_sentence.wav`, not stored), an optional `image_path` (relative to `static/`, e.g. `images/words/食べる.jpg`), drill counts, target, timestamps, and a `kanji_data` JSON column (array of `{id, reading}` linking to the `kanji` table). `word` column has a unique index. Because `word` is unique, image and audio files are named after the word text itself.
 - **`kanji`** � one row per kanji character with `character` and `meanings` (JSON array of English meanings). Readings (on/kun) are stored per-word in the `kanji_data` column of `words`, not on the kanji row itself. Served via `/api/kanji`.
 - **`drill_sessions`** � one row per drill session with a `started_at` timestamp, a persisted durable UI/session snapshot in `state_json` (round/pool/redo/remaining/sidebar/last-answered state, but not derived completion flags or copied settings defaults), and `completed_at` for distinguishing the single active in-progress drill from completed sessions.
 - **`drill_answers`** � one row per answer within a session; references `words` and `drill_sessions`; stores `correct` (0/1) and `answered_at`.

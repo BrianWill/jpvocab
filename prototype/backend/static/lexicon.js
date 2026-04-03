@@ -1,6 +1,6 @@
 ﻿import { openEditModal, closeAddResultModal, _addPhase, _pendingGenerates } from './lexicon-add-edit.js';
 import { timeAgo, getSortedWords as _getSortedWords, renderReading } from './lexicon-utils.js';
-import { playTts, WORD_TTS_RATE } from './common.js';
+import { playTts, playWordAudio, playSentenceAudio } from './common.js';
 
 let words = [];
 export let defaultDrillTarget = 8; // updated from /api/providers at init
@@ -56,7 +56,7 @@ function renderRow(w, trMain, trEx) {
   trMain._word = w;
   trMain._trEx  = trEx;
 
-  trMain.querySelector('.cell-word').addEventListener('click', () => playTts(w.word, 'ja-JP', WORD_TTS_RATE));
+  trMain.querySelector('.cell-word').addEventListener('click', () => playWordAudio(w));
   trMain.querySelector('.btn-edit').addEventListener('click', openEditModal);
   trMain.querySelector('.btn-delete').addEventListener('click', openDeleteModal);
   const [adjMinus, adjPlus] = trMain.querySelectorAll('.btn-target-adj');
@@ -78,7 +78,7 @@ function renderRow(w, trMain, trEx) {
     '<td></td>';
 
   const elJp = trEx.querySelector('.cell-ex-jp');
-  if (elJp) elJp.addEventListener('click', () => playTts(w.exampleJp, 'ja-JP', 0.75));
+  if (elJp) elJp.addEventListener('click', () => playSentenceAudio(w));
   const elEn = trEx.querySelector('.cell-ex-en');
   if (elEn) elEn.addEventListener('click', () => playTts(w.exampleEn, 'en-US'));
 }
@@ -116,6 +116,13 @@ export function updateWordImagePath(wordId, imagePath) {
   word.imagePath = imagePath;
   const activeBtn = document.querySelector('.btn-sort--active');
   renderTable(getSortedWords(activeBtn.dataset.sort, activeBtn.dataset.dir || 'desc'));
+}
+
+export function updateWordAudioFlags(wordId, hasWordAudio, hasSentenceAudio) {
+  const word = words.find(w => w.id === wordId);
+  if (!word) return;
+  word.hasWordAudio = hasWordAudio;
+  word.hasSentenceAudio = hasSentenceAudio;
 }
 
 async function init() {

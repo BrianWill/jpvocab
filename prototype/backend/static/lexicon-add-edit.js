@@ -1,4 +1,4 @@
-import { defaultDrillTarget, typeLabels, _providers, _imageSources, reloadWords, renderTable, getSortedWords, closeAddModal, updateWordImagePath } from './lexicon.js';
+import { defaultDrillTarget, typeLabels, _providers, _imageSources, reloadWords, renderTable, getSortedWords, closeAddModal, updateWordImagePath, updateWordAudioFlags } from './lexicon.js';
 import { esc, isKanji, detailItemPosSelect, detailItemKanjiReadings, detailItemInput, detailItemExInput } from './lexicon-utils.js';
 
 const imagePlaceholderSvg =
@@ -408,7 +408,9 @@ function appendWordRow(data) {
   if (data.word_id) {
     const genBtnEl = row.querySelector('.btn-generate');
     if (genBtnEl) genBtnEl.addEventListener('mousedown', e => {
-      if (getGenerateType() === 'image') generateWordImage(e, data.word_id, data.word, genBtnEl);
+      const t = getGenerateType();
+      if (t === 'image') generateWordImage(e, data.word_id, data.word, genBtnEl);
+      else if (t === 'audio') generateWordAudio(e, data.word_id, data.word, genBtnEl);
       else generateWordAutofill(e, data.word_id, data.word, genBtnEl);
     });
 
@@ -478,9 +480,9 @@ function getImageSource() {
 function updateGenerateBtnStates() {
   const type = getGenerateType();
   const hasProviders = _providers && (_providers.anthropic || _providers.openai || _providers.google || _providers.mistral || _providers.glm);
-  const disabled = type === 'audio' || !hasProviders;
+  const disabled = type !== 'audio' && !hasProviders;
   const tooltip = type === 'audio'
-    ? 'Audio generation is not yet implemented'
+    ? 'Generates audio via the local VoiceVox engine'
     : type === 'image'
       ? 'Uses an AI API request to find and download an image for this word'
       : 'Uses an AI API request to get the word\'s reading, part-of-speech, meaning, and an example sentence';
@@ -565,6 +567,42 @@ async function generateWordImage(event, wordId, word, btn) {
       if (imageEl && prevImageHtml) imageEl.outerHTML = prevImageHtml;
       else setWordRowImage(row, '', 'failed');
     }
+  } finally {
+    if (btn._generateAbort === abort) {
+      btn._generateAbort = null;
+      if (btn.classList.contains('btn-generate--busy')) {
+        btn.classList.remove('btn-generate--busy', 'btn-generate--cancellable');
+        btn.innerHTML = 'generate';
+        _pendingGenerates = Math.max(0, _pendingGenerates - 1);
+        renderStatus();
+      }
+    }
+  }
+}
+
+async function generateWordAudio(event, wordId, word, btn) {
+  event.stopPropagation();
+  if (btn._generateAbort) {
+    btn._generateAbort.abort();
+    return;
+  }
+  if (btn.classList.contains('btn-generate--busy')) return;
+  const abort = new AbortController();
+  btn._generateAbort = abort;
+  btn.classList.add('btn-generate--busy', 'btn-generate--cancellable');
+  btn.innerHTML = '<span class="spinner"></span><span class="btn-gen-label">generating\u2026</span><span class="btn-gen-cancel">cancel</span>';
+  _pendingGenerates++;
+  renderStatus();
+  try {
+    const res = await fetch('/api/words/' + wordId + '/generate-audio', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ word }),
+      signal: abort.signal,
+    });
+    if (!res.ok) throw new Error(await res.text());
+    const data = await res.json();
+    updateWordAudioFlags(wordId, data.hasWordAudio, data.hasSentenceAudio);
   } finally {
     if (btn._generateAbort === abort) {
       btn._generateAbort = null;
@@ -716,13 +754,13 @@ function renderStatus() {
   const hasProviders = _providers && (_providers.anthropic || _providers.openai || _providers.google || _providers.mistral || _providers.glm);
   const genType = getGenerateType();
   const genAllTooltip = genType === 'audio'
-    ? 'Audio generation is not yet implemented'
+    ? 'Generates audio via the local VoiceVox engine for each word'
     : genType === 'image'
       ? 'Uses an AI API request to find and download an image for each word'
       : 'Uses an AI API request to get the reading, part-of-speech, meaning, and an example sentence for each word';
-  const genAllEnabled = genType !== 'audio' &&
+  const genAllEnabled =
     document.querySelectorAll('#add-result-modal-body .word-result-row .btn-generate:not(.btn-generate--busy):not([disabled])').length > 0 &&
-    hasProviders && _addPhase !== 'loading';
+    (genType === 'audio' || hasProviders) && _addPhase !== 'loading';
   const actionHtml = _pendingGenerates > 0
     ? '<button class="btn-danger btn-generate--cancel">' +
         '<span class="spinner"></span>Cancel generation' +

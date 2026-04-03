@@ -1,9 +1,12 @@
 package main
 
 import (
+	"bytes"
+	"context"
 	"database/sql"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"io"
 	"mime"
 	"net/http"
@@ -438,6 +441,106 @@ func extensionForContentType(contentType string) string {
 		return ".gif"
 	default:
 		return ""
+	}
+}
+
+const voicevoxBase = "http://localhost:50021"
+const voicevoxSpeaker = 1 // ずんだもん (ノーマル)
+
+// synthesizeVoicevox calls the local VoiceVox engine to produce a WAV for text
+// and writes it to destPath. Returns an error if VoiceVox is unavailable.
+func synthesizeVoicevox(ctx context.Context, text string, destPath string) error {
+	qURL := fmt.Sprintf("%s/audio_query?text=%s&speaker=%d",
+		voicevoxBase, url.QueryEscape(text), voicevoxSpeaker)
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, qURL, nil)
+	if err != nil {
+		return err
+	}
+	client := &http.Client{Timeout: 30 * time.Second}
+	resp, err := client.Do(req)
+	if err != nil {
+		return fmt.Errorf("voicevox audio_query: %w", err)
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		return fmt.Errorf("voicevox audio_query: %s", resp.Status)
+	}
+	var q map[string]any
+	if err := json.NewDecoder(resp.Body).Decode(&q); err != nil {
+		return fmt.Errorf("decode audio_query: %w", err)
+	}
+
+	qJSON, err := json.Marshal(q)
+	if err != nil {
+		return err
+	}
+	sURL := fmt.Sprintf("%s/synthesis?speaker=%d", voicevoxBase, voicevoxSpeaker)
+	req2, err := http.NewRequestWithContext(ctx, http.MethodPost, sURL, bytes.NewReader(qJSON))
+	if err != nil {
+		return err
+	}
+	req2.Header.Set("Content-Type", "application/json")
+	resp2, err := client.Do(req2)
+	if err != nil {
+		return fmt.Errorf("voicevox synthesis: %w", err)
+	}
+	defer resp2.Body.Close()
+	if resp2.StatusCode != http.StatusOK {
+		return fmt.Errorf("voicevox synthesis: %s", resp2.Status)
+	}
+	wav, err := io.ReadAll(resp2.Body)
+	if err != nil {
+		return err
+	}
+	if err := os.MkdirAll(filepath.Dir(destPath), 0o755); err != nil {
+		return err
+	}
+	return os.WriteFile(destPath, wav, 0o644)
+}
+
+func apiGenerateWordAudio(db *sql.DB) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		id, err := strconv.ParseInt(chi.URLParam(r, "id"), 10, 64)
+		if err != nil {
+			http.Error(w, "invalid id", http.StatusBadRequest)
+			return
+		}
+		info, err := getWordAudioInfo(db, id)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		if info == nil {
+			http.Error(w, "word not found", http.StatusNotFound)
+			return
+		}
+
+		audioDir := filepath.Join("static", "audio")
+		wordPath := filepath.Join(audioDir, info.Word+".wav")
+		sentencePath := filepath.Join(audioDir, info.Word+"_sentence.wav")
+
+		if err := synthesizeVoicevox(r.Context(), info.Word, wordPath); err != nil {
+			http.Error(w, "voicevox error: "+err.Error(), http.StatusBadGateway)
+			return
+		}
+
+		hasSentence := false
+		if info.ExampleJP != "" {
+			if err := synthesizeVoicevox(r.Context(), info.ExampleJP, sentencePath); err == nil {
+				hasSentence = true
+			}
+		}
+
+		if err := updateWordAudioFlags(db, id, true, hasSentence); err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(map[string]any{
+			"hasWordAudio":     true,
+			"hasSentenceAudio": hasSentence,
+		})
 	}
 }
 

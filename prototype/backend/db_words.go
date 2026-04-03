@@ -36,20 +36,22 @@ type kanjiDataEntry struct {
 // wordJSON is the JSON shape returned by the /api/words endpoint.
 // Field names are chosen to match what lexicon.js already expects.
 type wordJSON struct {
-	ID          int64            `json:"id"`
-	Word        string           `json:"word"`
-	Reading     string           `json:"reading"`
-	Type        string           `json:"type"`
-	Meaning     string           `json:"meaning"`
-	ExampleJp   string           `json:"exampleJp"`
-	ExampleEn   string           `json:"exampleEn"`
-	Correct     int              `json:"correct"`
-	Incorrect   int              `json:"incorrect"`
-	Target      int              `json:"target"`
-	CreatedAt   string           `json:"createdAt"`
-	LastDrilled *string          `json:"lastDrilled"`
-	ImagePath   *string          `json:"imagePath"`
-	KanjiData   []kanjiDataEntry `json:"kanjiData"`
+	ID              int64            `json:"id"`
+	Word            string           `json:"word"`
+	Reading         string           `json:"reading"`
+	Type            string           `json:"type"`
+	Meaning         string           `json:"meaning"`
+	ExampleJp       string           `json:"exampleJp"`
+	ExampleEn       string           `json:"exampleEn"`
+	Correct         int              `json:"correct"`
+	Incorrect       int              `json:"incorrect"`
+	Target          int              `json:"target"`
+	CreatedAt       string           `json:"createdAt"`
+	LastDrilled     *string          `json:"lastDrilled"`
+	ImagePath       *string          `json:"imagePath"`
+	KanjiData       []kanjiDataEntry `json:"kanjiData"`
+	HasWordAudio    bool             `json:"hasWordAudio"`
+	HasSentenceAudio bool            `json:"hasSentenceAudio"`
 }
 
 // insertWord adds a single word to the lexicon. Only the word itself is
@@ -245,7 +247,7 @@ func listWords(db *sql.DB) ([]wordJSON, error) {
 		SELECT id, word, COALESCE(reading,''), COALESCE(part_of_speech,''), COALESCE(meaning,''),
 		       COALESCE(example_jp,''), COALESCE(example_en,''),
 		       drill_count, incorrect_count, drill_target, created_at, last_drilled_at,
-		       image_path, kanji_data
+		       image_path, kanji_data, has_word_audio, has_sentence_audio
 		FROM words
 		ORDER BY created_at DESC
 	`)
@@ -258,13 +260,16 @@ func listWords(db *sql.DB) ([]wordJSON, error) {
 	for rows.Next() {
 		var w wordJSON
 		var kanjiDataStr *string
+		var hasWordAudio, hasSentenceAudio int
 		if err := rows.Scan(
 			&w.ID, &w.Word, &w.Reading, &w.Type, &w.Meaning, &w.ExampleJp, &w.ExampleEn,
 			&w.Correct, &w.Incorrect, &w.Target, &w.CreatedAt, &w.LastDrilled,
-			&w.ImagePath, &kanjiDataStr,
+			&w.ImagePath, &kanjiDataStr, &hasWordAudio, &hasSentenceAudio,
 		); err != nil {
 			return nil, err
 		}
+		w.HasWordAudio = hasWordAudio == 1
+		w.HasSentenceAudio = hasSentenceAudio == 1
 		if kanjiDataStr != nil {
 			json.Unmarshal([]byte(*kanjiDataStr), &w.KanjiData)
 		}
@@ -308,6 +313,35 @@ func deleteWordsByName(db *sql.DB, words []string) error {
 	}
 	_, err := db.Exec("DELETE FROM words WHERE word IN ("+placeholders+")", args...)
 	return err
+}
+
+// updateWordAudioFlags sets the has_word_audio and has_sentence_audio flags for a word by ID.
+func updateWordAudioFlags(db *sql.DB, id int64, hasWord, hasSentence bool) error {
+	w, s := 0, 0
+	if hasWord {
+		w = 1
+	}
+	if hasSentence {
+		s = 1
+	}
+	_, err := db.Exec("UPDATE words SET has_word_audio=?, has_sentence_audio=? WHERE id=?", w, s, id)
+	return err
+}
+
+// wordAudioInfo holds the fields needed to generate audio for a word.
+type wordAudioInfo struct {
+	Word      string
+	ExampleJP string
+}
+
+func getWordAudioInfo(db *sql.DB, id int64) (*wordAudioInfo, error) {
+	var info wordAudioInfo
+	err := db.QueryRow("SELECT word, COALESCE(example_jp,'') FROM words WHERE id = ?", id).
+		Scan(&info.Word, &info.ExampleJP)
+	if err == sql.ErrNoRows {
+		return nil, nil
+	}
+	return &info, err
 }
 
 // containsKatakana reports whether s contains any character in the main

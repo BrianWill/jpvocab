@@ -2,7 +2,8 @@
 
 This file is random notes of possible features and bug fixes.
 
-- play audio for words and sentences using browser TTS
+- voicevox stored as ogg or mp3 instead of wav
+- main-area on drill page doesnt' have stable height
 
 - generate audio for the words
     - pulldown options: either no audio, browser tts, or voicevox

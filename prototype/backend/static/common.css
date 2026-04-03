@@ -418,6 +418,39 @@ body {
   cursor: pointer;
 }
 .settings-tts-select:focus { outline: none; border-color: #6c7086; }
+.provider-info-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1rem;
+  height: 1rem;
+  border-radius: 50%;
+  border: 1px solid #45475a;
+  color: #585b70;
+  font-size: 0.65rem;
+  cursor: default;
+  flex-shrink: 0;
+  line-height: 1;
+}
+.provider-info-icon:hover { border-color: #89b4fa; color: #89b4fa; }
+.settings-slider-row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex: 1;
+  max-width: 18rem;
+}
+.settings-slider-row input[type="range"] {
+  flex: 1;
+  accent-color: #89b4fa;
+  cursor: pointer;
+}
+.settings-slider-val {
+  font-size: 0.8rem;
+  color: #cdd6f4;
+  min-width: 2.2rem;
+  text-align: right;
+}
 .restart-field {
   display: flex;
   align-items: center;

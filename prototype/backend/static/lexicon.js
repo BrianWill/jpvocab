@@ -1,11 +1,12 @@
 ﻿import { openEditModal, closeAddResultModal, _addPhase, _pendingGenerates } from './lexicon-add-edit.js';
 import { timeAgo, getSortedWords as _getSortedWords, renderReading } from './lexicon-utils.js';
-import { playTts, playWordAudio, playSentenceAudio } from './common.js';
+import { playTts, playWordAudio, playSentenceAudio, checkVoicevoxAvailable, refreshTooltip } from './common.js';
 
 let words = [];
 export let defaultDrillTarget = 8; // updated from /api/providers at init
 export let _providers = null;
 export let _imageSources = null;
+export let _voicevoxAvailable = false;
 
 function updateWordCount() {
   const active = words.filter(w => w.correct < w.target).length;
@@ -136,6 +137,7 @@ async function init() {
   renderTable(getSortedWords('added', 'desc'));
   _providers = providers.ai;
   _imageSources = providers.image_sources;
+  _voicevoxAvailable = await checkVoicevoxAvailable();
 }
 
 init();
@@ -233,32 +235,6 @@ sortBtns.forEach(btn => {
   });
 });
 
-// --- Tooltip ---
-const lexTooltip = document.createElement('div');
-lexTooltip.className = 'lex-tooltip';
-document.body.appendChild(lexTooltip);
-
-let _activeTooltipEl = null;
-
-document.addEventListener('mouseover', e => {
-  const el = e.target.closest('[data-tooltip]');
-  _activeTooltipEl = el ?? null;
-  if (!el) { lexTooltip.classList.remove('visible'); return; }
-  lexTooltip.textContent = el.dataset.tooltip;
-  lexTooltip.classList.add('visible');
-});
-
-export function refreshTooltip(el) {
-  if (_activeTooltipEl === el) lexTooltip.textContent = el.dataset.tooltip;
-}
-document.addEventListener('mousemove', e => {
-  if (!lexTooltip.classList.contains('visible')) return;
-  const x = e.clientX + 14;
-  lexTooltip.style.left = (x + lexTooltip.offsetWidth > window.innerWidth)
-    ? (e.clientX - lexTooltip.offsetWidth) + 'px'
-    : x + 'px';
-  lexTooltip.style.top = (e.clientY + 18) + 'px';
-});
 
 // --- Static element event listeners ---
 document.querySelector('.btn-header').addEventListener('click', openAddModal);

@@ -1,5 +1,6 @@
-import { defaultDrillTarget, typeLabels, _providers, _imageSources, reloadWords, renderTable, getSortedWords, closeAddModal, updateWordImagePath, updateWordAudioFlags } from './lexicon.js';
+import { defaultDrillTarget, typeLabels, _providers, _imageSources, _voicevoxAvailable, reloadWords, renderTable, getSortedWords, closeAddModal, updateWordImagePath, updateWordAudioFlags } from './lexicon.js';
 import { esc, isKanji, detailItemPosSelect, detailItemKanjiReadings, detailItemInput, detailItemExInput } from './lexicon-utils.js';
+import { getVoicevoxSettings } from './common.js';
 
 const imagePlaceholderSvg =
   '<svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">' +
@@ -480,9 +481,9 @@ function getImageSource() {
 function updateGenerateBtnStates() {
   const type = getGenerateType();
   const hasProviders = _providers && (_providers.anthropic || _providers.openai || _providers.google || _providers.mistral || _providers.glm);
-  const disabled = type !== 'audio' && !hasProviders;
+  const disabled = type === 'audio' ? !_voicevoxAvailable : !hasProviders;
   const tooltip = type === 'audio'
-    ? 'Generates audio via the local VoiceVox engine'
+    ? (_voicevoxAvailable ? 'Generates audio via the local VoiceVox engine' : 'VoiceVox is not running')
     : type === 'image'
       ? 'Uses an AI API request to find and download an image for this word'
       : 'Uses an AI API request to get the word\'s reading, part-of-speech, meaning, and an example sentence';
@@ -594,10 +595,11 @@ async function generateWordAudio(event, wordId, word, btn) {
   _pendingGenerates++;
   renderStatus();
   try {
+    const vv = getVoicevoxSettings();
     const res = await fetch('/api/words/' + wordId + '/generate-audio', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ word }),
+      body: JSON.stringify({ word, speaker: vv.speaker, speedScale: vv.speedScale, intonationScale: vv.intonationScale }),
       signal: abort.signal,
     });
     if (!res.ok) throw new Error(await res.text());
@@ -754,13 +756,13 @@ function renderStatus() {
   const hasProviders = _providers && (_providers.anthropic || _providers.openai || _providers.google || _providers.mistral || _providers.glm);
   const genType = getGenerateType();
   const genAllTooltip = genType === 'audio'
-    ? 'Generates audio via the local VoiceVox engine for each word'
+    ? (_voicevoxAvailable ? 'Generates audio via the local VoiceVox engine for each word' : 'VoiceVox is not running')
     : genType === 'image'
       ? 'Uses an AI API request to find and download an image for each word'
       : 'Uses an AI API request to get the reading, part-of-speech, meaning, and an example sentence for each word';
   const genAllEnabled =
     document.querySelectorAll('#add-result-modal-body .word-result-row .btn-generate:not(.btn-generate--busy):not([disabled])').length > 0 &&
-    (genType === 'audio' || hasProviders) && _addPhase !== 'loading';
+    (genType === 'audio' ? _voicevoxAvailable : hasProviders) && _addPhase !== 'loading';
   const actionHtml = _pendingGenerates > 0
     ? '<button class="btn-danger btn-generate--cancel">' +
         '<span class="spinner"></span>Cancel generation' +

@@ -302,10 +302,6 @@ dayModalBackdrop.querySelector('.modal-close').addEventListener('click', closeDa
 
 // ── Tooltip ───────────────────────────────────────────────────────────────────
 
-const actTooltip = document.createElement('div');
-actTooltip.className = 'lex-tooltip';
-document.body.appendChild(actTooltip);
-
 const wordTooltip = document.getElementById('activity-word-tooltip');
 
 function showWordTooltip(item) {
@@ -329,32 +325,12 @@ function positionWordTooltip(item) {
 
 document.addEventListener('mouseover', e => {
   const wordItem = e.target.closest('.day-word-item[data-word-info]');
-  if (wordItem) {
-    showWordTooltip(wordItem);
-    return;
-  }
-  const target = e.target.closest('[data-tooltip]');
-  if (!target) return;
-  actTooltip.textContent = target.dataset.tooltip;
-  actTooltip.classList.add('visible');
-});
-
-document.addEventListener('mousemove', e => {
-  if (!actTooltip.classList.contains('visible')) return;
-  const x = e.clientX + 14;
-  actTooltip.style.top  = (e.clientY + 14) + 'px';
-  actTooltip.style.left = (x + actTooltip.offsetWidth > window.innerWidth)
-    ? (e.clientX - actTooltip.offsetWidth) + 'px'
-    : x + 'px';
+  if (wordItem) showWordTooltip(wordItem);
 });
 
 document.addEventListener('mouseout', e => {
   const wordItem = e.target.closest('.day-word-item[data-word-info]');
-  if (wordItem && !wordItem.contains(e.relatedTarget)) {
-    wordTooltip.classList.remove('visible');
-  }
-  if (!e.target.closest('[data-tooltip]')) return;
-  actTooltip.classList.remove('visible');
+  if (wordItem && !wordItem.contains(e.relatedTarget)) wordTooltip.classList.remove('visible');
 });
 
 async function init() {

@@ -19,7 +19,14 @@
       "Bash(/c/Users/Brian/.nvm/versions/node/v25.4.0/bin/node --test \"D:/code/jpvocab/prototype/backend/static/tests/lexicon-utils.test.js\")",
       "Bash(git mv:*)",
       "WebFetch(domain:en.wikipedia.org)",
-      "WebFetch(domain:commons.wikimedia.org)"
+      "WebFetch(domain:commons.wikimedia.org)",
+      "Bash(curl -s http://localhost:50021/speakers)",
+      "Bash(python3 -c \"import json,sys; s=json.load\\(sys.stdin\\); [print\\(sp['name'], '→', [str\\(sv['id']\\)+' '+sv['name'] for sv in sp['styles']]\\) for sp in s[:6]]\")",
+      "Bash(python3 -c \"import json,sys; s=json.load\\(sys.stdin\\); print\\(len\\(s\\), 'total speakers'\\)\")",
+      "Bash(curl -s \"http://localhost:50021/audio_query?text=テスト&speaker=1\")",
+      "Bash(python3 -c \"import json,sys; q=json.load\\(sys.stdin\\); [print\\(k,'=',v\\) for k,v in q.items\\(\\) if k in \\('speedScale','pitchScale','intonationScale','volumeScale','prePhonemeLength','postPhonemeLength'\\)]\")",
+      "Bash(curl -s -X POST \"http://localhost:50021/audio_query?text=%E3%83%86%E3%82%B9%E3%83%88&speaker=1\")",
+      "Bash(python3 -c ':*)"
     ]
   },
   "outputStyle": "Explanatory"

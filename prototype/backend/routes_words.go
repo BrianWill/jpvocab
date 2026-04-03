@@ -445,50 +445,65 @@ func extensionForContentType(contentType string) string {
 }
 
 const voicevoxBase = "http://localhost:50021"
-const voicevoxSpeaker = 1 // ずんだもん (ノーマル)
 
-// synthesizeVoicevox calls the local VoiceVox engine to produce a WAV for text
-// and writes it to destPath. Returns an error if VoiceVox is unavailable.
-func synthesizeVoicevox(ctx context.Context, text string, destPath string) error {
+type voicevoxParams struct {
+	Speaker         int     `json:"speaker"`
+	SpeedScale      float64 `json:"speedScale"`
+	IntonationScale float64 `json:"intonationScale"`
+}
+
+func defaultVoicevoxParams() voicevoxParams {
+	return voicevoxParams{Speaker: 1, SpeedScale: 1.0, IntonationScale: 1.0}
+}
+
+// synthesizeVoicevox calls the local VoiceVox engine and returns the WAV bytes.
+func synthesizeVoicevox(ctx context.Context, text string, p voicevoxParams) ([]byte, error) {
+	client := &http.Client{Timeout: 30 * time.Second}
+
 	qURL := fmt.Sprintf("%s/audio_query?text=%s&speaker=%d",
-		voicevoxBase, url.QueryEscape(text), voicevoxSpeaker)
+		voicevoxBase, url.QueryEscape(text), p.Speaker)
 	req, err := http.NewRequestWithContext(ctx, http.MethodPost, qURL, nil)
 	if err != nil {
-		return err
+		return nil, err
 	}
-	client := &http.Client{Timeout: 30 * time.Second}
 	resp, err := client.Do(req)
 	if err != nil {
-		return fmt.Errorf("voicevox audio_query: %w", err)
+		return nil, fmt.Errorf("voicevox audio_query: %w", err)
 	}
 	defer resp.Body.Close()
 	if resp.StatusCode != http.StatusOK {
-		return fmt.Errorf("voicevox audio_query: %s", resp.Status)
+		return nil, fmt.Errorf("voicevox audio_query: %s", resp.Status)
 	}
 	var q map[string]any
 	if err := json.NewDecoder(resp.Body).Decode(&q); err != nil {
-		return fmt.Errorf("decode audio_query: %w", err)
+		return nil, fmt.Errorf("decode audio_query: %w", err)
 	}
+	q["speedScale"] = p.SpeedScale
+	q["intonationScale"] = p.IntonationScale
 
 	qJSON, err := json.Marshal(q)
 	if err != nil {
-		return err
+		return nil, err
 	}
-	sURL := fmt.Sprintf("%s/synthesis?speaker=%d", voicevoxBase, voicevoxSpeaker)
+	sURL := fmt.Sprintf("%s/synthesis?speaker=%d", voicevoxBase, p.Speaker)
 	req2, err := http.NewRequestWithContext(ctx, http.MethodPost, sURL, bytes.NewReader(qJSON))
 	if err != nil {
-		return err
+		return nil, err
 	}
 	req2.Header.Set("Content-Type", "application/json")
 	resp2, err := client.Do(req2)
 	if err != nil {
-		return fmt.Errorf("voicevox synthesis: %w", err)
+		return nil, fmt.Errorf("voicevox synthesis: %w", err)
 	}
 	defer resp2.Body.Close()
 	if resp2.StatusCode != http.StatusOK {
-		return fmt.Errorf("voicevox synthesis: %s", resp2.Status)
+		return nil, fmt.Errorf("voicevox synthesis: %s", resp2.Status)
 	}
-	wav, err := io.ReadAll(resp2.Body)
+	return io.ReadAll(resp2.Body)
+}
+
+func synthesizeVoicevoxToFile(ctx context.Context, text string, p voicevoxParams, destPath string) error {
+	wav, err := synthesizeVoicevox(ctx, text, p)
 	if err != nil {
 		return err
 	}
@@ -498,6 +513,57 @@ func synthesizeVoicevox(ctx context.Context, text string, destPath string) error
 	return os.WriteFile(destPath, wav, 0o644)
 }
 
+func apiVoicevoxSpeakers() http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		req, err := http.NewRequestWithContext(r.Context(), http.MethodGet, voicevoxBase+"/speakers", nil)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		resp, err := (&http.Client{Timeout: 5 * time.Second}).Do(req)
+		if err != nil {
+			// VoiceVox not running — return empty list so the UI degrades gracefully.
+			w.Header().Set("Content-Type", "application/json")
+			w.Write([]byte("[]"))
+			return
+		}
+		defer resp.Body.Close()
+		w.Header().Set("Content-Type", "application/json")
+		io.Copy(w, resp.Body)
+	}
+}
+
+func apiVoicevoxPreview() http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		var body struct {
+			Text            string  `json:"text"`
+			Speaker         int     `json:"speaker"`
+			SpeedScale      float64 `json:"speedScale"`
+			IntonationScale float64 `json:"intonationScale"`
+		}
+		body.SpeedScale = 1.0
+		body.IntonationScale = 1.0
+		if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+			http.Error(w, "bad request", http.StatusBadRequest)
+			return
+		}
+		if body.Text == "" {
+			body.Text = "日本語の音声合成のサンプルです。"
+		}
+		wav, err := synthesizeVoicevox(r.Context(), body.Text, voicevoxParams{
+			Speaker:         body.Speaker,
+			SpeedScale:      body.SpeedScale,
+			IntonationScale: body.IntonationScale,
+		})
+		if err != nil {
+			http.Error(w, "voicevox error: "+err.Error(), http.StatusBadGateway)
+			return
+		}
+		w.Header().Set("Content-Type", "audio/wav")
+		w.Write(wav)
+	}
+}
+
 func apiGenerateWordAudio(db *sql.DB) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		id, err := strconv.ParseInt(chi.URLParam(r, "id"), 10, 64)
@@ -505,6 +571,25 @@ func apiGenerateWordAudio(db *sql.DB) http.HandlerFunc {
 			http.Error(w, "invalid id", http.StatusBadRequest)
 			return
 		}
+		p := defaultVoicevoxParams()
+		// Body is optional — frontend may omit it for default settings.
+		var body struct {
+			Speaker         *int     `json:"speaker"`
+			SpeedScale      *float64 `json:"speedScale"`
+			IntonationScale *float64 `json:"intonationScale"`
+		}
+		if err := json.NewDecoder(r.Body).Decode(&body); err == nil {
+			if body.Speaker != nil {
+				p.Speaker = *body.Speaker
+			}
+			if body.SpeedScale != nil {
+				p.SpeedScale = *body.SpeedScale
+			}
+			if body.IntonationScale != nil {
+				p.IntonationScale = *body.IntonationScale
+			}
+		}
+
 		word, exampleJP, err := getWordAudioInfo(db, id)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -519,14 +604,14 @@ func apiGenerateWordAudio(db *sql.DB) http.HandlerFunc {
 		wordPath := filepath.Join(audioDir, word+".wav")
 		sentencePath := filepath.Join(audioDir, word+"_sentence.wav")
 
-		if err := synthesizeVoicevox(r.Context(), word, wordPath); err != nil {
+		if err := synthesizeVoicevoxToFile(r.Context(), word, p, wordPath); err != nil {
 			http.Error(w, "voicevox error: "+err.Error(), http.StatusBadGateway)
 			return
 		}
 
 		hasSentence := false
 		if exampleJP != "" {
-			if err := synthesizeVoicevox(r.Context(), exampleJP, sentencePath); err == nil {
+			if err := synthesizeVoicevoxToFile(r.Context(), exampleJP, p, sentencePath); err == nil {
 				hasSentence = true
 			}
 		}

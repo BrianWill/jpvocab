@@ -203,21 +203,6 @@
 }
 
 /* Provider info icon (? badge next to model selects) */
-.provider-info-icon {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 1rem;
-  height: 1rem;
-  border-radius: 50%;
-  border: 1px solid #45475a;
-  color: #585b70;
-  font-size: 0.65rem;
-  cursor: default;
-  flex-shrink: 0;
-  line-height: 1;
-}
-.provider-info-icon:hover { border-color: #89b4fa; color: #89b4fa; }
 
 /* Progress modal footer model select */
 .add-result-model-select {

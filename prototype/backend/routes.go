@@ -70,6 +70,9 @@ func serverInit(db *sql.DB) {
 	r.Post("/api/words/{id}/autofill", apiAutofillWord(db))
 	r.Post("/api/words/{id}/generate-audio", apiGenerateWordAudio(db))
 
+	r.Get("/api/voicevox/speakers", apiVoicevoxSpeakers())
+	r.Post("/api/voicevox/preview", apiVoicevoxPreview())
+
 	r.Get("/api/kanji", apiGetKanji(db))
 	r.Get("/api/drill/sessions/current", apiGetCurrentDrillSession(db))
 	r.Post("/api/drill/sessions", apiCreateDrillSession(db))

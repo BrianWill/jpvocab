@@ -59,9 +59,7 @@ body {
   border: none;
   border-left: 1px solid #313244;
   color: #585b70;
-  font-size: 1.1rem;
   cursor: pointer;
-  line-height: 1;
 }
 .btn-settings:hover { color: #89b4fa; background: #1e1e2e; }
 

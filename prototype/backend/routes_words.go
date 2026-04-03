@@ -505,28 +505,28 @@ func apiGenerateWordAudio(db *sql.DB) http.HandlerFunc {
 			http.Error(w, "invalid id", http.StatusBadRequest)
 			return
 		}
-		info, err := getWordAudioInfo(db, id)
+		word, exampleJP, err := getWordAudioInfo(db, id)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
-		if info == nil {
+		if word == "" {
 			http.Error(w, "word not found", http.StatusNotFound)
 			return
 		}
 
 		audioDir := filepath.Join("static", "audio")
-		wordPath := filepath.Join(audioDir, info.Word+".wav")
-		sentencePath := filepath.Join(audioDir, info.Word+"_sentence.wav")
+		wordPath := filepath.Join(audioDir, word+".wav")
+		sentencePath := filepath.Join(audioDir, word+"_sentence.wav")
 
-		if err := synthesizeVoicevox(r.Context(), info.Word, wordPath); err != nil {
+		if err := synthesizeVoicevox(r.Context(), word, wordPath); err != nil {
 			http.Error(w, "voicevox error: "+err.Error(), http.StatusBadGateway)
 			return
 		}
 
 		hasSentence := false
-		if info.ExampleJP != "" {
-			if err := synthesizeVoicevox(r.Context(), info.ExampleJP, sentencePath); err == nil {
+		if exampleJP != "" {
+			if err := synthesizeVoicevox(r.Context(), exampleJP, sentencePath); err == nil {
 				hasSentence = true
 			}
 		}

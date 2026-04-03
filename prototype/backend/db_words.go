@@ -36,22 +36,22 @@ type kanjiDataEntry struct {
 // wordJSON is the JSON shape returned by the /api/words endpoint.
 // Field names are chosen to match what lexicon.js already expects.
 type wordJSON struct {
-	ID              int64            `json:"id"`
-	Word            string           `json:"word"`
-	Reading         string           `json:"reading"`
-	Type            string           `json:"type"`
-	Meaning         string           `json:"meaning"`
-	ExampleJp       string           `json:"exampleJp"`
-	ExampleEn       string           `json:"exampleEn"`
-	Correct         int              `json:"correct"`
-	Incorrect       int              `json:"incorrect"`
-	Target          int              `json:"target"`
-	CreatedAt       string           `json:"createdAt"`
-	LastDrilled     *string          `json:"lastDrilled"`
-	ImagePath       *string          `json:"imagePath"`
-	KanjiData       []kanjiDataEntry `json:"kanjiData"`
-	HasWordAudio    bool             `json:"hasWordAudio"`
-	HasSentenceAudio bool            `json:"hasSentenceAudio"`
+	ID               int64            `json:"id"`
+	Word             string           `json:"word"`
+	Reading          string           `json:"reading"`
+	Type             string           `json:"type"`
+	Meaning          string           `json:"meaning"`
+	ExampleJp        string           `json:"exampleJp"`
+	ExampleEn        string           `json:"exampleEn"`
+	Correct          int              `json:"correct"`
+	Incorrect        int              `json:"incorrect"`
+	Target           int              `json:"target"`
+	CreatedAt        string           `json:"createdAt"`
+	LastDrilled      *string          `json:"lastDrilled"`
+	ImagePath        *string          `json:"imagePath"`
+	KanjiData        []kanjiDataEntry `json:"kanjiData"`
+	HasWordAudio     bool             `json:"hasWordAudio"`
+	HasSentenceAudio bool             `json:"hasSentenceAudio"`
 }
 
 // insertWord adds a single word to the lexicon. Only the word itself is
@@ -328,20 +328,15 @@ func updateWordAudioFlags(db *sql.DB, id int64, hasWord, hasSentence bool) error
 	return err
 }
 
-// wordAudioInfo holds the fields needed to generate audio for a word.
-type wordAudioInfo struct {
-	Word      string
-	ExampleJP string
-}
-
-func getWordAudioInfo(db *sql.DB, id int64) (*wordAudioInfo, error) {
-	var info wordAudioInfo
+func getWordAudioInfo(db *sql.DB, id int64) (string, string, error) {
+	var word string
+	var exampleJP string
 	err := db.QueryRow("SELECT word, COALESCE(example_jp,'') FROM words WHERE id = ?", id).
-		Scan(&info.Word, &info.ExampleJP)
+		Scan(&word, &exampleJP)
 	if err == sql.ErrNoRows {
-		return nil, nil
+		return "", "", nil
 	}
-	return &info, err
+	return word, exampleJP, err
 }
 
 // containsKatakana reports whether s contains any character in the main

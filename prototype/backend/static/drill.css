@@ -112,16 +112,25 @@
 .main-area {
   width: 100%;
   max-width: 600px;
+  min-height: 9rem;
   background: #181825;
   border: 1px solid #313244;
   border-radius: 8px;
   overflow: hidden;
   flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
 }
 
 .prompt-section {
-  padding: 2rem 2rem;
+  padding: 1.5rem 2rem;
   text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  flex: 1;
 }
 .prompt-section:not(:last-child) {
   border-bottom: 1px solid #313244;
@@ -138,7 +147,6 @@
 .example-jp {
   font-size: 0.95rem;
   color: #585b70;
-  margin-top: 0.5rem;
   cursor: pointer;
 }
 .example-jp:hover { color: #7f849c; }

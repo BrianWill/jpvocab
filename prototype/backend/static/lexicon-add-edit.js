@@ -742,10 +742,72 @@ function cancelAllGenerates() {
 }
 
 function generateAll(includeAdded, includeSkipped) {
-  if (includeAdded)
-    document.querySelectorAll('#add-result-modal-body .result-added .btn-generate:not(.btn-generate--busy):not([disabled])').forEach(btn => btn.dispatchEvent(new MouseEvent('mousedown')));
-  if (includeSkipped)
-    document.querySelectorAll('#add-result-modal-body .result-skipped .btn-generate:not(.btn-generate--busy):not([disabled])').forEach(btn => btn.dispatchEvent(new MouseEvent('mousedown')));
+  const type = getGenerateType();
+  if (type === 'word-info') {
+    const rows = [];
+    if (includeAdded)
+      document.querySelectorAll('#add-result-modal-body .result-added .btn-generate:not(.btn-generate--busy):not([disabled])').forEach(btn => {
+        const row = btn.closest('.word-result-row');
+        if (row) rows.push(row);
+      });
+    if (includeSkipped)
+      document.querySelectorAll('#add-result-modal-body .result-skipped .btn-generate:not(.btn-generate--busy):not([disabled])').forEach(btn => {
+        const row = btn.closest('.word-result-row');
+        if (row) rows.push(row);
+      });
+    generateAllAutofillBatch(rows);
+  } else {
+    if (includeAdded)
+      document.querySelectorAll('#add-result-modal-body .result-added .btn-generate:not(.btn-generate--busy):not([disabled])').forEach(btn => btn.dispatchEvent(new MouseEvent('mousedown')));
+    if (includeSkipped)
+      document.querySelectorAll('#add-result-modal-body .result-skipped .btn-generate:not(.btn-generate--busy):not([disabled])').forEach(btn => btn.dispatchEvent(new MouseEvent('mousedown')));
+  }
+}
+
+async function generateAllAutofillBatch(rows) {
+  const abort = new AbortController();
+  const aiModel = document.getElementById('add-result-model-select').value;
+  const wordItems = [];
+  for (const row of rows) {
+    if (!row._wordId) continue;
+    const btn = row.querySelector('.btn-generate:not(.btn-generate--busy):not([disabled])');
+    if (!btn) continue;
+    btn._generateAbort = abort;
+    btn.classList.add('btn-generate--busy', 'btn-generate--cancellable');
+    btn.innerHTML = '<span class="spinner"></span><span class="btn-gen-label">generating\u2026</span><span class="btn-gen-cancel">cancel generation</span>';
+    _pendingGenerates++;
+    wordItems.push({ id: row._wordId, word: row._resolvedWord, btn });
+  }
+  if (wordItems.length === 0) return;
+  renderStatus();
+  try {
+    const res = await fetch('/api/words/autofill-batch', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ words: wordItems.map(w => ({ id: w.id, word: w.word })), ai_model: aiModel }),
+      signal: abort.signal,
+    });
+    if (!res.ok) throw new Error(await res.text());
+    const results = await res.json();
+    // Null out _generateAbort on all batch buttons so updateWordRowDetails can clean them up
+    for (const item of wordItems) {
+      if (item.btn._generateAbort === abort) item.btn._generateAbort = null;
+    }
+    for (const result of results) {
+      if (!result.error) updateWordRowDetails(result);
+    }
+  } finally {
+    // Clean up any buttons still busy (errors, aborted, or missing from results)
+    for (const { btn } of wordItems) {
+      btn._generateAbort = null;
+      if (btn.classList.contains('btn-generate--busy')) {
+        btn.classList.remove('btn-generate--busy', 'btn-generate--cancellable');
+        btn.innerHTML = 'generate';
+        _pendingGenerates = Math.max(0, _pendingGenerates - 1);
+      }
+    }
+    renderStatus();
+  }
 }
 
 function renderStatus() {

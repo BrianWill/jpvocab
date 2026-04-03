@@ -26,6 +26,7 @@ func serverInit(db *sql.DB) {
 	}
 
 	r.Get("/", staticPage("activity.html"))
+	r.Get("/welcome", staticPage("welcome.html"))
 	r.Get("/activity", staticPage("activity.html"))
 	r.Get("/lexicon", staticPage("lexicon.html"))
 	r.Get("/drill", staticPage("drill.html"))
@@ -67,6 +68,7 @@ func serverInit(db *sql.DB) {
 	r.Post("/api/words/{id}/find-image", apiFindWordImage(db))
 	r.Post("/api/words/{id}/reroll-meaning", apiRerollMeaning())
 	r.Post("/api/words/{id}/reroll-examples", apiRerollExamples())
+	r.Post("/api/words/autofill-batch", apiAutofillWordsBatch(db))
 	r.Post("/api/words/{id}/autofill", apiAutofillWord(db))
 	r.Post("/api/words/{id}/generate-audio", apiGenerateWordAudio(db))
 

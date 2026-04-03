@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Welcome — 語</title>
+<link rel="icon" href="/static/favicon.ico">
+<link rel="stylesheet" href="/static/common.css">
+<link rel="stylesheet" href="/static/welcome.css">
+</head>
+<body>
+
+<div class="page-header">
+  <div class="nav-and-settings">
+    <div class="page-nav-links">
+      <a class="page-nav-link" href="/drill">Drill →</a>
+      <a class="page-nav-link" href="/activity">Activity →</a>
+      <a class="page-nav-link" href="/lexicon">Lexicon →</a>
+      <a class="app-logo" href="/welcome">語</a>
+    </div>
+  </div>
+</div>
+
+<div class="welcome-body">
+
+  <!-- ── Hero ─────────────────────────────────── -->
+  <div class="hero">
+    <div class="hero-content">
+      <p class="hero-eyebrow">Japanese Vocabulary Trainer</p>
+      <h1 class="hero-title">
+        <span class="hero-title-jp">日本語 学習</span>
+      </h1>
+    </div>
+  </div>
+
+  <!-- ── Magazine grid ─────────────────────────── -->
+  <div class="magazine">
+
+    <!-- Card 1: Drill -->
+    <div class="feature-card">
+      <span class="feature-card-number">01</span>
+      <span class="feature-card-kanji" style="color: #a6e3a1; text-shadow: 0 0 40px rgba(166,227,161,0.2);">練</span>
+      <span class="feature-card-tag tag-green">Drill</span>
+      <h2 class="feature-card-title">Round-based flashcard practice</h2>
+      <p class="feature-card-body">
+        Each drill session draws words from your active lexicon into a pool.
+        Rounds present up to 10 cards at a time — mark a word known and it
+        advances; mark it unknown and it carries forward into the next round
+        alongside fresh picks.<br><br>
+        Progress is persisted to the database, so closing the tab or restarting
+        the server picks up exactly where you left off.
+      </p>
+      <a class="feature-card-link feature-card-link--green" href="/drill">Go to drill →</a>
+    </div>
+
+    <!-- Card 4: Activity -->
+    <div class="feature-card" style="border-left: none;">
+      <span class="feature-card-number">02</span>
+      <span class="feature-card-kanji" style="color: #f9e2af; text-shadow: 0 0 40px rgba(249,226,175,0.2);">歴</span>
+      <span class="feature-card-tag tag-yellow">Activity</span>
+      <h2 class="feature-card-title">Weekly calendar & stats</h2>
+      <p class="feature-card-body">
+        The activity view shows headline stats and a week-by-week calendar of
+        your drilling history. Each day cell shows how many words were drilled,
+        added, and cleared. Click any day for a detail modal listing the specific
+        words involved.<br><br>
+        Watch your streak build. Consistent daily practice is more effective than
+        occasional marathon sessions.
+      </p>
+      <a class="feature-card-link feature-card-link--yellow" href="/activity">View activity →</a>
+    </div>
+
+    <!-- Card 5: AI generation -->
+    <div class="feature-card">
+      <span class="feature-card-number">03</span>
+      <span class="feature-card-kanji" style="color: #cba6f7; text-shadow: 0 0 40px rgba(203,166,247,0.2);">辞</span>
+      <span class="feature-card-tag tag-mauve">Lexicon</span>
+      <h2 class="feature-card-title">AI-powered word data</h2>
+      <p class="feature-card-body">
+        Adding words is frictionless. Paste raw Japanese text and morphological
+        analysis extracts the dictionary forms. AI then generates the hiragana
+        reading, English meaning, and a natural example sentence — all editable
+        if the output needs a nudge.
+      </p>
+      <a class="feature-card-link feature-card-link--mauve" href="/lexicon">Add words →</a>
+    </div>
+
+    <!-- Kanji strip -->
+    <div class="kanji-strip">
+      <div class="kanji-strip-chars">
+        <div class="kanji-strip-item"><span class="kanji-strip-char">山</span><span class="kanji-strip-meaning">mountain</span></div>
+        <div class="kanji-strip-item"><span class="kanji-strip-char">川</span><span class="kanji-strip-meaning">river</span></div>
+        <div class="kanji-strip-item"><span class="kanji-strip-char">海</span><span class="kanji-strip-meaning">sea</span></div>
+        <div class="kanji-strip-item"><span class="kanji-strip-char">空</span><span class="kanji-strip-meaning">sky</span></div>
+        <div class="kanji-strip-item"><span class="kanji-strip-char">花</span><span class="kanji-strip-meaning">flower</span></div>
+        <div class="kanji-strip-item"><span class="kanji-strip-char">木</span><span class="kanji-strip-meaning">tree</span></div>
+        <div class="kanji-strip-item"><span class="kanji-strip-char">火</span><span class="kanji-strip-meaning">fire</span></div>
+        <div class="kanji-strip-item"><span class="kanji-strip-char">水</span><span class="kanji-strip-meaning">water</span></div>
+        <div class="kanji-strip-item"><span class="kanji-strip-char">風</span><span class="kanji-strip-meaning">wind</span></div>
+        <div class="kanji-strip-item"><span class="kanji-strip-char">月</span><span class="kanji-strip-meaning">moon</span></div>
+        <div class="kanji-strip-item"><span class="kanji-strip-char">星</span><span class="kanji-strip-meaning">star</span></div>
+        <div class="kanji-strip-item"><span class="kanji-strip-char">夢</span><span class="kanji-strip-meaning">dream</span></div>
+        <div class="kanji-strip-item"><span class="kanji-strip-char">道</span><span class="kanji-strip-meaning">path</span></div>
+        <div class="kanji-strip-item"><span class="kanji-strip-char">心</span><span class="kanji-strip-meaning">heart</span></div>
+        <div class="kanji-strip-item"><span class="kanji-strip-char">光</span><span class="kanji-strip-meaning">light</span></div>
+        <div class="kanji-strip-item"><span class="kanji-strip-char">声</span><span class="kanji-strip-meaning">voice</span></div>
+        <div class="kanji-strip-item"><span class="kanji-strip-char">力</span><span class="kanji-strip-meaning">power</span></div>
+        <div class="kanji-strip-item"><span class="kanji-strip-char">時</span><span class="kanji-strip-meaning">time</span></div>
+        <div class="kanji-strip-item"><span class="kanji-strip-char">言</span><span class="kanji-strip-meaning">word</span></div>
+        <div class="kanji-strip-item"><span class="kanji-strip-char">知</span><span class="kanji-strip-meaning">wisdom</span></div>
+      </div>
+    </div>
+
+  </div><!-- /magazine -->
+
+</div><!-- /welcome-body -->
+
+<script type="module" src="/static/common.js"></script>
+</body>
+</html>

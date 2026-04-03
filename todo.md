@@ -2,9 +2,7 @@
 
 This file is random notes of possible features and bug fixes.
 
-- app icon in header right of nav links (top right corner)
-    - clicking app icon takes you to welcome page, that explains usage
-        - maybe acitivity page can act as welcome? let's first see how much welcome / help text we need
+- generate all word infos should ideally send one AI request, not many, or maybe they should be batched
 
 - for settings modal, but TTS and voicevox in right column
     - expand the width of the settings modal

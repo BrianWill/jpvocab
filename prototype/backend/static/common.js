@@ -61,80 +61,85 @@ function injectSettingsModal() {
   el.id = 'settings-modal-backdrop';
   el.className = 'modal-backdrop hidden';
   el.innerHTML = `
-    <div class="modal">
+    <div class="modal settings-modal">
       <div class="modal-header">
         <span>Settings</span>
         <button class="modal-close">✕</button>
       </div>
-      <div class="modal-body">
-        <div class="settings-section-label">Drill defaults</div>
-        <div class="restart-field">
-          <label>Max total words</label>
-          <div class="num-stepper">
-            <button class="num-btn" type="button">−</button>
-            <input type="number" id="settings-total-words" min="1">
-            <button class="num-btn" type="button">+</button>
+      <div class="modal-body settings-body">
+        <div class="settings-col">
+          <div class="settings-section-label">Drill defaults</div>
+          <div class="restart-field">
+            <label>Max total words</label>
+            <div class="num-stepper">
+              <button class="num-btn" type="button">−</button>
+              <input type="number" id="settings-total-words" min="1">
+              <button class="num-btn" type="button">+</button>
+            </div>
+          </div>
+          <div class="restart-field">
+            <label>Words per round</label>
+            <div class="num-stepper">
+              <button class="num-btn" type="button">−</button>
+              <input type="number" id="settings-round-size" min="1">
+              <button class="num-btn" type="button">+</button>
+            </div>
+          </div>
+          <div class="restart-field restart-field-filter">
+            <label>Word type</label>
+            <div class="filter-chips">
+              <button type="button" class="filter-chip" data-setting-filter="katakana">Katakana</button>
+              <button type="button" class="filter-chip" data-setting-filter="verbs">Verbs</button>
+              <button type="button" class="filter-chip" data-setting-filter="nouns">Nouns</button>
+              <button type="button" class="filter-chip" data-setting-filter="other">Other</button>
+            </div>
           </div>
         </div>
-        <div class="restart-field">
-          <label>Words per round</label>
-          <div class="num-stepper">
-            <button class="num-btn" type="button">−</button>
-            <input type="number" id="settings-round-size" min="1">
-            <button class="num-btn" type="button">+</button>
+        <div class="settings-col-divider"></div>
+        <div class="settings-col" style="flex:3">
+          <div class="settings-section-label">TTS voices</div>
+          <div class="restart-field">
+            <label>Auto-play word in drill</label>
+            <input type="checkbox" id="settings-tts-autoplay" class="settings-tts-autoplay">
           </div>
-        </div>
-        <div class="restart-field restart-field-filter">
-          <label>Word type</label>
-          <div class="filter-chips">
-            <button type="button" class="filter-chip" data-setting-filter="katakana">Katakana</button>
-            <button type="button" class="filter-chip" data-setting-filter="verbs">Verbs</button>
-            <button type="button" class="filter-chip" data-setting-filter="nouns">Nouns</button>
-            <button type="button" class="filter-chip" data-setting-filter="other">Other</button>
+          <div class="restart-field">
+            <label>Japanese voice</label>
+            <select id="settings-tts-jp" class="settings-tts-select"></select>
           </div>
-        </div>
-        <div class="settings-section-label settings-section-label--spaced">TTS voices</div>
-        <div class="restart-field">
-          <label>Auto-play word in drill</label>
-          <input type="checkbox" id="settings-tts-autoplay" class="settings-tts-autoplay">
-        </div>
-        <div class="restart-field">
-          <label>Japanese voice</label>
-          <select id="settings-tts-jp" class="settings-tts-select"></select>
-        </div>
-        <div class="restart-field">
-          <label>English voice</label>
-          <select id="settings-tts-en" class="settings-tts-select"></select>
-        </div>
-        <div class="settings-section-label settings-section-label--spaced">VoiceVox</div>
-        <div class="restart-field">
-          <label>Voice</label>
-          <div style="display:flex;align-items:center;gap:0.4rem">
-            <select id="settings-vv-speaker" class="settings-tts-select"><option value="1">Loading…</option></select>
-            <span class="provider-info-icon" data-tooltip="VoiceVox must be running on this &#10;machine at http://localhost:50021&#10;&#10;Download: https://voicevox.hiroshiba.jp/">?</span>
+          <div class="restart-field">
+            <label>English voice</label>
+            <select id="settings-tts-en" class="settings-tts-select"></select>
           </div>
-        </div>
-        <div class="restart-field">
-          <label>Speed</label>
-          <div class="settings-slider-row">
-            <input type="range" id="settings-vv-speed" min="0.5" max="2.0" step="0.05" value="1.0">
-            <span id="settings-vv-speed-val" class="settings-slider-val">1.00</span>
+          <div class="settings-section-label settings-section-label--spaced">VoiceVox</div>
+          <div class="restart-field">
+            <label>Voice</label>
+            <div style="display:flex;align-items:center;gap:0.4rem">
+              <select id="settings-vv-speaker" class="settings-tts-select"><option value="1">Loading…</option></select>
+              <span class="provider-info-icon" data-tooltip="VoiceVox must be running on this &#10;machine at http://localhost:50021&#10;&#10;Download: https://voicevox.hiroshiba.jp/">?</span>
+            </div>
           </div>
-        </div>
-        <div class="restart-field">
-          <label>Intonation</label>
-          <div class="settings-slider-row">
-            <input type="range" id="settings-vv-intonation" min="0.0" max="2.0" step="0.05" value="1.5">
-            <span id="settings-vv-intonation-val" class="settings-slider-val">1.50</span>
+          <div class="restart-field">
+            <label>Speed</label>
+            <div class="settings-slider-row">
+              <input type="range" id="settings-vv-speed" min="0.5" max="2.0" step="0.05" value="1.0">
+              <span id="settings-vv-speed-val" class="settings-slider-val">1.00</span>
+            </div>
           </div>
-        </div>
-        <div class="restart-field">
-          <label></label>
-          <div style="display:flex;gap:0.5rem;align-items:center">
-            <button type="button" id="settings-vv-preview" class="btn-cancel">▶ Preview</button>
-            <div id="settings-vv-gen-all-wrap">
-              <button type="button" id="settings-vv-gen-all" class="btn-save" disabled>Generate audio for all words</button>
-              <button type="button" id="settings-vv-gen-cancel" class="btn-danger hidden"><span class="spinner"></span><span id="settings-vv-gen-cancel-label"></span></button>
+          <div class="restart-field">
+            <label>Intonation</label>
+            <div class="settings-slider-row">
+              <input type="range" id="settings-vv-intonation" min="0.0" max="2.0" step="0.05" value="1.5">
+              <span id="settings-vv-intonation-val" class="settings-slider-val">1.50</span>
+            </div>
+          </div>
+          <div class="restart-field">
+            <label></label>
+            <div style="display:flex;gap:0.5rem;align-items:center">
+              <div id="settings-vv-gen-all-wrap">
+                <button type="button" id="settings-vv-gen-all" class="btn-save" disabled>Generate audio for all words</button>
+                <button type="button" id="settings-vv-gen-cancel" class="btn-danger hidden" style="white-space:nowrap"><span class="spinner"></span><span id="settings-vv-gen-cancel-label" style="margin-left:0.4rem"></span></button>
+              </div>
+              <button type="button" id="settings-vv-preview" class="btn-cancel" style="white-space:nowrap">▶ Preview</button>
             </div>
           </div>
         </div>
@@ -369,7 +374,7 @@ function updateGenAllBtn() {
   cancelBtn.classList.toggle('hidden', !generating);
   if (generating) {
     document.getElementById('settings-vv-gen-cancel-label').textContent =
-      'Cancel audio generation \n(' + _vvGenPending + ' of ' + _vvGenTotal + ' remaining)';
+      'Cancel generation (' + _vvGenPending + ' remaining)';
   }
 }
 

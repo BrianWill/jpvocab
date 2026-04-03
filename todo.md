@@ -2,10 +2,6 @@
 
 This file is random notes of possible features and bug fixes.
 
-- combine generation type selection and button into button with pulldown arrow
-    - the button text indicates what it will do
-    - the generate buttons on the individual words updated too but they are not combo buttons
-
 - pitch accent info on readings
 
 - clicking the image placeholder or thumbnail shoudl open a file dialog to upload an image file
@@ -18,25 +14,6 @@ This file is random notes of possible features and bug fixes.
     - need mascot character(s)?
         - marble animals? 
     - shadcn
-
-- some way to sync db state
-    - what if just one version of db in google drive for each machine
-        - manually sync between them with our own logic instead of relying on rclone or google drive 
-        - user specifies paths in settings (or they are all expected to live in one directory of google drive path)
-        - for streaming file mode, is reads / writes to sqldb going to be too slow?
-
-    - use turso?
-        - but optional...(annoying if users would be required to sign up for an account)
-    - syncthing?
-    - litestream
-    - rqlite
-    - litefs
-    - main use case for now: sync between desktop and laptop
-    - maybe simpler solution: just always sync db to a server instead of p2p?
-        - p2p requires both systems on and connected
-    - maybe just use rcloud and google drive?
-        - create script to help you setup rcloud on mac or windows?
-
 
 - enable wails in the prototype
     - once ready, we'll move the prototype project to main dir
@@ -68,6 +45,26 @@ This file is random notes of possible features and bug fixes.
 
 
 - make a mobile app (sync through turso)
+
+
+- some way to sync db state
+    - what if just one version of db in google drive for each machine
+        - manually sync between them with our own logic instead of relying on rclone or google drive 
+        - user specifies paths in settings (or they are all expected to live in one directory of google drive path)
+        - for streaming file mode, is reads / writes to sqldb going to be too slow?
+
+    - use turso?
+        - but optional...(annoying if users would be required to sign up for an account)
+    - syncthing?
+    - litestream
+    - rqlite
+    - litefs
+    - main use case for now: sync between desktop and laptop
+    - maybe simpler solution: just always sync db to a server instead of p2p?
+        - p2p requires both systems on and connected
+    - maybe just use rcloud and google drive?
+        - create script to help you setup rcloud on mac or windows?
+
 
 - EXPERIMENT: when finished with the project, have claude generate a claude.md file with details about the program that could be used to recreate the program from scratch in a new project 
     - express as a list of features / requirements, not as a spec for implementation

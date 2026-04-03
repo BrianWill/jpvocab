@@ -81,10 +81,16 @@ export function openEditModal(event) {
 
 export let _addPhase = 'idle'; // 'loading' | 'done' | 'cancelled'
 let _isSingleEdit = false;
+let _generateType = 'word-info';
 let _addedWords = [];
 let _skippedCount = 0;
 export let _pendingGenerates = 0;
 let _abortController = null;
+
+document.addEventListener('mousedown', () => {
+  const menu = document.getElementById('split-btn-menu');
+  if (menu) menu.hidden = true;
+});
 
 document.getElementById('add-result-modal-backdrop').addEventListener('click', function (e) {
   if (e.target === this && _addPhase !== 'loading' && _pendingGenerates === 0) closeAddResultModal();
@@ -379,7 +385,7 @@ function appendWordRow(data) {
     ? '<button class="btn-generate"' +
         (hasProviders ? '' : ' disabled') +
         ' data-tooltip="Uses an AI API request to get the word\'s reading, part-of-speech, meaning, and an example sentence"' +
-        '>generate</button>'
+        '>' + getWordBtnLabel() + '</button>'
     : '';
   let inlineExtra;
   if (data.word_id) {
@@ -492,7 +498,7 @@ async function startSuggestedImageDownload(row, wordId, imageURL) {
 }
 
 function getGenerateType() {
-  return document.getElementById('add-result-generate-type')?.value ?? 'word-info';
+  return _generateType;
 }
 
 function getImageSource() {
@@ -503,6 +509,10 @@ function audioReadyTooltip() {
   if (!_voicevoxAvailable) return 'VoiceVox is not running';
   if (!_ffmpegAvailable) return 'ffmpeg is not installed (required for audio generation)';
   return 'Generates audio via the local VoiceVox engine';
+}
+
+function getWordBtnLabel() {
+  return _generateType === 'image' ? 'generate image' : _generateType === 'audio' ? 'generate audio' : 'generate word info';
 }
 
 function updateGenerateBtnStates() {
@@ -518,6 +528,7 @@ function updateGenerateBtnStates() {
   document.querySelectorAll('#add-result-modal-body .btn-generate:not(.btn-generate--busy)').forEach(btn => {
     btn.disabled = disabled;
     btn.dataset.tooltip = tooltip;
+    btn.innerHTML = getWordBtnLabel();
   });
 }
 
@@ -551,7 +562,7 @@ async function generateWordAutofill(event, wordId, word, btn) {
       btn._generateAbort = null;
       if (btn.classList.contains('btn-generate--busy')) {
         btn.classList.remove('btn-generate--busy', 'btn-generate--cancellable');
-        btn.innerHTML = 'generate';
+        btn.innerHTML = getWordBtnLabel();
         _pendingGenerates = Math.max(0, _pendingGenerates - 1);
         renderStatus();
       }
@@ -601,7 +612,7 @@ async function generateWordImage(event, wordId, word, btn) {
       btn._generateAbort = null;
       if (btn.classList.contains('btn-generate--busy')) {
         btn.classList.remove('btn-generate--busy', 'btn-generate--cancellable');
-        btn.innerHTML = 'generate';
+        btn.innerHTML = getWordBtnLabel();
         _pendingGenerates = Math.max(0, _pendingGenerates - 1);
         renderStatus();
       }
@@ -643,7 +654,7 @@ async function generateWordAudio(event, wordId, word, btn) {
       btn._generateAbort = null;
       if (btn.classList.contains('btn-generate--busy')) {
         btn.classList.remove('btn-generate--busy', 'btn-generate--cancellable');
-        btn.innerHTML = 'generate';
+        btn.innerHTML = getWordBtnLabel();
         _pendingGenerates = Math.max(0, _pendingGenerates - 1);
         renderStatus();
       }
@@ -728,7 +739,7 @@ function clearAutofillSpinners() {
   document.querySelectorAll('#add-result-modal-body .btn-generate--busy').forEach(btn => {
     btn._generateAbort = null;
     btn.classList.remove('btn-generate--busy', 'btn-generate--cancellable');
-    btn.innerHTML = 'generate';
+    btn.innerHTML = getWordBtnLabel();
   });
   _pendingGenerates = 0;
 }
@@ -805,7 +816,7 @@ async function generateAllAutofillBatch(rows) {
       btn.classList.remove('btn-generate--cancellable');
       if (btn.classList.contains('btn-generate--busy')) {
         btn.classList.remove('btn-generate--busy');
-        btn.innerHTML = 'generate';
+        btn.innerHTML = getWordBtnLabel();
         _pendingGenerates = Math.max(0, _pendingGenerates - 1);
       }
     }
@@ -862,18 +873,52 @@ function renderStatus() {
   const genAllEnabled =
     document.querySelectorAll('#add-result-modal-body .word-result-row .btn-generate:not(.btn-generate--busy):not([disabled])').length > 0 &&
     (genType === 'audio' ? audioReady : hasProviders) && _addPhase !== 'loading';
+  const genTypeLabels = { 'word-info': 'Generate word info', 'image': 'Generate images', 'audio': 'Generate audio' };
   const actionHtml = _pendingGenerates > 0
     ? '<button class="btn-danger btn-generate--cancel">' +
         '<span class="spinner"></span>Cancel generation' +
       '</button>'
-    : '<button class="btn-save btn-generate--all"' +
-        (genAllEnabled ? '' : ' disabled') +
-        ' data-tooltip="' + genAllTooltip + '"' +
-        '>Generate' + (_isSingleEdit ? '' : ' all') + '</button>';
+    : '<div class="split-btn-wrap">' +
+        '<button class="btn-save btn-generate--all split-btn-main"' +
+          (genAllEnabled ? '' : ' disabled') +
+          ' data-tooltip="' + genAllTooltip + '">' +
+          genTypeLabels[_generateType] +
+        '</button>' +
+        '<button class="btn-save btn-generate--all split-btn-arrow"' +
+          (genAllEnabled ? '' : ' disabled') +
+          '>▾</button>' +
+        '<div class="split-btn-menu" id="split-btn-menu" hidden>' +
+          ['word-info', 'image', 'audio'].map(t =>
+            '<button class="split-btn-option' + (t === _generateType ? ' split-btn-option--active' : '') + '" data-type="' + t + '">' +
+              genTypeLabels[t] +
+            '</button>'
+          ).join('') +
+        '</div>' +
+      '</div>';
   if (actionEl) {
     actionEl.innerHTML = actionHtml;
-    const actionBtn = actionEl.querySelector('button');
-    if (actionBtn) actionBtn.addEventListener('mousedown', _pendingGenerates > 0 ? cancelAllGenerates : (_isSingleEdit ? () => generateAll(true, true) : openGenerateConfirm));
+    if (_pendingGenerates > 0) {
+      actionEl.querySelector('button').addEventListener('mousedown', cancelAllGenerates);
+    } else {
+      const mainBtn = actionEl.querySelector('.split-btn-main');
+      const arrowBtn = actionEl.querySelector('.split-btn-arrow');
+      const menu = document.getElementById('split-btn-menu');
+      if (mainBtn) mainBtn.addEventListener('mousedown', _isSingleEdit ? () => generateAll(true, true) : openGenerateConfirm);
+      if (arrowBtn && menu) {
+        arrowBtn.addEventListener('mousedown', (e) => {
+          e.stopPropagation();
+          menu.hidden = !menu.hidden;
+        });
+        menu.querySelectorAll('.split-btn-option').forEach(opt => {
+          opt.addEventListener('mousedown', (e) => {
+            e.stopPropagation();
+            _generateType = opt.dataset.type;
+            menu.hidden = true;
+            renderStatus();
+          });
+        });
+      }
+    }
   }
   if (_addPhase === 'loading') {
     el.className = 'modal-status modal-status-loading';
@@ -966,16 +1011,11 @@ function initAddResultFooter() {
       optgroupsHtml +
     '</select>' +
     (progTip ? '<span class="provider-info-icon" data-tooltip="' + progTip + '">?</span>' : '') +
-    '<select id="add-result-generate-type" class="add-result-model-select">' +
-      '<option value="word-info">word info</option>' +
-      '<option value="image">image</option>' +
-      '<option value="audio">audio</option>' +
-    '</select>' +
+    '<div id="add-result-modal-action" style="margin-left:0.4rem"></div>' +
     '<select id="add-result-image-source-select" class="add-result-model-select" style="display:none">' +
       imageSourceOptions +
     '</select>' +
     (imageSourceTip ? '<span id="add-result-image-source-icon" class="provider-info-icon" style="display:none" data-tooltip="' + imageSourceTip + '">?</span>' : '') +
-    '<div id="add-result-modal-action" style="margin-left:0.4rem"></div>' +
     '<div id="add-result-modal-status" class="modal-status" style="padding:0;border:none;margin-left:auto"></div>' +
     '<button id="btn-add-result-remove" class="btn-danger">Remove the added words</button>' +
     '<button id="btn-add-result-close" class="btn-save">Close</button>';
@@ -985,8 +1025,6 @@ function initAddResultFooter() {
     const first = sel.querySelector('optgroup:not([disabled]) option');
     if (first) sel.value = first.value;
   }
-
-  document.getElementById('add-result-generate-type').addEventListener('change', () => renderStatus());
 
   document.getElementById('btn-add-result-remove').onclick = function () {
     const count = _addedWords.length;

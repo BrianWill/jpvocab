@@ -222,7 +222,7 @@
 .modal-wide { max-width: 980px; }
 #add-result-modal-close { color: #a6adc8; }
 .modal-body-scroll {
-  max-height: 340px;
+  max-height: 430px;
   overflow-y: auto;
   padding: 0.75rem 1.25rem;
   display: flex;
@@ -345,6 +345,8 @@
   padding: 0 0.3rem 0 0;
   vertical-align: middle;
   line-height: 1;
+  position: relative;
+  top: -1px;
   border-radius: 3px;
 }
 .detail-ex-play:hover { color: #89b4fa; }
@@ -467,6 +469,49 @@
 .btn-generate--cancel             { border-color: #f38ba8; color: #f38ba8; }
 .btn-generate--cancellable .btn-gen-label { display: none; }
 .btn-generate--cancellable .btn-gen-cancel { display: inline; }
+
+/* --- Split generate button --- */
+.split-btn-wrap {
+  position: relative;
+  display: flex;
+}
+.split-btn-main {
+  border-radius: 6px 0 0 6px;
+  border-right-color: transparent;
+}
+.split-btn-main:not(:disabled):hover { border-right-color: transparent; }
+.split-btn-arrow {
+  border-radius: 0 6px 6px 0;
+  padding: 0.45rem 0.6rem;
+  font-size: 0.65rem;
+  border-left: 1px solid rgba(166,227,161,0.15);
+}
+.split-btn-menu[hidden] { display: none; }
+.split-btn-menu {
+  position: absolute;
+  bottom: calc(100% + 4px);
+  right: 0;
+  background: #1e1e2e;
+  border: 1px solid #45475a;
+  border-radius: 6px;
+  overflow: hidden;
+  z-index: 100;
+  min-width: 6.5rem;
+  display: flex;
+  flex-direction: column;
+}
+.split-btn-option {
+  background: none;
+  border: none;
+  color: #a6adc8;
+  font-family: inherit;
+  font-size: 0.82rem;
+  padding: 0.4rem 0.9rem;
+  cursor: pointer;
+  text-align: left;
+}
+.split-btn-option:hover { background: rgba(137,180,250,0.1); color: #cdd6f4; }
+.split-btn-option--active { color: #a6e3a1; }
 
 .word-result-actions {
   display: flex;

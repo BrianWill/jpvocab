@@ -336,6 +336,18 @@
 }
 .detail-ex-flag { margin-right: 0.2rem; opacity: 0.45; }
 .detail-ex-sep  { margin: 0 0.4rem; opacity: 0.45; }
+.detail-ex-play {
+  background: none;
+  border: none;
+  color: #45475a;
+  cursor: pointer;
+  font-size: 0.55rem;
+  padding: 0 0.3rem 0 0;
+  vertical-align: middle;
+  line-height: 1;
+  border-radius: 3px;
+}
+.detail-ex-play:hover { color: #89b4fa; }
 
 .detail-item {
   font-size: 0.72rem;

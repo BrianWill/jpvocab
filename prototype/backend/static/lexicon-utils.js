@@ -111,7 +111,7 @@ export function detailItemExInput(exJp, exEn) {
   return '<span class="detail-item detail-ex">' +
     '<span class="detail-label">example</span> ' +
     '<span class="detail-ex-inputs">' +
-      '<span class="detail-ex-flag">🇯🇵</span><span class="detail-input" contenteditable="true">' + esc((exJp || '').trim()) + '</span>' +
+      '<span class="detail-ex-flag">🇯🇵</span><button class="detail-ex-play" data-tooltip="Play sentence" tabindex="-1">▶</button><span class="detail-input" contenteditable="true">' + esc((exJp || '').trim()) + '</span>' +
       '<span class="detail-ex-sep">🏴󠁧󠁢󠁥󠁮󠁧󠁿</span><span class="detail-input detail-input--en" contenteditable="true">' + esc((exEn || '').trim()) + '</span>' +
     '</span>' +
     '</span>';

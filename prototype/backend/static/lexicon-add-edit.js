@@ -1,6 +1,6 @@
 import { defaultDrillTarget, typeLabels, _providers, _imageSources, _voicevoxAvailable, _ffmpegAvailable, reloadWords, renderTable, getSortedWords, closeAddModal, updateWordImagePath, updateWordAudioFlags } from './lexicon.js';
 import { esc, isKanji, detailItemPosSelect, detailItemKanjiReadings, detailItemInput, detailItemExInput } from './lexicon-utils.js';
-import { getVoicevoxSettings, playWordAudio } from './common.js';
+import { getVoicevoxSettings, playWordAudio, playSentenceAudio } from './common.js';
 
 const imagePlaceholderSvg =
   '<svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">' +
@@ -69,6 +69,7 @@ export function openEditModal(event) {
     kanji_data: w.kanjiData,
     image_path: w.imagePath,
     has_word_audio: w.hasWordAudio,
+    has_sentence_audio: w.hasSentenceAudio,
   });
 
   document.getElementById('add-result-modal-backdrop').classList.remove('hidden');
@@ -89,6 +90,18 @@ document.getElementById('add-result-modal-backdrop').addEventListener('click', f
   if (e.target === this && _addPhase !== 'loading' && _pendingGenerates === 0) closeAddResultModal();
 });
 document.getElementById('add-result-modal-close').addEventListener('click', closeAddResultModal);
+
+document.getElementById('add-result-modal-body').addEventListener('click', e => {
+  if (!e.target.closest('.detail-ex-play')) return;
+  const row = e.target.closest('.word-result-row');
+  const jpInput = e.target.closest('.detail-ex-inputs')?.querySelector('.detail-input:not(.detail-input--en)');
+  const text = jpInput?.textContent.trim();
+  if (text) playSentenceAudio({
+    word: row?._resolvedWord ?? '',
+    hasSentenceAudio: row?._hasSentenceAudio ?? false,
+    exampleJp: text,
+  });
+});
 
 // --- Remove-confirm mini-modal ---
 let _pendingRemoveAction = null;
@@ -405,6 +418,7 @@ function appendWordRow(data) {
     '<div class="word-result-body">' + details + imageHtml + '</div>';
 
   row._hasWordAudio = data.has_word_audio ?? false;
+  row._hasSentenceAudio = data.has_sentence_audio ?? false;
   const resultWordEl = row.querySelector('.result-word');
   if (resultWordEl) resultWordEl.addEventListener('click', () =>
     playWordAudio({ word: data.word, hasWordAudio: row._hasWordAudio })
@@ -620,7 +634,10 @@ async function generateWordAudio(event, wordId, word, btn) {
     const data = await res.json();
     updateWordAudioFlags(wordId, data.hasWordAudio, data.hasSentenceAudio);
     const row = btn.closest('.word-result-row');
-    if (row && data.hasWordAudio) row._hasWordAudio = true;
+    if (row) {
+      if (data.hasWordAudio) row._hasWordAudio = true;
+      if (data.hasSentenceAudio) row._hasSentenceAudio = true;
+    }
   } finally {
     if (btn._generateAbort === abort) {
       btn._generateAbort = null;

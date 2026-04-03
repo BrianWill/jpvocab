@@ -797,11 +797,14 @@ async function generateAllAutofillBatch(rows) {
       if (!result.error) updateWordRowDetails(result);
     }
   } finally {
-    // Clean up any buttons still busy (errors, aborted, or missing from results)
+    // Clean up any buttons still busy (errors, aborted, or missing from results).
+    // Always remove btn-generate--cancellable: updateWordRowDetails only strips
+    // btn-generate--busy, leaving the red cancellable style if we don't clear it here.
     for (const { btn } of wordItems) {
       btn._generateAbort = null;
+      btn.classList.remove('btn-generate--cancellable');
       if (btn.classList.contains('btn-generate--busy')) {
-        btn.classList.remove('btn-generate--busy', 'btn-generate--cancellable');
+        btn.classList.remove('btn-generate--busy');
         btn.innerHTML = 'generate';
         _pendingGenerates = Math.max(0, _pendingGenerates - 1);
       }

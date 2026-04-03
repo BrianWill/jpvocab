@@ -17,7 +17,6 @@ import (
 	"path/filepath"
 	"strconv"
 	"strings"
-	"sync"
 	"time"
 
 	"github.com/go-chi/chi/v5"
@@ -358,6 +357,16 @@ func apiAutofillWordsBatch(db *sql.DB) http.HandlerFunc {
 			return
 		}
 
+		wordStrings := make([]string, len(body.Words))
+		for i, entry := range body.Words {
+			wordStrings[i] = entry.Word
+		}
+		fills, err := autoFillWordsBatch(wordStrings, body.AIModel)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+
 		type kdEntry struct {
 			ID      int64  `json:"id"`
 			Reading string `json:"reading"`
@@ -375,42 +384,36 @@ func apiAutofillWordsBatch(db *sql.DB) http.HandlerFunc {
 		}
 
 		results := make([]wordResult, len(body.Words))
-		var wg sync.WaitGroup
 		for i, entry := range body.Words {
-			wg.Add(1)
-			go func(idx int, id int64, word string) {
-				defer wg.Done()
-				filled, err := autoFillWord(word, body.AIModel)
-				if err != nil {
-					results[idx] = wordResult{WordID: id, Word: word, Error: err.Error()}
-					return
+			filled := fills[i]
+			if filled == nil {
+				results[i] = wordResult{WordID: entry.ID, Word: entry.Word, Error: "AI did not return a result for this word"}
+				continue
+			}
+			kd := make([]kdEntry, 0, len(filled.Kanji))
+			for _, k := range filled.Kanji {
+				kID, kErr := upsertKanji(db, k.Character, k.Meanings)
+				if kErr != nil {
+					continue
 				}
-				kd := make([]kdEntry, 0, len(filled.Kanji))
-				for _, k := range filled.Kanji {
-					kID, kErr := upsertKanji(db, k.Character, k.Meanings)
-					if kErr != nil {
-						continue
-					}
-					kd = append(kd, kdEntry{ID: kID, Reading: k.Reading})
-				}
-				b, _ := json.Marshal(kd)
-				if err := updateWordFill(db, id, filled.Reading, filled.PartOfSpeech, filled.Meaning, filled.ExampleJP, filled.ExampleEN, string(b)); err != nil {
-					results[idx] = wordResult{WordID: id, Word: word, Error: err.Error()}
-					return
-				}
-				results[idx] = wordResult{
-					WordID:       id,
-					Word:         word,
-					Reading:      filled.Reading,
-					PartOfSpeech: filled.PartOfSpeech,
-					Meaning:      filled.Meaning,
-					ExampleJP:    filled.ExampleJP,
-					ExampleEN:    filled.ExampleEN,
-					KanjiData:    kd,
-				}
-			}(i, entry.ID, entry.Word)
+				kd = append(kd, kdEntry{ID: kID, Reading: k.Reading})
+			}
+			b, _ := json.Marshal(kd)
+			if err := updateWordFill(db, entry.ID, filled.Reading, filled.PartOfSpeech, filled.Meaning, filled.ExampleJP, filled.ExampleEN, string(b)); err != nil {
+				results[i] = wordResult{WordID: entry.ID, Word: entry.Word, Error: err.Error()}
+				continue
+			}
+			results[i] = wordResult{
+				WordID:       entry.ID,
+				Word:         entry.Word,
+				Reading:      filled.Reading,
+				PartOfSpeech: filled.PartOfSpeech,
+				Meaning:      filled.Meaning,
+				ExampleJP:    filled.ExampleJP,
+				ExampleEN:    filled.ExampleEN,
+				KanjiData:    kd,
+			}
 		}
-		wg.Wait()
 
 		w.Header().Set("Content-Type", "application/json")
 		json.NewEncoder(w).Encode(results)

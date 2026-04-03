@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"strings"
+	"sync"
 )
 
 // message is a single chat turn shared by all AI provider helpers.
@@ -88,6 +89,81 @@ var autoFillExamples = []autoFillExample{
 		word: "日本語",
 		result: `{"reading":"にほんご","part_of_speech":"noun","meaning":"Japanese language","example_jp":"日本語を毎日勉強しています。","example_en":"I study Japanese every day.","kanji":[{"character":"日","reading":"ニ","meanings":["sun","day","Japan"]},{"character":"本","reading":"ホン","meanings":["book","origin","Japan"]},{"character":"語","reading":"ゴ","meanings":["language","word","speech"]}]}`,
 	},
+}
+
+// autoFillBatchSize is the maximum number of words sent in a single AI batch request.
+const autoFillBatchSize = 20
+
+// autoFillBatchSystemPrompt instructs the AI to process an array of words at once.
+var autoFillBatchSystemPrompt = `You are a Japanese dictionary assistant. Given a JSON array of Japanese words or phrases, return a JSON array of objects in the same order — one object per input word. Each object must have exactly these fields:
+- "reading": the word's reading in hiragana (use katakana only for loanwords); always include this even when the word has kanji — it is the full phonetic reading of the whole word
+- "part_of_speech": must be exactly one of: ` + strings.Join(validPartsOfSpeech, ", ") + `. Always prefer the closest matching category; only use "other" if the word genuinely fits none of them.
+- "meaning": concise English meaning (one short phrase or sentence)
+- "example_jp": a short, natural example sentence in Japanese using the word
+- "example_en": English translation of the example sentence
+- "kanji": array of objects, one per kanji character in the word in order of appearance, each with:
+  - "character": the kanji character
+  - "reading": this kanji's reading in this specific word — use hiragana for kun'yomi, katakana for on'yomi; the readings of all kanji, taken in order, must concatenate to spell out the word's full reading exactly (e.g. for 日本語 read as にほんご, the readings must be ニ + ホン + ゴ, not ニチ + ホン + ゴ)
+  - "meanings": array of concise English meanings for this kanji (2–4 entries)
+  For words with no kanji (e.g. pure kana or katakana loanwords), use an empty array.
+The output array must contain exactly as many objects as the input array, in the same order.
+Return only a valid JSON array with no markdown, no code fences, and no extra commentary.`
+
+// autoFillWordsBatch sends words to the AI in chunks of autoFillBatchSize, processing
+// chunks concurrently. The returned slice has exactly len(words) entries; entries are nil
+// for any chunk that fails or returns fewer results than expected.
+func autoFillWordsBatch(words []string, providerModel string) ([]*wordAutoFill, error) {
+	parts := strings.SplitN(providerModel, "/", 2)
+	if len(parts) != 2 {
+		return nil, fmt.Errorf("invalid ai_model value %q", providerModel)
+	}
+	provider, model := parts[0], parts[1]
+
+	type chunk struct {
+		start int
+		words []string
+	}
+	var chunks []chunk
+	for i := 0; i < len(words); i += autoFillBatchSize {
+		end := i + autoFillBatchSize
+		if end > len(words) {
+			end = len(words)
+		}
+		chunks = append(chunks, chunk{start: i, words: words[i:end]})
+	}
+
+	results := make([]*wordAutoFill, len(words))
+	var wg sync.WaitGroup
+	for _, c := range chunks {
+		wg.Add(1)
+		go func(ch chunk) {
+			defer wg.Done()
+			var fills []*wordAutoFill
+			var err error
+			switch provider {
+			case "openai":
+				fills, err = autoFillWordsBatchOpenAI(ch.words, model)
+			case "google":
+				fills, err = autoFillWordsBatchGoogle(ch.words, model)
+			case "mistral":
+				fills, err = autoFillWordsBatchMistral(ch.words, model)
+			case "glm":
+				fills, err = autoFillWordsBatchGLM(ch.words, model)
+			default:
+				fills, err = autoFillWordsBatchAnthropic(ch.words, model)
+			}
+			if err != nil {
+				return // entries for this chunk remain nil
+			}
+			for i, f := range fills {
+				if ch.start+i < len(results) {
+					results[ch.start+i] = f
+				}
+			}
+		}(c)
+	}
+	wg.Wait()
+	return results, nil
 }
 
 const rerollMeaningSystemPrompt = `You are a Japanese dictionary assistant. Given a Japanese word and its current English meaning, return a JSON array of exactly 3 alternative concise English meanings (short phrases). Do not repeat the current meaning. Return only the JSON array with no markdown, no code fences, and no extra commentary.`

@@ -52,10 +52,10 @@ body {
   font-size: 1.5rem;
   line-height: 1;
   user-select: none;
-  color: #f9e2af;
+  color: #ececec;
   text-decoration: none;
   text-shadow:
-    0 0 6px rgba(249, 226, 175, 0.9),
+    0 0 6px rgba(203, 210, 170, 0.9),
     0 0 14px rgba(250, 179, 135, 0.6),
     0 0 28px rgba(249, 226, 175, 0.3);
 }

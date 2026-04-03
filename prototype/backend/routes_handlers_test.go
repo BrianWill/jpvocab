@@ -214,6 +214,128 @@ func TestAPIGetDrillSettings_ReturnsDefaults(t *testing.T) {
 	}
 }
 
+func TestAPIGetWords_EmptyReturnsArray(t *testing.T) {
+	db := testDB(t)
+	req := httptest.NewRequest(http.MethodGet, "/api/words", nil)
+	rec := httptest.NewRecorder()
+
+	apiGetWords(db).ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status: got %d, want %d", rec.Code, http.StatusOK)
+	}
+	var words []wordJSON
+	if err := json.NewDecoder(rec.Body).Decode(&words); err != nil {
+		t.Fatal(err)
+	}
+	if words == nil {
+		t.Error("expected [] not null for empty lexicon")
+	}
+}
+
+func TestAPIGetWords_ReturnsInsertedWord(t *testing.T) {
+	db := testDB(t)
+	insertWord(db, "桜", "さくら", "noun", "cherry blossom", "", "", "", 2)
+	req := httptest.NewRequest(http.MethodGet, "/api/words", nil)
+	rec := httptest.NewRecorder()
+
+	apiGetWords(db).ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status: got %d, want %d", rec.Code, http.StatusOK)
+	}
+	var words []wordJSON
+	if err := json.NewDecoder(rec.Body).Decode(&words); err != nil {
+		t.Fatal(err)
+	}
+	if len(words) != 1 {
+		t.Fatalf("expected 1 word, got %d", len(words))
+	}
+	if words[0].Word != "桜" {
+		t.Errorf("word: got %q, want 桜", words[0].Word)
+	}
+	if words[0].KanjiData == nil {
+		t.Error("KanjiData should be [] not nil in JSON response")
+	}
+}
+
+func TestAPIDeleteWord_InvalidID(t *testing.T) {
+	db := testDB(t)
+	req := httptest.NewRequest(http.MethodDelete, "/api/words/nope", nil)
+	req = withURLParam(req, "id", "nope")
+	rec := httptest.NewRecorder()
+
+	apiDeleteWord(db).ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusBadRequest {
+		t.Fatalf("status: got %d, want %d", rec.Code, http.StatusBadRequest)
+	}
+}
+
+func TestAPIDeleteWord_Success(t *testing.T) {
+	db := testDB(t)
+	wordID := insertTestWord(t, db, "葉", 1)
+	req := httptest.NewRequest(http.MethodDelete, "/api/words/1", nil)
+	req = withURLParam(req, "id", int64ToString(wordID))
+	rec := httptest.NewRecorder()
+
+	apiDeleteWord(db).ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusNoContent {
+		t.Fatalf("status: got %d, want %d", rec.Code, http.StatusNoContent)
+	}
+	var count int
+	db.QueryRow(`SELECT COUNT(*) FROM words WHERE id = ?`, wordID).Scan(&count)
+	if count != 0 {
+		t.Errorf("word should be deleted after successful DELETE, got count %d", count)
+	}
+}
+
+func TestAPIGetKanji_EmptyReturnsArray(t *testing.T) {
+	db := testDB(t)
+	req := httptest.NewRequest(http.MethodGet, "/api/kanji", nil)
+	rec := httptest.NewRecorder()
+
+	apiGetKanji(db).ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status: got %d, want %d", rec.Code, http.StatusOK)
+	}
+	var kanji []kanjiJSON
+	if err := json.NewDecoder(rec.Body).Decode(&kanji); err != nil {
+		t.Fatal(err)
+	}
+	if kanji == nil {
+		t.Error("expected [] not null for empty kanji table")
+	}
+}
+
+func TestAPIGetKanji_ReturnsInserted(t *testing.T) {
+	db := testDB(t)
+	upsertKanji(db, "木", []string{"tree", "wood"})
+	req := httptest.NewRequest(http.MethodGet, "/api/kanji", nil)
+	rec := httptest.NewRecorder()
+
+	apiGetKanji(db).ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status: got %d, want %d", rec.Code, http.StatusOK)
+	}
+	var kanji []kanjiJSON
+	if err := json.NewDecoder(rec.Body).Decode(&kanji); err != nil {
+		t.Fatal(err)
+	}
+	if len(kanji) != 1 {
+		t.Fatalf("expected 1 kanji, got %d", len(kanji))
+	}
+	if kanji[0].Character != "木" {
+		t.Errorf("character: got %q, want 木", kanji[0].Character)
+	}
+	if len(kanji[0].Meanings) != 2 {
+		t.Errorf("meanings: got %v, want [tree wood]", kanji[0].Meanings)
+	}
+}
+
 func TestAPIPutDrillSettings_RoundTrips(t *testing.T) {
 	db := testDB(t)
 	req := httptest.NewRequest(http.MethodPut, "/api/settings/drill", bytes.NewBufferString(`{"maxWords":12,"roundSize":5,"wordTypes":["verbs","other"]}`))

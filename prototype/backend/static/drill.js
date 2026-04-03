@@ -196,6 +196,14 @@ document.addEventListener('keydown', event => {
     closeRestartModal();
     return;
   }
+  if (event.key === 'w' || event.key === 'W') {
+    if (state.currentWord) playWordAudio(state.currentWord, 0.8);
+    return;
+  }
+  if (event.key === 's' || event.key === 'S') {
+    if (state.currentWord) playSentenceAudio(state.currentWord, 0.8);
+    return;
+  }
   if (els.actionPrompt.style.display === 'none') return;
   if (event.key === 'd' || event.key === 'D') reveal(true);
   if (event.key === 'a' || event.key === 'A') reveal(false);

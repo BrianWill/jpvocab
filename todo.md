@@ -2,13 +2,7 @@
 
 This file is random notes of possible features and bug fixes.
 
-- generate all word infos should ideally send one AI request, not many, or maybe they should be batched
-
-- for settings modal, but TTS and voicevox in right column
-    - expand the width of the settings modal
-
-- on drill page, hotkey w does slowed playback (0.8?) of the word
-    - hotkey s does slowed playback (0.8) of the sentence
+- on drill page, last word info in three columns: info, kanji, image (or image on left?)
 
 - combine generation type selection and button into button with pulldown arrow
     - the button text indicates what it will do

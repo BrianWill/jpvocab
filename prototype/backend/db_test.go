@@ -1092,6 +1092,135 @@ func TestGetActivityCalendar_NonNilSlices(t *testing.T) {
 	}
 }
 
+// --- getWordImageInfo / updateWordImagePath ---
+
+func TestGetWordImageInfo_NotFound(t *testing.T) {
+	db := testDB(t)
+	info, err := getWordImageInfo(db, 9999)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if info != nil {
+		t.Errorf("expected nil for missing word, got %+v", info)
+	}
+}
+
+func TestGetWordImageInfo_ReturnsWordAndPath(t *testing.T) {
+	db := testDB(t)
+	id := insertTestWord(t, db, "星", 1)
+
+	info, err := getWordImageInfo(db, id)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if info == nil {
+		t.Fatal("expected non-nil info")
+	}
+	if info.Word != "星" {
+		t.Errorf("Word: got %q, want 星", info.Word)
+	}
+	if info.ImagePath != nil {
+		t.Errorf("ImagePath should be nil before any image is set, got %v", info.ImagePath)
+	}
+}
+
+func TestUpdateWordImagePath_RoundTrip(t *testing.T) {
+	db := testDB(t)
+	id := insertTestWord(t, db, "山", 1)
+
+	if err := updateWordImagePath(db, id, "images/山.jpg"); err != nil {
+		t.Fatal(err)
+	}
+	info, err := getWordImageInfo(db, id)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if info == nil || info.ImagePath == nil {
+		t.Fatal("expected non-nil ImagePath after update")
+	}
+	if *info.ImagePath != "images/山.jpg" {
+		t.Errorf("ImagePath: got %q, want images/山.jpg", *info.ImagePath)
+	}
+}
+
+// --- updateWordAudioFlags / getWordAudioInfo ---
+
+func TestUpdateWordAudioFlags_BothFlags(t *testing.T) {
+	db := testDB(t)
+	id := insertTestWord(t, db, "雨", 1)
+
+	if err := updateWordAudioFlags(db, id, true, true); err != nil {
+		t.Fatal(err)
+	}
+	var hasWord, hasSentence int
+	db.QueryRow(`SELECT has_word_audio, has_sentence_audio FROM words WHERE id = ?`, id).
+		Scan(&hasWord, &hasSentence)
+	if hasWord != 1 {
+		t.Errorf("has_word_audio: got %d, want 1", hasWord)
+	}
+	if hasSentence != 1 {
+		t.Errorf("has_sentence_audio: got %d, want 1", hasSentence)
+	}
+}
+
+func TestUpdateWordAudioFlags_ClearsFlags(t *testing.T) {
+	db := testDB(t)
+	id := insertTestWord(t, db, "風", 1)
+	// Set both flags then clear them.
+	updateWordAudioFlags(db, id, true, true)
+	if err := updateWordAudioFlags(db, id, false, false); err != nil {
+		t.Fatal(err)
+	}
+	var hasWord, hasSentence int
+	db.QueryRow(`SELECT has_word_audio, has_sentence_audio FROM words WHERE id = ?`, id).
+		Scan(&hasWord, &hasSentence)
+	if hasWord != 0 || hasSentence != 0 {
+		t.Errorf("flags should be 0 after clearing, got word=%d sentence=%d", hasWord, hasSentence)
+	}
+}
+
+func TestGetWordAudioInfo_NotFound(t *testing.T) {
+	db := testDB(t)
+	word, exJp, err := getWordAudioInfo(db, 9999)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if word != "" || exJp != "" {
+		t.Errorf("expected empty strings for missing word, got word=%q exJp=%q", word, exJp)
+	}
+}
+
+func TestGetWordAudioInfo_ReturnsWordAndExample(t *testing.T) {
+	db := testDB(t)
+	insertWord(db, "猫", "ねこ", "noun", "cat", "猫がいる。", "There is a cat.", "", 1)
+	var id int64
+	db.QueryRow(`SELECT id FROM words WHERE word = '猫'`).Scan(&id)
+
+	word, exJp, err := getWordAudioInfo(db, id)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if word != "猫" {
+		t.Errorf("word: got %q, want 猫", word)
+	}
+	if exJp != "猫がいる。" {
+		t.Errorf("exJp: got %q, want 猫がいる。", exJp)
+	}
+}
+
+func TestGetWordAudioInfo_NullExampleDefaultsToEmpty(t *testing.T) {
+	db := testDB(t)
+	id := insertTestWord(t, db, "犬", 1) // insertTestWord uses empty strings for all optional fields
+
+	_, exJp, err := getWordAudioInfo(db, id)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if exJp != "" {
+		t.Errorf("exJp: got %q, want empty string when example_jp is NULL", exJp)
+	}
+}
+
 func TestGetActivityCalendar_HistoryStartIsContainingSunday(t *testing.T) {
 	db := testDB(t)
 	// 2024-01-17 is a Wednesday; the containing Sunday is 2024-01-14.

@@ -98,14 +98,14 @@ The HTML/CSS/JS frontend files live in `backend/static/` and are served by the b
 - **`db_activity.go`** � drill session persistence and answer recording (`createDrillSession`, `getCurrentDrillSession`, `recordDrillAnswer`), plus activity stats and calendar queries.
 - **`db_settings.go`** � user settings: `getDrillSettings` and `putDrillSettings` read/write the `user_settings` table using key/value pairs. `drillSettings` always returns fully-populated values with no null fields � `MaxWords` defaults to `100`, `RoundSize` to `10`, `WordTypes` to all four types. `MaxWords` is always = 1; `0` is not a valid value. The frontend should treat the `GET /api/settings/drill` response as always having concrete values and needs no null-handling.
 - **`routes.go`** � `serverInit` (router setup), activity/drill/admin HTTP handlers, and `renderTemplate`. No direct DB access; handlers call functions from the `db_*.go` files.
-- **`routes_words.go`** � word and kanji API handlers: GET/PATCH/DELETE words, autofill, reroll meaning/examples, GET kanji.
+- **`routes_words.go`** — word and kanji API handlers: GET/PATCH/DELETE words, single and batch autofill, reroll meaning/examples, GET kanji.
 - **`routes_handlers_test.go`** � HTTP handler tests for backend JSON endpoints, focused on request validation, status codes, and basic success-path responses for word, drill-session, and drill-settings APIs.
-- **`ai.go`** - Shared AI types, prompts, few-shot examples, and provider-dispatch functions (`autoFillWord`, `rerollMeaning`, `rerollExamples`). No direct DB access. Environment variables: `ANTHROPIC_API_KEY`, `OPENAI_API_KEY`, `GOOGLE_API_KEY`, `MISTRAL_API_KEY`, `GLM_API_KEY`.
-- **`ai_anthropic.go`** � Anthropic Messages API: `callAnthropic` HTTP helper + autofill/reroll implementations.
-- **`ai_openai.go`** � OpenAI Chat Completions API: `callOpenAI` HTTP helper + autofill/reroll implementations.
-- **`ai_google.go`** � Google Generative Language API: `callGoogle` HTTP helper + autofill/reroll implementations.
-- **`ai_mistral.go`** � Mistral Chat API (OpenAI-compatible): `callMistral` HTTP helper + autofill/reroll implementations.
-- **`ai_glm.go`** � Zhipu GLM API (OpenAI-compatible): `callGLM` HTTP helper + autofill/reroll implementations. Environment variable: `GLM_API_KEY`.
+- **`ai.go`** - Shared AI types, prompts, few-shot examples, and provider-dispatch functions (`autoFillWord`, `autoFillWordsBatch`, `rerollMeaning`, `rerollExamples`). `autoFillWordsBatch` splits words into chunks of `autoFillBatchSize` (20) and runs chunks concurrently, each as a single AI call returning a JSON array. No direct DB access. Environment variables: `ANTHROPIC_API_KEY`, `OPENAI_API_KEY`, `GOOGLE_API_KEY`, `MISTRAL_API_KEY`, `GLM_API_KEY`.
+- **`ai_anthropic.go`** — Anthropic Messages API: `callAnthropic` HTTP helper + single and batch autofill/reroll implementations.
+- **`ai_openai.go`** — OpenAI Chat Completions API: `callOpenAI` HTTP helper + single and batch autofill/reroll implementations.
+- **`ai_google.go`** — Google Generative Language API: `callGoogle` HTTP helper + single and batch autofill/reroll implementations.
+- **`ai_mistral.go`** — Mistral Chat API (OpenAI-compatible): `callMistral` HTTP helper + single and batch autofill/reroll implementations.
+- **`ai_glm.go`** — Zhipu GLM API (OpenAI-compatible): `callGLM` HTTP helper + single and batch autofill/reroll implementations. Environment variable: `GLM_API_KEY`.
 - **`morphology.go`** � word normalisation to dictionary base form (used in the add-words flow).
 - **`wordlists.go`** � loads JSON word-list files from the embedded `wordlists/` directory at startup (via `//go:embed wordlists`). Exposes `apiGetWordLists` and `apiGetWordListWords` handlers. Each file is `{slug}.json` with `name` (display name) and `words` (string array) fields. Current lists: `animals`, `colors`, `ichidan-verbs`.
 - **`templates/`** � HTML templates parsed from disk on every request (live-editable without restart); `base.html` is the shared shell, each page has its own file
@@ -122,7 +122,8 @@ Key API endpoints (beyond CRUD on `/api/words` and `/api/kanji`):
 | `GET` | `/api/wordlists/{slug}/words` | Words in the named list not yet in the lexicon |
 | `PATCH` | `/api/words/{id}` | Update a word's reading, type, meaning, and example sentences |
 | `PATCH` | `/api/words/{id}/target` | Update a word's target drill count |
-| `POST` | `/api/words/{id}/autofill` | AI-generate reading, meaning, and examples for a word |
+| `POST` | `/api/words/autofill-batch` | AI-generate reading, meaning, and examples for multiple words at once; body: `{words:[{id,word}], ai_model}`; words are chunked (≤20 per AI call) and chunks run concurrently |
+| `POST` | `/api/words/{id}/autofill` | AI-generate reading, meaning, and examples for a single word |
 | `POST` | `/api/words/{id}/generate-audio` | Generate WAV audio via local VoiceVox engine; sets `has_word_audio`/`has_sentence_audio` flags |
 | `POST` | `/api/words/{id}/reroll-meaning` | Regenerate just the meaning via AI *(may be unused � see Lexicon Features note)* |
 | `POST` | `/api/words/{id}/reroll-examples` | Regenerate just the example sentences via AI *(may be unused � see Lexicon Features note)* |

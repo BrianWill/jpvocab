@@ -346,21 +346,23 @@ export async function playTts(text, lang, rate = 1) {
 }
 
 // playWordAudio plays a word's generated audio file if available, else falls back to TTS.
-export function playWordAudio(word) {
+export function playWordAudio(word, rate = 1) {
   speechSynthesis.cancel();
   if (_currentAudio) { _currentAudio.pause(); }
   const audio = new Audio(`/static/audio/${encodeURIComponent(word.word)}.ogg`);
-  audio.addEventListener('error', () => playTts(word.word, 'ja-JP', WORD_TTS_RATE));
+  audio.playbackRate = rate;
+  audio.addEventListener('error', () => playTts(word.word, 'ja-JP', WORD_TTS_RATE * rate));
   _currentAudio = audio;
   audio.play().catch(() => {});
 }
 
 // playSentenceAudio plays a word's generated sentence audio file if available, else falls back to TTS.
-export function playSentenceAudio(word) {
+export function playSentenceAudio(word, rate = 1) {
   speechSynthesis.cancel();
   if (_currentAudio) { _currentAudio.pause(); }
   const audio = new Audio(`/static/audio/${encodeURIComponent(word.word)}_sentence.ogg`);
-  audio.addEventListener('error', () => { if (word.exampleJp) playTts(word.exampleJp, 'ja-JP', 0.75); });
+  audio.playbackRate = rate;
+  audio.addEventListener('error', () => { if (word.exampleJp) playTts(word.exampleJp, 'ja-JP', 0.75 * rate); });
   _currentAudio = audio;
   audio.play().catch(() => {});
 }

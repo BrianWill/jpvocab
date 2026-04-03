@@ -259,6 +259,7 @@ body {
   z-index: 100;
 }
 .modal-backdrop.hidden { display: none; }
+.hidden { display: none; }
 
 .modal {
   background: #1e1e2e;

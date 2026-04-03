@@ -1,3 +1,8 @@
+// ── VoiceVox bulk audio generation state ─────────────────────────────────
+let _vvGenController = null; // non-null while generation is in progress
+let _vvGenPending = 0;
+let _vvGenTotal = 0;
+
 // ── Settings modal step helpers ────────────────────────────────────────────
 const STEPPER_INTERVAL = 230;
 
@@ -125,7 +130,13 @@ function injectSettingsModal() {
         </div>
         <div class="restart-field">
           <label></label>
-          <button type="button" id="settings-vv-preview" class="btn-cancel">▶ Preview</button>
+          <div style="display:flex;gap:0.5rem;align-items:center">
+            <button type="button" id="settings-vv-preview" class="btn-cancel">▶ Preview</button>
+            <div id="settings-vv-gen-all-wrap">
+              <button type="button" id="settings-vv-gen-all" class="btn-save" disabled>Generate audio for all words</button>
+              <button type="button" id="settings-vv-gen-cancel" class="btn-danger hidden"><span class="spinner"></span><span id="settings-vv-gen-cancel-label"></span></button>
+            </div>
+          </div>
         </div>
       </div>
       <div class="modal-footer">
@@ -257,6 +268,7 @@ async function populateVoicevoxSpeakers() {
   await checkVoicevoxAvailable();
   const available = _voicevoxSpeakers.length > 0;
   document.getElementById('settings-vv-preview')?.toggleAttribute('disabled', !available);
+  document.getElementById('settings-vv-gen-all')?.toggleAttribute('disabled', !available);
   if (!available) {
     sel.innerHTML = '<option value="1">VoiceVox unavailable</option>';
     return;
@@ -352,13 +364,59 @@ export function playSentenceAudio(word) {
   }
 }
 
+function updateGenAllBtn() {
+  const genBtn = document.getElementById('settings-vv-gen-all');
+  const cancelBtn = document.getElementById('settings-vv-gen-cancel');
+  if (!genBtn || !cancelBtn) return;
+  const generating = !!_vvGenController;
+  genBtn.classList.toggle('hidden', generating);
+  cancelBtn.classList.toggle('hidden', !generating);
+  if (generating) {
+    document.getElementById('settings-vv-gen-cancel-label').textContent =
+      'Cancel audio generation \n(' + _vvGenPending + ' of ' + _vvGenTotal + ' remaining)';
+  }
+}
+
+async function runGenerateAllAudio() {
+  if (_vvGenController) return;
+  const words = await fetch('/api/words').then(r => r.json());
+  if (!words.length) return;
+  _vvGenController = new AbortController();
+  _vvGenTotal = words.length;
+  _vvGenPending = words.length;
+  updateGenAllBtn();
+  for (const w of words) {
+    if (_vvGenController.signal.aborted) break;
+    try {
+      const vv = getVoicevoxSettings();
+      await fetch('/api/words/' + w.id + '/generate-audio', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ word: w.word, speaker: vv.speaker, speedScale: vv.speedScale, intonationScale: vv.intonationScale }),
+        signal: _vvGenController.signal,
+      });
+    } catch (_) {
+      if (_vvGenController?.signal.aborted) break;
+    }
+    _vvGenPending = Math.max(0, _vvGenPending - 1);
+    updateGenAllBtn();
+  }
+  _vvGenController = null;
+  _vvGenPending = 0;
+  _vvGenTotal = 0;
+  updateGenAllBtn();
+}
+
 function initializeSettings() {
   const settingsBtn = document.getElementById('settings-btn');
   const settingsModal = document.getElementById('settings-modal-backdrop');
   if (!settingsBtn || !settingsModal) return;
 
   const saveBtn = document.getElementById('settings-save-btn');
-  const closeModal = () => settingsModal.classList.add('hidden');
+  const closeModal = () => {
+    if (_vvGenController) return;
+    settingsModal.classList.add('hidden');
+  };
 
   const setDirty = () => saveBtn?.classList.add('btn-save--dirty');
   const clearDirty = () => saveBtn?.classList.remove('btn-save--dirty');
@@ -495,6 +553,9 @@ function initializeSettings() {
     setDirty();
   });
   document.getElementById('settings-vv-speaker')?.addEventListener('change', setDirty);
+
+  document.getElementById('settings-vv-gen-all')?.addEventListener('click', runGenerateAllAudio);
+  document.getElementById('settings-vv-gen-cancel')?.addEventListener('click', () => _vvGenController?.abort());
 
   document.getElementById('settings-vv-preview')?.addEventListener('click', async () => {
     const btn = document.getElementById('settings-vv-preview');

@@ -127,6 +127,7 @@ export function updateWordAudioFlags(wordId, hasWordAudio, hasSentenceAudio) {
   word.hasSentenceAudio = hasSentenceAudio;
 }
 
+
 async function init() {
   const [wordsData, providers] = await Promise.all([
     fetch('/api/words').then(r => r.json()),

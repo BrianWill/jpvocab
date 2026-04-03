@@ -241,8 +241,10 @@ els.restartStartBtn.addEventListener('click', confirmRestart);
 attachNumberStepper(els.restartTotalWords);
 attachNumberStepper(els.restartRoundSize);
 
+// Keeps the "began X minutes ago" timestamp in renderStats fresh.
 setInterval(() => {
   renderDrill(els, state);
 }, 30_000);
+
 
 init();

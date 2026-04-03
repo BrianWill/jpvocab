@@ -342,26 +342,22 @@ export async function playTts(text, lang, rate = 1) {
 
 // playWordAudio plays a word's generated audio file if available, else falls back to TTS.
 export function playWordAudio(word) {
-  if (word.hasWordAudio) {
-    speechSynthesis.cancel();
-    if (_currentAudio) { _currentAudio.pause(); }
-    _currentAudio = new Audio(`/static/audio/${encodeURIComponent(word.word)}.ogg`);
-    _currentAudio.play();
-  } else {
-    playTts(word.word, 'ja-JP', WORD_TTS_RATE);
-  }
+  speechSynthesis.cancel();
+  if (_currentAudio) { _currentAudio.pause(); }
+  const audio = new Audio(`/static/audio/${encodeURIComponent(word.word)}.ogg`);
+  audio.addEventListener('error', () => playTts(word.word, 'ja-JP', WORD_TTS_RATE));
+  _currentAudio = audio;
+  audio.play().catch(() => {});
 }
 
 // playSentenceAudio plays a word's generated sentence audio file if available, else falls back to TTS.
 export function playSentenceAudio(word) {
-  if (word.hasSentenceAudio) {
-    speechSynthesis.cancel();
-    if (_currentAudio) { _currentAudio.pause(); }
-    _currentAudio = new Audio(`/static/audio/${encodeURIComponent(word.word)}_sentence.ogg`);
-    _currentAudio.play();
-  } else if (word.exampleJp) {
-    playTts(word.exampleJp, 'ja-JP', 0.75);
-  }
+  speechSynthesis.cancel();
+  if (_currentAudio) { _currentAudio.pause(); }
+  const audio = new Audio(`/static/audio/${encodeURIComponent(word.word)}_sentence.ogg`);
+  audio.addEventListener('error', () => { if (word.exampleJp) playTts(word.exampleJp, 'ja-JP', 0.75); });
+  _currentAudio = audio;
+  audio.play().catch(() => {});
 }
 
 function updateGenAllBtn() {

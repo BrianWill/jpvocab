@@ -2,24 +2,26 @@
 
 This file is random notes of possible features and bug fixes.
 
-- voicevox stored as ogg or mp3 instead of wav
-- main-area on drill page doesnt' have stable height
+- app icon in header right of nav links (top right corner)
+    - clicking app icon takes you to welcome page, that explains usage
+        - maybe acitivity page can act as welcome? let's first see how much welcome / help text we need
+
+- for settings modal, but TTS and voicevox in right column
+    - expand the width of the settings modal
 
 - on drill page, hotkey w does slowed playback (0.8?) of the word
     - hotkey s does slowed playback (0.8) of the sentence
 
-
-- generate audio for the words
-    - pulldown options: either no audio, browser tts, or voicevox
-        - selecting voicevox triggers error message if the voicevox server is not found
-            - give detailed message explaining what user must do, including expected port number
+- combine generation type selection and button into button with pulldown arrow
+    - the button text indicates what it will do
+    - the generate buttons on the individual words updated too but they are not combo buttons
     
-    
-    - lexicon page: button to play word audio / sentence audio
-    
-- clicking the image placeholder or thumbnail shoudl open a file dialog to upload an image file
+- settings menu
+    - default value for target drill count of new words
 
 - pitch accent info on readings
+
+- clicking the image placeholder or thumbnail shoudl open a file dialog to upload an image file
 
 - play with visual styles
     - use simple organic textures instead of solid background colors
@@ -30,10 +32,7 @@ This file is random notes of possible features and bug fixes.
         - marble animals? 
     - shadcn
 
-- settings menu
-    - preferred AI provider/model
-        - only applicable if the user has multiple available keys
-    - default value for target drill count of new words
+
 
 - some way to sync db state
     - what if just one version of db in google drive for each machine
@@ -52,9 +51,6 @@ This file is random notes of possible features and bug fixes.
         - p2p requires both systems on and connected
     - maybe just use rcloud and google drive?
         - create script to help you setup rcloud on mac or windows?
-
-
-
 
 
 - enable wails in the prototype

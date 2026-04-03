@@ -2,14 +2,9 @@
 
 This file is random notes of possible features and bug fixes.
 
-- on drill page, last word info in three columns: info, kanji, image (or image on left?)
-
 - combine generation type selection and button into button with pulldown arrow
     - the button text indicates what it will do
     - the generate buttons on the individual words updated too but they are not combo buttons
-    
-- settings menu
-    - default value for target drill count of new words
 
 - pitch accent info on readings
 
@@ -23,8 +18,6 @@ This file is random notes of possible features and bug fixes.
     - need mascot character(s)?
         - marble animals? 
     - shadcn
-
-
 
 - some way to sync db state
     - what if just one version of db in google drive for each machine
@@ -48,22 +41,25 @@ This file is random notes of possible features and bug fixes.
 - enable wails in the prototype
     - once ready, we'll move the prototype project to main dir
 
-- translate stories and generate audio via voicevox
-    - can voicevox generate a single audio file but give timemarks for each line?
-        - apparently yes https://gemini.google.com/app/64285ccfa674d709
-    - e.g. given chapter of novel, produce audio
-    - experiment with openAI audio generation. Might be better quality than voicevox
+- stories page
+    - 
+    - translate stories and generate audio via voicevox
+        - can voicevox generate a single audio file but give timemarks for each line?
+            - apparently yes https://gemini.google.com/app/64285ccfa674d709
+        - e.g. given chapter of novel, produce audio
+        - experiment with openAI audio generation. Might be better quality than voicevox
+    
+    - scan text to find most frequently occuring words in text that are candidates for the lexicon
 
-- scan text to find most frequently occuring words that are candidates for the lexicon
+
+- grammatical analysis
+    - sentence breakdown
+    - isolate, classify, and explain phrases
 
 - translation exercise:
     - use words from users lexicon     
     - present sentence in Japanese to translate to English
     - present English trnaslation to translate to Japanese
-
-- grammatical analysis
-    - sentence breakdown
-    - isolate, classify, and explain phrases
 
 - speaking tutor chatbot
     - user types, chatbot responds with generated audio (voicevox?)

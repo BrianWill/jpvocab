@@ -6,23 +6,24 @@ let _vvGenTotal = 0;
 // ── Settings modal step helpers ────────────────────────────────────────────
 const STEPPER_INTERVAL = 230;
 
-function adjustStepperInput(input, delta) {
+function adjustStepperInput(input, delta, step, min, max) {
   if (!input) return;
-  const val = parseInt(input.value, 10) || 5;
+  const val = parseInt(input.value, 10) || min;
   input.value = delta > 0
-    ? Math.min(995, Math.floor(val / 5) * 5 + 5)
-    : Math.max(5, Math.ceil(val / 5) * 5 - 5);
+    ? Math.min(max, Math.floor(val / step) * step + step)
+    : Math.max(min, Math.ceil(val / step) * step - step);
 }
 
-function capStepperInput(input) {
-  if (input.value.length > 3) input.value = input.value.slice(0, 3);
-  if (input.value === '0') input.value = '1';
+function capStepperInput(input, min, max) {
+  const maxLen = String(max).length;
+  if (input.value.length > maxLen) input.value = input.value.slice(0, maxLen);
+  if (parseInt(input.value, 10) < min) input.value = String(min);
 }
 
 export function attachNumberStepper(input, options = {}) {
   if (!input) return;
 
-  const { onChange, onInput } = options;
+  const { onChange, onInput, step = 5, min = 5, max = 995 } = options;
   const [minusBtn, plusBtn] = input.closest('.num-stepper').querySelectorAll('.num-btn');
   let stepTimer = null;
 
@@ -32,22 +33,22 @@ export function attachNumberStepper(input, options = {}) {
   };
 
   const startStep = delta => {
-    adjustStepperInput(input, delta);
+    adjustStepperInput(input, delta, step, min, max);
     onChange?.();
     stepTimer = setInterval(() => {
-      adjustStepperInput(input, delta);
+      adjustStepperInput(input, delta, step, min, max);
       onChange?.();
     }, STEPPER_INTERVAL);
   };
 
-  minusBtn.addEventListener('mousedown', () => startStep(-5));
+  minusBtn.addEventListener('mousedown', () => startStep(-step));
   minusBtn.addEventListener('mouseup', stopStep);
   minusBtn.addEventListener('mouseleave', stopStep);
-  plusBtn.addEventListener('mousedown', () => startStep(5));
+  plusBtn.addEventListener('mousedown', () => startStep(step));
   plusBtn.addEventListener('mouseup', stopStep);
   plusBtn.addEventListener('mouseleave', stopStep);
   input.addEventListener('input', () => {
-    capStepperInput(input);
+    capStepperInput(input, min, max);
     onInput?.();
   });
 }
@@ -82,6 +83,14 @@ function injectSettingsModal() {
             <div class="num-stepper">
               <button class="num-btn" type="button">−</button>
               <input type="number" id="settings-round-size" min="1">
+              <button class="num-btn" type="button">+</button>
+            </div>
+          </div>
+          <div class="restart-field">
+            <label>New word target drills</label>
+            <div class="num-stepper">
+              <button class="num-btn" type="button">−</button>
+              <input type="number" id="settings-new-word-target" min="1">
               <button class="num-btn" type="button">+</button>
             </div>
           </div>
@@ -431,8 +440,10 @@ function initializeSettings() {
 
     const totalInput = document.getElementById('settings-total-words');
     const roundInput = document.getElementById('settings-round-size');
+    const newWordTargetInput = document.getElementById('settings-new-word-target');
     if (totalInput) totalInput.value = settings.maxWords;
     if (roundInput) roundInput.value = settings.roundSize;
+    if (newWordTargetInput) newWordTargetInput.value = settings.newWordTarget;
 
     settingsModal.querySelectorAll('.filter-chip[data-setting-filter]').forEach(btn => {
       btn.classList.toggle('active', settings.wordTypes.includes(btn.dataset.settingFilter));
@@ -469,6 +480,7 @@ function initializeSettings() {
   saveBtn?.addEventListener('click', async () => {
     const totalVal = parseInt(document.getElementById('settings-total-words')?.value, 10);
     const roundVal = parseInt(document.getElementById('settings-round-size')?.value, 10);
+    const newWordTargetVal = parseInt(document.getElementById('settings-new-word-target')?.value, 10);
     const wordTypes = DRILL_FILTER_KEYS.filter(f =>
       settingsModal.querySelector(`[data-setting-filter="${f}"]`)?.classList.contains('active')
     );
@@ -480,6 +492,7 @@ function initializeSettings() {
       body: JSON.stringify({
         maxWords: Math.max(1, isNaN(totalVal) ? 100 : Math.min(995, totalVal)),
         roundSize: isNaN(roundVal) ? 10 : Math.max(1, Math.min(995, roundVal)),
+        newWordTarget: isNaN(newWordTargetVal) ? 8 : Math.max(1, Math.min(999, newWordTargetVal)),
         wordTypes,
       }),
     });
@@ -523,6 +536,17 @@ function initializeSettings() {
     attachNumberStepper(roundInput, {
       onChange: setDirty,
       onInput: setDirty,
+    });
+  }
+
+  const newWordTargetInput = document.getElementById('settings-new-word-target');
+  if (newWordTargetInput) {
+    attachNumberStepper(newWordTargetInput, {
+      onChange: setDirty,
+      onInput: setDirty,
+      step: 1,
+      min: 1,
+      max: 999,
     });
   }
 

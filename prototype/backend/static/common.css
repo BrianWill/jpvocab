@@ -55,16 +55,16 @@ body {
   color: #ececec;
   text-decoration: none;
   text-shadow:
-    0 0 6px rgba(203, 210, 170, 0.9),
-    0 0 14px rgba(250, 179, 135, 0.6),
-    0 0 28px rgba(249, 226, 175, 0.3);
+    0 0 6px rgba(180, 190, 254, 0.9),
+    0 0 14px rgba(137, 180, 250, 0.6),
+    0 0 28px rgba(116, 199, 236, 0.3);
 }
 .app-logo:hover {
   background: #1e1e2e;
   text-shadow:
-    0 0 8px rgba(249, 226, 175, 1),
-    0 0 20px rgba(250, 179, 135, 0.8),
-    0 0 40px rgba(249, 226, 175, 0.5);
+    0 0 8px rgba(180, 190, 254, 1),
+    0 0 20px rgba(137, 180, 250, 0.8),
+    0 0 40px rgba(116, 199, 236, 0.5);
 }
 
 /* Nav and settings wrapper (keeps them adjacent) */

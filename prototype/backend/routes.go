@@ -54,7 +54,12 @@ func serverInit(db *sql.DB) {
 				"pixabay":  s.PixabayAvail,
 				"bing":     s.BingAvail,
 			},
-			"default_drill_target": defaultDrillTarget,
+			"default_drill_target": func() int {
+				if s, err := getDrillSettings(db); err == nil {
+					return s.NewWordTarget
+				}
+				return 8
+			}(),
 		})
 	})
 	r.Get("/api/wordlists", apiGetWordLists(db))
@@ -279,6 +284,12 @@ func adminAddWordsBatch(db *sql.DB) http.HandlerFunc {
 			flusher.Flush()
 		}
 
+		drillCfg, _ := getDrillSettings(db)
+		newWordTarget := drillCfg.NewWordTarget
+		if newWordTarget <= 0 {
+			newWordTarget = 8
+		}
+
 		autoFill := r.FormValue("autofill") == "on"
 		aiModel := r.FormValue("ai_model")
 
@@ -360,7 +371,7 @@ func adminAddWordsBatch(db *sql.DB) http.HandlerFunc {
 			}
 
 			listEntry, hasListEntry := wordListLookup(e.norm)
-			wordID, err := insertWordReturningID(db, e.norm, listEntry.Reading, listEntry.PartOfSpeech, listEntry.Meaning, listEntry.ExampleJP, listEntry.ExampleEN, "", defaultDrillTarget)
+			wordID, err := insertWordReturningID(db, e.norm, listEntry.Reading, listEntry.PartOfSpeech, listEntry.Meaning, listEntry.ExampleJP, listEntry.ExampleEN, "", newWordTarget)
 			if err != nil {
 				reason := err.Error()
 				if strings.Contains(reason, "UNIQUE constraint failed") {
@@ -379,7 +390,7 @@ func adminAddWordsBatch(db *sql.DB) http.HandlerFunc {
 				ExampleJP:    listEntry.ExampleJP,
 				ExampleEN:    listEntry.ExampleEN,
 				WordID:       wordID,
-				DrillTarget:  defaultDrillTarget,
+				DrillTarget:  newWordTarget,
 			}
 			if hasListEntry {
 				result.SuggestedImageURL = listEntry.SuggestedImageURL

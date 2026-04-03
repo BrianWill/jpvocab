@@ -220,6 +220,20 @@ export async function checkVoicevoxAvailable() {
   return _voicevoxSpeakers.length > 0;
 }
 
+let _ffmpegAvailableCache = null;
+// Checks once whether ffmpeg is available on the server. Returns a boolean.
+export async function checkFfmpegAvailable() {
+  if (_ffmpegAvailableCache !== null) return _ffmpegAvailableCache;
+  try {
+    const resp = await fetch('/api/ffmpeg/available');
+    const data = await resp.json();
+    _ffmpegAvailableCache = data.available === true;
+  } catch (_) {
+    _ffmpegAvailableCache = false;
+  }
+  return _ffmpegAvailableCache;
+}
+
 async function populateVoicevoxSpeakers() {
   const sel = document.getElementById('settings-vv-speaker');
   if (!sel) return;
@@ -298,7 +312,7 @@ export function playWordAudio(word) {
   if (word.hasWordAudio) {
     speechSynthesis.cancel();
     if (_currentAudio) { _currentAudio.pause(); }
-    _currentAudio = new Audio(`/static/audio/${encodeURIComponent(word.word)}.wav`);
+    _currentAudio = new Audio(`/static/audio/${encodeURIComponent(word.word)}.ogg`);
     _currentAudio.play();
   } else {
     playTts(word.word, 'ja-JP', WORD_TTS_RATE);
@@ -310,7 +324,7 @@ export function playSentenceAudio(word) {
   if (word.hasSentenceAudio) {
     speechSynthesis.cancel();
     if (_currentAudio) { _currentAudio.pause(); }
-    _currentAudio = new Audio(`/static/audio/${encodeURIComponent(word.word)}_sentence.wav`);
+    _currentAudio = new Audio(`/static/audio/${encodeURIComponent(word.word)}_sentence.ogg`);
     _currentAudio.play();
   } else if (word.exampleJp) {
     playTts(word.exampleJp, 'ja-JP', 0.75);

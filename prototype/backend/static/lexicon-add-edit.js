@@ -1,6 +1,6 @@
-import { defaultDrillTarget, typeLabels, _providers, _imageSources, _voicevoxAvailable, reloadWords, renderTable, getSortedWords, closeAddModal, updateWordImagePath, updateWordAudioFlags } from './lexicon.js';
+import { defaultDrillTarget, typeLabels, _providers, _imageSources, _voicevoxAvailable, _ffmpegAvailable, reloadWords, renderTable, getSortedWords, closeAddModal, updateWordImagePath, updateWordAudioFlags } from './lexicon.js';
 import { esc, isKanji, detailItemPosSelect, detailItemKanjiReadings, detailItemInput, detailItemExInput } from './lexicon-utils.js';
-import { getVoicevoxSettings } from './common.js';
+import { getVoicevoxSettings, playWordAudio } from './common.js';
 
 const imagePlaceholderSvg =
   '<svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">' +
@@ -68,6 +68,7 @@ export function openEditModal(event) {
     drill_target: w.target,
     kanji_data: w.kanjiData,
     image_path: w.imagePath,
+    has_word_audio: w.hasWordAudio,
   });
 
   document.getElementById('add-result-modal-backdrop').classList.remove('hidden');
@@ -403,6 +404,12 @@ function appendWordRow(data) {
     '<div class="word-result-main"><span class="result-word">' + esc(data.word) + '</span>' + badge + inlineExtra + '</div>' +
     '<div class="word-result-body">' + details + imageHtml + '</div>';
 
+  row._hasWordAudio = data.has_word_audio ?? false;
+  const resultWordEl = row.querySelector('.result-word');
+  if (resultWordEl) resultWordEl.addEventListener('click', () =>
+    playWordAudio({ word: data.word, hasWordAudio: row._hasWordAudio })
+  );
+
   const removeBtnEl = row.querySelector('.btn-word-remove');
   if (removeBtnEl) removeBtnEl.addEventListener('mousedown', e => removeWordRow(e, removeBtnEl));
 
@@ -478,12 +485,19 @@ function getImageSource() {
   return document.getElementById('add-result-image-source-select')?.value ?? 'wikimedia';
 }
 
+function audioReadyTooltip() {
+  if (!_voicevoxAvailable) return 'VoiceVox is not running';
+  if (!_ffmpegAvailable) return 'ffmpeg is not installed (required for audio generation)';
+  return 'Generates audio via the local VoiceVox engine';
+}
+
 function updateGenerateBtnStates() {
   const type = getGenerateType();
   const hasProviders = _providers && (_providers.anthropic || _providers.openai || _providers.google || _providers.mistral || _providers.glm);
-  const disabled = type === 'audio' ? !_voicevoxAvailable : !hasProviders;
+  const audioReady = _voicevoxAvailable && _ffmpegAvailable;
+  const disabled = type === 'audio' ? !audioReady : !hasProviders;
   const tooltip = type === 'audio'
-    ? (_voicevoxAvailable ? 'Generates audio via the local VoiceVox engine' : 'VoiceVox is not running')
+    ? audioReadyTooltip()
     : type === 'image'
       ? 'Uses an AI API request to find and download an image for this word'
       : 'Uses an AI API request to get the word\'s reading, part-of-speech, meaning, and an example sentence';
@@ -605,6 +619,8 @@ async function generateWordAudio(event, wordId, word, btn) {
     if (!res.ok) throw new Error(await res.text());
     const data = await res.json();
     updateWordAudioFlags(wordId, data.hasWordAudio, data.hasSentenceAudio);
+    const row = btn.closest('.word-result-row');
+    if (row && data.hasWordAudio) row._hasWordAudio = true;
   } finally {
     if (btn._generateAbort === abort) {
       btn._generateAbort = null;
@@ -755,14 +771,15 @@ function renderStatus() {
   const countsHtml = '<span>' + _addedWords.length + ' added' + skippedHtml + '</span>';
   const hasProviders = _providers && (_providers.anthropic || _providers.openai || _providers.google || _providers.mistral || _providers.glm);
   const genType = getGenerateType();
+  const audioReady = _voicevoxAvailable && _ffmpegAvailable;
   const genAllTooltip = genType === 'audio'
-    ? (_voicevoxAvailable ? 'Generates audio via the local VoiceVox engine for each word' : 'VoiceVox is not running')
+    ? audioReadyTooltip()
     : genType === 'image'
       ? 'Uses an AI API request to find and download an image for each word'
       : 'Uses an AI API request to get the reading, part-of-speech, meaning, and an example sentence for each word';
   const genAllEnabled =
     document.querySelectorAll('#add-result-modal-body .word-result-row .btn-generate:not(.btn-generate--busy):not([disabled])').length > 0 &&
-    (genType === 'audio' ? _voicevoxAvailable : hasProviders) && _addPhase !== 'loading';
+    (genType === 'audio' ? audioReady : hasProviders) && _addPhase !== 'loading';
   const actionHtml = _pendingGenerates > 0
     ? '<button class="btn-danger btn-generate--cancel">' +
         '<span class="spinner"></span>Cancel generation' +

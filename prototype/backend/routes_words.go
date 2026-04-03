@@ -12,6 +12,7 @@ import (
 	"net/http"
 	"net/url"
 	"os"
+	"os/exec"
 	"path"
 	"path/filepath"
 	"strconv"
@@ -456,6 +457,25 @@ func defaultVoicevoxParams() voicevoxParams {
 	return voicevoxParams{Speaker: 1, SpeedScale: 1.0, IntonationScale: 1.0}
 }
 
+// wavToOgg converts WAV bytes to OGG/Opus via ffmpeg (must be in PATH).
+func wavToOgg(ctx context.Context, wav []byte) ([]byte, error) {
+	var stdout, stderr bytes.Buffer
+	cmd := exec.CommandContext(ctx, "ffmpeg",
+		"-i", "pipe:0",
+		"-c:a", "libopus",
+		"-b:a", "64k",
+		"-f", "ogg",
+		"pipe:1",
+	)
+	cmd.Stdin = bytes.NewReader(wav)
+	cmd.Stdout = &stdout
+	cmd.Stderr = &stderr
+	if err := cmd.Run(); err != nil {
+		return nil, fmt.Errorf("ffmpeg: %w: %s", err, stderr.String())
+	}
+	return stdout.Bytes(), nil
+}
+
 // synthesizeVoicevox calls the local VoiceVox engine and returns the WAV bytes.
 func synthesizeVoicevox(ctx context.Context, text string, p voicevoxParams) ([]byte, error) {
 	client := &http.Client{Timeout: 30 * time.Second}
@@ -507,10 +527,22 @@ func synthesizeVoicevoxToFile(ctx context.Context, text string, p voicevoxParams
 	if err != nil {
 		return err
 	}
+	ogg, err := wavToOgg(ctx, wav)
+	if err != nil {
+		return err
+	}
 	if err := os.MkdirAll(filepath.Dir(destPath), 0o755); err != nil {
 		return err
 	}
-	return os.WriteFile(destPath, wav, 0o644)
+	return os.WriteFile(destPath, ogg, 0o644)
+}
+
+func apiFfmpegAvailable() http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		_, err := exec.LookPath("ffmpeg")
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(map[string]bool{"available": err == nil})
+	}
 }
 
 func apiVoicevoxSpeakers() http.HandlerFunc {
@@ -601,8 +633,8 @@ func apiGenerateWordAudio(db *sql.DB) http.HandlerFunc {
 		}
 
 		audioDir := filepath.Join("static", "audio")
-		wordPath := filepath.Join(audioDir, word+".wav")
-		sentencePath := filepath.Join(audioDir, word+"_sentence.wav")
+		wordPath := filepath.Join(audioDir, word+".ogg")
+		sentencePath := filepath.Join(audioDir, word+"_sentence.ogg")
 
 		if err := synthesizeVoicevoxToFile(r.Context(), word, p, wordPath); err != nil {
 			http.Error(w, "voicevox error: "+err.Error(), http.StatusBadGateway)

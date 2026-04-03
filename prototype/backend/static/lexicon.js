@@ -1,12 +1,13 @@
 ﻿import { openEditModal, closeAddResultModal, _addPhase, _pendingGenerates } from './lexicon-add-edit.js';
 import { timeAgo, getSortedWords as _getSortedWords, renderReading } from './lexicon-utils.js';
-import { playTts, playWordAudio, playSentenceAudio, checkVoicevoxAvailable, refreshTooltip } from './common.js';
+import { playTts, playWordAudio, playSentenceAudio, checkVoicevoxAvailable, checkFfmpegAvailable, refreshTooltip } from './common.js';
 
 let words = [];
 export let defaultDrillTarget = 8; // updated from /api/providers at init
 export let _providers = null;
 export let _imageSources = null;
 export let _voicevoxAvailable = false;
+export let _ffmpegAvailable = false;
 
 function updateWordCount() {
   const active = words.filter(w => w.correct < w.target).length;
@@ -137,7 +138,10 @@ async function init() {
   renderTable(getSortedWords('added', 'desc'));
   _providers = providers.ai;
   _imageSources = providers.image_sources;
-  _voicevoxAvailable = await checkVoicevoxAvailable();
+  [_voicevoxAvailable, _ffmpegAvailable] = await Promise.all([
+    checkVoicevoxAvailable(),
+    checkFfmpegAvailable(),
+  ]);
 }
 
 init();

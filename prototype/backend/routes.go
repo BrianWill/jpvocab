@@ -72,6 +72,7 @@ func serverInit(db *sql.DB) {
 
 	r.Get("/api/voicevox/speakers", apiVoicevoxSpeakers())
 	r.Post("/api/voicevox/preview", apiVoicevoxPreview())
+	r.Get("/api/ffmpeg/available", apiFfmpegAvailable())
 
 	r.Get("/api/kanji", apiGetKanji(db))
 	r.Get("/api/drill/sessions/current", apiGetCurrentDrillSession(db))

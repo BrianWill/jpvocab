@@ -247,6 +247,7 @@
   font-size: 1.05rem;
   font-weight: 700;
   color: #cdd6f4;
+  cursor: pointer;
 }
 .result-original {
   font-size: 0.8rem;

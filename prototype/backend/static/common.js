@@ -119,8 +119,8 @@ function injectSettingsModal() {
         <div class="restart-field">
           <label>Intonation</label>
           <div class="settings-slider-row">
-            <input type="range" id="settings-vv-intonation" min="0.0" max="2.0" step="0.05" value="1.0">
-            <span id="settings-vv-intonation-val" class="settings-slider-val">1.00</span>
+            <input type="range" id="settings-vv-intonation" min="0.0" max="2.0" step="0.05" value="1.5">
+            <span id="settings-vv-intonation-val" class="settings-slider-val">1.50</span>
           </div>
         </div>
         <div class="restart-field">
@@ -160,9 +160,11 @@ const TTS_DEFAULTS = { ja: 'Kyoko', en: 'Daniel' };
 // Returns the current VoiceVox settings from localStorage.
 export function getVoicevoxSettings() {
   return {
-    speaker: parseInt(localStorage.getItem('vv-speaker') ?? '1', 10),
+    speaker: localStorage.getItem('vv-speaker') !== null
+      ? parseInt(localStorage.getItem('vv-speaker'), 10)
+      : (getDefaultVoicevoxSpeakerId() ?? 1),
     speedScale: parseFloat(localStorage.getItem('vv-speed') ?? '1.0'),
-    intonationScale: parseFloat(localStorage.getItem('vv-intonation') ?? '1.0'),
+    intonationScale: parseFloat(localStorage.getItem('vv-intonation') ?? '1.5'),
   };
 }
 
@@ -206,6 +208,8 @@ const VOICEVOX_GENDER = {
   '3be49e15-34bb-48a0-9e2f-9b80c96e9905': 'F', // あんこもん
 };
 
+const VOICEVOX_DEFAULT_SPEAKER_UUID = '4f51116a-d9ee-4516-925d-21f183e2afad'; // 青山龍星
+
 let _voicevoxSpeakers = null; // cached speaker list; null = not yet fetched, [] = unavailable
 
 // Fetches the speaker list once and caches it. Returns true if VoiceVox is available.
@@ -218,6 +222,19 @@ export async function checkVoicevoxAvailable() {
     _voicevoxSpeakers = [];
   }
   return _voicevoxSpeakers.length > 0;
+}
+
+// Returns the ノーマル style ID for the default speaker (青山龍星) from the cached list,
+// or null if the list isn't loaded or the speaker isn't found.
+function getDefaultVoicevoxSpeakerId() {
+  if (!_voicevoxSpeakers?.length) return null;
+  for (const sp of _voicevoxSpeakers) {
+    if (sp.speaker_uuid === VOICEVOX_DEFAULT_SPEAKER_UUID) {
+      const normal = sp.styles.find(s => s.name === 'ノーマル');
+      if (normal) return normal.id;
+    }
+  }
+  return null;
 }
 
 let _ffmpegAvailableCache = null;
@@ -244,7 +261,7 @@ async function populateVoicevoxSpeakers() {
     sel.innerHTML = '<option value="1">VoiceVox unavailable</option>';
     return;
   }
-  const savedId = parseInt(localStorage.getItem('vv-speaker') ?? '1', 10);
+  const savedRaw = localStorage.getItem('vv-speaker');
 
   // Keep only speakers that have a ノーマル style, grouped by gender.
   const groups = { F: [], M: [], '': [] };
@@ -255,9 +272,13 @@ async function populateVoicevoxSpeakers() {
     groups[gender].push({ id: normal.id, name: sp.name });
   }
 
+  const selectedId = savedRaw !== null
+    ? parseInt(savedRaw, 10)
+    : (getDefaultVoicevoxSpeakerId() ?? groups.M[0]?.id ?? groups.F[0]?.id ?? 1);
+
   const makeOptions = list =>
     list.map(({ id, name }) =>
-      `<option value="${id}"${id === savedId ? ' selected' : ''}>${name}</option>`
+      `<option value="${id}"${id === selectedId ? ' selected' : ''}>${name}</option>`
     ).join('');
 
   sel.innerHTML =
@@ -368,7 +389,7 @@ function initializeSettings() {
       document.getElementById('settings-vv-speed-val').textContent = parseFloat(vvSpeed.value).toFixed(2);
     }
     if (vvIntonation) {
-      vvIntonation.value = localStorage.getItem('vv-intonation') ?? '1.0';
+      vvIntonation.value = localStorage.getItem('vv-intonation') ?? '1.5';
       document.getElementById('settings-vv-intonation-val').textContent = parseFloat(vvIntonation.value).toFixed(2);
     }
 
@@ -479,7 +500,7 @@ function initializeSettings() {
     const btn = document.getElementById('settings-vv-preview');
     const speaker = parseInt(document.getElementById('settings-vv-speaker')?.value ?? '1', 10);
     const speedScale = parseFloat(document.getElementById('settings-vv-speed')?.value ?? '1.0');
-    const intonationScale = parseFloat(document.getElementById('settings-vv-intonation')?.value ?? '1.0');
+    const intonationScale = parseFloat(document.getElementById('settings-vv-intonation')?.value ?? '1.5');
     btn.disabled = true;
     try {
       const resp = await fetch('/api/voicevox/preview', {

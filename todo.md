@@ -5,16 +5,18 @@ This file is random notes of possible features and bug fixes.
 - voicevox stored as ogg or mp3 instead of wav
 - main-area on drill page doesnt' have stable height
 
+- on drill page, hotkey w does slowed playback (0.8?) of the word
+    - hotkey s does slowed playback (0.8) of the sentence
+
+
 - generate audio for the words
     - pulldown options: either no audio, browser tts, or voicevox
         - selecting voicevox triggers error message if the voicevox server is not found
             - give detailed message explaining what user must do, including expected port number
-    - drill page: button and hotkey to play the example sentence if audio is available
-        - second and third sets of hotkeys to play at slower speeds
+    
+    
     - lexicon page: button to play word audio / sentence audio
-    - in settings, pick preferred male and female voices
-        - settings menu let's you play sample of the voices
-
+    
 - clicking the image placeholder or thumbnail shoudl open a file dialog to upload an image file
 
 - pitch accent info on readings

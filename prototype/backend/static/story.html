@@ -3,10 +3,10 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Stories</title>
+<title>Story</title>
 <link rel="icon" href="/static/favicon.ico">
 <link rel="stylesheet" href="/static/common.css">
-<link rel="stylesheet" href="/static/stories.css">
+<link rel="stylesheet" href="/static/story.css">
 </head>
 <body>
 
@@ -17,16 +17,16 @@
   </div>
 </div>
 
-<main class="stories-body">
-  <div class="stories-shell">
-    <h1 class="stories-title">Stories</h1>
-    <p class="stories-subtitle">Browse seeded stories by title and date.</p>
-    <div id="stories-list" class="stories-list"></div>
-    <p id="stories-empty" class="stories-empty" hidden>No stories yet.</p>
+<main class="story-body">
+  <div class="story-shell">
+    <a class="story-back-link" href="/stories">← Back to stories</a>
+    <h1 id="story-title" class="story-title"></h1>
+    <div id="story-content" class="story-content"></div>
+    <p id="story-error" class="story-error" hidden>Could not load this story.</p>
   </div>
 </main>
 
 <script type="module" src="/static/common.js"></script>
-<script type="module" src="/static/stories.js"></script>
+<script type="module" src="/static/story.js"></script>
 </body>
 </html>

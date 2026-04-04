@@ -75,6 +75,7 @@ func migrate(db *sql.DB) {
 		)`,
 		`CREATE TABLE IF NOT EXISTS stories (
 			id         INTEGER  PRIMARY KEY AUTOINCREMENT,
+			title      TEXT     NOT NULL,
 			audio_path TEXT,
 			created_at DATETIME NOT NULL DEFAULT (datetime('now'))
 		)`,
@@ -350,6 +351,7 @@ type seedStorySentence struct {
 }
 
 type seedStory struct {
+	Title     string              `json:"title"`
 	AudioPath *string             `json:"audio_path"`
 	Sentences []seedStorySentence `json:"sentences"`
 }
@@ -502,6 +504,10 @@ func seedDB(db *sql.DB) {
 	}
 
 	for _, story := range seed.Stories {
+		if story.Title == "" {
+			tx.Rollback()
+			log.Fatal("seed: story title is required")
+		}
 		sentences := make([]storySentenceInput, 0, len(story.Sentences))
 		for _, sentence := range story.Sentences {
 			if sentence.JapaneseText == "" {
@@ -514,7 +520,7 @@ func seedDB(db *sql.DB) {
 				IsParagraphStart: sentence.IsParagraphStart,
 			})
 		}
-		if _, err := insertStoryTx(tx, story.AudioPath, sentences); err != nil {
+		if _, err := insertStoryTx(tx, story.Title, story.AudioPath, sentences); err != nil {
 			tx.Rollback()
 			log.Fatal("seed: insert story:", err)
 		}

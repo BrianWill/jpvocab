@@ -1111,6 +1111,7 @@
   ],
   "stories": [
     {
+      "title": "足立美術館の庭園 The Garden of the Adachi Museum of Art",
       "audio_path": null,
       "sentences": [
         {"japanese_text": "皆さん、こんにちは。", "english_text": null, "is_paragraph_start": true},
@@ -1147,6 +1148,81 @@
         {"japanese_text": "「東京ドームで何個分くらいの広さですよ」っていうのが多いですね。", "english_text": null, "is_paragraph_start": false},
         {"japanese_text": "この庭園の広さは、東京ドーム３個分です。", "english_text": null, "is_paragraph_start": false},
         {"japanese_text": "とても広いですね。", "english_text": null, "is_paragraph_start": false}
+      ]
+    },
+    {
+      "title": "日本の童謡『げんこつ山のたぬきさん』 Japanese Nursery Rhyme: Baby Racoondog of Genkotsuyama",
+      "audio_path": null,
+      "sentences": [
+        {"japanese_text": "皆さん、こんにちは。", "english_text": null, "is_paragraph_start": true},
+        {"japanese_text": "ちえこです。", "english_text": null, "is_paragraph_start": false},
+        {"japanese_text": "よろしくお願いします。", "english_text": null, "is_paragraph_start": false},
+        {"japanese_text": "今日は歌を歌います。", "english_text": null, "is_paragraph_start": false},
+
+        {"japanese_text": "歌の名前は『げんこつ山のたぬきさん』です。", "english_text": null, "is_paragraph_start": true},
+        {"japanese_text": "『げんこつ山のたぬきさん』です。", "english_text": null, "is_paragraph_start": false},
+        {"japanese_text": "どんな歌ですか？", "english_text": null, "is_paragraph_start": false},
+
+        {"japanese_text": "見てください。", "english_text": null, "is_paragraph_start": true},
+        {"japanese_text": "これは、これは何ですか？", "english_text": null, "is_paragraph_start": false},
+        {"japanese_text": "これは何ですか？", "english_text": null, "is_paragraph_start": false},
+        {"japanese_text": "これは山です。", "english_text": null, "is_paragraph_start": false},
+        {"japanese_text": "これは山です。", "english_text": null, "is_paragraph_start": false},
+
+        {"japanese_text": "ここ、ここを見てください。", "english_text": null, "is_paragraph_start": true},
+        {"japanese_text": "何の形ですか？", "english_text": null, "is_paragraph_start": false},
+        {"japanese_text": "何の形ですか？", "english_text": null, "is_paragraph_start": false},
+
+        {"japanese_text": "皆さん、これは何ですか？", "english_text": null, "is_paragraph_start": true},
+        {"japanese_text": "これは手です。", "english_text": null, "is_paragraph_start": false},
+        {"japanese_text": "これは手です。", "english_text": null, "is_paragraph_start": false},
+
+        {"japanese_text": "手を握ります。", "english_text": null, "is_paragraph_start": true},
+        {"japanese_text": "手を握ります。", "english_text": null, "is_paragraph_start": false},
+        {"japanese_text": "手を握ると、げんこつです。", "english_text": null, "is_paragraph_start": false},
+        {"japanese_text": "これはげんこつです。", "english_text": null, "is_paragraph_start": false},
+        {"japanese_text": "これはげんこつです。", "english_text": null, "is_paragraph_start": false},
+
+        {"japanese_text": "この山は、げんこつの形です。", "english_text": null, "is_paragraph_start": true},
+        {"japanese_text": "げんこつの形です。", "english_text": null, "is_paragraph_start": false},
+        {"japanese_text": "だから、この山の名前は、げんこつ山です。", "english_text": null, "is_paragraph_start": false},
+        {"japanese_text": "げんこつがあります。", "english_text": null, "is_paragraph_start": false},
+        {"japanese_text": "だから、げんこつ山です。", "english_text": null, "is_paragraph_start": false},
+
+        {"japanese_text": "げんこつ山にたぬきがいます。", "english_text": null, "is_paragraph_start": true},
+        {"japanese_text": "げんこつ山に、たぬきがいます。", "english_text": null, "is_paragraph_start": false},
+
+        {"japanese_text": "たぬきには小さい子供がいます。", "english_text": null, "is_paragraph_start": true},
+        {"japanese_text": "たぬきの子供です。", "english_text": null, "is_paragraph_start": false},
+        {"japanese_text": "たぬきの小さい子供がいます。", "english_text": null, "is_paragraph_start": false},
+
+        {"japanese_text": "この小さい子供のたぬきは、お母さんのおっぱいを飲んでいます。", "english_text": null, "is_paragraph_start": true},
+        {"japanese_text": "おっぱいを飲んでいます。", "english_text": null, "is_paragraph_start": false},
+        {"japanese_text": "このたぬきは、お母さんのおっぱいを飲みます。", "english_text": null, "is_paragraph_start": false},
+        {"japanese_text": "飲みます。", "english_text": null, "is_paragraph_start": false},
+
+        {"japanese_text": "それから、このたぬきは寝ます。", "english_text": null, "is_paragraph_start": true},
+        {"japanese_text": "寝ます。", "english_text": null, "is_paragraph_start": false},
+
+        {"japanese_text": "それから、お母さんは、お母さんは、このたぬきを抱っこします。", "english_text": null, "is_paragraph_start": true},
+        {"japanese_text": "抱っこします。", "english_text": null, "is_paragraph_start": false},
+
+        {"japanese_text": "それから、お母さんは、このたぬきをおんぶします。", "english_text": null, "is_paragraph_start": true},
+        {"japanese_text": "おんぶします。", "english_text": null, "is_paragraph_start": false},
+        {"japanese_text": "はい。", "english_text": null, "is_paragraph_start": false},
+
+        {"japanese_text": "そして、今日は終わりました。", "english_text": null, "is_paragraph_start": true},
+        {"japanese_text": "また明日！", "english_text": null, "is_paragraph_start": false},
+
+        {"japanese_text": "はい、こんな歌です。", "english_text": null, "is_paragraph_start": true},
+        {"japanese_text": "はい、じゃあ今からアクションして歌います。", "english_text": null, "is_paragraph_start": false},
+        {"japanese_text": "１回目はゆっくり歌います。", "english_text": null, "is_paragraph_start": false},
+        {"japanese_text": "アクションもしてください。", "english_text": null, "is_paragraph_start": false},
+        {"japanese_text": "いきます。", "english_text": null, "is_paragraph_start": false},
+
+        {"japanese_text": "げんこつ山のたぬきさん。", "english_text": null, "is_paragraph_start": true},
+        {"japanese_text": "おっぱい飲んで、ねんねして。", "english_text": null, "is_paragraph_start": false},
+        {"japanese_text": "抱っこして、おんぶして、また明日。", "english_text": null, "is_paragraph_start": false}
       ]
     }
   ]

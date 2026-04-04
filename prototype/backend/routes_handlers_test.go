@@ -260,6 +260,85 @@ func TestAPIGetWords_ReturnsInsertedWord(t *testing.T) {
 	}
 }
 
+func TestAPIGetStories_ReturnsTitle(t *testing.T) {
+	db := testDB(t)
+	rec := httptest.NewRecorder()
+	req := httptest.NewRequest(http.MethodGet, "/api/stories", nil)
+
+	title := "Garden Story"
+	_, err := insertStory(db, title, nil, []storySentenceInput{
+		{
+			Words: []storyWordInput{
+				{DisplayWord: "庭園", BaseWord: "庭園", English: "garden"},
+			},
+			IsParagraphStart: true,
+		},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	apiGetStories(db).ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status: got %d, want %d", rec.Code, http.StatusOK)
+	}
+	var stories []storyJSON
+	if err := json.NewDecoder(rec.Body).Decode(&stories); err != nil {
+		t.Fatal(err)
+	}
+	if len(stories) != 1 {
+		t.Fatalf("expected 1 story, got %d", len(stories))
+	}
+	if stories[0].Title != title {
+		t.Errorf("title: got %q, want %q", stories[0].Title, title)
+	}
+}
+
+func TestAPIGetStory_ReturnsStoryByID(t *testing.T) {
+	db := testDB(t)
+	title := "Garden Story"
+	id, err := insertStory(db, title, nil, []storySentenceInput{
+		{Words: []storyWordInput{{DisplayWord: "庭園", BaseWord: "庭園", English: "garden"}}, IsParagraphStart: true},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	req := httptest.NewRequest(http.MethodGet, "/api/stories/1", nil)
+	req = withURLParam(req, "id", int64ToString(id))
+	rec := httptest.NewRecorder()
+
+	apiGetStory(db).ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status: got %d, want %d", rec.Code, http.StatusOK)
+	}
+	var story storyJSON
+	if err := json.NewDecoder(rec.Body).Decode(&story); err != nil {
+		t.Fatal(err)
+	}
+	if story.ID != id {
+		t.Errorf("id: got %d, want %d", story.ID, id)
+	}
+	if story.Title != title {
+		t.Errorf("title: got %q, want %q", story.Title, title)
+	}
+}
+
+func TestAPIGetStory_InvalidID(t *testing.T) {
+	db := testDB(t)
+	req := httptest.NewRequest(http.MethodGet, "/api/stories/nope", nil)
+	req = withURLParam(req, "id", "nope")
+	rec := httptest.NewRecorder()
+
+	apiGetStory(db).ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusBadRequest {
+		t.Fatalf("status: got %d, want %d", rec.Code, http.StatusBadRequest)
+	}
+}
+
 func TestRenderAppPage_RendersHTMLAndSharedNav(t *testing.T) {
 	rec := httptest.NewRecorder()
 

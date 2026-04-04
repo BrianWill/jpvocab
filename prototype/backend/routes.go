@@ -32,11 +32,14 @@ func serverInit(db *sql.DB) {
 	r.Get("/lexicon", appPage("lexicon.html", "lexicon"))
 	r.Get("/drill", appPage("drill.html", "drill"))
 	r.Get("/stories", appPage("stories.html", "stories"))
+	r.Get("/stories/{id}", appPage("story.html", "story-detail"))
 
 	r.Handle("/static/*", http.StripPrefix("/static/", http.FileServer(http.Dir("static"))))
 
 	r.Get("/api/activity/stats", apiGetActivityStats(db))
 	r.Get("/api/activity/calendar", apiGetActivityCalendar(db))
+	r.Get("/api/stories", apiGetStories(db))
+	r.Get("/api/stories/{id}", apiGetStory(db))
 
 	r.Get("/api/providers", func(w http.ResponseWriter, r *http.Request) {
 		p := checkAIProviders()
@@ -156,6 +159,42 @@ func apiGetActivityCalendar(db *sql.DB) http.HandlerFunc {
 		}
 		w.Header().Set("Content-Type", "application/json")
 		json.NewEncoder(w).Encode(cal)
+	}
+}
+
+func apiGetStories(db *sql.DB) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		stories, err := listStories(db)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		if stories == nil {
+			stories = []storyJSON{}
+		}
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(stories)
+	}
+}
+
+func apiGetStory(db *sql.DB) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		id, err := strconv.ParseInt(chi.URLParam(r, "id"), 10, 64)
+		if err != nil {
+			http.Error(w, "invalid story id", http.StatusBadRequest)
+			return
+		}
+		story, err := getStoryByID(db, id)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		if story == nil {
+			http.Error(w, "story not found", http.StatusNotFound)
+			return
+		}
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(story)
 	}
 }
 

@@ -37,19 +37,20 @@ type storySentenceJSON struct {
 
 type storyJSON struct {
 	ID        int64               `json:"id"`
+	Title     string              `json:"title"`
 	AudioPath *string             `json:"audioPath"`
 	CreatedAt string              `json:"createdAt"`
 	Sentences []storySentenceJSON `json:"sentences"`
 }
 
-func insertStory(db *sql.DB, audioPath *string, sentences []storySentenceInput) (int64, error) {
+func insertStory(db *sql.DB, title string, audioPath *string, sentences []storySentenceInput) (int64, error) {
 	tx, err := db.Begin()
 	if err != nil {
 		return 0, err
 	}
 	defer tx.Rollback()
 
-	storyID, err := insertStoryTx(tx, audioPath, sentences)
+	storyID, err := insertStoryTx(tx, title, audioPath, sentences)
 	if err != nil {
 		return 0, err
 	}
@@ -59,15 +60,18 @@ func insertStory(db *sql.DB, audioPath *string, sentences []storySentenceInput) 
 	return storyID, nil
 }
 
-func insertStoryTx(tx *sql.Tx, audioPath *string, sentences []storySentenceInput) (int64, error) {
+func insertStoryTx(tx *sql.Tx, title string, audioPath *string, sentences []storySentenceInput) (int64, error) {
+	if strings.TrimSpace(title) == "" {
+		return 0, errors.New("story title is required")
+	}
 	if len(sentences) == 0 {
 		return 0, errors.New("story must have at least one sentence")
 	}
 
 	res, err := tx.Exec(`
-		INSERT INTO stories (audio_path)
-		VALUES (?)
-	`, audioPath)
+		INSERT INTO stories (title, audio_path)
+		VALUES (?, ?)
+	`, title, audioPath)
 	if err != nil {
 		return 0, err
 	}
@@ -123,7 +127,7 @@ func insertStoryTx(tx *sql.Tx, audioPath *string, sentences []storySentenceInput
 
 func listStories(db *sql.DB) ([]storyJSON, error) {
 	rows, err := db.Query(`
-		SELECT s.id, s.audio_path, s.created_at,
+		SELECT s.id, s.title, s.audio_path, s.created_at,
 		       ss.id, ss.position, ss.words_json, ss.english_text, ss.is_paragraph_start
 		FROM stories s
 		LEFT JOIN story_sentences ss ON ss.story_id = s.id
@@ -140,6 +144,7 @@ func listStories(db *sql.DB) ([]storyJSON, error) {
 
 	for rows.Next() {
 		var storyID int64
+		var title string
 		var audioPath sql.NullString
 		var createdAt string
 		var sentenceID sql.NullInt64
@@ -149,7 +154,7 @@ func listStories(db *sql.DB) ([]storyJSON, error) {
 		var isParagraphStart sql.NullInt64
 
 		if err := rows.Scan(
-			&storyID, &audioPath, &createdAt,
+			&storyID, &title, &audioPath, &createdAt,
 			&sentenceID, &position, &wordsJSON, &englishText, &isParagraphStart,
 		); err != nil {
 			return nil, err
@@ -158,6 +163,98 @@ func listStories(db *sql.DB) ([]storyJSON, error) {
 		if current == nil || storyID != currentID {
 			story := storyJSON{
 				ID:        storyID,
+				Title:     title,
+				CreatedAt: createdAt,
+				Sentences: []storySentenceJSON{},
+			}
+			if audioPath.Valid {
+				path := audioPath.String
+				story.AudioPath = &path
+			}
+			stories = append(stories, story)
+			current = &stories[len(stories)-1]
+			currentID = storyID
+		}
+
+		if sentenceID.Valid {
+			sentence := storySentenceJSON{
+				ID:               sentenceID.Int64,
+				Position:         int(position.Int64),
+				Words:            []storyWordJSON{},
+				IsParagraphStart: isParagraphStart.Valid && isParagraphStart.Int64 == 1,
+			}
+			if wordsJSON.Valid {
+				if err := json.Unmarshal([]byte(wordsJSON.String), &sentence.Words); err != nil {
+					return nil, err
+				}
+				if sentence.Words == nil {
+					sentence.Words = []storyWordJSON{}
+				}
+			}
+			if englishText.Valid {
+				text := englishText.String
+				sentence.EnglishText = &text
+			}
+			current.Sentences = append(current.Sentences, sentence)
+		}
+	}
+	if stories == nil {
+		stories = []storyJSON{}
+	}
+	return stories, rows.Err()
+}
+
+func getStoryByID(db *sql.DB, id int64) (*storyJSON, error) {
+	stories, err := queryStories(db, `WHERE s.id = ?`, id)
+	if err != nil {
+		return nil, err
+	}
+	if len(stories) == 0 {
+		return nil, nil
+	}
+	return &stories[0], nil
+}
+
+func queryStories(db *sql.DB, whereClause string, args ...any) ([]storyJSON, error) {
+	rows, err := db.Query(`
+		SELECT s.id, s.title, s.audio_path, s.created_at,
+		       ss.id, ss.position, ss.words_json, ss.english_text, ss.is_paragraph_start
+		FROM stories s
+		LEFT JOIN story_sentences ss ON ss.story_id = s.id
+	`+whereClause+`
+		ORDER BY s.created_at DESC, s.id DESC, ss.position ASC
+	`, args...)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var stories []storyJSON
+	var current *storyJSON
+	var currentID int64 = -1
+
+	for rows.Next() {
+		var storyID int64
+		var title string
+		var audioPath sql.NullString
+		var createdAt string
+		var sentenceID sql.NullInt64
+		var position sql.NullInt64
+		var wordsJSON sql.NullString
+		var englishText sql.NullString
+		var isParagraphStart sql.NullInt64
+
+		if err := rows.Scan(
+			&storyID, &title, &audioPath, &createdAt,
+			&sentenceID, &position, &wordsJSON, &englishText, &isParagraphStart,
+		); err != nil {
+			return nil, err
+		}
+
+		if current == nil || storyID != currentID {
+			story := storyJSON{
+				ID:        storyID,
+				Title:     title,
 				CreatedAt: createdAt,
 				Sentences: []storySentenceJSON{},
 			}

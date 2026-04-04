@@ -987,6 +987,7 @@ func TestDeleteWordsByName(t *testing.T) {
 
 func TestInsertStory_AndListStories(t *testing.T) {
 	db := testDB(t)
+	title := "足立美術館の庭園"
 	audioPath := "audio/stories/morning.ogg"
 	en1 := "Good morning."
 	en2 := "Let's do our best today too."
@@ -994,7 +995,7 @@ func TestInsertStory_AndListStories(t *testing.T) {
 	ts2 := int64(700)
 	ts3 := int64(2450)
 
-	id, err := insertStory(db, &audioPath, []storySentenceInput{
+	id, err := insertStory(db, title, &audioPath, []storySentenceInput{
 		{
 			Words: []storyWordInput{
 				{DisplayWord: "おはよう", BaseWord: "おはよう", English: "good morning", AudioTimestampMs: &ts1},
@@ -1028,6 +1029,9 @@ func TestInsertStory_AndListStories(t *testing.T) {
 		t.Fatalf("expected 1 story, got %d", len(stories))
 	}
 	story := stories[0]
+	if story.Title != title {
+		t.Errorf("title: got %q, want %q", story.Title, title)
+	}
 	if story.AudioPath == nil || *story.AudioPath != audioPath {
 		t.Errorf("audio_path: got %+v", story.AudioPath)
 	}
@@ -1060,7 +1064,7 @@ func TestInsertStory_AndListStories(t *testing.T) {
 func TestInsertStory_RequiresAtLeastOneSentence(t *testing.T) {
 	db := testDB(t)
 
-	_, err := insertStory(db, nil, nil)
+	_, err := insertStory(db, "No sentences", nil, nil)
 	if err == nil {
 		t.Fatal("expected error for missing sentences")
 	}
@@ -1073,7 +1077,7 @@ func TestInsertStory_RejectsNegativeAudioTimestamp(t *testing.T) {
 	db := testDB(t)
 	badTs := int64(-1)
 
-	_, err := insertStory(db, nil, []storySentenceInput{
+	_, err := insertStory(db, "Bad timestamps", nil, []storySentenceInput{
 		{
 			Words: []storyWordInput{
 				{DisplayWord: "文", BaseWord: "文", English: "sentence", AudioTimestampMs: &badTs},
@@ -1091,11 +1095,25 @@ func TestInsertStory_RejectsNegativeAudioTimestamp(t *testing.T) {
 func TestInsertStory_RequiresAtLeastOneWordPerSentence(t *testing.T) {
 	db := testDB(t)
 
-	_, err := insertStory(db, nil, []storySentenceInput{{}})
+	_, err := insertStory(db, "Missing words", nil, []storySentenceInput{{}})
 	if err == nil {
 		t.Fatal("expected error for missing words")
 	}
 	if !strings.Contains(err.Error(), "at least one word") {
+		t.Errorf("unexpected error: %v", err)
+	}
+}
+
+func TestInsertStory_RequiresTitle(t *testing.T) {
+	db := testDB(t)
+
+	_, err := insertStory(db, "", nil, []storySentenceInput{
+		{Words: []storyWordInput{{DisplayWord: "庭園", BaseWord: "庭園", English: "garden"}}},
+	})
+	if err == nil {
+		t.Fatal("expected error for missing title")
+	}
+	if !strings.Contains(err.Error(), "title is required") {
 		t.Errorf("unexpected error: %v", err)
 	}
 }
@@ -1125,6 +1143,17 @@ func TestBuildStorySentenceWords_UsesBaseFormsAndGlosses(t *testing.T) {
 	}
 	if !foundPeriod {
 		t.Error("expected punctuation token in story words")
+	}
+}
+
+func TestGetStoryByID_NotFound(t *testing.T) {
+	db := testDB(t)
+	story, err := getStoryByID(db, 9999)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if story != nil {
+		t.Errorf("expected nil story, got %+v", story)
 	}
 }
 

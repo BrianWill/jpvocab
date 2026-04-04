@@ -1,0 +1,65 @@
+.stories-body {
+  flex: 1;
+  overflow-y: auto;
+  padding: 2rem;
+}
+
+.stories-shell {
+  max-width: 860px;
+  margin: 0 auto;
+}
+
+.stories-title {
+  font-size: 2rem;
+  margin: 0 0 0.35rem;
+  color: #cdd6f4;
+}
+
+.stories-subtitle {
+  margin: 0 0 1.5rem;
+  color: #7b8cb8;
+}
+
+.stories-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.9rem;
+}
+
+.story-card-link {
+  color: inherit;
+  text-decoration: none;
+}
+
+.story-card {
+  background: #181825;
+  border: 1px solid #313244;
+  border-radius: 10px;
+  padding: 1rem 1.1rem;
+}
+
+.story-card:hover {
+  border-color: #45475a;
+  background: #1e1e2e;
+}
+
+.story-card-meta {
+  display: flex;
+  gap: 0.75rem;
+  margin-bottom: 0.45rem;
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: #7b8cb8;
+}
+
+.story-card-title {
+  margin: 0;
+  font-size: 1.2rem;
+  color: #cdd6f4;
+}
+
+.stories-empty {
+  margin: 0;
+  color: #7b8cb8;
+}

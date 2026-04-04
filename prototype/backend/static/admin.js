@@ -1,29 +1,34 @@
-var form = document.querySelector('.add-word-form');
-var modal = document.getElementById('batch-modal');
-var modalBody = document.getElementById('batch-modal-body');
-var modalFooter = document.getElementById('batch-modal-footer');
-var modalStatus = document.getElementById('batch-modal-status');
-var controller = null;
-var addedWords = [];
-var phase = 'idle'; // 'loading' | 'done' | 'cancelled' | 'error'
+const els = {
+  form: document.querySelector('.add-word-form'),
+  modal: document.getElementById('batch-modal'),
+  modalBody: document.getElementById('batch-modal-body'),
+  modalFooter: document.getElementById('batch-modal-footer'),
+  modalStatus: document.getElementById('batch-modal-status'),
+};
 
-modal.addEventListener('click', function (e) {
-  if (e.target === modal && phase !== 'loading') {
-    modal.style.display = 'none';
+const state = {
+  addedWords: [],
+  controller: null,
+  phase: 'idle', // 'loading' | 'done' | 'cancelled' | 'error'
+};
+
+els.modal.addEventListener('click', function (e) {
+  if (e.target === els.modal && state.phase !== 'loading') {
+    els.modal.style.display = 'none';
     location.reload();
   }
 });
 
-form.addEventListener('submit', function (e) {
+els.form.addEventListener('submit', function (e) {
   e.preventDefault();
-  addedWords = [];
-  phase = 'loading';
-  modalBody.innerHTML = '';
-  modal.style.display = 'flex';
+  state.addedWords = [];
+  state.phase = 'loading';
+  els.modalBody.innerHTML = '';
+  els.modal.style.display = 'flex';
   setStatus('loading', 'Processing\u2026');
   initFooter();
-  controller = new AbortController();
-  runBatch(new FormData(form), controller.signal);
+  state.controller = new AbortController();
+  runBatch(new FormData(els.form), state.controller.signal);
 });
 
 async function runBatch(formData, signal) {
@@ -47,25 +52,25 @@ async function runBatch(formData, signal) {
         if (!part.startsWith('data: ')) continue;
         var data = JSON.parse(part.slice(6));
         if (data.done) {
-          phase = 'done';
-          setStatus('done', addedWords.length + ' added, ' + (modalBody.children.length - addedWords.length) + ' skipped');
+          state.phase = 'done';
+          setStatus('done', state.addedWords.length + ' added, ' + (els.modalBody.children.length - state.addedWords.length) + ' skipped');
           updateFooter();
           return;
         }
         appendResult(data);
-        if (data.added) addedWords.push(data.word);
+        if (data.added) state.addedWords.push(data.word);
         updateFooter();
       }
     }
-    phase = 'done';
-    setStatus('done', addedWords.length + ' added');
+    state.phase = 'done';
+    setStatus('done', state.addedWords.length + ' added');
     updateFooter();
   } catch (err) {
     if (err.name === 'AbortError') {
-      phase = 'cancelled';
-      setStatus('cancelled', 'Cancelled \u2014 ' + addedWords.length + ' word(s) added before cancel');
+      state.phase = 'cancelled';
+      setStatus('cancelled', 'Cancelled \u2014 ' + state.addedWords.length + ' word(s) added before cancel');
     } else {
-      phase = 'error';
+      state.phase = 'error';
       setStatus('error', 'Error: ' + err.message);
     }
     updateFooter();
@@ -97,7 +102,7 @@ function appendResult(data) {
   row.innerHTML =
     '<div class="word-result-main"><span class="result-word">' + wordSpan + '</span>' + badge + '</div>' +
     details;
-  modalBody.appendChild(row);
+  els.modalBody.appendChild(row);
 }
 
 function detail(label, text) {
@@ -110,39 +115,39 @@ function esc(s) {
 
 function setStatus(type, text) {
   var spinner = type === 'loading' ? '<span class="spinner"></span>' : '';
-  modalStatus.className = 'modal-status modal-status-' + type;
-  modalStatus.innerHTML = spinner + '<span>' + esc(text) + '</span>';
+  els.modalStatus.className = 'modal-status modal-status-' + type;
+  els.modalStatus.innerHTML = spinner + '<span>' + esc(text) + '</span>';
 }
 
 // Render all three buttons once when the modal opens.
 function initFooter() {
-  modalFooter.innerHTML =
+  els.modalFooter.innerHTML =
     '<button id="btn-cancel">Cancel request</button>' +
     '<button id="btn-remove" class="btn-danger">Remove added words</button>' +
     '<button id="btn-close">Close</button>';
 
-  document.getElementById('btn-cancel').onclick = function () {
-    if (controller) controller.abort();
-  };
-  document.getElementById('btn-remove').onclick = async function () {
-    var words = addedWords.slice();
+  document.getElementById('btn-cancel').addEventListener('click', function () {
+    if (state.controller) state.controller.abort();
+  });
+  document.getElementById('btn-remove').addEventListener('click', async function () {
+    var words = state.addedWords.slice();
     await fetch('/admin/words/delete', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ words: words }),
     });
-    addedWords = [];
-    modalBody.querySelectorAll('.badge-added').forEach(function (badge) {
+    state.addedWords = [];
+    els.modalBody.querySelectorAll('.badge-added').forEach(function (badge) {
       badge.className = 'result-badge badge-removed';
       badge.textContent = 'removed';
     });
     setStatus('done', 'Removed \u2014 0 words in lexicon from this batch');
     updateFooter();
-  };
-  document.getElementById('btn-close').onclick = function () {
-    modal.style.display = 'none';
+  });
+  document.getElementById('btn-close').addEventListener('click', function () {
+    els.modal.style.display = 'none';
     location.reload();
-  };
+  });
   updateFooter();
 }
 
@@ -153,10 +158,10 @@ function updateFooter() {
   var btnClose  = document.getElementById('btn-close');
   if (!btnCancel) return;
 
-  btnCancel.disabled = phase !== 'loading';
-  btnRemove.disabled = addedWords.length === 0 || phase === 'loading';
-  btnRemove.textContent = addedWords.length > 0
-    ? 'Remove the ' + addedWords.length + ' added word' + (addedWords.length === 1 ? '' : 's')
+  btnCancel.disabled = state.phase !== 'loading';
+  btnRemove.disabled = state.addedWords.length === 0 || state.phase === 'loading';
+  btnRemove.textContent = state.addedWords.length > 0
+    ? 'Remove the ' + state.addedWords.length + ' added word' + (state.addedWords.length === 1 ? '' : 's')
     : 'Remove added words';
-  btnClose.disabled = phase === 'loading';
+  btnClose.disabled = state.phase === 'loading';
 }

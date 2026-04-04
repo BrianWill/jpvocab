@@ -1,0 +1,10 @@
+{{define "app_nav"}}
+<!-- Shared top-nav cluster: app page links plus the app logo/home link. -->
+<div class="page-nav-links">
+  <a class="page-nav-link{{if eq .CurrentPage "drill"}} page-nav-link--current{{end}}" href="/drill">Drill{{if ne .CurrentPage "drill"}} →{{end}}</a>
+  <a class="page-nav-link{{if eq .CurrentPage "activity"}} page-nav-link--current{{end}}" href="/activity">Activity{{if ne .CurrentPage "activity"}} →{{end}}</a>
+  <a class="page-nav-link{{if eq .CurrentPage "stories"}} page-nav-link--current{{end}}" href="/stories">Stories{{if ne .CurrentPage "stories"}} →{{end}}</a>
+  <a class="page-nav-link{{if eq .CurrentPage "lexicon"}} page-nav-link--current{{end}}" href="/lexicon">Lexicon{{if ne .CurrentPage "lexicon"}} →{{end}}</a>
+  <a class="app-logo" href="/welcome">語</a>
+</div>
+{{end}}

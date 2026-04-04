@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"strconv"
+	"strings"
 	"testing"
 
 	"github.com/go-chi/chi/v5"
@@ -256,6 +257,33 @@ func TestAPIGetWords_ReturnsInsertedWord(t *testing.T) {
 	}
 	if words[0].KanjiData == nil {
 		t.Error("KanjiData should be [] not nil in JSON response")
+	}
+}
+
+func TestRenderAppPage_RendersHTMLAndSharedNav(t *testing.T) {
+	rec := httptest.NewRecorder()
+
+	renderAppPage(rec, "static/activity.html", appPageData{CurrentPage: "activity"})
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status: got %d, want %d", rec.Code, http.StatusOK)
+	}
+
+	body := rec.Body.String()
+	if strings.TrimSpace(body) == "" {
+		t.Fatal("expected rendered HTML body, got empty response")
+	}
+	if !strings.Contains(body, "<!DOCTYPE html>") {
+		t.Error("expected doctype in rendered page")
+	}
+	if !strings.Contains(body, `href="/welcome">語</a>`) {
+		t.Error("expected shared app logo link in rendered page")
+	}
+	if !strings.Contains(body, `href="/stories">Stories →</a>`) {
+		t.Error("expected shared stories nav link in rendered page")
+	}
+	if !strings.Contains(body, `page-nav-link page-nav-link--current" href="/activity"`) {
+		t.Error("expected current-page nav styling for activity page")
 	}
 }
 

@@ -7,6 +7,7 @@ import (
 	"html/template"
 	"log"
 	"net/http"
+	"path/filepath"
 	"strconv"
 	"strings"
 
@@ -19,18 +20,18 @@ func serverInit(db *sql.DB) {
 	r.Use(middleware.Logger)
 	r.Use(middleware.Recoverer)
 
-	staticPage := func(file string) http.HandlerFunc {
+	appPage := func(file, currentPage string) http.HandlerFunc {
 		return func(w http.ResponseWriter, r *http.Request) {
-			http.ServeFile(w, r, "static/"+file)
+			renderAppPage(w, "static/"+file, appPageData{CurrentPage: currentPage})
 		}
 	}
 
-	r.Get("/", staticPage("activity.html"))
-	r.Get("/welcome", staticPage("welcome.html"))
-	r.Get("/activity", staticPage("activity.html"))
-	r.Get("/lexicon", staticPage("lexicon.html"))
-	r.Get("/drill", staticPage("drill.html"))
-	r.Get("/stories", staticPage("stories.html"))
+	r.Get("/", appPage("activity.html", "activity"))
+	r.Get("/welcome", appPage("welcome.html", "welcome"))
+	r.Get("/activity", appPage("activity.html", "activity"))
+	r.Get("/lexicon", appPage("lexicon.html", "lexicon"))
+	r.Get("/drill", appPage("drill.html", "drill"))
+	r.Get("/stories", appPage("stories.html", "stories"))
 
 	r.Handle("/static/*", http.StripPrefix("/static/", http.FileServer(http.Dir("static"))))
 
@@ -121,6 +122,10 @@ type batchWordResult struct {
 	DrillCount     int   `json:"drill_count,omitempty"`
 	DrillIncorrect int   `json:"drill_incorrect,omitempty"`
 	DrillTarget    int   `json:"drill_target,omitempty"`
+}
+
+type appPageData struct {
+	CurrentPage string
 }
 
 type indexData struct {
@@ -531,5 +536,20 @@ func renderTemplate(w http.ResponseWriter, name string, data any) {
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	if err := t.Execute(w, data); err != nil {
 		log.Println("template error:", err)
+	}
+}
+
+func renderAppPage(w http.ResponseWriter, pagePath string, data any) {
+	t, err := template.ParseFiles(
+		"templates/app_nav.html",
+		pagePath,
+	)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	w.Header().Set("Content-Type", "text/html; charset=utf-8")
+	if err := t.ExecuteTemplate(w, filepath.Base(pagePath), data); err != nil {
+		log.Println("app template error:", err)
 	}
 }

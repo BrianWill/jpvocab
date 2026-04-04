@@ -89,6 +89,8 @@ func migrate(db *sql.DB) {
 			is_paragraph_start INTEGER NOT NULL DEFAULT 0 CHECK (is_paragraph_start IN (0, 1)),
 			UNIQUE(story_id, position)
 		)`,
+		`ALTER TABLE stories ADD COLUMN has_audio INTEGER NOT NULL DEFAULT 0`,
+		`ALTER TABLE story_sentences ADD COLUMN audio_duration_ms INTEGER`,
 	}
 
 	var version int

@@ -4,13 +4,21 @@ This file is random notes of possible features and bug fixes.
 
 - clicking the image placeholder or thumbnail shoudl open a file dialog to upload an image file
 
+- story header
+    - play button and scrubber in header
+        - uses tts if no audio file; scrubber is greyed out if TTS (because you can't seek with TTS, right?)
+    - speed adjustment spinner in header
+    - title in header?
+
 - story audio
-    - generate audio modal
+    - generate audio modal (button at top of story?)
         - stored in audio_stories as ogg/opus
+
     - play cursor displays where it is in text
-            - current sentence is highlighted
-            - click sentence to jump cursor to sentence and start playmode
-                - hotkey to continue play from current cursor position
+        - current sentence played is highlighted
+            - can we get timings down to the words?
+        - click sentence to jump cursor to sentence and start playmode
+            - hotkey to continue play from current cursor position
 
 - stories page
     - each sentence of Japanese text has map of positions to words, e.g. { pos: 35, word: "言葉" } indicates the word which begins at character 35 (is index of character a reliable way to index into a Japanese sentence?)

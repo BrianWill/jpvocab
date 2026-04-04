@@ -40,6 +40,7 @@ func serverInit(db *sql.DB) {
 	r.Get("/api/activity/calendar", apiGetActivityCalendar(db))
 	r.Get("/api/stories", apiGetStories(db))
 	r.Get("/api/stories/{id}", apiGetStory(db))
+	r.Post("/api/stories/{id}/generate-audio", apiGenerateStoryAudio(db))
 
 	r.Get("/api/providers", func(w http.ResponseWriter, r *http.Request) {
 		p := checkAIProviders()

@@ -542,6 +542,20 @@ func defaultVoicevoxParams() voicevoxParams {
 	return voicevoxParams{Speaker: 1, SpeedScale: 1.0, IntonationScale: 1.0}
 }
 
+// wavDurationMs returns the audio duration in milliseconds by reading the WAV header.
+// Assumes standard PCM WAV (44-byte header) as produced by VoiceVox.
+func wavDurationMs(wav []byte) int64 {
+	if len(wav) < 44 {
+		return 0
+	}
+	byteRate := int64(uint32(wav[28]) | uint32(wav[29])<<8 | uint32(wav[30])<<16 | uint32(wav[31])<<24)
+	dataSize := int64(uint32(wav[40]) | uint32(wav[41])<<8 | uint32(wav[42])<<16 | uint32(wav[43])<<24)
+	if byteRate == 0 {
+		return 0
+	}
+	return dataSize * 1000 / byteRate
+}
+
 // wavToOgg converts WAV bytes to OGG/Opus via ffmpeg (must be in PATH).
 func wavToOgg(ctx context.Context, wav []byte) ([]byte, error) {
 	var stdout, stderr bytes.Buffer

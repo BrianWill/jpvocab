@@ -1,5 +1,11 @@
+.story-top-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 1rem;
+}
+
 .story-gen-btn {
-  align-self: center;
   font-size: 0.8rem;
   padding: 0.3rem 0.75rem;
   white-space: nowrap;
@@ -36,8 +42,6 @@
 }
 
 .story-back-link {
-  display: inline-block;
-  margin-bottom: 1rem;
   color: #89b4fa;
   text-decoration: none;
 }
@@ -68,10 +72,14 @@
 
 .story-sentence {
   white-space: pre-wrap;
+  scroll-margin: 5rem 0;
+  padding: 0.25em 0.3em;
+  -webkit-box-decoration-break: clone;
+  box-decoration-break: clone;
 }
 
 .story-sentence--active {
-  background: rgba(137, 180, 250, 0.18);
+  background: rgba(156, 225, 131, 0.45);
   border-radius: 3px;
 }
 
@@ -80,15 +88,17 @@
   border-radius: 2px;
 }
 
-.story-word--active {
-  background: rgba(249, 226, 175, 0.5);
-}
-
 .story-error {
   color: #f38ba8;
 }
 
 /* ── Generate-audio progress list ─────────────────────────────────────────── */
+.gen-progress-count {
+  margin: 0 0 0.75rem;
+  font-size: 0.8rem;
+  color: #6c7086;
+}
+
 .gen-sentence-list {
   display: flex;
   flex-direction: column;

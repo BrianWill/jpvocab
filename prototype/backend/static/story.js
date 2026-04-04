@@ -13,9 +13,7 @@ let ttsText = '';
 let ttsRate = 1.0;
 let sentenceSpans = [];
 let sentenceOffsets = [];  // char start of each sentence in ttsText (TTS mode)
-let wordSpans = [];        // { absStart, span } for every word
 let activeIdx = -1;
-let activeWordSpan = null;
 let resumeOffset = 0;
 let lastWordAbsPos = 0;
 let currentUtterance = null;
@@ -67,8 +65,6 @@ function setActiveIdx(idx) {
 function clearHighlight() {
   sentenceSpans[activeIdx]?.classList.remove('story-sentence--active');
   activeIdx = -1;
-  activeWordSpan?.classList.remove('story-word--active');
-  activeWordSpan = null;
   resumeOffset = 0;
   lastWordAbsPos = 0;
 }
@@ -84,18 +80,6 @@ function highlightAt(charIndex) {
     else break;
   }
   if (sIdx !== activeIdx) setActiveIdx(sIdx);
-
-  let wIdx = 0;
-  for (let i = 1; i < wordSpans.length; i++) {
-    if (wordSpans[i].absStart <= abs) wIdx = i;
-    else break;
-  }
-  const wordSpan = wordSpans[wIdx]?.span ?? null;
-  if (wordSpan !== activeWordSpan) {
-    activeWordSpan?.classList.remove('story-word--active');
-    activeWordSpan = wordSpan;
-    wordSpan?.classList.add('story-word--active');
-  }
 }
 
 function stopTts() {
@@ -146,16 +130,12 @@ function loadSentenceAudio(idx, startSec = 0) {
   if (idx >= sentenceSpans.length) {
     // Reached end of story.
     clearHighlight();
-    activeWordSpan?.classList.remove('story-word--active');
-    activeWordSpan = null;
     setTtsPlaying(false);
     seekbar.value = 1000;
     return;
   }
   audioSentenceIdx = idx;
   setActiveIdx(idx);
-  activeWordSpan?.classList.remove('story-word--active');
-  activeWordSpan = null;
 
   const sentence = _story.sentences[idx];
   audioEl.src = audioFileUrl(sentence.position);
@@ -191,9 +171,7 @@ ttsBtn.addEventListener('click', async () => {
     if (!audioEl.paused) {
       stopAudio();
     } else {
-      audioEl.playbackRate = ttsRate;
-      audioEl.play().catch(() => {});
-      setTtsPlaying(true);
+      startAudio(audioSentenceIdx, audioEl.currentTime);
     }
     return;
   }
@@ -206,16 +184,19 @@ ttsBtn.addEventListener('click', async () => {
 
 // ── Word click — seek to that sentence (both modes) ───────────────────────────
 async function seekToWord(absPos) {
+  let sIdx = 0;
+  for (let i = 1; i < sentenceOffsets.length; i++) {
+    if (sentenceOffsets[i] <= absPos) sIdx = i;
+    else break;
+  }
+
   if (audioMode) {
-    // Map absPos (char offset in ttsText) → sentence index → audio seek.
-    let sIdx = 0;
-    for (let i = 1; i < sentenceOffsets.length; i++) {
-      if (sentenceOffsets[i] <= absPos) sIdx = i;
-      else break;
-    }
+    if (sIdx === activeIdx && !audioEl.paused) { stopAudio(); return; }
     startAudio(sIdx, 0);
     return;
   }
+
+  if (sIdx === activeIdx && window.speechSynthesis.speaking) { stopTts(); return; }
   if (currentUtterance) {
     currentUtterance.onboundary = null;
     currentUtterance.onend = null;
@@ -248,11 +229,22 @@ window.addEventListener('beforeunload', () => {
   else stopTts();
 });
 
+// ── Keyboard shortcuts ────────────────────────────────────────────────────────
+window.addEventListener('keydown', async e => {
+  if (e.code !== 'Space') return;
+  const tag = document.activeElement?.tagName;
+  if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'BUTTON' || tag === 'SELECT') return;
+  e.preventDefault();
+  ttsBtn.click();
+});
+
 // ── Generate audio ────────────────────────────────────────────────────────────
 let _generateController = null;
 let _generating = false;
 
 function openGenModal() {
+  if (audioMode) { if (!audioEl.paused) stopAudio(); }
+  else if (window.speechSynthesis.speaking) stopTts();
   // Always reset to confirmation state when opening.
   setModalGenerating(false);
   genModal.classList.remove('hidden');
@@ -340,9 +332,17 @@ document.getElementById('story-gen-modal-confirm').addEventListener('click', asy
   const vv = getVoicevoxSettings();
   _generateController = new AbortController();
 
+  const total = _story?.sentences.length ?? 0;
+  let completed = 0;
+
+  function updateProgressCount() {
+    document.getElementById('gen-progress-count').textContent = `${completed} / ${total} sentences`;
+  }
+
   buildSentenceList();
   setModalGenerating(true);
-  if (_story?.sentences.length > 0) {
+  updateProgressCount();
+  if (total > 0) {
     setRowActive(_story.sentences[0].position);
   }
 
@@ -371,6 +371,8 @@ document.getElementById('story-gen-modal-confirm').addEventListener('click', asy
           let msg;
           try { msg = JSON.parse(line); } catch (_) { continue; }
           if (msg.sentencePosition !== undefined) {
+            completed++;
+            updateProgressCount();
             setRowDone(msg.sentencePosition);
             markNextRowActive(msg.sentencePosition);
           } else if (msg.allDone) {
@@ -464,7 +466,6 @@ function renderStory(story) {
   const SEPARATOR = '　';
   sentenceSpans = [];
   sentenceOffsets = [];
-  wordSpans = [];
   const textParts = [];
   let offset = 0;
   for (const sentence of story.sentences) {
@@ -497,11 +498,10 @@ function renderStory(story) {
       const capturedOffset = wordOffset;
       wordSpan.addEventListener('click', () => seekToWord(capturedOffset));
       sentenceSpan.appendChild(wordSpan);
-      wordSpans.push({ absStart: wordOffset, span: wordSpan });
       wordOffset += word.displayWord.length;
     }
-    sentenceSpan.appendChild(document.createTextNode(' '));
     currentParagraph.appendChild(sentenceSpan);
+    currentParagraph.appendChild(document.createTextNode(' '));
     sentenceSpans.push(sentenceSpan);
   }
 

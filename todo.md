@@ -28,7 +28,6 @@ This file is random notes of possible features and bug fixes.
     
     - scan text to find most frequently occuring words in text that are candidates for the lexicon
 
-
 - grammatical analysis
     - sentence breakdown
     - isolate, classify, and explain phrases
@@ -45,7 +44,6 @@ This file is random notes of possible features and bug fixes.
 
 
 - make a mobile app (sync through turso)
-
 
 - some way to sync db state
     - what if just one version of db in google drive for each machine

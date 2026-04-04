@@ -30,7 +30,7 @@ body {
   align-self: stretch;
   display: flex;
   align-items: center;
-  padding: 0 1.5rem;
+  padding: 0 0.85rem;
   border-left: 1px solid #313244;
   background: #181825;
   font-size: 0.8rem;

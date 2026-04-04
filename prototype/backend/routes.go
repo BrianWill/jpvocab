@@ -30,6 +30,7 @@ func serverInit(db *sql.DB) {
 	r.Get("/activity", staticPage("activity.html"))
 	r.Get("/lexicon", staticPage("lexicon.html"))
 	r.Get("/drill", staticPage("drill.html"))
+	r.Get("/stories", staticPage("stories.html"))
 
 	r.Handle("/static/*", http.StripPrefix("/static/", http.FileServer(http.Dir("static"))))
 

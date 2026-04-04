@@ -26,7 +26,9 @@
       "Bash(curl -s \"http://localhost:50021/audio_query?text=テスト&speaker=1\")",
       "Bash(python3 -c \"import json,sys; q=json.load\\(sys.stdin\\); [print\\(k,'=',v\\) for k,v in q.items\\(\\) if k in \\('speedScale','pitchScale','intonationScale','volumeScale','prePhonemeLength','postPhonemeLength'\\)]\")",
       "Bash(curl -s -X POST \"http://localhost:50021/audio_query?text=%E3%83%86%E3%82%B9%E3%83%88&speaker=1\")",
-      "Bash(python3 -c ':*)"
+      "Bash(python3 -c ':*)",
+      "WebSearch",
+      "WebFetch(domain:ghostty.org)"
     ]
   },
   "outputStyle": "Explanatory"

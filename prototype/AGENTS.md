@@ -4,11 +4,12 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-Japanese vocabulary drilling desktop app built with Go backend + web frontend. For now, assume a single user with no user login or need for security. The app has three core views:
+Japanese vocabulary drilling desktop app built with Go backend + web frontend. For now, assume a single user with no user login or need for security. The app has four top-level views:
 
 - **Lexicon** � displays the user's full vocabulary set with word info (reading, part of speech, meaning, example sentences) and per-word correct/incorrect drill counts accumulated over all sessions.
 - **Drill** � a round-based flashcard drill. Each round presents 10 words randomly drawn from the lexicon. The user marks each word as known or unknown; unknown words carry over to the next round alongside fresh picks. The current in-progress drill is persisted to SQLite so refreshing `/drill` or restarting the server restores the same round state, sidebar state, and last answered card.
 - **Activity** � displays headline stats and a week-by-week calendar of recent drill activity. Each day cell shows how many words were drilled, added, and cleared. Clicking a day opens a detail modal listing the words involved.
+- **Stories** - currently a stub top-level page at `/stories`; the shared page header navigation on the main app pages links to it alongside Drill, Activity, and Lexicon.
 
 Word data (lexicon) is stored in a SQLite database. Per-word drill counts (correct/incorrect) are persisted there, and the current in-progress drill session is also stored in SQLite as a serialized state snapshot on the active `drill_sessions` row.
 
@@ -86,6 +87,7 @@ The HTML/CSS/JS frontend files live in `backend/static/` and are served by the b
 - **drill.html** � the drill view
 - **lexicon.html** � the lexicon/word management view
 - **activity.html** � the activity/stats view
+- **stories.html** - stub stories page with the shared app header/nav
 - **tts-demo.html** � sandbox page for testing VoiceVox TTS audio generation (not a production view)
 
 ### Backend
@@ -173,4 +175,3 @@ When adding new fields to the word edit/add modal, follow whichever convention m
 - **Ask before touching unfamiliar files.** If a file has not been part of the current conversation and has not been recently discussed, confirm with the user before editing it. This applies especially to Go source files, config files, and anything outside `backend/`.
 - **Keep AGENTS.md current.** After any non-trivial change � new files, new endpoints, renamed functions, changed conventions, new features, or shifted architecture � proactively propose specific updates to this file. Do not wait to be asked. If you added a file, added an endpoint, or changed how something works, edit AGENTS.md immediately (but be sure to tell me when you).
 - **Use `git mv` for all file moves and renames.** Never copy-and-delete or use the Write tool to recreate a file at a new path. Always use `git mv <old> <new>` so history is preserved.
-

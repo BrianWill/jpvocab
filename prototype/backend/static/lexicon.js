@@ -1,18 +1,40 @@
-﻿import { openEditModal, closeAddResultModal, _addPhase, _pendingGenerates } from './lexicon-add-edit.js';
+import { openEditModal, closeAddResultModal, state as addEditState } from './lexicon-add-edit.js';
 import { timeAgo, getSortedWords as _getSortedWords, renderReading } from './lexicon-utils.js';
 import { playTts, playWordAudio, playSentenceAudio, checkVoicevoxAvailable, checkFfmpegAvailable, refreshTooltip } from './common.js';
 
-let words = [];
-export let defaultDrillTarget = 8; // updated from /api/providers at init
-export let _providers = null;
-export let _imageSources = null;
-export let _voicevoxAvailable = false;
-export let _ffmpegAvailable = false;
+const els = {
+  addModalBackdrop: document.getElementById('add-modal-backdrop'),
+  addModalSidebar: document.getElementById('add-modal-sidebar'),
+  addModalStatus: document.getElementById('add-modal-status'),
+  addWordsInput: document.getElementById('add-words-input'),
+  deleteConfirmBtn: document.getElementById('btn-delete-confirm'),
+  deleteError: document.getElementById('delete-error'),
+  deleteModalBackdrop: document.getElementById('delete-modal-backdrop'),
+  deleteModalLabel: document.getElementById('delete-modal-label'),
+  headerAddBtn: document.querySelector('.btn-header'),
+  sortBtns: Array.from(document.querySelectorAll('.btn-sort')),
+  wordCount: document.getElementById('word-count'),
+  wordTable: document.getElementById('word-table'),
+};
+els.addModalCloseBtn = els.addModalBackdrop.querySelector('.modal-close');
+els.addModalCancelBtn = els.addModalBackdrop.querySelector('.btn-cancel');
+els.deleteModalCloseBtn = els.deleteModalBackdrop.querySelector('.modal-close');
+els.deleteModalCancelBtn = els.deleteModalBackdrop.querySelector('.btn-cancel');
+
+export const state = {
+  defaultDrillTarget: 8, // updated from /api/providers at init
+  deleteTrMain: null,
+  ffmpegAvailable: false,
+  imageSources: null,
+  providers: null,
+  voicevoxAvailable: false,
+  wordListCache: new Map(),
+  words: [],
+};
 
 function updateWordCount() {
-  const active = words.filter(w => w.correct < w.target).length;
-  document.getElementById('word-count').textContent =
-    words.length + ' words (' + active + ' active)';
+  const active = state.words.filter(w => w.correct < w.target).length;
+  els.wordCount.textContent = state.words.length + ' words (' + active + ' active)';
 }
 
 export const typeLabels = {
@@ -86,13 +108,11 @@ function renderRow(w, trMain, trEx) {
 }
 
 export function getSortedWords(key, dir) {
-  return _getSortedWords(words, key, dir);
+  return _getSortedWords(state.words, key, dir);
 }
 
-const wordTable = document.getElementById('word-table');
-
 export function renderTable(sortedWords) {
-  wordTable.querySelectorAll('tbody').forEach(b => b.remove());
+  els.wordTable.querySelectorAll('tbody').forEach(b => b.remove());
   sortedWords.forEach(w => {
     const group = document.createElement('tbody');
     group.className = 'word-group';
@@ -103,43 +123,42 @@ export function renderTable(sortedWords) {
     renderRow(w, trMain, trEx);
     group.appendChild(trMain);
     group.appendChild(trEx);
-    wordTable.appendChild(group);
+    els.wordTable.appendChild(group);
   });
 }
 
 export async function reloadWords() {
-  words = await fetch('/api/words').then(r => r.json());
+  state.words = await fetch('/api/words').then(r => r.json());
   updateWordCount();
 }
 
 export function updateWordImagePath(wordId, imagePath) {
-  const word = words.find(w => w.id === wordId);
+  const word = state.words.find(w => w.id === wordId);
   if (!word) return;
   word.imagePath = imagePath;
-  const activeBtn = document.querySelector('.btn-sort--active');
+  const activeBtn = els.sortBtns.find(b => b.classList.contains('btn-sort--active'));
   renderTable(getSortedWords(activeBtn.dataset.sort, activeBtn.dataset.dir || 'desc'));
 }
 
 export function updateWordAudioFlags(wordId, hasWordAudio, hasSentenceAudio) {
-  const word = words.find(w => w.id === wordId);
+  const word = state.words.find(w => w.id === wordId);
   if (!word) return;
   word.hasWordAudio = hasWordAudio;
   word.hasSentenceAudio = hasSentenceAudio;
 }
-
 
 async function init() {
   const [wordsData, providers] = await Promise.all([
     fetch('/api/words').then(r => r.json()),
     fetch('/api/providers').then(r => r.json()),
   ]);
-  words = wordsData;
-  if (providers.default_drill_target) defaultDrillTarget = providers.default_drill_target;
+  state.words = wordsData;
+  if (providers.default_drill_target) state.defaultDrillTarget = providers.default_drill_target;
   updateWordCount();
   renderTable(getSortedWords('added', 'desc'));
-  _providers = providers.ai;
-  _imageSources = providers.image_sources;
-  [_voicevoxAvailable, _ffmpegAvailable] = await Promise.all([
+  state.providers = providers.ai;
+  state.imageSources = providers.image_sources;
+  [state.voicevoxAvailable, state.ffmpegAvailable] = await Promise.all([
     checkVoicevoxAvailable(),
     checkFfmpegAvailable(),
   ]);
@@ -152,44 +171,40 @@ function onBackdropClick(event, closeFn) {
 }
 
 // --- Delete modal ---
-let _deleteTrMain = null;
 
 function openDeleteModal(event) {
   event.stopPropagation();
-  _deleteTrMain = event.target.closest('tr');
-  const w = _deleteTrMain._word;
-  document.getElementById('delete-modal-label').textContent = w.word;
-  document.getElementById('delete-error').classList.add('hidden');
-  document.getElementById('btn-delete-confirm').disabled = false;
-  document.getElementById('btn-delete-confirm').textContent = 'Delete';
-  document.getElementById('delete-modal-backdrop').classList.remove('hidden');
+  state.deleteTrMain = event.target.closest('tr');
+  const w = state.deleteTrMain._word;
+  els.deleteModalLabel.textContent = w.word;
+  els.deleteError.classList.add('hidden');
+  els.deleteConfirmBtn.disabled = false;
+  els.deleteConfirmBtn.textContent = 'Delete';
+  els.deleteModalBackdrop.classList.remove('hidden');
 }
 
 function closeDeleteModal() {
-  document.getElementById('delete-modal-backdrop').classList.add('hidden');
+  els.deleteModalBackdrop.classList.add('hidden');
 }
 
-
 async function confirmDelete() {
-  const w   = _deleteTrMain._word;
-  const btn = document.getElementById('btn-delete-confirm');
-  const errEl = document.getElementById('delete-error');
-  btn.disabled = true;
-  btn.innerHTML = '<span class="spinner"></span>';
-  errEl.classList.add('hidden');
+  const w = state.deleteTrMain._word;
+  els.deleteConfirmBtn.disabled = true;
+  els.deleteConfirmBtn.innerHTML = '<span class="spinner"></span>';
+  els.deleteError.classList.add('hidden');
 
   try {
     const res = await fetch('/api/words/' + w.id, { method: 'DELETE' });
     if (!res.ok) throw new Error((await res.text()).trim() || res.statusText);
-    words.splice(words.indexOf(w), 1);
-    _deleteTrMain.closest('tbody').remove();
+    state.words.splice(state.words.indexOf(w), 1);
+    state.deleteTrMain.closest('tbody').remove();
     updateWordCount();
     closeDeleteModal();
   } catch (err) {
-    errEl.textContent = err.message;
-    errEl.classList.remove('hidden');
-    btn.disabled = false;
-    btn.textContent = 'Delete';
+    els.deleteError.textContent = err.message;
+    els.deleteError.classList.remove('hidden');
+    els.deleteConfirmBtn.disabled = false;
+    els.deleteConfirmBtn.textContent = 'Delete';
   }
 }
 
@@ -213,17 +228,16 @@ document.addEventListener('keydown', e => {
   if (e.key === 'Escape') {
     closeAddModal();
     closeDeleteModal();
-    if (_addPhase !== 'loading' && _pendingGenerates === 0) closeAddResultModal();
+    if (addEditState.addPhase !== 'loading' && addEditState.pendingGenerates === 0) closeAddResultModal();
   }
 });
 
-// Sort button active state, direction toggle, and sorting
-const sortBtns = document.querySelectorAll('.btn-sort');
-sortBtns.forEach(btn => {
+// Sort buttons: active state, direction toggle, and sorting
+els.sortBtns.forEach(btn => {
   btn.addEventListener('click', e => {
     e.stopPropagation();
     const wasActive = btn.classList.contains('btn-sort--active');
-    sortBtns.forEach(b => {
+    els.sortBtns.forEach(b => {
       b.classList.remove('btn-sort--active');
       if (b !== btn && 'dir' in b.dataset && b.dataset.dir === 'asc') {
         b.dataset.dir = 'desc';
@@ -240,41 +254,34 @@ sortBtns.forEach(btn => {
   });
 });
 
-
 // --- Static element event listeners ---
-document.querySelector('.btn-header').addEventListener('click', openAddModal);
+els.headerAddBtn.addEventListener('click', openAddModal);
 
-const addModalBackdrop = document.getElementById('add-modal-backdrop');
-addModalBackdrop.addEventListener('click', e => onBackdropClick(e, closeAddModal));
-addModalBackdrop.querySelector('.modal-close').addEventListener('click', closeAddModal);
-addModalBackdrop.querySelector('.btn-cancel').addEventListener('click', closeAddModal);
+els.addModalBackdrop.addEventListener('click', e => onBackdropClick(e, closeAddModal));
+els.addModalCloseBtn.addEventListener('click', closeAddModal);
+els.addModalCancelBtn.addEventListener('click', closeAddModal);
 
-const deleteModalBackdrop = document.getElementById('delete-modal-backdrop');
-deleteModalBackdrop.addEventListener('click', e => onBackdropClick(e, closeDeleteModal));
-deleteModalBackdrop.querySelector('.modal-close').addEventListener('click', closeDeleteModal);
-deleteModalBackdrop.querySelector('.btn-cancel').addEventListener('click', closeDeleteModal);
-document.getElementById('btn-delete-confirm').addEventListener('click', confirmDelete);
+els.deleteModalBackdrop.addEventListener('click', e => onBackdropClick(e, closeDeleteModal));
+els.deleteModalCloseBtn.addEventListener('click', closeDeleteModal);
+els.deleteModalCancelBtn.addEventListener('click', closeDeleteModal);
+els.deleteConfirmBtn.addEventListener('click', confirmDelete);
 
 // --- Word list sidebar ---
-// Per-list cache: slug → { remaining, total, inLexicon, initialAvailable }
-const _wordListCache = new Map();
 
 function setAddModalStatus(msg) {
-  document.getElementById('add-modal-status').textContent = msg;
+  els.addModalStatus.textContent = msg;
 }
 
 function listItemTooltip(slug, total, inLexicon) {
-  const c = _wordListCache.get(slug);
+  const c = state.wordListCache.get(slug);
   const lexCount = c ? c.inLexicon : inLexicon;
   const available = total - lexCount;
   const added = c ? (c.initialAvailable - c.remaining.length) : 0;
   const remaining = c ? c.remaining.length : available;
-  let s = total + ' total · ' + lexCount + ' in lexicon · ' + added + ' added · ' + remaining + ' remaining';
-  return s;
+  return total + ' total · ' + lexCount + ' in lexicon · ' + added + ' added · ' + remaining + ' remaining';
 }
 
 async function initWordListSidebar() {
-  const sidebar = document.getElementById('add-modal-sidebar');
   try {
     const res = await fetch('/api/wordlists');
     if (!res.ok) return;
@@ -283,7 +290,7 @@ async function initWordListSidebar() {
     const title = document.createElement('div');
     title.className = 'add-modal-sidebar-title';
     title.textContent = 'Word lists';
-    sidebar.appendChild(title);
+    els.addModalSidebar.appendChild(title);
 
     for (const list of lists) {
       const item = document.createElement('div');
@@ -301,7 +308,7 @@ async function initWordListSidebar() {
 
       item.appendChild(btn);
       item.appendChild(label);
-      sidebar.appendChild(item);
+      els.addModalSidebar.appendChild(item);
     }
   } catch (_) { /* fail silently — sidebar stays empty */ }
 }
@@ -310,12 +317,12 @@ async function addWordFromList(slug, name, total, inLexicon, btn, item) {
   btn.disabled = true;
   try {
     // Fetch and cache the available words on first click.
-    if (!_wordListCache.has(slug)) {
+    if (!state.wordListCache.has(slug)) {
       const res = await fetch('/api/wordlists/' + encodeURIComponent(slug) + '/words');
       if (!res.ok) { setAddModalStatus('Failed to load the ' + name + ' list.'); return; }
       const data = await res.json();
       const words = data.words ?? [];
-      _wordListCache.set(slug, {
+      state.wordListCache.set(slug, {
         remaining: words,
         total: data.total ?? total,
         inLexicon: data.in_lexicon ?? inLexicon,
@@ -323,7 +330,7 @@ async function addWordFromList(slug, name, total, inLexicon, btn, item) {
       });
     }
 
-    const c = _wordListCache.get(slug);
+    const c = state.wordListCache.get(slug);
     if (c.remaining.length === 0) {
       setAddModalStatus('No more words to add from the ' + name + ' list.');
       return;
@@ -333,9 +340,8 @@ async function addWordFromList(slug, name, total, inLexicon, btn, item) {
     const word = c.remaining.splice(idx, 1)[0];
 
     const displayText = word + ' (from the ' + name + ' word list)';
-    const textarea = document.getElementById('add-words-input');
-    textarea.value = textarea.value ? displayText + '\n' + textarea.value : displayText;
-    textarea.scrollTop = 0;
+    els.addWordsInput.value = els.addWordsInput.value ? displayText + '\n' + els.addWordsInput.value : displayText;
+    els.addWordsInput.scrollTop = 0;
     setAddModalStatus('One random word added from the ' + name + ' list.');
     item.dataset.tooltip = listItemTooltip(slug, c.total, c.inLexicon);
     refreshTooltip(item);
@@ -350,12 +356,12 @@ initWordListSidebar();
 
 // --- Add words modal ---
 function openAddModal() {
-  document.getElementById('add-words-input').value = '';
-  document.getElementById('add-modal-status').textContent = '';
-  document.getElementById('add-modal-backdrop').classList.remove('hidden');
-  document.getElementById('add-words-input').focus();
+  els.addWordsInput.value = '';
+  els.addModalStatus.textContent = '';
+  els.addModalBackdrop.classList.remove('hidden');
+  els.addWordsInput.focus();
 }
 
 export function closeAddModal() {
-  document.getElementById('add-modal-backdrop').classList.add('hidden');
+  els.addModalBackdrop.classList.add('hidden');
 }

@@ -129,8 +129,6 @@ function renderLastAnswered(els, state) {
   }
 }
 
-let _lastAutoPlayedId = null;
-
 function renderPrompt(els, state) {
   els.sidebarList.querySelectorAll('.sidebar-item.current').forEach(el => el.classList.remove('current'));
   if (isSessionComplete(state)) {
@@ -150,8 +148,8 @@ function renderPrompt(els, state) {
 
   els.promptWordJp.textContent = state.currentWord.word;
   els.promptExampleJp.textContent = state.currentWord.exampleJp;
-  if (isTtsAutoplayEnabled() && state.currentWord.id !== _lastAutoPlayedId) {
-    _lastAutoPlayedId = state.currentWord.id;
+  if (isTtsAutoplayEnabled() && state.currentWord.id !== state.lastAutoPlayedId) {
+    state.lastAutoPlayedId = state.currentWord.id;
     playWordAudio(state.currentWord);
   }
   const item = els.sidebarList.querySelector('[data-id="' + state.currentWord.word + '"]');

@@ -1,6 +1,38 @@
-import { defaultDrillTarget, typeLabels, _providers, _imageSources, _voicevoxAvailable, _ffmpegAvailable, reloadWords, renderTable, getSortedWords, closeAddModal, updateWordImagePath, updateWordAudioFlags } from './lexicon.js';
+import { state as lexiconState, typeLabels, reloadWords, renderTable, getSortedWords, closeAddModal, updateWordImagePath, updateWordAudioFlags } from './lexicon.js';
 import { esc, isKanji, detailItemPosSelect, detailItemKanjiReadings, detailItemInput, detailItemExInput } from './lexicon-utils.js';
 import { getVoicevoxSettings, playWordAudio, playSentenceAudio } from './common.js';
+
+const els = {
+  addModalSaveBtn: document.querySelector('#add-modal-backdrop .btn-save'),
+  addResultBody: document.getElementById('add-result-modal-body'),
+  addResultClose: document.getElementById('add-result-modal-close'),
+  addResultFooter: document.getElementById('add-result-modal-footer'),
+  addResultModalBackdrop: document.getElementById('add-result-modal-backdrop'),
+  addResultTitle: document.getElementById('add-result-modal-title'),
+  generateConfirmAddedCheckbox: document.getElementById('generate-confirm-added-checkbox'),
+  generateConfirmAddedText: document.getElementById('generate-confirm-added-text'),
+  generateConfirmCancel: document.getElementById('generate-confirm-cancel'),
+  generateConfirmModalBackdrop: document.getElementById('generate-confirm-modal-backdrop'),
+  generateConfirmOk: document.getElementById('generate-confirm-ok'),
+  generateConfirmSkippedCheckbox: document.getElementById('generate-confirm-skipped-checkbox'),
+  generateConfirmSkippedText: document.getElementById('generate-confirm-skipped-text'),
+  removeConfirmCancel: document.getElementById('remove-confirm-cancel'),
+  removeConfirmModalBackdrop: document.getElementById('remove-confirm-modal-backdrop'),
+  removeConfirmOk: document.getElementById('remove-confirm-ok'),
+  removeConfirmText: document.getElementById('remove-confirm-text'),
+};
+
+export const state = {
+  abortController: null,
+  addedWords: [],
+  addPhase: 'idle', // 'loading' | 'done' | 'cancelled'
+  fieldErrorTimer: null,
+  generateType: 'word-info',
+  isSingleEdit: false,
+  pendingGenerates: 0,
+  pendingRemoveAction: null,
+  skippedCount: 0,
+};
 
 const imagePlaceholderSvg =
   '<svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">' +
@@ -9,25 +41,25 @@ const imagePlaceholderSvg =
     '<polyline points="3,21 8,14 12,18 16,13 21,18" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round"/>' +
   '</svg>';
 
-function buildWordResultImage(imagePath, state, bust = '') {
+function buildWordResultImage(imagePath, imageState, bust = '') {
   if (imagePath) {
     return '<div class="word-result-image"><img src="/static/' + esc(imagePath) + (bust ? '?v=' + bust : '') + '" alt=""></div>';
   }
   const classes = ['word-result-image', 'word-result-image--empty'];
   let overlay = '';
-  if (state === 'loading') {
+  if (imageState === 'loading') {
     classes.push('word-result-image--loading');
     overlay = '<span class="spinner word-result-image-spinner" aria-hidden="true"></span>';
-  } else if (state === 'failed') {
+  } else if (imageState === 'failed') {
     classes.push('word-result-image--failed');
   }
   return '<div class="' + classes.join(' ') + '">' + overlay + imagePlaceholderSvg + '</div>';
 }
 
-function setWordRowImage(row, imagePath, state = '', bust = '') {
+function setWordRowImage(row, imagePath, imageState = '', bust = '') {
   const imageEl = row.querySelector('.word-result-image');
   if (!imageEl) return;
-  imageEl.outerHTML = buildWordResultImage(imagePath, state, bust);
+  imageEl.outerHTML = buildWordResultImage(imagePath, imageState, bust);
 }
 
 // --- Add/edit modal ---
@@ -44,15 +76,14 @@ export function openEditModal(event) {
   const trMain = event.target.closest('tr');
   const w = trMain._word;
 
-  _addPhase = 'done';
-  _isSingleEdit = true;
-  _addedWords = [];
-  _skippedCount = 0;
-  _pendingGenerates = 0;
-  _abortController = null;
+  state.addPhase = 'done';
+  state.isSingleEdit = true;
+  state.addedWords = [];
+  state.skippedCount = 0;
+  state.pendingGenerates = 0;
+  state.abortController = null;
 
-  const resultBody = document.getElementById('add-result-modal-body');
-  resultBody.innerHTML = '';
+  els.addResultBody.innerHTML = '';
 
   appendWordRow({
     word: w.word,
@@ -72,32 +103,24 @@ export function openEditModal(event) {
     has_sentence_audio: w.hasSentenceAudio,
   });
 
-  document.getElementById('add-result-modal-backdrop').classList.remove('hidden');
+  els.addResultModalBackdrop.classList.remove('hidden');
   initAddResultFooter();
   document.getElementById('btn-add-result-remove').style.display = 'none';
   renderStatus();
-  resultBody.querySelector('.result-badge').style.display = 'none';
+  els.addResultBody.querySelector('.result-badge').style.display = 'none';
 }
-
-export let _addPhase = 'idle'; // 'loading' | 'done' | 'cancelled'
-let _isSingleEdit = false;
-let _generateType = 'word-info';
-let _addedWords = [];
-let _skippedCount = 0;
-export let _pendingGenerates = 0;
-let _abortController = null;
 
 document.addEventListener('mousedown', () => {
   const menu = document.getElementById('split-btn-menu');
   if (menu) menu.hidden = true;
 });
 
-document.getElementById('add-result-modal-backdrop').addEventListener('click', function (e) {
-  if (e.target === this && _addPhase !== 'loading' && _pendingGenerates === 0) closeAddResultModal();
+els.addResultModalBackdrop.addEventListener('click', function (e) {
+  if (e.target === this && state.addPhase !== 'loading' && state.pendingGenerates === 0) closeAddResultModal();
 });
-document.getElementById('add-result-modal-close').addEventListener('click', closeAddResultModal);
+els.addResultClose.addEventListener('click', closeAddResultModal);
 
-document.getElementById('add-result-modal-body').addEventListener('click', e => {
+els.addResultBody.addEventListener('click', e => {
   if (!e.target.closest('.detail-ex-play')) return;
   const row = e.target.closest('.word-result-row');
   const jpInput = e.target.closest('.detail-ex-inputs')?.querySelector('.detail-input:not(.detail-input--en)');
@@ -110,55 +133,55 @@ document.getElementById('add-result-modal-body').addEventListener('click', e => 
 });
 
 // --- Remove-confirm mini-modal ---
-let _pendingRemoveAction = null;
 function openRemoveConfirm(message, action) {
-  _pendingRemoveAction = action;
-  document.getElementById('remove-confirm-text').textContent = message;
-  document.getElementById('remove-confirm-modal-backdrop').classList.remove('hidden');
+  state.pendingRemoveAction = action;
+  els.removeConfirmText.textContent = message;
+  els.removeConfirmModalBackdrop.classList.remove('hidden');
 }
 function closeRemoveConfirm() {
-  _pendingRemoveAction = null;
-  document.getElementById('remove-confirm-modal-backdrop').classList.add('hidden');
+  state.pendingRemoveAction = null;
+  els.removeConfirmModalBackdrop.classList.add('hidden');
 }
-document.getElementById('remove-confirm-modal-backdrop').addEventListener('click', e => {
-  if (e.target === document.getElementById('remove-confirm-modal-backdrop')) closeRemoveConfirm();
+els.removeConfirmModalBackdrop.addEventListener('click', e => {
+  if (e.target === els.removeConfirmModalBackdrop) closeRemoveConfirm();
 });
-document.getElementById('remove-confirm-cancel').addEventListener('click', closeRemoveConfirm);
-document.getElementById('remove-confirm-ok').addEventListener('click', () => {
-  const action = _pendingRemoveAction;
+els.removeConfirmCancel.addEventListener('click', closeRemoveConfirm);
+els.removeConfirmOk.addEventListener('click', () => {
+  const action = state.pendingRemoveAction;
   closeRemoveConfirm();
   if (action) action();
 });
+
 // --- Generate-confirm mini-modal ---
 function openGenerateConfirm() {
-  const addedCount   = document.querySelectorAll('#add-result-modal-body .result-added .btn-generate:not(.btn-generate--busy):not([disabled])').length;
-  const skippedCount = document.querySelectorAll('#add-result-modal-body .result-skipped .btn-generate:not(.btn-generate--busy):not([disabled])').length;
+  const addedCount   = els.addResultBody.querySelectorAll('.result-added .btn-generate:not(.btn-generate--busy):not([disabled])').length;
+  const skippedCount = els.addResultBody.querySelectorAll('.result-skipped .btn-generate:not(.btn-generate--busy):not([disabled])').length;
 
-  document.getElementById('generate-confirm-added-text').textContent   = addedCount   + ' newly added words';
-  document.getElementById('generate-confirm-skipped-text').textContent = skippedCount + ' already existing words';
-  document.getElementById('generate-confirm-added-checkbox').checked   = true;
-  document.getElementById('generate-confirm-skipped-checkbox').checked = false;
+  els.generateConfirmAddedText.textContent   = addedCount   + ' newly added words';
+  els.generateConfirmSkippedText.textContent = skippedCount + ' already existing words';
+  els.generateConfirmAddedCheckbox.checked   = true;
+  els.generateConfirmSkippedCheckbox.checked = false;
 
-  document.getElementById('generate-confirm-modal-backdrop').classList.remove('hidden');
+  els.generateConfirmModalBackdrop.classList.remove('hidden');
 }
 function closeGenerateConfirm() {
-  document.getElementById('generate-confirm-modal-backdrop').classList.add('hidden');
+  els.generateConfirmModalBackdrop.classList.add('hidden');
 }
-document.getElementById('generate-confirm-modal-backdrop').addEventListener('click', e => {
-  if (e.target === document.getElementById('generate-confirm-modal-backdrop')) closeGenerateConfirm();
+els.generateConfirmModalBackdrop.addEventListener('click', e => {
+  if (e.target === els.generateConfirmModalBackdrop) closeGenerateConfirm();
 });
-document.getElementById('generate-confirm-cancel').addEventListener('click', closeGenerateConfirm);
-document.getElementById('generate-confirm-ok').addEventListener('click', () => {
-  const includeAdded   = document.getElementById('generate-confirm-added-checkbox').checked;
-  const includeSkipped = document.getElementById('generate-confirm-skipped-checkbox').checked;
+els.generateConfirmCancel.addEventListener('click', closeGenerateConfirm);
+els.generateConfirmOk.addEventListener('click', () => {
+  const includeAdded   = els.generateConfirmAddedCheckbox.checked;
+  const includeSkipped = els.generateConfirmSkippedCheckbox.checked;
   closeGenerateConfirm();
   generateAll(includeAdded, includeSkipped);
 });
 
-document.querySelector('#add-modal-backdrop .btn-save').addEventListener('click', saveAddModal);
+els.addModalSaveBtn.addEventListener('click', saveAddModal);
 
 // Prevent newlines in contenteditable fields; Enter blurs instead
-document.getElementById('add-result-modal-body').addEventListener('keydown', function(e) {
+els.addResultBody.addEventListener('keydown', function(e) {
   if (e.key !== 'Enter') return;
   if (e.isComposing) return; // let IME handle its own Enter (commit keystroke)
   if (!e.target.classList.contains('detail-input')) return;
@@ -183,24 +206,22 @@ function _getFieldLanguageErrorMsg(el) {
   if (el.closest('.detail-ex') && el.classList.contains('detail-input--en')) return 'English only — Japanese characters are not allowed here';
   return 'Japanese only — Latin letters are not allowed here';
 }
-let _fieldErrorTimer = null;
 function _showFieldError(el, msg) {
   el.classList.remove('detail-input--flash-error');
   void el.offsetWidth; // force reflow to restart animation
   el.classList.add('detail-input--flash-error');
   el.addEventListener('animationend', () => el.classList.remove('detail-input--flash-error'), { once: true });
 
-  const footer = document.getElementById('add-result-modal-footer');
-  let errEl = footer.querySelector('.footer-field-error');
+  let errEl = els.addResultFooter.querySelector('.footer-field-error');
   if (!errEl) {
     errEl = document.createElement('span');
     errEl.className = 'footer-field-error';
     const closeBtn = document.getElementById('btn-add-result-close');
-    footer.insertBefore(errEl, closeBtn);
+    els.addResultFooter.insertBefore(errEl, closeBtn);
   }
   errEl.textContent = msg;
-  clearTimeout(_fieldErrorTimer);
-  _fieldErrorTimer = setTimeout(() => errEl.remove(), 3000);
+  clearTimeout(state.fieldErrorTimer);
+  state.fieldErrorTimer = setTimeout(() => errEl.remove(), 3000);
 }
 function _enforceFieldLanguage(el) {
   const filter = _getFieldLanguageFilter(el);
@@ -222,15 +243,14 @@ function _enforceFieldLanguage(el) {
   }
   _showFieldError(el, _getFieldLanguageErrorMsg(el));
 }
-const _modalBody = document.getElementById('add-result-modal-body');
-_modalBody.addEventListener('input', function(e) {
+els.addResultBody.addEventListener('input', function(e) {
   if (e.isComposing) return;
   if (e.target.classList.contains('detail-input')) _enforceFieldLanguage(e.target);
 });
-_modalBody.addEventListener('compositionend', function(e) {
+els.addResultBody.addEventListener('compositionend', function(e) {
   if (e.target.classList.contains('detail-input')) _enforceFieldLanguage(e.target);
 });
-_modalBody.addEventListener('paste', function(e) {
+els.addResultBody.addEventListener('paste', function(e) {
   const el = e.target;
   if (!el.classList.contains('detail-input')) return;
   const filter = _getFieldLanguageFilter(el);
@@ -241,20 +261,20 @@ _modalBody.addEventListener('paste', function(e) {
 });
 
 // Auto-save word info edits in the add-result modal
-document.getElementById('add-result-modal-body').addEventListener('focusout', function(e) {
+els.addResultBody.addEventListener('focusout', function(e) {
   if (!e.target.classList.contains('detail-input')) return;
   const row = e.target.closest('.word-result-row');
   if (row) saveWordRowEdits(row);
 });
-document.getElementById('add-result-modal-body').addEventListener('change', function(e) {
+els.addResultBody.addEventListener('change', function(e) {
   if (!e.target.classList.contains('detail-pos-select')) return;
   const row = e.target.closest('.word-result-row');
   if (row) saveWordRowEdits(row);
 });
 
 export async function closeAddResultModal() {
-  if (_addPhase === 'loading' || _pendingGenerates > 0) return;
-  document.getElementById('add-result-modal-backdrop').classList.add('hidden');
+  if (state.addPhase === 'loading' || state.pendingGenerates > 0) return;
+  els.addResultModalBackdrop.classList.add('hidden');
   await reloadWords();
   const activeBtn = document.querySelector('.btn-sort--active');
   renderTable(getSortedWords(activeBtn.dataset.sort, activeBtn.dataset.dir || 'desc'));
@@ -262,14 +282,13 @@ export async function closeAddResultModal() {
 
 async function saveAddModal() {
   function sortWordRows() {
-    const body = document.getElementById('add-result-modal-body');
-    const rows = Array.from(body.children);
+    const rows = Array.from(els.addResultBody.children);
     rows.sort((a, b) => {
       const aLexicon = a.dataset.reason === 'already in lexicon' ? 1 : 0;
       const bLexicon = b.dataset.reason === 'already in lexicon' ? 1 : 0;
       return aLexicon - bLexicon;
     });
-    rows.forEach(r => body.appendChild(r));
+    rows.forEach(r => els.addResultBody.appendChild(r));
   }
   function setModalStatus(type, text) {
     const el = document.getElementById('add-result-modal-status');
@@ -278,32 +297,31 @@ async function saveAddModal() {
     el.innerHTML = spinner + '<span>' + esc(text) + '</span>';
   }
 
-  const rawText = document.getElementById('add-words-input').value.trim();
-  if (!rawText) return;
+  const rawWords = document.getElementById('add-words-input').value.trim();
+  if (!rawWords) return;
 
   closeAddModal();
 
-  _addPhase = 'loading';
-  _isSingleEdit = false;
-  _addedWords = [];
-  _skippedCount = 0;
-  _pendingGenerates = 0;
-  _abortController = new AbortController();
+  state.addPhase = 'loading';
+  state.isSingleEdit = false;
+  state.addedWords = [];
+  state.skippedCount = 0;
+  state.pendingGenerates = 0;
+  state.abortController = new AbortController();
 
-  const resultBody = document.getElementById('add-result-modal-body');
-  resultBody.innerHTML = '';
-  document.getElementById('add-result-modal-backdrop').classList.remove('hidden');
+  els.addResultBody.innerHTML = '';
+  els.addResultModalBackdrop.classList.remove('hidden');
   initAddResultFooter();
   document.getElementById('add-result-modal-status').style.display = '';
   renderStatus();
 
   const form = new FormData();
-  form.append('words', rawText);
+  form.append('words', rawWords);
   form.append('autofill', 'off');
 
   try {
     const res = await fetch('/admin/words/batch', {
-      method: 'POST', body: form, signal: _abortController.signal,
+      method: 'POST', body: form, signal: state.abortController.signal,
     });
     if (!res.ok) throw new Error(await res.text());
 
@@ -321,7 +339,7 @@ async function saveAddModal() {
         const data = JSON.parse(line.slice(6));
         if (data.updated) { updateWordRowDetails(data); continue; }
         if (data.done) {
-          _addPhase = 'done';
+          state.addPhase = 'done';
           clearAutofillSpinners();
           sortWordRows();
           renderStatus();
@@ -329,8 +347,8 @@ async function saveAddModal() {
           updateAddResultFooter();
           return;
         }
-        if (data.added) _addedWords.push(data.word);
-        else _skippedCount++;
+        if (data.added) state.addedWords.push(data.word);
+        else state.skippedCount++;
         appendWordRow(data);
         renderStatus();
         updateAddResultFooter();
@@ -338,9 +356,9 @@ async function saveAddModal() {
     }
   } catch (err) {
     if (err.name === 'AbortError') {
-      if (_addPhase === 'loading') {
+      if (state.addPhase === 'loading') {
         // Abort came from Cancel button — handle as cancellation.
-        _addPhase = 'cancelled';
+        state.addPhase = 'cancelled';
         clearAutofillSpinners();
         renderStatus();
         await reloadWords();
@@ -348,7 +366,7 @@ async function saveAddModal() {
       }
       // else: abort was triggered by the Remove handler, which manages cleanup itself.
     } else {
-      _addPhase = 'done';
+      state.addPhase = 'done';
       setModalStatus('done', 'Error: ' + err.message);
       await reloadWords();
       updateAddResultFooter();
@@ -358,14 +376,13 @@ async function saveAddModal() {
 
 function appendWordRow(data) {
   // Find the pre-inserted placeholder row for this word; fall back to appending a new one
-  const body = document.getElementById('add-result-modal-body');
   let row = null;
-  for (const el of body.children) {
+  for (const el of els.addResultBody.children) {
     if (el._pendingWord === data.word) { row = el; break; }
   }
   if (!row) {
     row = document.createElement('div');
-    body.appendChild(row);
+    els.addResultBody.appendChild(row);
   }
   row._pendingWord = null;
   row._resolvedWord = data.word;
@@ -380,7 +397,7 @@ function appendWordRow(data) {
   const removeBtn =
     '<button class="btn-delete btn-word-remove" data-tooltip="Remove word"' +
       ' data-word="' + esc(data.word) + '">✕</button>';
-  const hasProviders = _providers && (_providers.anthropic || _providers.openai || _providers.google || _providers.mistral || _providers.glm);
+  const hasProviders = lexiconState.providers && (lexiconState.providers.anthropic || lexiconState.providers.openai || lexiconState.providers.google || lexiconState.providers.mistral || lexiconState.providers.glm);
   const generateBtn = data.word_id
     ? '<button class="btn-generate"' +
         (hasProviders ? '' : ' disabled') +
@@ -453,9 +470,8 @@ function appendWordRow(data) {
 }
 
 function updateWordRowDetails(data) {
-  const body = document.getElementById('add-result-modal-body');
   let row = null;
-  for (const el of body.children) {
+  for (const el of els.addResultBody.children) {
     if (el._resolvedWord === data.word) { row = el; break; }
   }
   if (!row) return;
@@ -472,7 +488,7 @@ function updateWordRowDetails(data) {
   if (genBtn && genBtn.classList.contains('btn-generate--busy') && !genBtn._generateAbort) {
     genBtn.classList.remove('btn-generate--busy');
     genBtn.innerHTML = 'generate';
-    _pendingGenerates = Math.max(0, _pendingGenerates - 1);
+    state.pendingGenerates = Math.max(0, state.pendingGenerates - 1);
     renderStatus();
   }
 }
@@ -498,7 +514,7 @@ async function startSuggestedImageDownload(row, wordId, imageURL) {
 }
 
 function getGenerateType() {
-  return _generateType;
+  return state.generateType;
 }
 
 function getImageSource() {
@@ -506,26 +522,26 @@ function getImageSource() {
 }
 
 function audioReadyTooltip() {
-  if (!_voicevoxAvailable) return 'VoiceVox is not running';
-  if (!_ffmpegAvailable) return 'ffmpeg is not installed (required for audio generation)';
+  if (!lexiconState.voicevoxAvailable) return 'VoiceVox is not running';
+  if (!lexiconState.ffmpegAvailable) return 'ffmpeg is not installed (required for audio generation)';
   return 'Generates audio via the local VoiceVox engine';
 }
 
 function getWordBtnLabel() {
-  return _generateType === 'image' ? 'generate image' : _generateType === 'audio' ? 'generate audio' : 'generate word info';
+  return state.generateType === 'image' ? 'generate image' : state.generateType === 'audio' ? 'generate audio' : 'generate word info';
 }
 
 function updateGenerateBtnStates() {
   const type = getGenerateType();
-  const hasProviders = _providers && (_providers.anthropic || _providers.openai || _providers.google || _providers.mistral || _providers.glm);
-  const audioReady = _voicevoxAvailable && _ffmpegAvailable;
+  const hasProviders = lexiconState.providers && (lexiconState.providers.anthropic || lexiconState.providers.openai || lexiconState.providers.google || lexiconState.providers.mistral || lexiconState.providers.glm);
+  const audioReady = lexiconState.voicevoxAvailable && lexiconState.ffmpegAvailable;
   const disabled = type === 'audio' ? !audioReady : !hasProviders;
   const tooltip = type === 'audio'
     ? audioReadyTooltip()
     : type === 'image'
       ? 'Uses an AI API request to find and download an image for this word'
       : 'Uses an AI API request to get the word\'s reading, part-of-speech, meaning, and an example sentence';
-  document.querySelectorAll('#add-result-modal-body .btn-generate:not(.btn-generate--busy)').forEach(btn => {
+  els.addResultBody.querySelectorAll('.btn-generate:not(.btn-generate--busy)').forEach(btn => {
     btn.disabled = disabled;
     btn.dataset.tooltip = tooltip;
     btn.innerHTML = getWordBtnLabel();
@@ -543,7 +559,7 @@ async function generateWordAutofill(event, wordId, word, btn) {
   btn._generateAbort = abort;
   btn.classList.add('btn-generate--busy', 'btn-generate--cancellable');
   btn.innerHTML = '<span class="spinner"></span><span class="btn-gen-label">generating\u2026</span><span class="btn-gen-cancel">cancel generation</span>';
-  _pendingGenerates++;
+  state.pendingGenerates++;
   renderStatus();
   const aiModel = document.getElementById('add-result-model-select').value;
   try {
@@ -563,7 +579,7 @@ async function generateWordAutofill(event, wordId, word, btn) {
       if (btn.classList.contains('btn-generate--busy')) {
         btn.classList.remove('btn-generate--busy', 'btn-generate--cancellable');
         btn.innerHTML = getWordBtnLabel();
-        _pendingGenerates = Math.max(0, _pendingGenerates - 1);
+        state.pendingGenerates = Math.max(0, state.pendingGenerates - 1);
         renderStatus();
       }
     }
@@ -582,7 +598,7 @@ async function generateWordImage(event, wordId, word, btn) {
   btn._generateAbort = abort;
   btn.classList.add('btn-generate--busy', 'btn-generate--cancellable');
   btn.innerHTML = '<span class="spinner"></span><span class="btn-gen-label">finding image\u2026</span><span class="btn-gen-cancel">cancel</span>';
-  _pendingGenerates++;
+  state.pendingGenerates++;
   renderStatus();
   const aiModel = document.getElementById('add-result-model-select').value;
   const meaning = (row?.querySelector('.detail-meaning .detail-input')?.textContent ?? '').trim();
@@ -613,7 +629,7 @@ async function generateWordImage(event, wordId, word, btn) {
       if (btn.classList.contains('btn-generate--busy')) {
         btn.classList.remove('btn-generate--busy', 'btn-generate--cancellable');
         btn.innerHTML = getWordBtnLabel();
-        _pendingGenerates = Math.max(0, _pendingGenerates - 1);
+        state.pendingGenerates = Math.max(0, state.pendingGenerates - 1);
         renderStatus();
       }
     }
@@ -631,7 +647,7 @@ async function generateWordAudio(event, wordId, word, btn) {
   btn._generateAbort = abort;
   btn.classList.add('btn-generate--busy', 'btn-generate--cancellable');
   btn.innerHTML = '<span class="spinner"></span><span class="btn-gen-label">generating\u2026</span><span class="btn-gen-cancel">cancel</span>';
-  _pendingGenerates++;
+  state.pendingGenerates++;
   renderStatus();
   try {
     const vv = getVoicevoxSettings();
@@ -655,7 +671,7 @@ async function generateWordAudio(event, wordId, word, btn) {
       if (btn.classList.contains('btn-generate--busy')) {
         btn.classList.remove('btn-generate--busy', 'btn-generate--cancellable');
         btn.innerHTML = getWordBtnLabel();
-        _pendingGenerates = Math.max(0, _pendingGenerates - 1);
+        state.pendingGenerates = Math.max(0, state.pendingGenerates - 1);
         renderStatus();
       }
     }
@@ -675,9 +691,9 @@ function removeWordRow(event, btn) {
     if (!res.ok) { btn.disabled = false; return; }
     const row = btn.closest('.word-result-row');
     row.remove();
-    const idx = _addedWords.indexOf(word);
-    if (idx !== -1) _addedWords.splice(idx, 1);
-    if (document.querySelectorAll('#add-result-modal-body .word-result-row').length === 0) {
+    const idx = state.addedWords.indexOf(word);
+    if (idx !== -1) state.addedWords.splice(idx, 1);
+    if (els.addResultBody.querySelectorAll('.word-result-row').length === 0) {
       closeAddResultModal();
       return;
     }
@@ -734,18 +750,17 @@ async function adjustWordTarget(event, wordId, delta, btn) {
   }
 }
 
-
 function clearAutofillSpinners() {
-  document.querySelectorAll('#add-result-modal-body .btn-generate--busy').forEach(btn => {
+  els.addResultBody.querySelectorAll('.btn-generate--busy').forEach(btn => {
     btn._generateAbort = null;
     btn.classList.remove('btn-generate--busy', 'btn-generate--cancellable');
     btn.innerHTML = getWordBtnLabel();
   });
-  _pendingGenerates = 0;
+  state.pendingGenerates = 0;
 }
 
 function cancelAllGenerates() {
-  document.querySelectorAll('#add-result-modal-body .btn-generate--cancellable').forEach(btn => {
+  els.addResultBody.querySelectorAll('.btn-generate--cancellable').forEach(btn => {
     if (btn._generateAbort) btn._generateAbort.abort();
   });
   clearAutofillSpinners();
@@ -757,21 +772,21 @@ function generateAll(includeAdded, includeSkipped) {
   if (type === 'word-info') {
     const rows = [];
     if (includeAdded)
-      document.querySelectorAll('#add-result-modal-body .result-added .btn-generate:not(.btn-generate--busy):not([disabled])').forEach(btn => {
+      els.addResultBody.querySelectorAll('.result-added .btn-generate:not(.btn-generate--busy):not([disabled])').forEach(btn => {
         const row = btn.closest('.word-result-row');
         if (row) rows.push(row);
       });
     if (includeSkipped)
-      document.querySelectorAll('#add-result-modal-body .result-skipped .btn-generate:not(.btn-generate--busy):not([disabled])').forEach(btn => {
+      els.addResultBody.querySelectorAll('.result-skipped .btn-generate:not(.btn-generate--busy):not([disabled])').forEach(btn => {
         const row = btn.closest('.word-result-row');
         if (row) rows.push(row);
       });
     generateAllAutofillBatch(rows);
   } else {
     if (includeAdded)
-      document.querySelectorAll('#add-result-modal-body .result-added .btn-generate:not(.btn-generate--busy):not([disabled])').forEach(btn => btn.dispatchEvent(new MouseEvent('mousedown')));
+      els.addResultBody.querySelectorAll('.result-added .btn-generate:not(.btn-generate--busy):not([disabled])').forEach(btn => btn.dispatchEvent(new MouseEvent('mousedown')));
     if (includeSkipped)
-      document.querySelectorAll('#add-result-modal-body .result-skipped .btn-generate:not(.btn-generate--busy):not([disabled])').forEach(btn => btn.dispatchEvent(new MouseEvent('mousedown')));
+      els.addResultBody.querySelectorAll('.result-skipped .btn-generate:not(.btn-generate--busy):not([disabled])').forEach(btn => btn.dispatchEvent(new MouseEvent('mousedown')));
   }
 }
 
@@ -786,7 +801,7 @@ async function generateAllAutofillBatch(rows) {
     btn._generateAbort = abort;
     btn.classList.add('btn-generate--busy', 'btn-generate--cancellable');
     btn.innerHTML = '<span class="spinner"></span><span class="btn-gen-label">generating\u2026</span><span class="btn-gen-cancel">cancel generation</span>';
-    _pendingGenerates++;
+    state.pendingGenerates++;
     wordItems.push({ id: row._wordId, word: row._resolvedWord, btn });
   }
   if (wordItems.length === 0) return;
@@ -817,7 +832,7 @@ async function generateAllAutofillBatch(rows) {
       if (btn.classList.contains('btn-generate--busy')) {
         btn.classList.remove('btn-generate--busy');
         btn.innerHTML = getWordBtnLabel();
-        _pendingGenerates = Math.max(0, _pendingGenerates - 1);
+        state.pendingGenerates = Math.max(0, state.pendingGenerates - 1);
       }
     }
     renderStatus();
@@ -825,31 +840,23 @@ async function generateAllAutofillBatch(rows) {
 }
 
 function renderStatus() {
-  // Update modal title
-  const titleEl = document.getElementById('add-result-modal-title');
-  if (titleEl) {
-    titleEl.textContent = 'Edit words';
-  }
+  els.addResultTitle.textContent = 'Edit words';
 
-  // Update header close button state
-  const closeBtnHdr = document.getElementById('add-result-modal-close');
-  if (closeBtnHdr) {
-    const locked = _addPhase === 'loading' || _pendingGenerates > 0;
-    closeBtnHdr.style.opacity = locked ? '0.3' : '';
-    closeBtnHdr.style.cursor  = locked ? 'not-allowed' : '';
-    if (locked) {
-      closeBtnHdr.dataset.tooltip = _addPhase === 'loading'
-        ? 'Please wait for words to finish being added'
-        : 'Please wait for generation to finish';
-    } else {
-      delete closeBtnHdr.dataset.tooltip;
-    }
+  const locked = state.addPhase === 'loading' || state.pendingGenerates > 0;
+  els.addResultClose.style.opacity = locked ? '0.3' : '';
+  els.addResultClose.style.cursor  = locked ? 'not-allowed' : '';
+  if (locked) {
+    els.addResultClose.dataset.tooltip = state.addPhase === 'loading'
+      ? 'Please wait for words to finish being added'
+      : 'Please wait for generation to finish';
+  } else {
+    delete els.addResultClose.dataset.tooltip;
   }
 
   const sel = document.getElementById('add-result-model-select');
   if (sel) {
-    const busyLock = _pendingGenerates > 0;
-    sel.disabled = busyLock || !(_providers && (_providers.anthropic || _providers.openai || _providers.google || _providers.mistral || _providers.glm));
+    const busyLock = state.pendingGenerates > 0;
+    sel.disabled = busyLock || !(lexiconState.providers && (lexiconState.providers.anthropic || lexiconState.providers.openai || lexiconState.providers.google || lexiconState.providers.mistral || lexiconState.providers.glm));
     if (busyLock) {
       sel.dataset.tooltip = 'Unavailable while generation is in progress';
     } else {
@@ -858,23 +865,23 @@ function renderStatus() {
   }
   const el = document.getElementById('add-result-modal-status');
   const actionEl = document.getElementById('add-result-modal-action');
-  const skippedHtml = _skippedCount > 0
-    ? ', <span class="status-skipped">' + _skippedCount + ' skipped</span>'
+  const skippedHtml = state.skippedCount > 0
+    ? ', <span class="status-skipped">' + state.skippedCount + ' skipped</span>'
     : '';
-  const countsHtml = '<span>' + _addedWords.length + ' added' + skippedHtml + '</span>';
-  const hasProviders = _providers && (_providers.anthropic || _providers.openai || _providers.google || _providers.mistral || _providers.glm);
+  const countsHtml = '<span>' + state.addedWords.length + ' added' + skippedHtml + '</span>';
+  const hasProviders = lexiconState.providers && (lexiconState.providers.anthropic || lexiconState.providers.openai || lexiconState.providers.google || lexiconState.providers.mistral || lexiconState.providers.glm);
   const genType = getGenerateType();
-  const audioReady = _voicevoxAvailable && _ffmpegAvailable;
+  const audioReady = lexiconState.voicevoxAvailable && lexiconState.ffmpegAvailable;
   const genAllTooltip = genType === 'audio'
     ? audioReadyTooltip()
     : genType === 'image'
       ? 'Uses an AI API request to find and download an image for each word'
       : 'Uses an AI API request to get the reading, part-of-speech, meaning, and an example sentence for each word';
   const genAllEnabled =
-    document.querySelectorAll('#add-result-modal-body .word-result-row .btn-generate:not(.btn-generate--busy):not([disabled])').length > 0 &&
-    (genType === 'audio' ? audioReady : hasProviders) && _addPhase !== 'loading';
+    els.addResultBody.querySelectorAll('.word-result-row .btn-generate:not(.btn-generate--busy):not([disabled])').length > 0 &&
+    (genType === 'audio' ? audioReady : hasProviders) && state.addPhase !== 'loading';
   const genTypeLabels = { 'word-info': 'Generate word info', 'image': 'Generate images', 'audio': 'Generate audio' };
-  const actionHtml = _pendingGenerates > 0
+  const actionHtml = state.pendingGenerates > 0
     ? '<button class="btn-danger btn-generate--cancel">' +
         '<span class="spinner"></span>Cancel generation' +
       '</button>'
@@ -882,14 +889,14 @@ function renderStatus() {
         '<button class="btn-save btn-generate--all split-btn-main"' +
           (genAllEnabled ? '' : ' disabled') +
           ' data-tooltip="' + genAllTooltip + '">' +
-          genTypeLabels[_generateType] +
+          genTypeLabels[state.generateType] +
         '</button>' +
         '<button class="btn-save btn-generate--all split-btn-arrow"' +
           (genAllEnabled ? '' : ' disabled') +
           '>▾</button>' +
         '<div class="split-btn-menu" id="split-btn-menu" hidden>' +
           ['word-info', 'image', 'audio'].map(t =>
-            '<button class="split-btn-option' + (t === _generateType ? ' split-btn-option--active' : '') + '" data-type="' + t + '">' +
+            '<button class="split-btn-option' + (t === state.generateType ? ' split-btn-option--active' : '') + '" data-type="' + t + '">' +
               genTypeLabels[t] +
             '</button>'
           ).join('') +
@@ -897,13 +904,13 @@ function renderStatus() {
       '</div>';
   if (actionEl) {
     actionEl.innerHTML = actionHtml;
-    if (_pendingGenerates > 0) {
+    if (state.pendingGenerates > 0) {
       actionEl.querySelector('button').addEventListener('mousedown', cancelAllGenerates);
     } else {
       const mainBtn = actionEl.querySelector('.split-btn-main');
       const arrowBtn = actionEl.querySelector('.split-btn-arrow');
       const menu = document.getElementById('split-btn-menu');
-      if (mainBtn) mainBtn.addEventListener('mousedown', _isSingleEdit ? () => generateAll(true, true) : openGenerateConfirm);
+      if (mainBtn) mainBtn.addEventListener('mousedown', state.isSingleEdit ? () => generateAll(true, true) : openGenerateConfirm);
       if (arrowBtn && menu) {
         arrowBtn.addEventListener('mousedown', (e) => {
           e.stopPropagation();
@@ -912,7 +919,7 @@ function renderStatus() {
         menu.querySelectorAll('.split-btn-option').forEach(opt => {
           opt.addEventListener('mousedown', (e) => {
             e.stopPropagation();
-            _generateType = opt.dataset.type;
+            state.generateType = opt.dataset.type;
             menu.hidden = true;
             renderStatus();
           });
@@ -920,14 +927,14 @@ function renderStatus() {
       }
     }
   }
-  if (_addPhase === 'loading') {
+  if (state.addPhase === 'loading') {
     el.className = 'modal-status modal-status-loading';
-    el.innerHTML = countsHtml + (_pendingGenerates === 0 ? '<span class="spinner"></span>' : '');
-  } else if (_addPhase === 'cancelled') {
+    el.innerHTML = countsHtml + (state.pendingGenerates === 0 ? '<span class="spinner"></span>' : '');
+  } else if (state.addPhase === 'cancelled') {
     el.className = 'modal-status modal-status-cancelled';
-    el.innerHTML = countsHtml + (_pendingGenerates === 0 ? '<span class="status-cancelled-note"> — cancelled</span>' : '');
+    el.innerHTML = countsHtml + (state.pendingGenerates === 0 ? '<span class="status-cancelled-note"> — cancelled</span>' : '');
   } else {
-    el.className = 'modal-status ' + (_pendingGenerates > 0 ? 'modal-status-loading' : 'modal-status-done');
+    el.className = 'modal-status ' + (state.pendingGenerates > 0 ? 'modal-status-loading' : 'modal-status-done');
     el.innerHTML = countsHtml;
   }
   updateAddResultFooter();
@@ -970,18 +977,17 @@ function initAddResultFooter() {
     { key: 'bing',     label: 'Bing',     envKey: 'BING_API_KEY'        },
   ];
 
-  const footer = document.getElementById('add-result-modal-footer');
-  const hasProviders = _providers && providerModels.some(p => _providers[p.key]);
-  const progTip = _providers
+  const hasProviders = lexiconState.providers && providerModels.some(p => lexiconState.providers[p.key]);
+  const progTip = lexiconState.providers
     ? (() => {
         const lines = providerModels
-          .filter(p => !_providers[p.key])
+          .filter(p => !lexiconState.providers[p.key])
           .map(p => p.label + ': set ' + p.envKey + ' to enable');
         return lines.length ? lines.join('\n') + '\n— then restart the program' : null;
       })()
     : null;
   const optgroupsHtml = providerModels.map(({ key, label, models }) => {
-    const avail = _providers && _providers[key];
+    const avail = lexiconState.providers && lexiconState.providers[key];
     const groupLabel = avail ? label : label + ' — no API key';
     const options = models.map(([val, text]) => '<option value="' + val + '">' + text + '</option>').join('');
     return '<optgroup label="' + groupLabel + '"' + (avail ? '' : ' disabled') + '>' + options + '</optgroup>';
@@ -990,20 +996,20 @@ function initAddResultFooter() {
   const imageSourceOptions =
     '<option value="wikimedia">Wikimedia</option>' +
     imageSources.map(({ key, label }) => {
-      const avail = _imageSources && _imageSources[key];
+      const avail = lexiconState.imageSources && lexiconState.imageSources[key];
       return '<option value="' + key + '"' + (avail ? '' : ' disabled') + '>' +
         label + (avail ? '' : ' — no key') + '</option>';
     }).join('');
-  const imageSourceTip = _imageSources
+  const imageSourceTip = lexiconState.imageSources
     ? (() => {
         const lines = imageSources
-          .filter(s => !_imageSources[s.key])
+          .filter(s => !lexiconState.imageSources[s.key])
           .map(s => s.label + ': set ' + s.envKey + ' to enable');
         return lines.length ? lines.join('\n') + '\n— then restart the program' : null;
       })()
     : null;
 
-  footer.innerHTML =
+  els.addResultFooter.innerHTML =
     '<select id="add-result-model-select" class="add-result-model-select"' +
       (hasProviders ? '' : ' disabled') +
     '>' +
@@ -1026,25 +1032,25 @@ function initAddResultFooter() {
     if (first) sel.value = first.value;
   }
 
-  document.getElementById('btn-add-result-remove').onclick = function () {
-    const count = _addedWords.length;
-    const label = count === 1 ? '"' + _addedWords[0] + '"' : count + ' added words';
+  document.getElementById('btn-add-result-remove').addEventListener('click', function () {
+    const count = state.addedWords.length;
+    const label = count === 1 ? '"' + state.addedWords[0] + '"' : count + ' added words';
     openRemoveConfirm('Remove ' + label + ' from the lexicon?', async () => {
-      const toRemove = _addedWords.slice();
-      if (_addPhase === 'loading') {
-        _addPhase = 'done'; // mark before abort so the AbortError catch is a no-op
-        _abortController.abort();
+      const toRemove = state.addedWords.slice();
+      if (state.addPhase === 'loading') {
+        state.addPhase = 'done'; // mark before abort so the AbortError catch is a no-op
+        state.abortController.abort();
       }
       await fetch('/admin/words/delete', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ words: toRemove }),
       });
-      _addedWords = [];
-      document.querySelectorAll('#add-result-modal-body .badge-added').forEach(badge => {
+      state.addedWords = [];
+      els.addResultBody.querySelectorAll('.badge-added').forEach(badge => {
         badge.closest('.word-result-row').remove();
       });
-      if (document.querySelectorAll('#add-result-modal-body .word-result-row').length === 0) {
+      if (els.addResultBody.querySelectorAll('.word-result-row').length === 0) {
         closeAddResultModal();
         await reloadWords();
         return;
@@ -1053,8 +1059,8 @@ function initAddResultFooter() {
       await reloadWords();
       updateAddResultFooter();
     });
-  };
-  document.getElementById('btn-add-result-close').onclick = closeAddResultModal;
+  });
+  document.getElementById('btn-add-result-close').addEventListener('click', closeAddResultModal);
   updateAddResultFooter();
 }
 
@@ -1062,7 +1068,7 @@ function updateAddResultFooter() {
   const btnRemove = document.getElementById('btn-add-result-remove');
   const btnClose  = document.getElementById('btn-add-result-close');
   if (!btnRemove) return;
-  btnRemove.disabled = _addedWords.length === 0;
+  btnRemove.disabled = state.addedWords.length === 0;
   btnRemove.textContent = 'Remove the added words';
-  btnClose.disabled = _addPhase === 'loading' || _pendingGenerates > 0;
+  btnClose.disabled = state.addPhase === 'loading' || state.pendingGenerates > 0;
 }

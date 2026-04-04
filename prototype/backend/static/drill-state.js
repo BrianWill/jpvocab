@@ -50,6 +50,7 @@ export function createDrillState(filterKeys) {
     isSubmittingAnswer: false,
     kanjiMap: {},
     lastAnswered: null,
+    lastAutoPlayedId: null,
     pool: [],
     poolSize: 0,
     redo: [],

@@ -2,10 +2,21 @@
 
 This file is random notes of possible features and bug fixes.
 
+- write the README
+    - need setup instructions
+        - add these instructions or link them on the welcome page
+    - explain drilling theory / workflow
+
 - clicking the image placeholder or thumbnail shoudl open a file dialog to upload an image file
 
 - story
-    hover tooltip should show translation of current word
+    - hover tooltip should show translation of current word
+    - display total audio time right of the seek bar
+        - hover over seek should indicate the time mark of that position
+    - changing playback speed while playing TTS should pause and resume the audio so that the audio speed changes immediately
+        - not necessary for audio file playback
+        - should be able to edit number with text entry (can place cursor, but can't edit text right now)
+        - holding - + should advance (like the spinners in the settings modal)
     - story text should be separate scroll area from title and generate/ back buttons
         (i.e. title should not scroll)
     - generate AI translation

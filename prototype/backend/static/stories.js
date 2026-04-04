@@ -1,3 +1,8 @@
+const els = {
+  empty: document.getElementById('stories-empty'),
+  list: document.getElementById('stories-list'),
+};
+
 async function loadStories() {
   const res = await fetch('/api/stories');
   if (!res.ok) throw new Error('failed to load stories');
@@ -25,17 +30,14 @@ function wordCountLabel(n) {
 }
 
 function renderStories(stories) {
-  const list = document.getElementById('stories-list');
-  const empty = document.getElementById('stories-empty');
-
   if (!stories.length) {
-    empty.hidden = false;
-    list.innerHTML = '';
+    els.empty.hidden = false;
+    els.list.innerHTML = '';
     return;
   }
 
-  empty.hidden = true;
-  list.innerHTML = stories.map(story => `
+  els.empty.hidden = true;
+  els.list.innerHTML = stories.map(story => `
     <a class="story-card-link" href="/stories/${story.id}">
     <article class="story-card">
       <div class="story-card-meta">
@@ -49,9 +51,8 @@ function renderStories(stories) {
 }
 
 function renderError() {
-  const empty = document.getElementById('stories-empty');
-  empty.hidden = false;
-  empty.textContent = 'Could not load stories right now.';
+  els.empty.hidden = false;
+  els.empty.textContent = 'Could not load stories right now.';
 }
 
 loadStories().then(renderStories).catch(renderError);

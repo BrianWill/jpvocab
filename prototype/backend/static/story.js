@@ -1,31 +1,50 @@
 import { getTtsVoice, getVoicevoxSettings, checkVoicevoxAvailable } from './common.js';
 
 // ── DOM refs ──────────────────────────────────────────────────────────────────
-const ttsBtn   = document.getElementById('story-tts-btn');
-const ttsIcon  = document.getElementById('story-tts-icon');
-const speedVal = document.getElementById('story-speed-val');
-const seekbar  = document.getElementById('story-seekbar');
-const genBtn   = document.getElementById('story-gen-btn');
-const genModal = document.getElementById('story-gen-modal-backdrop');
+const els = {
+  genBtn: document.getElementById('story-gen-btn'),
+  genCancelGenerationBtn: document.getElementById('story-gen-cancel-generation-btn'),
+  genConfirmBody: document.getElementById('gen-confirm-body'),
+  genModalBackdrop: document.getElementById('story-gen-modal-backdrop'),
+  genModalCancel: document.getElementById('story-gen-modal-cancel'),
+  genModalConfirm: document.getElementById('story-gen-modal-confirm'),
+  genModalDone: document.getElementById('story-gen-modal-done'),
+  genProgressBody: document.getElementById('gen-progress-body'),
+  genProgressCount: document.getElementById('gen-progress-count'),
+  genSentenceList: document.getElementById('gen-sentence-list'),
+  seekbar: document.getElementById('story-seekbar'),
+  speedDec: document.getElementById('story-speed-dec'),
+  speedInc: document.getElementById('story-speed-inc'),
+  speedVal: document.getElementById('story-speed-val'),
+  storyContent: document.getElementById('story-content'),
+  storyError: document.getElementById('story-error'),
+  storyTitle: document.getElementById('story-title'),
+  ttsBtn: document.getElementById('story-tts-btn'),
+  ttsIcon: document.getElementById('story-tts-icon'),
+};
+els.genModalClose = els.genModalBackdrop.querySelector('.modal-close');
 
 // ── Playback state ────────────────────────────────────────────────────────────
-let ttsText = '';
-let ttsRate = 1.0;
-let sentenceSpans = [];
-let sentenceOffsets = [];  // char start of each sentence in ttsText (TTS mode)
-let activeIdx = -1;
-let resumeOffset = 0;
-let lastWordAbsPos = 0;
-let currentUtterance = null;
-
-// Audio-file mode (used when story.hasAudio is true)
-let audioMode = false;
-let sentenceDurations = [];  // ms per sentence, parallel to story.sentences
-let sentenceCumulative = []; // cumulative ms offsets, parallel (sentenceCumulative[i] = start of sentence i)
-let totalDurationMs = 0;
-let audioSentenceIdx = 0;    // which sentence file is currently loaded/playing
-let audioEl = null;          // single reused <audio> element
-let seekbarDragging = false;
+const state = {
+  activeIdx: -1,
+  audioEl: null,
+  audioMode: false,
+  audioSentenceIdx: 0,
+  currentUtterance: null,
+  generateController: null,
+  generating: false,
+  lastWordAbsPos: 0,
+  resumeOffset: 0,
+  seekbarDragging: false,
+  sentenceCumulative: [],
+  sentenceDurations: [],
+  sentenceOffsets: [],
+  sentenceSpans: [],
+  story: null,
+  totalDurationMs: 0,
+  ttsRate: 1.0,
+  ttsText: '',
+};
 
 // ── Story ID ──────────────────────────────────────────────────────────────────
 function storyIdFromPath() {
@@ -35,13 +54,13 @@ function storyIdFromPath() {
 const STORY_ID = storyIdFromPath();
 
 // ── Speed stepper ─────────────────────────────────────────────────────────────
-document.getElementById('story-speed-dec').addEventListener('click', () => {
-  ttsRate = Math.max(0.5, parseFloat((ttsRate - 0.05).toFixed(2)));
-  speedVal.value = ttsRate.toFixed(2);
+els.speedDec.addEventListener('click', () => {
+  state.ttsRate = Math.max(0.5, parseFloat((state.ttsRate - 0.05).toFixed(2)));
+  els.speedVal.value = state.ttsRate.toFixed(2);
 });
-document.getElementById('story-speed-inc').addEventListener('click', () => {
-  ttsRate = Math.min(2.0, parseFloat((ttsRate + 0.05).toFixed(2)));
-  speedVal.value = ttsRate.toFixed(2);
+els.speedInc.addEventListener('click', () => {
+  state.ttsRate = Math.min(2.0, parseFloat((state.ttsRate + 0.05).toFixed(2)));
+  els.speedVal.value = state.ttsRate.toFixed(2);
 });
 
 // ── Icons ─────────────────────────────────────────────────────────────────────
@@ -49,46 +68,46 @@ const ICON_PLAY = '<path d="M8 5v14l11-7z"/>';
 const ICON_STOP = '<rect x="6" y="6" width="12" height="12"/>';
 
 function setTtsPlaying(playing) {
-  ttsIcon.innerHTML = playing ? ICON_STOP : ICON_PLAY;
-  ttsBtn.setAttribute('aria-label', playing ? 'Stop reading' : 'Play story');
+  els.ttsIcon.innerHTML = playing ? ICON_STOP : ICON_PLAY;
+  els.ttsBtn.setAttribute('aria-label', playing ? 'Stop reading' : 'Play story');
 }
 
 // ── Sentence / word highlight (shared by both modes) ──────────────────────────
 function setActiveIdx(idx) {
-  sentenceSpans[activeIdx]?.classList.remove('story-sentence--active');
-  activeIdx = idx;
-  const span = sentenceSpans[activeIdx];
+  state.sentenceSpans[state.activeIdx]?.classList.remove('story-sentence--active');
+  state.activeIdx = idx;
+  const span = state.sentenceSpans[state.activeIdx];
   span?.classList.add('story-sentence--active');
   span?.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
 }
 
 function clearHighlight() {
-  sentenceSpans[activeIdx]?.classList.remove('story-sentence--active');
-  activeIdx = -1;
-  resumeOffset = 0;
-  lastWordAbsPos = 0;
+  state.sentenceSpans[state.activeIdx]?.classList.remove('story-sentence--active');
+  state.activeIdx = -1;
+  state.resumeOffset = 0;
+  state.lastWordAbsPos = 0;
 }
 
 // ── TTS mode ──────────────────────────────────────────────────────────────────
 function highlightAt(charIndex) {
-  lastWordAbsPos = resumeOffset + charIndex;
-  const abs = lastWordAbsPos;
+  state.lastWordAbsPos = state.resumeOffset + charIndex;
+  const abs = state.lastWordAbsPos;
 
   let sIdx = 0;
-  for (let i = 1; i < sentenceOffsets.length; i++) {
-    if (sentenceOffsets[i] <= abs) sIdx = i;
+  for (let i = 1; i < state.sentenceOffsets.length; i++) {
+    if (state.sentenceOffsets[i] <= abs) sIdx = i;
     else break;
   }
-  if (sIdx !== activeIdx) setActiveIdx(sIdx);
+  if (sIdx !== state.activeIdx) setActiveIdx(sIdx);
 }
 
 function stopTts() {
-  resumeOffset = lastWordAbsPos;
-  if (currentUtterance) {
-    currentUtterance.onboundary = null;
-    currentUtterance.onend = null;
-    currentUtterance.onerror = null;
-    currentUtterance = null;
+  state.resumeOffset = state.lastWordAbsPos;
+  if (state.currentUtterance) {
+    state.currentUtterance.onboundary = null;
+    state.currentUtterance.onend = null;
+    state.currentUtterance.onerror = null;
+    state.currentUtterance = null;
   }
   window.speechSynthesis.cancel();
   setTtsPlaying(false);
@@ -98,15 +117,15 @@ async function startTts() {
   if (!speechSynthesis.getVoices().length) {
     await new Promise(resolve => speechSynthesis.addEventListener('voiceschanged', resolve, { once: true }));
   }
-  currentUtterance = new SpeechSynthesisUtterance(ttsText.slice(resumeOffset));
-  currentUtterance.lang = 'ja-JP';
-  currentUtterance.rate = ttsRate;
+  state.currentUtterance = new SpeechSynthesisUtterance(state.ttsText.slice(state.resumeOffset));
+  state.currentUtterance.lang = 'ja-JP';
+  state.currentUtterance.rate = state.ttsRate;
   const voice = getTtsVoice('ja-JP');
-  if (voice) currentUtterance.voice = voice;
-  currentUtterance.onboundary = e => highlightAt(e.charIndex);
-  currentUtterance.onend = () => { currentUtterance = null; clearHighlight(); setTtsPlaying(false); };
-  currentUtterance.onerror = () => { currentUtterance = null; clearHighlight(); setTtsPlaying(false); };
-  window.speechSynthesis.speak(currentUtterance);
+  if (voice) state.currentUtterance.voice = voice;
+  state.currentUtterance.onboundary = e => highlightAt(e.charIndex);
+  state.currentUtterance.onend = () => { state.currentUtterance = null; clearHighlight(); setTtsPlaying(false); };
+  state.currentUtterance.onerror = () => { state.currentUtterance = null; clearHighlight(); setTtsPlaying(false); };
+  window.speechSynthesis.speak(state.currentUtterance);
   setTtsPlaying(true);
 }
 
@@ -117,40 +136,40 @@ function audioFileUrl(sentencePosition) {
 
 function seekbarPositionMs() {
   // Current playback position in the full story timeline (ms).
-  if (!audioEl) return 0;
-  return sentenceCumulative[audioSentenceIdx] + audioEl.currentTime * 1000;
+  if (!state.audioEl) return 0;
+  return state.sentenceCumulative[state.audioSentenceIdx] + state.audioEl.currentTime * 1000;
 }
 
 function updateSeekbar() {
-  if (seekbarDragging || totalDurationMs === 0) return;
-  seekbar.value = Math.round(seekbarPositionMs() / totalDurationMs * 1000);
+  if (state.seekbarDragging || state.totalDurationMs === 0) return;
+  els.seekbar.value = Math.round(seekbarPositionMs() / state.totalDurationMs * 1000);
 }
 
 function loadSentenceAudio(idx, startSec = 0) {
-  if (idx >= sentenceSpans.length) {
+  if (idx >= state.sentenceSpans.length) {
     // Reached end of story.
     clearHighlight();
     setTtsPlaying(false);
-    seekbar.value = 1000;
+    els.seekbar.value = 1000;
     return;
   }
-  audioSentenceIdx = idx;
+  state.audioSentenceIdx = idx;
   setActiveIdx(idx);
 
-  const sentence = _story.sentences[idx];
-  audioEl.src = audioFileUrl(sentence.position);
-  audioEl.playbackRate = ttsRate;
-  audioEl.currentTime = startSec;
-  audioEl.play().catch(() => {});
+  const sentence = state.story.sentences[idx];
+  state.audioEl.src = audioFileUrl(sentence.position);
+  state.audioEl.playbackRate = state.ttsRate;
+  state.audioEl.currentTime = startSec;
+  state.audioEl.play().catch(() => {});
 }
 
 function stopAudio() {
-  audioEl.pause();
+  state.audioEl.pause();
   setTtsPlaying(false);
   // Keep highlight and position for resume.
 }
 
-function startAudio(idx = audioSentenceIdx, startSec = 0) {
+function startAudio(idx = state.audioSentenceIdx, startSec = 0) {
   loadSentenceAudio(idx, startSec);
   setTtsPlaying(true);
 }
@@ -158,20 +177,20 @@ function startAudio(idx = audioSentenceIdx, startSec = 0) {
 function seekToAudioPosition(positionMs) {
   // Find which sentence contains positionMs.
   let idx = 0;
-  for (let i = sentenceCumulative.length - 1; i >= 0; i--) {
-    if (sentenceCumulative[i] <= positionMs) { idx = i; break; }
+  for (let i = state.sentenceCumulative.length - 1; i >= 0; i--) {
+    if (state.sentenceCumulative[i] <= positionMs) { idx = i; break; }
   }
-  const offsetMs = positionMs - sentenceCumulative[idx];
+  const offsetMs = positionMs - state.sentenceCumulative[idx];
   startAudio(idx, offsetMs / 1000);
 }
 
 // ── Play/stop button ──────────────────────────────────────────────────────────
-ttsBtn.addEventListener('click', async () => {
-  if (audioMode) {
-    if (!audioEl.paused) {
+els.ttsBtn.addEventListener('click', async () => {
+  if (state.audioMode) {
+    if (!state.audioEl.paused) {
       stopAudio();
     } else {
-      startAudio(audioSentenceIdx, audioEl.currentTime);
+      startAudio(state.audioSentenceIdx, state.audioEl.currentTime);
     }
     return;
   }
@@ -185,47 +204,47 @@ ttsBtn.addEventListener('click', async () => {
 // ── Word click — seek to that sentence (both modes) ───────────────────────────
 async function seekToWord(absPos) {
   let sIdx = 0;
-  for (let i = 1; i < sentenceOffsets.length; i++) {
-    if (sentenceOffsets[i] <= absPos) sIdx = i;
+  for (let i = 1; i < state.sentenceOffsets.length; i++) {
+    if (state.sentenceOffsets[i] <= absPos) sIdx = i;
     else break;
   }
 
-  if (audioMode) {
-    if (sIdx === activeIdx && !audioEl.paused) { stopAudio(); return; }
+  if (state.audioMode) {
+    if (sIdx === state.activeIdx && !state.audioEl.paused) { stopAudio(); return; }
     startAudio(sIdx, 0);
     return;
   }
 
-  if (sIdx === activeIdx && window.speechSynthesis.speaking) { stopTts(); return; }
-  if (currentUtterance) {
-    currentUtterance.onboundary = null;
-    currentUtterance.onend = null;
-    currentUtterance.onerror = null;
-    currentUtterance = null;
+  if (sIdx === state.activeIdx && window.speechSynthesis.speaking) { stopTts(); return; }
+  if (state.currentUtterance) {
+    state.currentUtterance.onboundary = null;
+    state.currentUtterance.onend = null;
+    state.currentUtterance.onerror = null;
+    state.currentUtterance = null;
     window.speechSynthesis.cancel();
   }
-  resumeOffset = absPos;
-  lastWordAbsPos = absPos;
+  state.resumeOffset = absPos;
+  state.lastWordAbsPos = absPos;
   await startTts();
 }
 
 // ── Seekbar interaction ───────────────────────────────────────────────────────
-seekbar.addEventListener('mousedown', () => { seekbarDragging = true; });
-seekbar.addEventListener('mouseup', () => {
-  seekbarDragging = false;
-  if (!audioMode) return;
-  const posMs = seekbar.value / 1000 * totalDurationMs;
-  const wasPlaying = !audioEl.paused;
+els.seekbar.addEventListener('mousedown', () => { state.seekbarDragging = true; });
+els.seekbar.addEventListener('mouseup', () => {
+  state.seekbarDragging = false;
+  if (!state.audioMode) return;
+  const posMs = els.seekbar.value / 1000 * state.totalDurationMs;
+  const wasPlaying = !state.audioEl.paused;
   seekToAudioPosition(posMs);
-  if (!wasPlaying) { audioEl.pause(); setTtsPlaying(false); }
+  if (!wasPlaying) { state.audioEl.pause(); setTtsPlaying(false); }
 });
-seekbar.addEventListener('input', () => {
+els.seekbar.addEventListener('input', () => {
   // Update time display while dragging (visual only; seek happens on mouseup).
 });
 
 // ── beforeunload cleanup ──────────────────────────────────────────────────────
 window.addEventListener('beforeunload', () => {
-  if (audioMode) audioEl?.pause();
+  if (state.audioMode) state.audioEl?.pause();
   else stopTts();
 });
 
@@ -235,41 +254,37 @@ window.addEventListener('keydown', async e => {
   const tag = document.activeElement?.tagName;
   if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return;
   e.preventDefault();
-  ttsBtn.click();
+  els.ttsBtn.click();
 });
 
 // ── Generate audio ────────────────────────────────────────────────────────────
-let _generateController = null;
-let _generating = false;
-
 function openGenModal() {
-  if (audioMode) { if (!audioEl.paused) stopAudio(); }
+  if (state.audioMode) { if (!state.audioEl.paused) stopAudio(); }
   else if (window.speechSynthesis.speaking) stopTts();
   // Always reset to confirmation state when opening.
   setModalGenerating(false);
-  genModal.classList.remove('hidden');
+  els.genModalBackdrop.classList.remove('hidden');
 }
 
 function closeGenModal() {
-  if (_generating) return;
-  genModal.classList.add('hidden');
+  if (state.generating) return;
+  els.genModalBackdrop.classList.add('hidden');
 }
 
 function setModalGenerating(generating) {
-  _generating = generating;
-  document.getElementById('gen-confirm-body').classList.toggle('hidden', generating);
-  document.getElementById('gen-progress-body').classList.toggle('hidden', !generating);
-  document.getElementById('story-gen-modal-cancel').classList.toggle('hidden', generating);
-  document.getElementById('story-gen-modal-confirm').classList.toggle('hidden', generating);
-  document.getElementById('story-gen-cancel-generation-btn').classList.toggle('hidden', !generating);
-  document.getElementById('story-gen-modal-done').classList.add('hidden');
-  document.querySelector('#story-gen-modal-backdrop .modal-close').disabled = generating;
+  state.generating = generating;
+  els.genConfirmBody.classList.toggle('hidden', generating);
+  els.genProgressBody.classList.toggle('hidden', !generating);
+  els.genModalCancel.classList.toggle('hidden', generating);
+  els.genModalConfirm.classList.toggle('hidden', generating);
+  els.genCancelGenerationBtn.classList.toggle('hidden', !generating);
+  els.genModalDone.classList.add('hidden');
+  els.genModalClose.disabled = generating;
 }
 
 function buildSentenceList() {
-  const list = document.getElementById('gen-sentence-list');
-  list.innerHTML = '';
-  for (const sentence of _story.sentences) {
+  els.genSentenceList.innerHTML = '';
+  for (const sentence of state.story.sentences) {
     const text = sentence.words.map(w => w.displayWord).join('');
     const preview = text.length > 35 ? text.slice(0, 35) + '…' : text;
 
@@ -289,7 +304,7 @@ function buildSentenceList() {
 
     row.appendChild(icon);
     row.appendChild(previewEl);
-    list.appendChild(row);
+    els.genSentenceList.appendChild(row);
   }
 }
 
@@ -312,7 +327,7 @@ function setRowDone(position) {
 }
 
 function markNextRowActive(donePosition) {
-  const positions = _story.sentences.map(s => s.position);
+  const positions = state.story.sentences.map(s => s.position);
   const idx = positions.indexOf(donePosition);
   if (idx < 0 || idx + 1 >= positions.length) return;
   const nextRow = document.getElementById(`gen-row-${positions[idx + 1]}`);
@@ -321,29 +336,29 @@ function markNextRowActive(donePosition) {
   }
 }
 
-genBtn.addEventListener('click', openGenModal);
-document.querySelector('#story-gen-modal-backdrop .modal-close').addEventListener('click', closeGenModal);
-document.getElementById('story-gen-modal-cancel').addEventListener('click', closeGenModal);
-genModal.addEventListener('click', e => { if (e.target === genModal) closeGenModal(); });
+els.genBtn.addEventListener('click', openGenModal);
+els.genModalClose.addEventListener('click', closeGenModal);
+els.genModalCancel.addEventListener('click', closeGenModal);
+els.genModalBackdrop.addEventListener('click', e => { if (e.target === els.genModalBackdrop) closeGenModal(); });
 
-document.getElementById('story-gen-modal-confirm').addEventListener('click', async () => {
-  if (_generateController) return;
+els.genModalConfirm.addEventListener('click', async () => {
+  if (state.generateController) return;
 
   const vv = getVoicevoxSettings();
-  _generateController = new AbortController();
+  state.generateController = new AbortController();
 
-  const total = _story?.sentences.length ?? 0;
+  const total = state.story?.sentences.length ?? 0;
   let completed = 0;
 
   function updateProgressCount() {
-    document.getElementById('gen-progress-count').textContent = `${completed} / ${total} sentences`;
+    els.genProgressCount.textContent = `${completed} / ${total} sentences`;
   }
 
   buildSentenceList();
   setModalGenerating(true);
   updateProgressCount();
   if (total > 0) {
-    setRowActive(_story.sentences[0].position);
+    setRowActive(state.story.sentences[0].position);
   }
 
   let allDone = false;
@@ -352,7 +367,7 @@ document.getElementById('story-gen-modal-confirm').addEventListener('click', asy
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ speaker: vv.speaker, speedScale: vv.speedScale, intonationScale: vv.intonationScale }),
-      signal: _generateController.signal,
+      signal: state.generateController.signal,
     });
 
     if (res.ok) {
@@ -386,14 +401,14 @@ document.getElementById('story-gen-modal-confirm').addEventListener('click', asy
     // Aborted or network error.
   }
 
-  _generateController = null;
+  state.generateController = null;
 
   if (allDone) {
     // Unlock the modal so the user can close it manually; keep the progress view visible.
-    _generating = false;
-    document.getElementById('story-gen-cancel-generation-btn').classList.add('hidden');
-    document.getElementById('story-gen-modal-done').classList.remove('hidden');
-    document.querySelector('#story-gen-modal-backdrop .modal-close').disabled = false;
+    state.generating = false;
+    els.genCancelGenerationBtn.classList.add('hidden');
+    els.genModalDone.classList.remove('hidden');
+    els.genModalClose.disabled = false;
     const updated = await fetch(`/api/stories/${STORY_ID}`).then(r => r.json());
     applyAudioState(updated);
   } else {
@@ -403,48 +418,46 @@ document.getElementById('story-gen-modal-confirm').addEventListener('click', asy
   }
 });
 
-document.getElementById('story-gen-cancel-generation-btn').addEventListener('click', () => {
-  _generateController?.abort();
+els.genCancelGenerationBtn.addEventListener('click', () => {
+  state.generateController?.abort();
 });
 
-document.getElementById('story-gen-modal-done').addEventListener('click', closeGenModal);
+els.genModalDone.addEventListener('click', closeGenModal);
 
 // ── Apply hasAudio state ──────────────────────────────────────────────────────
-let _story = null;
-
 function applyAudioState(story) {
-  _story = story;
+  state.story = story;
   if (!story.hasAudio) {
-    seekbar.hidden = true;
-    audioMode = false;
+    els.seekbar.hidden = true;
+    state.audioMode = false;
     return;
   }
 
-  sentenceDurations = story.sentences.map(s => s.audioDurationMs ?? 0);
-  sentenceCumulative = [];
+  state.sentenceDurations = story.sentences.map(s => s.audioDurationMs ?? 0);
+  state.sentenceCumulative = [];
   let cum = 0;
-  for (const d of sentenceDurations) {
-    sentenceCumulative.push(cum);
+  for (const d of state.sentenceDurations) {
+    state.sentenceCumulative.push(cum);
     cum += d;
   }
-  totalDurationMs = cum;
+  state.totalDurationMs = cum;
 
-  if (!audioEl) {
-    audioEl = new Audio();
-    audioEl.addEventListener('ended', () => {
-      loadSentenceAudio(audioSentenceIdx + 1, 0);
+  if (!state.audioEl) {
+    state.audioEl = new Audio();
+    state.audioEl.addEventListener('ended', () => {
+      loadSentenceAudio(state.audioSentenceIdx + 1, 0);
     });
-    audioEl.addEventListener('timeupdate', () => {
+    state.audioEl.addEventListener('timeupdate', () => {
       updateSeekbar();
     });
-    audioEl.addEventListener('pause', () => setTtsPlaying(false));
-    audioEl.addEventListener('play', () => setTtsPlaying(true));
+    state.audioEl.addEventListener('pause', () => setTtsPlaying(false));
+    state.audioEl.addEventListener('play', () => setTtsPlaying(true));
   }
 
-  audioMode = true;
-  audioSentenceIdx = 0;
-  seekbar.hidden = false;
-  seekbar.value = 0;
+  state.audioMode = true;
+  state.audioSentenceIdx = 0;
+  els.seekbar.hidden = false;
+  els.seekbar.value = 0;
 }
 
 // ── Render ────────────────────────────────────────────────────────────────────
@@ -459,33 +472,32 @@ function sentenceText(sentence) {
 }
 
 function renderStory(story) {
-  _story = story;
+  state.story = story;
   document.title = `${story.title} | Story`;
-  document.getElementById('story-title').textContent = story.title;
+  els.storyTitle.textContent = story.title;
 
   const SEPARATOR = '　';
-  sentenceSpans = [];
-  sentenceOffsets = [];
+  state.sentenceSpans = [];
+  state.sentenceOffsets = [];
   const textParts = [];
   let offset = 0;
   for (const sentence of story.sentences) {
     const text = sentenceText(sentence);
-    sentenceOffsets.push(offset);
+    state.sentenceOffsets.push(offset);
     textParts.push(text);
     offset += text.length + SEPARATOR.length;
   }
-  ttsText = textParts.join(SEPARATOR);
-  ttsBtn.disabled = false;
+  state.ttsText = textParts.join(SEPARATOR);
+  els.ttsBtn.disabled = false;
 
-  const content = document.getElementById('story-content');
-  content.innerHTML = '';
+  els.storyContent.innerHTML = '';
   let currentParagraph = null;
   for (let i = 0; i < story.sentences.length; i++) {
     const sentence = story.sentences[i];
     if (!currentParagraph || sentence.isParagraphStart) {
       currentParagraph = document.createElement('p');
       currentParagraph.className = 'story-paragraph';
-      content.appendChild(currentParagraph);
+      els.storyContent.appendChild(currentParagraph);
     }
     const sentenceSpan = document.createElement('span');
     sentenceSpan.className = 'story-sentence';
@@ -494,7 +506,7 @@ function renderStory(story) {
       sentenceSpan.dataset.tooltipClass = 'tooltip-translation';
     }
 
-    let wordOffset = sentenceOffsets[i];
+    let wordOffset = state.sentenceOffsets[i];
     for (const word of sentence.words) {
       const wordSpan = document.createElement('span');
       wordSpan.className = 'story-word';
@@ -506,19 +518,19 @@ function renderStory(story) {
     }
     currentParagraph.appendChild(sentenceSpan);
     currentParagraph.appendChild(document.createTextNode(' '));
-    sentenceSpans.push(sentenceSpan);
+    state.sentenceSpans.push(sentenceSpan);
   }
 
   // Enable generate button if VoiceVox is available.
   checkVoicevoxAvailable().then(available => {
-    genBtn.disabled = !available;
+    els.genBtn.disabled = !available;
   });
 
   applyAudioState(story);
 }
 
 function renderError() {
-  document.getElementById('story-error').hidden = false;
+  els.storyError.hidden = false;
 }
 
 loadStory(STORY_ID).then(renderStory).catch(renderError);

@@ -1,13 +1,12 @@
 import { getTtsVoice, getVoicevoxSettings, checkVoicevoxAvailable } from './common.js';
 
 // ── DOM refs ──────────────────────────────────────────────────────────────────
-const ttsBtn       = document.getElementById('story-tts-btn');
-const ttsIcon      = document.getElementById('story-tts-icon');
-const speedVal     = document.getElementById('story-speed-val');
-const seekbar      = document.getElementById('story-seekbar');
-const genBtn       = document.getElementById('story-gen-btn');
-const genCancelBtn = document.getElementById('story-gen-cancel-btn');
-const genModal     = document.getElementById('story-gen-modal-backdrop');
+const ttsBtn   = document.getElementById('story-tts-btn');
+const ttsIcon  = document.getElementById('story-tts-icon');
+const speedVal = document.getElementById('story-speed-val');
+const seekbar  = document.getElementById('story-seekbar');
+const genBtn   = document.getElementById('story-gen-btn');
+const genModal = document.getElementById('story-gen-modal-backdrop');
 
 // ── Playback state ────────────────────────────────────────────────────────────
 let ttsText = '';
@@ -60,7 +59,9 @@ function setTtsPlaying(playing) {
 function setActiveIdx(idx) {
   sentenceSpans[activeIdx]?.classList.remove('story-sentence--active');
   activeIdx = idx;
-  sentenceSpans[activeIdx]?.classList.add('story-sentence--active');
+  const span = sentenceSpans[activeIdx];
+  span?.classList.add('story-sentence--active');
+  span?.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
 }
 
 function clearHighlight() {
@@ -249,23 +250,83 @@ window.addEventListener('beforeunload', () => {
 
 // ── Generate audio ────────────────────────────────────────────────────────────
 let _generateController = null;
+let _generating = false;
 
-function setGenerating(generating, pending = 0, total = 0) {
-  genBtn.classList.toggle('hidden', generating);
-  genCancelBtn.classList.toggle('hidden', !generating);
-  if (generating) {
-    const label = total > 0
-      ? `Cancel (${pending} / ${total} sentences remaining)`
-      : 'Cancelling…';
-    document.getElementById('story-gen-cancel-label').textContent = label;
+function openGenModal() {
+  // Always reset to confirmation state when opening.
+  setModalGenerating(false);
+  genModal.classList.remove('hidden');
+}
+
+function closeGenModal() {
+  if (_generating) return;
+  genModal.classList.add('hidden');
+}
+
+function setModalGenerating(generating) {
+  _generating = generating;
+  document.getElementById('gen-confirm-body').classList.toggle('hidden', generating);
+  document.getElementById('gen-progress-body').classList.toggle('hidden', !generating);
+  document.getElementById('story-gen-modal-cancel').classList.toggle('hidden', generating);
+  document.getElementById('story-gen-modal-confirm').classList.toggle('hidden', generating);
+  document.getElementById('story-gen-cancel-generation-btn').classList.toggle('hidden', !generating);
+  document.getElementById('story-gen-modal-done').classList.add('hidden');
+  document.querySelector('#story-gen-modal-backdrop .modal-close').disabled = generating;
+}
+
+function buildSentenceList() {
+  const list = document.getElementById('gen-sentence-list');
+  list.innerHTML = '';
+  for (const sentence of _story.sentences) {
+    const text = sentence.words.map(w => w.displayWord).join('');
+    const preview = text.length > 35 ? text.slice(0, 35) + '…' : text;
+
+    const row = document.createElement('div');
+    row.className = 'gen-sentence-row';
+    row.id = `gen-row-${sentence.position}`;
+
+    const icon = document.createElement('span');
+    icon.className = 'gen-sentence-icon';
+    const dot = document.createElement('span');
+    dot.className = 'gen-pending-dot';
+    icon.appendChild(dot);
+
+    const previewEl = document.createElement('span');
+    previewEl.className = 'gen-sentence-preview';
+    previewEl.textContent = preview;
+
+    row.appendChild(icon);
+    row.appendChild(previewEl);
+    list.appendChild(row);
   }
 }
 
-function openGenModal() {
-  genModal.classList.remove('hidden');
+function setRowActive(position) {
+  const row = document.getElementById(`gen-row-${position}`);
+  if (!row) return;
+  row.classList.add('gen-sentence-row--active');
+  const icon = row.querySelector('.gen-sentence-icon');
+  icon.innerHTML = '<span class="spinner"></span>';
+  row.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
 }
-function closeGenModal() {
-  genModal.classList.add('hidden');
+
+function setRowDone(position) {
+  const row = document.getElementById(`gen-row-${position}`);
+  if (!row) return;
+  row.classList.remove('gen-sentence-row--active');
+  row.classList.add('gen-sentence-row--done');
+  const icon = row.querySelector('.gen-sentence-icon');
+  icon.innerHTML = '<span class="gen-checkmark">✓</span>';
+}
+
+function markNextRowActive(donePosition) {
+  const positions = _story.sentences.map(s => s.position);
+  const idx = positions.indexOf(donePosition);
+  if (idx < 0 || idx + 1 >= positions.length) return;
+  const nextRow = document.getElementById(`gen-row-${positions[idx + 1]}`);
+  if (nextRow && !nextRow.classList.contains('gen-sentence-row--done')) {
+    setRowActive(positions[idx + 1]);
+  }
 }
 
 genBtn.addEventListener('click', openGenModal);
@@ -274,14 +335,18 @@ document.getElementById('story-gen-modal-cancel').addEventListener('click', clos
 genModal.addEventListener('click', e => { if (e.target === genModal) closeGenModal(); });
 
 document.getElementById('story-gen-modal-confirm').addEventListener('click', async () => {
-  closeGenModal();
   if (_generateController) return;
 
   const vv = getVoicevoxSettings();
   _generateController = new AbortController();
-  const total = _story?.sentences.length ?? 0;
-  setGenerating(true, total, total);
 
+  buildSentenceList();
+  setModalGenerating(true);
+  if (_story?.sentences.length > 0) {
+    setRowActive(_story.sentences[0].position);
+  }
+
+  let allDone = false;
   try {
     const res = await fetch(`/api/stories/${STORY_ID}/generate-audio`, {
       method: 'POST',
@@ -289,23 +354,58 @@ document.getElementById('story-gen-modal-confirm').addEventListener('click', asy
       body: JSON.stringify({ speaker: vv.speaker, speedScale: vv.speedScale, intonationScale: vv.intonationScale }),
       signal: _generateController.signal,
     });
+
     if (res.ok) {
-      // Reload story to get updated durations and hasAudio flag.
-      const updated = await fetch(`/api/stories/${STORY_ID}`).then(r => r.json());
-      applyAudioState(updated);
+      const reader = res.body.getReader();
+      const decoder = new TextDecoder();
+      let buf = '';
+      outer: while (true) {
+        let value, done;
+        try { ({ value, done } = await reader.read()); } catch (_) { break; }
+        if (done) break;
+        buf += decoder.decode(value, { stream: true });
+        const lines = buf.split('\n');
+        buf = lines.pop();
+        for (const line of lines) {
+          if (!line.trim()) continue;
+          let msg;
+          try { msg = JSON.parse(line); } catch (_) { continue; }
+          if (msg.sentencePosition !== undefined) {
+            setRowDone(msg.sentencePosition);
+            markNextRowActive(msg.sentencePosition);
+          } else if (msg.allDone) {
+            allDone = true;
+            break outer;
+          }
+        }
+      }
     }
   } catch (_) {
-    // Aborted or network error — nothing to do.
+    // Aborted or network error.
   }
 
   _generateController = null;
-  setGenerating(false);
+
+  if (allDone) {
+    // Unlock the modal so the user can close it manually; keep the progress view visible.
+    _generating = false;
+    document.getElementById('story-gen-cancel-generation-btn').classList.add('hidden');
+    document.getElementById('story-gen-modal-done').classList.remove('hidden');
+    document.querySelector('#story-gen-modal-backdrop .modal-close').disabled = false;
+    const updated = await fetch(`/api/stories/${STORY_ID}`).then(r => r.json());
+    applyAudioState(updated);
+  } else {
+    // Cancelled or error — close and reset immediately.
+    setModalGenerating(false);
+    closeGenModal();
+  }
 });
 
-genCancelBtn.addEventListener('click', () => {
+document.getElementById('story-gen-cancel-generation-btn').addEventListener('click', () => {
   _generateController?.abort();
-  setGenerating(false);
 });
+
+document.getElementById('story-gen-modal-done').addEventListener('click', closeGenModal);
 
 // ── Apply hasAudio state ──────────────────────────────────────────────────────
 let _story = null;

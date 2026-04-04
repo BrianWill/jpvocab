@@ -26,6 +26,14 @@ func storySentenceText(s storySentenceJSON) string {
 // Files are written to static/audio/story_{id}/sentence_{position}.ogg.
 // The request body may supply VoiceVox settings; defaults are used otherwise.
 // Cancellation is handled via the request context (frontend AbortController).
+//
+// The response is streamed as NDJSON. Each completed sentence emits:
+//
+//	{"sentencePosition": N}
+//
+// On success all sentences emit {"allDone": true}. On error {"error": "..."} is emitted.
+// Audio is first written to *.ogg.temp files; originals are only replaced (via os.Rename)
+// once all sentences complete. On cancellation the temp files are deleted.
 func apiGenerateStoryAudio(db *sql.DB) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		id, err := strconv.ParseInt(chi.URLParam(r, "id"), 10, 64)
@@ -68,23 +76,52 @@ func apiGenerateStoryAudio(db *sql.DB) http.HandlerFunc {
 			return
 		}
 
+		// Start streaming NDJSON.
+		w.Header().Set("Content-Type", "application/x-ndjson")
+		w.Header().Set("Cache-Control", "no-cache")
+		w.Header().Set("X-Accel-Buffering", "no")
+		flusher, _ := w.(http.Flusher)
+
+		streamEvent := func(v any) {
+			data, _ := json.Marshal(v)
+			w.Write(append(data, '\n'))
+			if flusher != nil {
+				flusher.Flush()
+			}
+		}
+
+		type sentenceDuration struct {
+			id         int64
+			durationMs int64
+		}
+
+		var tempFiles []string
+		var durations []sentenceDuration
+		cancelled := false
+
 		for _, sentence := range story.Sentences {
-			if err := r.Context().Err(); err != nil {
-				// Client cancelled.
-				return
+			if r.Context().Err() != nil {
+				cancelled = true
+				break
 			}
 
 			text := storySentenceText(sentence)
 			if strings.TrimSpace(text) == "" {
+				// Empty sentence: report done immediately (no audio file needed).
+				streamEvent(map[string]int{"sentencePosition": sentence.Position})
 				continue
 			}
 
 			wav, err := synthesizeVoicevox(r.Context(), text, p)
 			if err != nil {
 				if r.Context().Err() != nil {
-					return
+					cancelled = true
+					break
 				}
-				http.Error(w, "voicevox error: "+err.Error(), http.StatusBadGateway)
+				streamEvent(map[string]string{"error": "voicevox error: " + err.Error()})
+				for _, f := range tempFiles {
+					os.Remove(f)
+				}
 				return
 			}
 
@@ -93,30 +130,60 @@ func apiGenerateStoryAudio(db *sql.DB) http.HandlerFunc {
 			ogg, err := wavToOgg(r.Context(), wav)
 			if err != nil {
 				if r.Context().Err() != nil {
-					return
+					cancelled = true
+					break
 				}
-				http.Error(w, "ffmpeg error: "+err.Error(), http.StatusInternalServerError)
+				streamEvent(map[string]string{"error": "ffmpeg error: " + err.Error()})
+				for _, f := range tempFiles {
+					os.Remove(f)
+				}
 				return
 			}
 
 			dest := filepath.Join(audioDir, fmt.Sprintf("sentence_%d.ogg", sentence.Position))
-			if err := os.WriteFile(dest, ogg, 0o644); err != nil {
-				http.Error(w, "write error: "+err.Error(), http.StatusInternalServerError)
+			tempDest := dest + ".temp"
+			if err := os.WriteFile(tempDest, ogg, 0o644); err != nil {
+				streamEvent(map[string]string{"error": "write error: " + err.Error()})
+				for _, f := range tempFiles {
+					os.Remove(f)
+				}
 				return
 			}
+			tempFiles = append(tempFiles, tempDest)
+			durations = append(durations, sentenceDuration{sentence.ID, durationMs})
 
-			if err := setSentenceAudioDuration(db, sentence.ID, durationMs); err != nil {
-				http.Error(w, "db error: "+err.Error(), http.StatusInternalServerError)
-				return
-			}
+			streamEvent(map[string]int{"sentencePosition": sentence.Position})
 		}
 
-		if err := setStoryHasAudio(db, id, true); err != nil {
-			http.Error(w, "db error: "+err.Error(), http.StatusInternalServerError)
+		if cancelled {
+			for _, f := range tempFiles {
+				os.Remove(f)
+			}
 			return
 		}
 
-		w.WriteHeader(http.StatusNoContent)
+		// Atomically replace originals with temp files.
+		for _, tempPath := range tempFiles {
+			finalPath := strings.TrimSuffix(tempPath, ".temp")
+			if err := os.Rename(tempPath, finalPath); err != nil {
+				streamEvent(map[string]string{"error": "rename error: " + err.Error()})
+				return
+			}
+		}
+
+		// Commit durations and hasAudio to the DB only after all files are in place.
+		for _, d := range durations {
+			if err := setSentenceAudioDuration(db, d.id, d.durationMs); err != nil {
+				streamEvent(map[string]string{"error": "db error: " + err.Error()})
+				return
+			}
+		}
+		if err := setStoryHasAudio(db, id, true); err != nil {
+			streamEvent(map[string]string{"error": "db error: " + err.Error()})
+			return
+		}
+
+		streamEvent(map[string]bool{"allDone": true})
 	}
 }
 

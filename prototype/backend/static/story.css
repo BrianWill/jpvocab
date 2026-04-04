@@ -87,3 +87,49 @@
 .story-error {
   color: #f38ba8;
 }
+
+/* ── Generate-audio progress list ─────────────────────────────────────────── */
+.gen-sentence-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+  max-height: 300px;
+  overflow-y: auto;
+  padding: 0.25rem 0;
+}
+
+.gen-sentence-row {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  font-size: 0.85rem;
+  color: #585b70;
+}
+
+.gen-sentence-row--active {
+  color: #cdd6f4;
+}
+
+.gen-sentence-row--done {
+  color: #6c7086;
+}
+
+.gen-sentence-icon {
+  flex-shrink: 0;
+  width: 1rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.gen-pending-dot {
+  width: 0.45rem;
+  height: 0.45rem;
+  border-radius: 50%;
+  background: #45475a;
+}
+
+.gen-checkmark {
+  color: #a6e3a1;
+  font-size: 0.8rem;
+}

@@ -24,6 +24,7 @@ type kanjiAutoFillEntry struct {
 // wordAutoFill holds AI-generated fields for a Japanese word.
 type wordAutoFill struct {
 	Reading      string               `json:"reading"`
+	PitchAccent  *int                 `json:"pitch_accent"`
 	PartOfSpeech string               `json:"part_of_speech"`
 	Meaning      string               `json:"meaning"`
 	ExampleJP    string               `json:"example_jp"`
@@ -51,6 +52,7 @@ var validPartsOfSpeech = []string{
 
 var autoFillSystemPrompt = `You are a Japanese dictionary assistant. Given a Japanese word or phrase, return a JSON object with exactly these fields:
 - "reading": the word's reading in hiragana (use katakana only for loanwords); always include this even when the word has kanji — it is the full phonetic reading of the whole word
+- "pitch_accent": NHK-style pitch accent as an integer — 0 means heiban (rises after mora 1, never drops), 1 means atamadaka (drops after mora 1), N means the pitch drops after mora N; use null only if genuinely uncertain (e.g. 食べる → 2, 電話 → 0, 橋 → 0, 箸 → 1)
 - "part_of_speech": must be exactly one of: ` + strings.Join(validPartsOfSpeech, ", ") + `. Always prefer the closest matching category; only use "other" if the word genuinely fits none of them.
 - "meaning": concise English meaning (one short phrase or sentence)
 - "example_jp": a short, natural example sentence in Japanese using the word
@@ -73,21 +75,21 @@ type autoFillExample struct {
 var autoFillExamples = []autoFillExample{
 	{
 		word: "食べる",
-		result: `{"reading":"たべる","part_of_speech":"ichidan-verb","meaning":"to eat","example_jp":"朝ごはんを食べる。","example_en":"I eat breakfast.","kanji":[{"character":"食","reading":"た","meanings":["eat","food","meal"]}]}`,
+		result: `{"reading":"たべる","pitch_accent":2,"part_of_speech":"ichidan-verb","meaning":"to eat","example_jp":"朝ごはんを食べる。","example_en":"I eat breakfast.","kanji":[{"character":"食","reading":"た","meanings":["eat","food","meal"]}]}`,
 	},
 	{
 		word: "電話",
-		result: `{"reading":"でんわ","part_of_speech":"noun","meaning":"telephone; phone call","example_jp":"電話をかけてもいいですか。","example_en":"May I make a phone call?","kanji":[{"character":"電","reading":"デン","meanings":["electricity","lightning","electric"]},{"character":"話","reading":"ワ","meanings":["talk","speech","story","conversation"]}]}`,
+		result: `{"reading":"でんわ","pitch_accent":0,"part_of_speech":"noun","meaning":"telephone; phone call","example_jp":"電話をかけてもいいですか。","example_en":"May I make a phone call?","kanji":[{"character":"電","reading":"デン","meanings":["electricity","lightning","electric"]},{"character":"話","reading":"ワ","meanings":["talk","speech","story","conversation"]}]}`,
 	},
 	{
 		word: "きれい",
-		result: `{"reading":"きれい","part_of_speech":"na-adjective","meaning":"beautiful; clean; pretty","example_jp":"この花はきれいですね。","example_en":"This flower is beautiful, isn't it?","kanji":[]}`,
+		result: `{"reading":"きれい","pitch_accent":0,"part_of_speech":"na-adjective","meaning":"beautiful; clean; pretty","example_jp":"この花はきれいですね。","example_en":"This flower is beautiful, isn't it?","kanji":[]}`,
 	},
 	{
 		// Demonstrates that kanji readings must match the word's actual pronunciation,
 		// not the kanji's most common standalone reading (日 → ニ here, not ニチ).
 		word: "日本語",
-		result: `{"reading":"にほんご","part_of_speech":"noun","meaning":"Japanese language","example_jp":"日本語を毎日勉強しています。","example_en":"I study Japanese every day.","kanji":[{"character":"日","reading":"ニ","meanings":["sun","day","Japan"]},{"character":"本","reading":"ホン","meanings":["book","origin","Japan"]},{"character":"語","reading":"ゴ","meanings":["language","word","speech"]}]}`,
+		result: `{"reading":"にほんご","pitch_accent":0,"part_of_speech":"noun","meaning":"Japanese language","example_jp":"日本語を毎日勉強しています。","example_en":"I study Japanese every day.","kanji":[{"character":"日","reading":"ニ","meanings":["sun","day","Japan"]},{"character":"本","reading":"ホン","meanings":["book","origin","Japan"]},{"character":"語","reading":"ゴ","meanings":["language","word","speech"]}]}`,
 	},
 }
 
@@ -97,6 +99,7 @@ const autoFillBatchSize = 20
 // autoFillBatchSystemPrompt instructs the AI to process an array of words at once.
 var autoFillBatchSystemPrompt = `You are a Japanese dictionary assistant. Given a JSON array of Japanese words or phrases, return a JSON array of objects in the same order — one object per input word. Each object must have exactly these fields:
 - "reading": the word's reading in hiragana (use katakana only for loanwords); always include this even when the word has kanji — it is the full phonetic reading of the whole word
+- "pitch_accent": NHK-style pitch accent as an integer — 0 means heiban (rises after mora 1, never drops), 1 means atamadaka (drops after mora 1), N means the pitch drops after mora N; use null only if genuinely uncertain (e.g. 食べる → 2, 電話 → 0, 橋 → 0, 箸 → 1)
 - "part_of_speech": must be exactly one of: ` + strings.Join(validPartsOfSpeech, ", ") + `. Always prefer the closest matching category; only use "other" if the word genuinely fits none of them.
 - "meaning": concise English meaning (one short phrase or sentence)
 - "example_jp": a short, natural example sentence in Japanese using the word

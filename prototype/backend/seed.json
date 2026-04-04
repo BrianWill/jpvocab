@@ -42,6 +42,7 @@
     {
       "word": "走る",
       "reading": "はしる",
+      "pitch_accent": 2,
       "part_of_speech": "godan-verb",
       "meaning": "to run",
       "example_jp": "公園を走る。",
@@ -57,6 +58,7 @@
     {
       "word": "美しい",
       "reading": "うつくしい",
+      "pitch_accent": 4,
       "part_of_speech": "i-adjective",
       "meaning": "beautiful",
       "example_jp": "美しい花が咲いている。",
@@ -72,6 +74,7 @@
     {
       "word": "話す",
       "reading": "はなす",
+      "pitch_accent": 2,
       "part_of_speech": "godan-verb",
       "meaning": "to speak; to talk",
       "example_jp": "日本語を話す。",
@@ -87,6 +90,7 @@
     {
       "word": "静か",
       "reading": "しずか",
+      "pitch_accent": 0,
       "part_of_speech": "na-adjective",
       "meaning": "quiet",
       "example_jp": "図書館は静かだ。",
@@ -102,6 +106,7 @@
     {
       "word": "始める",
       "reading": "はじめる",
+      "pitch_accent": 0,
       "part_of_speech": "ichidan-verb",
       "meaning": "to begin; to start",
       "example_jp": "仕事を始める。",
@@ -117,6 +122,7 @@
     {
       "word": "天気",
       "reading": "てんき",
+      "pitch_accent": 1,
       "part_of_speech": "noun",
       "meaning": "weather",
       "example_jp": "今日は天気がいい。",
@@ -133,6 +139,7 @@
     {
       "word": "忘れる",
       "reading": "わすれる",
+      "pitch_accent": 3,
       "part_of_speech": "ichidan-verb",
       "meaning": "to forget",
       "example_jp": "名前を忘れる。",
@@ -148,6 +155,7 @@
     {
       "word": "危ない",
       "reading": "あぶない",
+      "pitch_accent": 4,
       "part_of_speech": "i-adjective",
       "meaning": "dangerous",
       "example_jp": "この道は危ない。",
@@ -163,6 +171,7 @@
     {
       "word": "選ぶ",
       "reading": "えらぶ",
+      "pitch_accent": 0,
       "part_of_speech": "godan-verb",
       "meaning": "to choose; to select",
       "example_jp": "好きな色を選ぶ。",
@@ -178,6 +187,7 @@
     {
       "word": "問題",
       "reading": "もんだい",
+      "pitch_accent": 0,
       "part_of_speech": "noun",
       "meaning": "problem; question",
       "example_jp": "問題を解く。",
@@ -193,6 +203,7 @@
     {
       "word": "暖かい",
       "reading": "あたたかい",
+      "pitch_accent": 4,
       "part_of_speech": "i-adjective",
       "meaning": "warm",
       "example_jp": "今日は暖かい。",
@@ -208,6 +219,7 @@
     {
       "word": "借りる",
       "reading": "かりる",
+      "pitch_accent": 2,
       "part_of_speech": "ichidan-verb",
       "meaning": "to borrow",
       "example_jp": "本を借りる。",
@@ -223,6 +235,7 @@
     {
       "word": "経験",
       "reading": "けいけん",
+      "pitch_accent": 0,
       "part_of_speech": "noun",
       "meaning": "experience",
       "example_jp": "いい経験になった。",
@@ -238,6 +251,7 @@
     {
       "word": "練習",
       "reading": "れんしゅう",
+      "pitch_accent": 0,
       "part_of_speech": "noun",
       "meaning": "practice",
       "example_jp": "毎日練習する。",
@@ -253,6 +267,7 @@
     {
       "word": "眠い",
       "reading": "ねむい",
+      "pitch_accent": 2,
       "part_of_speech": "i-adjective",
       "meaning": "sleepy",
       "example_jp": "とても眠い。",
@@ -268,6 +283,7 @@
     {
       "word": "約束",
       "reading": "やくそく",
+      "pitch_accent": 0,
       "part_of_speech": "noun",
       "meaning": "promise; appointment",
       "example_jp": "約束を守る。",
@@ -283,6 +299,7 @@
     {
       "word": "優しい",
       "reading": "やさしい",
+      "pitch_accent": 0,
       "part_of_speech": "i-adjective",
       "meaning": "kind; gentle",
       "example_jp": "彼は優しい人だ。",
@@ -298,6 +315,7 @@
     {
       "word": "自由",
       "reading": "じゆう",
+      "pitch_accent": 0,
       "part_of_speech": "na-adjective",
       "meaning": "freedom; free",
       "example_jp": "自由な時間が欲しい。",
@@ -313,6 +331,7 @@
     {
       "word": "考える",
       "reading": "かんがえる",
+      "pitch_accent": 4,
       "part_of_speech": "ichidan-verb",
       "meaning": "to think; to consider",
       "example_jp": "答えを考える。",
@@ -328,6 +347,7 @@
     {
       "word": "決める",
       "reading": "きめる",
+      "pitch_accent": 2,
       "part_of_speech": "ichidan-verb",
       "meaning": "to decide",
       "example_jp": "目標を決める。",
@@ -343,6 +363,7 @@
     {
       "word": "調べる",
       "reading": "しらべる",
+      "pitch_accent": 0,
       "part_of_speech": "ichidan-verb",
       "meaning": "to investigate; to look up",
       "example_jp": "言葉を調べる。",
@@ -358,6 +379,7 @@
     {
       "word": "続ける",
       "reading": "つづける",
+      "pitch_accent": 0,
       "part_of_speech": "ichidan-verb",
       "meaning": "to continue",
       "example_jp": "練習を続ける。",
@@ -373,6 +395,7 @@
     {
       "word": "手伝う",
       "reading": "てつだう",
+      "pitch_accent": 0,
       "part_of_speech": "godan-verb",
       "meaning": "to help; to assist",
       "example_jp": "母を手伝う。",
@@ -388,6 +411,7 @@
     {
       "word": "困る",
       "reading": "こまる",
+      "pitch_accent": 2,
       "part_of_speech": "godan-verb",
       "meaning": "to be troubled; to be in a fix",
       "example_jp": "道に迷って困る。",
@@ -403,6 +427,7 @@
     {
       "word": "信じる",
       "reading": "しんじる",
+      "pitch_accent": 0,
       "part_of_speech": "ichidan-verb",
       "meaning": "to believe",
       "example_jp": "友達を信じる。",
@@ -418,6 +443,7 @@
     {
       "word": "コーヒー",
       "reading": "こーひー",
+      "pitch_accent": 3,
       "part_of_speech": "noun",
       "meaning": "coffee",
       "example_jp": "毎朝コーヒーを一杯飲む。",
@@ -433,6 +459,7 @@
     {
       "word": "パン",
       "reading": "ぱん",
+      "pitch_accent": 1,
       "part_of_speech": "noun",
       "meaning": "bread",
       "example_jp": "朝食にパンを食べる。",
@@ -448,6 +475,7 @@
     {
       "word": "ケーキ",
       "reading": "けーき",
+      "pitch_accent": 1,
       "part_of_speech": "noun",
       "meaning": "cake",
       "example_jp": "誕生日にケーキを食べる。",
@@ -463,6 +491,7 @@
     {
       "word": "ビール",
       "reading": "びーる",
+      "pitch_accent": 1,
       "part_of_speech": "noun",
       "meaning": "beer",
       "example_jp": "友達とビールを飲む。",
@@ -478,6 +507,7 @@
     {
       "word": "レストラン",
       "reading": "れすとらん",
+      "pitch_accent": 0,
       "part_of_speech": "noun",
       "meaning": "restaurant",
       "example_jp": "レストランで夕食を食べる。",
@@ -493,6 +523,7 @@
     {
       "word": "ホテル",
       "reading": "ほてる",
+      "pitch_accent": 0,
       "part_of_speech": "noun",
       "meaning": "hotel",
       "example_jp": "駅の近くのホテルに泊まる。",
@@ -508,6 +539,7 @@
     {
       "word": "タクシー",
       "reading": "たくしー",
+      "pitch_accent": 0,
       "part_of_speech": "noun",
       "meaning": "taxi",
       "example_jp": "タクシーで駅まで行く。",
@@ -523,6 +555,7 @@
     {
       "word": "バス",
       "reading": "ばす",
+      "pitch_accent": 1,
       "part_of_speech": "noun",
       "meaning": "bus",
       "example_jp": "バスで学校に通っている。",
@@ -538,6 +571,7 @@
     {
       "word": "テレビ",
       "reading": "てれび",
+      "pitch_accent": 0,
       "part_of_speech": "noun",
       "meaning": "television; TV",
       "example_jp": "毎晩テレビを見る。",
@@ -553,6 +587,7 @@
     {
       "word": "ラジオ",
       "reading": "らじお",
+      "pitch_accent": 1,
       "part_of_speech": "noun",
       "meaning": "radio",
       "example_jp": "車の中でラジオを聴く。",
@@ -568,6 +603,7 @@
     {
       "word": "カメラ",
       "reading": "かめら",
+      "pitch_accent": 1,
       "part_of_speech": "noun",
       "meaning": "camera",
       "example_jp": "カメラで写真を撮る。",
@@ -583,6 +619,7 @@
     {
       "word": "コンピューター",
       "reading": "こんぴゅーたー",
+      "pitch_accent": 0,
       "part_of_speech": "noun",
       "meaning": "computer",
       "example_jp": "コンピューターで仕事をする。",
@@ -598,6 +635,7 @@
     {
       "word": "スマートフォン",
       "reading": "すまーとふぉん",
+      "pitch_accent": 0,
       "part_of_speech": "noun",
       "meaning": "smartphone",
       "example_jp": "スマートフォンで地図を確認する。",
@@ -613,6 +651,7 @@
     {
       "word": "インターネット",
       "reading": "いんたーねっと",
+      "pitch_accent": 0,
       "part_of_speech": "noun",
       "meaning": "internet",
       "example_jp": "インターネットで調べる。",
@@ -627,6 +666,7 @@
     {
       "word": "メール",
       "reading": "めーる",
+      "pitch_accent": 1,
       "part_of_speech": "noun",
       "meaning": "email; mail",
       "example_jp": "メールを送る。",
@@ -641,6 +681,7 @@
     {
       "word": "テーブル",
       "reading": "てーぶる",
+      "pitch_accent": 0,
       "part_of_speech": "noun",
       "meaning": "table",
       "example_jp": "テーブルの上に置く。",
@@ -656,6 +697,7 @@
     {
       "word": "ベッド",
       "reading": "べっど",
+      "pitch_accent": 1,
       "part_of_speech": "noun",
       "meaning": "bed",
       "example_jp": "ベッドで本を読む。",
@@ -671,6 +713,7 @@
     {
       "word": "ソファ",
       "reading": "そふぁ",
+      "pitch_accent": 1,
       "part_of_speech": "noun",
       "meaning": "sofa; couch",
       "example_jp": "ソファに座ってくつろぐ。",
@@ -686,6 +729,7 @@
     {
       "word": "アパート",
       "reading": "あぱーと",
+      "pitch_accent": 0,
       "part_of_speech": "noun",
       "meaning": "apartment",
       "example_jp": "駅の近くにアパートを借りた。",
@@ -701,6 +745,7 @@
     {
       "word": "ビル",
       "reading": "びる",
+      "pitch_accent": 1,
       "part_of_speech": "noun",
       "meaning": "building; office block",
       "example_jp": "高いビルが立ち並んでいる。",
@@ -716,6 +761,7 @@
     {
       "word": "ニュース",
       "reading": "にゅーす",
+      "pitch_accent": 1,
       "part_of_speech": "noun",
       "meaning": "news",
       "example_jp": "毎朝ニュースを読む。",
@@ -730,6 +776,7 @@
     {
       "word": "サッカー",
       "reading": "さっかー",
+      "pitch_accent": 0,
       "part_of_speech": "noun",
       "meaning": "soccer; football",
       "example_jp": "週末に友達とサッカーをする。",
@@ -745,6 +792,7 @@
     {
       "word": "テニス",
       "reading": "てにす",
+      "pitch_accent": 1,
       "part_of_speech": "noun",
       "meaning": "tennis",
       "example_jp": "テニスの練習をする。",
@@ -760,6 +808,7 @@
     {
       "word": "ゴルフ",
       "reading": "ごるふ",
+      "pitch_accent": 1,
       "part_of_speech": "noun",
       "meaning": "golf",
       "example_jp": "父はゴルフが趣味だ。",
@@ -775,6 +824,7 @@
     {
       "word": "ストレス",
       "reading": "すとれす",
+      "pitch_accent": 0,
       "part_of_speech": "noun",
       "meaning": "stress",
       "example_jp": "仕事のストレスを感じる。",
@@ -789,6 +839,7 @@
     {
       "word": "チャンス",
       "reading": "ちゃんす",
+      "pitch_accent": 1,
       "part_of_speech": "noun",
       "meaning": "chance; opportunity",
       "example_jp": "このチャンスを活かす。",
@@ -803,6 +854,7 @@
     {
       "word": "レベル",
       "reading": "れべる",
+      "pitch_accent": 0,
       "part_of_speech": "noun",
       "meaning": "level",
       "example_jp": "日本語のレベルが上がった。",
@@ -817,6 +869,7 @@
     {
       "word": "エネルギー",
       "reading": "えねるぎー",
+      "pitch_accent": 0,
       "part_of_speech": "noun",
       "meaning": "energy",
       "example_jp": "今日はエネルギーが足りない。",
@@ -831,6 +884,7 @@
     {
       "word": "アイデア",
       "reading": "あいであ",
+      "pitch_accent": 2,
       "part_of_speech": "noun",
       "meaning": "idea",
       "example_jp": "いいアイデアが浮かんだ。",
@@ -845,6 +899,7 @@
     {
       "word": "ボランティア",
       "reading": "ぼらんてぃあ",
+      "pitch_accent": 0,
       "part_of_speech": "noun",
       "meaning": "volunteer; volunteering",
       "example_jp": "週末にボランティアをする。",
@@ -859,6 +914,7 @@
     {
       "word": "猫",
       "reading": "ねこ",
+      "pitch_accent": 1,
       "part_of_speech": "noun",
       "meaning": "cat",
       "example_jp": "猫が窓の外を見ている。",
@@ -875,6 +931,7 @@
     {
       "word": "犬",
       "reading": "いぬ",
+      "pitch_accent": 2,
       "part_of_speech": "noun",
       "meaning": "dog",
       "example_jp": "犬と一緒に公園を散歩する。",
@@ -891,6 +948,7 @@
     {
       "word": "魚",
       "reading": "さかな",
+      "pitch_accent": 0,
       "part_of_speech": "noun",
       "meaning": "fish",
       "example_jp": "川で魚を釣る。",
@@ -907,6 +965,7 @@
     {
       "word": "鳥",
       "reading": "とり",
+      "pitch_accent": 0,
       "part_of_speech": "noun",
       "meaning": "bird",
       "example_jp": "鳥が空を飛んでいる。",
@@ -923,6 +982,7 @@
     {
       "word": "馬",
       "reading": "うま",
+      "pitch_accent": 2,
       "part_of_speech": "noun",
       "meaning": "horse",
       "example_jp": "馬に乗るのは楽しい。",
@@ -939,6 +999,7 @@
     {
       "word": "ゾウ",
       "reading": "ぞう",
+      "pitch_accent": 1,
       "part_of_speech": "noun",
       "meaning": "elephant",
       "example_jp": "動物園でゾウを見た。",
@@ -954,6 +1015,7 @@
     {
       "word": "キリン",
       "reading": "きりん",
+      "pitch_accent": 0,
       "part_of_speech": "noun",
       "meaning": "giraffe",
       "example_jp": "キリンは首が長い。",
@@ -969,6 +1031,7 @@
     {
       "word": "ペンギン",
       "reading": "ぺんぎん",
+      "pitch_accent": 0,
       "part_of_speech": "noun",
       "meaning": "penguin",
       "example_jp": "ペンギンは泳ぐのが得意だ。",

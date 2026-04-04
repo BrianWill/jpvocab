@@ -15,36 +15,116 @@ function _isKatakana(s) {
 // Walks word characters: each kanji consumes the next entry from kanjiData (katakana
 // reading → on'yomi, hiragana → kun'yomi); each kana character in the word becomes a
 // plain kana segment. Falls back to plain escaped text when there is no kanji data.
-export function renderReading(reading, word, kanjiData) {
+//
+// When pitchAccent (NHK integer) is provided, pitch styling is combined into the same
+// spans: each reading-seg wrapper preserves the on/kun/kana colour, and individual
+// pitch-mora spans inside carry pitch-high (overline) where applicable, with a
+// pitch-drop indicator inserted at the drop point.
+export function renderReading(reading, word, kanjiData, pitchAccent) {
   if (!reading) return '';
-  if (!kanjiData || kanjiData.length === 0) return esc(reading);
 
-  const kanjiReadings = kanjiData.map(e => e.reading);
-  let kanjiIdx = 0;
-  let html = '';
-  let kanaBuffer = '';
+  const hasPitch = pitchAccent !== null && pitchAccent !== undefined;
 
-  function flushKana() {
-    if (!kanaBuffer) return;
-    html += '<span class="reading-seg reading-kana">' + esc(kanaBuffer) + '</span>';
-    kanaBuffer = '';
+  if (!hasPitch) {
+    // No pitch data — one span per kanji reading or kana buffer, existing behaviour.
+    if (!kanjiData || kanjiData.length === 0) return esc(reading);
+    const kanjiReadings = kanjiData.map(e => e.reading);
+    let kanjiIdx = 0;
+    let html = '';
+    let kanaBuffer = '';
+    function flushKana() {
+      if (!kanaBuffer) return;
+      html += '<span class="reading-seg reading-kana">' + esc(kanaBuffer) + '</span>';
+      kanaBuffer = '';
+    }
+    for (const ch of word) {
+      const cp = ch.codePointAt(0);
+      if (isKanji(ch)) {
+        flushKana();
+        if (kanjiIdx >= kanjiReadings.length) continue;
+        const r = kanjiReadings[kanjiIdx++];
+        html += '<span class="reading-seg reading-' + (_isKatakana(r) ? 'on' : 'kun') + '">' + esc(r) + '</span>';
+      } else if ((cp >= 0x3040 && cp <= 0x309F) || (cp >= 0x30A0 && cp <= 0x30FF)) {
+        kanaBuffer += ch;
+      }
+    }
+    flushKana();
+    return html || esc(reading);
   }
 
-  for (const ch of word) {
-    const cp = ch.codePointAt(0);
-    if (isKanji(ch)) {
-      flushKana();
-      if (kanjiIdx >= kanjiReadings.length) continue;
-      const r = kanjiReadings[kanjiIdx++];
-      const type = _isKatakana(r) ? 'on' : 'kun';
-      html += '<span class="reading-seg reading-' + type + '">' + esc(r) + '</span>';
-    } else if ((cp >= 0x3040 && cp <= 0x309F) || (cp >= 0x30A0 && cp <= 0x30FF)) {
-      kanaBuffer += ch;
+  // Pitch mode: build segments [{text, type}], then render per mora inside each segment
+  // wrapper so on/kun colour and pitch-high overline are combined on one set of spans.
+  const allMorae = _splitMorae(reading);
+  const n = allMorae.length;
+
+  function isHigh(i) {
+    if (pitchAccent === 0) return i > 0;
+    if (pitchAccent === 1) return i === 0;
+    return i > 0 && i < pitchAccent;
+  }
+
+  const segments = [];
+  if (!kanjiData || kanjiData.length === 0) {
+    segments.push({ text: reading, type: 'kana' });
+  } else {
+    const kanjiReadings = kanjiData.map(e => e.reading);
+    let kanjiIdx = 0;
+    let kanaBuffer = '';
+    for (const ch of word) {
+      const cp = ch.codePointAt(0);
+      if (isKanji(ch)) {
+        if (kanaBuffer) { segments.push({ text: kanaBuffer, type: 'kana' }); kanaBuffer = ''; }
+        if (kanjiIdx < kanjiReadings.length) {
+          const r = kanjiReadings[kanjiIdx++];
+          segments.push({ text: r, type: _isKatakana(r) ? 'on' : 'kun' });
+        }
+      } else if ((cp >= 0x3040 && cp <= 0x309F) || (cp >= 0x30A0 && cp <= 0x30FF)) {
+        kanaBuffer += ch;
+      }
+    }
+    if (kanaBuffer) segments.push({ text: kanaBuffer, type: 'kana' });
+  }
+
+  let moraIdx = 0;
+  let lastMoraHigh = false;
+  let html = '';
+  for (const seg of segments) {
+    const segMorae = _splitMorae(seg.text);
+    // Bridge the inter-segment gap with an overline when both sides are high-pitched.
+    const connected = lastMoraHigh && segMorae.length > 0 && isHigh(moraIdx);
+    let inner = '';
+    for (const mora of segMorae) {
+      const i = moraIdx++;
+      const high = isHigh(i);
+      if (high && i === 1 && pitchAccent !== 1) {
+        inner += '<span class="pitch-rise"></span>';
+      }
+      inner += '<span class="pitch-mora' + (high ? ' pitch-high' : '') + '">' + esc(mora) + '</span>';
+      if (pitchAccent > 0 && i === pitchAccent - 1 && (i < n - 1 || pitchAccent === n)) {
+        inner += '<span class="pitch-drop"></span>';
+      }
+      lastMoraHigh = high;
+    }
+    const cls = 'reading-seg reading-' + seg.type + (connected ? ' pitch-connected' : '');
+    html += '<span class="' + cls + '">' + inner + '</span>';
+  }
+  return html || esc(reading);
+}
+
+// Splits a hiragana/katakana reading string into morae.
+// Small combining kana (ゃゅょゎ and katakana equivalents, plus small vowels) attach
+// to the preceding mora to form a single rhythmic unit (e.g. きゃ = 1 mora).
+function _splitMorae(reading) {
+  const combining = new Set('ゃゅょゎャュョヮぁぃぅぇぉァィゥェォ');
+  const morae = [];
+  for (const ch of reading) {
+    if (combining.has(ch) && morae.length > 0) {
+      morae[morae.length - 1] += ch;
+    } else {
+      morae.push(ch);
     }
   }
-  flushKana();
-
-  return html || esc(reading);
+  return morae;
 }
 
 export function esc(s) {

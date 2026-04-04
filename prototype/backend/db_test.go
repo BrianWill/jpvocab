@@ -637,7 +637,7 @@ func TestUpdateWordFill(t *testing.T) {
 	db := testDB(t)
 	id := insertTestWord(t, db, "山", 1)
 
-	err := updateWordFill(db, id, "やま", "noun", "mountain", "山が高い。", "The mountain is tall.", `[{"id":1,"reading":"やま"}]`)
+	err := updateWordFill(db, id, "やま", nil, "noun", "mountain", "山が高い。", "The mountain is tall.", `[{"id":1,"reading":"やま"}]`)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -660,7 +660,7 @@ func TestUpdateWordFill_EmptyKanjiDataDefaultsToArray(t *testing.T) {
 	db := testDB(t)
 	id := insertTestWord(t, db, "石", 1)
 
-	if err := updateWordFill(db, id, "いし", "noun", "stone", "", "", ""); err != nil {
+	if err := updateWordFill(db, id, "いし", nil, "noun", "stone", "", "", ""); err != nil {
 		t.Fatal(err)
 	}
 	var kanjiData string

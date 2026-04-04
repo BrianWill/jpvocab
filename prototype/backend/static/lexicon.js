@@ -42,7 +42,7 @@ function renderRow(w, trMain, trEx) {
       '<button class="btn-edit" data-tooltip="Edit word">✎</button>' +
       '<button class="btn-delete" data-tooltip="Delete word">✕</button>' +
     '</div></td>' +
-    '<td class="cell-reading" data-tooltip="Reading (Pronunciation)">' + renderReading(w.reading, w.word, w.kanjiData) + '</td>' +
+    '<td class="cell-reading" data-tooltip="Reading (Pronunciation)">' + renderReading(w.reading, w.word, w.kanjiData, w.pitchAccent) + '</td>' +
     '<td><span class="type-badge" data-tooltip="' + (typeLabels[w.type] || w.type) + '">' + w.type + '</span></td>' +
     '<td class="cell-meaning"><div class="cell-meaning-inner" data-tooltip="Meaning: ' + w.meaning + '">' + w.meaning + '</div></td>' +
     '<td class="cell-correct" data-tooltip="Times answered correctly">' + w.correct + '</td>' +

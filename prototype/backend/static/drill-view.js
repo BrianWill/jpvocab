@@ -115,7 +115,7 @@ function renderLastAnswered(els, state) {
   els.lastWordCard.style.display = '';
   els.lastWordJp.textContent = answered.word;
   els.lastWordJp.className = 'tooltip-word ' + (state.lastAnswered.knew ? 'knew' : 'missed');
-  els.lastReading.innerHTML = renderReading(answered.reading, answered.word, answered.kanjiData);
+  els.lastReading.innerHTML = renderReading(answered.reading, answered.word, answered.kanjiData, answered.pitchAccent);
   els.lastPos.textContent = answered.type;
   els.lastMeaning.textContent = answered.meaning;
   els.lastExampleJp.textContent = answered.exampleJp;

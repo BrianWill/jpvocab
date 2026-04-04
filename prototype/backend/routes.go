@@ -481,7 +481,7 @@ func adminAddWordsBatch(db *sql.DB) http.HandlerFunc {
 			b, _ := json.Marshal(kd)
 			kanjiDataStr := string(b)
 
-			if err := updateWordFill(db, ins.wordID, reading, pos, meaning, exJP, exEN, kanjiDataStr); err != nil {
+			if err := updateWordFill(db, ins.wordID, reading, filled.PitchAccent, pos, meaning, exJP, exEN, kanjiDataStr); err != nil {
 				continue
 			}
 			send(batchWordResult{Input: ins.input, Word: ins.norm, Updated: true,

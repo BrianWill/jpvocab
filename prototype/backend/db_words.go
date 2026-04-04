@@ -39,6 +39,7 @@ type wordJSON struct {
 	ID               int64            `json:"id"`
 	Word             string           `json:"word"`
 	Reading          string           `json:"reading"`
+	PitchAccent      *int             `json:"pitchAccent"`
 	Type             string           `json:"type"`
 	Meaning          string           `json:"meaning"`
 	ExampleJp        string           `json:"exampleJp"`
@@ -98,14 +99,14 @@ func insertWordReturningID(db *sql.DB, word, reading, partOfSpeech, meaning, exa
 }
 
 // updateWordFill sets the AI-generated fields for an existing word by ID.
-func updateWordFill(db *sql.DB, id int64, reading, partOfSpeech, meaning, exampleJP, exampleEN, kanjiData string) error {
+func updateWordFill(db *sql.DB, id int64, reading string, pitchAccent *int, partOfSpeech, meaning, exampleJP, exampleEN, kanjiData string) error {
 	if kanjiData == "" {
 		kanjiData = "[]"
 	}
 	_, err := db.Exec(`
-		UPDATE words SET reading=?, part_of_speech=?, meaning=?, example_jp=?, example_en=?, kanji_data=?
+		UPDATE words SET reading=?, pitch_accent=?, part_of_speech=?, meaning=?, example_jp=?, example_en=?, kanji_data=?
 		WHERE id=?
-	`, reading, partOfSpeech, meaning, exampleJP, exampleEN, kanjiData, id)
+	`, reading, pitchAccent, partOfSpeech, meaning, exampleJP, exampleEN, kanjiData, id)
 	return err
 }
 
@@ -244,7 +245,7 @@ func listKanji(db *sql.DB) ([]kanjiJSON, error) {
 // listWords returns all words from the lexicon ordered by creation date descending.
 func listWords(db *sql.DB) ([]wordJSON, error) {
 	rows, err := db.Query(`
-		SELECT id, word, COALESCE(reading,''), COALESCE(part_of_speech,''), COALESCE(meaning,''),
+		SELECT id, word, COALESCE(reading,''), pitch_accent, COALESCE(part_of_speech,''), COALESCE(meaning,''),
 		       COALESCE(example_jp,''), COALESCE(example_en,''),
 		       drill_count, incorrect_count, drill_target, created_at, last_drilled_at,
 		       image_path, kanji_data, has_word_audio, has_sentence_audio
@@ -262,7 +263,7 @@ func listWords(db *sql.DB) ([]wordJSON, error) {
 		var kanjiDataStr *string
 		var hasWordAudio, hasSentenceAudio int
 		if err := rows.Scan(
-			&w.ID, &w.Word, &w.Reading, &w.Type, &w.Meaning, &w.ExampleJp, &w.ExampleEn,
+			&w.ID, &w.Word, &w.Reading, &w.PitchAccent, &w.Type, &w.Meaning, &w.ExampleJp, &w.ExampleEn,
 			&w.Correct, &w.Incorrect, &w.Target, &w.CreatedAt, &w.LastDrilled,
 			&w.ImagePath, &kanjiDataStr, &hasWordAudio, &hasSentenceAudio,
 		); err != nil {

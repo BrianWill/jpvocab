@@ -2,14 +2,21 @@
 
 This file is random notes of possible features and bug fixes.
 
-- pitch accent info on readings
-
 - clicking the image placeholder or thumbnail shoudl open a file dialog to upload an image file
+
+- story audio
+    - generate audio modal
+        - stored in audio_stories as ogg/opus
+    - play cursor displays where it is in text
+            - current sentence is highlighted
+            - click sentence to jump cursor to sentence and start playmode
+                - hotkey to continue play from current cursor position
 
 - stories page
     - each sentence of Japanese text has map of positions to words, e.g. { pos: 35, word: "言葉" } indicates the word which begins at character 35 (is index of character a reliable way to index into a Japanese sentence?)
     - maybe each sentence is actually just stored as a list of words, each with its baseform and the actually displayed form in the text
         (so when displayed, the sentence is constructed from the display forms)
+    
     - translate stories and generate audio via voicevox
         - can voicevox generate a single audio file but give timemarks for each line?
             - apparently yes https://gemini.google.com/app/64285ccfa674d709

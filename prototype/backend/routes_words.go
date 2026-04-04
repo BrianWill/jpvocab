@@ -321,7 +321,7 @@ func apiAutofillWord(db *sql.DB) http.HandlerFunc {
 			kd = append(kd, kdEntry{ID: kID, Reading: k.Reading})
 		}
 		b, _ := json.Marshal(kd)
-		if err := updateWordFill(db, id, filled.Reading, filled.PartOfSpeech, filled.Meaning, filled.ExampleJP, filled.ExampleEN, string(b)); err != nil {
+		if err := updateWordFill(db, id, filled.Reading, filled.PitchAccent, filled.PartOfSpeech, filled.Meaning, filled.ExampleJP, filled.ExampleEN, string(b)); err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
@@ -329,6 +329,7 @@ func apiAutofillWord(db *sql.DB) http.HandlerFunc {
 		json.NewEncoder(w).Encode(map[string]any{
 			"word":           body.Word,
 			"reading":        filled.Reading,
+			"pitch_accent":   filled.PitchAccent,
 			"part_of_speech": filled.PartOfSpeech,
 			"meaning":        filled.Meaning,
 			"example_jp":     filled.ExampleJP,
@@ -375,6 +376,7 @@ func apiAutofillWordsBatch(db *sql.DB) http.HandlerFunc {
 			WordID       int64     `json:"word_id"`
 			Word         string    `json:"word"`
 			Reading      string    `json:"reading,omitempty"`
+			PitchAccent  *int      `json:"pitch_accent,omitempty"`
 			PartOfSpeech string    `json:"part_of_speech,omitempty"`
 			Meaning      string    `json:"meaning,omitempty"`
 			ExampleJP    string    `json:"example_jp,omitempty"`
@@ -399,7 +401,7 @@ func apiAutofillWordsBatch(db *sql.DB) http.HandlerFunc {
 				kd = append(kd, kdEntry{ID: kID, Reading: k.Reading})
 			}
 			b, _ := json.Marshal(kd)
-			if err := updateWordFill(db, entry.ID, filled.Reading, filled.PartOfSpeech, filled.Meaning, filled.ExampleJP, filled.ExampleEN, string(b)); err != nil {
+			if err := updateWordFill(db, entry.ID, filled.Reading, filled.PitchAccent, filled.PartOfSpeech, filled.Meaning, filled.ExampleJP, filled.ExampleEN, string(b)); err != nil {
 				results[i] = wordResult{WordID: entry.ID, Word: entry.Word, Error: err.Error()}
 				continue
 			}
@@ -407,6 +409,7 @@ func apiAutofillWordsBatch(db *sql.DB) http.HandlerFunc {
 				WordID:       entry.ID,
 				Word:         entry.Word,
 				Reading:      filled.Reading,
+				PitchAccent:  filled.PitchAccent,
 				PartOfSpeech: filled.PartOfSpeech,
 				Meaning:      filled.Meaning,
 				ExampleJP:    filled.ExampleJP,

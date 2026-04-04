@@ -6,6 +6,18 @@ This file is random notes of possible features and bug fixes.
 
 - clicking the image placeholder or thumbnail shoudl open a file dialog to upload an image file
 
+- stories page
+    - each sentence of Japanese text has map of positions to words, e.g. { pos: 35, word: "言葉" } indicates the word which begins at character 35 (is index of character a reliable way to index into a Japanese sentence?)
+    - maybe each sentence is actually just stored as a list of words, each with its baseform and the actually displayed form in the text
+        (so when displayed, the sentence is constructed from the display forms)
+    - translate stories and generate audio via voicevox
+        - can voicevox generate a single audio file but give timemarks for each line?
+            - apparently yes https://gemini.google.com/app/64285ccfa674d709
+        - e.g. given chapter of novel, produce audio
+        - experiment with openAI audio generation. Might be better quality than voicevox
+    
+    - scan text to find most frequently occuring words in text that are candidates for the lexicon
+
 - play with visual styles
     - use simple organic textures instead of solid background colors
         - e.g. wood, paper, leaves
@@ -18,15 +30,7 @@ This file is random notes of possible features and bug fixes.
 - enable wails in the prototype
     - once ready, we'll move the prototype project to main dir
 
-- stories page
-    - 
-    - translate stories and generate audio via voicevox
-        - can voicevox generate a single audio file but give timemarks for each line?
-            - apparently yes https://gemini.google.com/app/64285ccfa674d709
-        - e.g. given chapter of novel, produce audio
-        - experiment with openAI audio generation. Might be better quality than voicevox
-    
-    - scan text to find most frequently occuring words in text that are candidates for the lexicon
+
 
 - grammatical analysis
     - sentence breakdown

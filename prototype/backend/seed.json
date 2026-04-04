@@ -1108,5 +1108,46 @@
         {"word": "レベル",         "correct": true,  "answered_at": "2026-03-24 10:11:00"}
       ]
     }
+  ],
+  "stories": [
+    {
+      "audio_path": null,
+      "sentences": [
+        {"japanese_text": "皆さん、こんにちは。", "english_text": null, "is_paragraph_start": true},
+        {"japanese_text": "ちえこです。", "english_text": null, "is_paragraph_start": false},
+        {"japanese_text": "よろしくお願いします。", "english_text": null, "is_paragraph_start": false},
+        {"japanese_text": "今日は、島根県にある、足立美術館の庭園を紹介します。", "english_text": null, "is_paragraph_start": false},
+        {"japanese_text": "庭園は庭のことですね。", "english_text": null, "is_paragraph_start": false},
+        {"japanese_text": "この庭園は、アメリカの日本庭園の専門雑誌で、２０年、２０年連続で日本一に選ばれているそうです。", "english_text": null, "is_paragraph_start": false},
+        {"japanese_text": "なぜこの庭園がそれほど素晴らしいのか、今日はその秘密を一緒に見ていきましょう。", "english_text": null, "is_paragraph_start": false},
+
+        {"japanese_text": "まず、この庭園の歴史からお話しします。", "english_text": null, "is_paragraph_start": true},
+        {"japanese_text": "足立美術館は１９７０年に開館しました。", "english_text": null, "is_paragraph_start": false},
+        {"japanese_text": "創設者は足立全康という実業家です。", "english_text": null, "is_paragraph_start": false},
+        {"japanese_text": "実業家、ビジネスマンです。", "english_text": null, "is_paragraph_start": false},
+        {"japanese_text": "足立さんは貧しい農家に生まれましたが、努力して、ビジネスで大きい成功を収めました。", "english_text": null, "is_paragraph_start": false},
+        {"japanese_text": "貧しい農家、農業をしている家族ですね。", "english_text": null, "is_paragraph_start": false},
+        {"japanese_text": "農家に生まれましたけど、自分で頑張って、ビジネスで大きく成功しました。", "english_text": null, "is_paragraph_start": false},
+        {"japanese_text": "大きな成功を収めました。", "english_text": null, "is_paragraph_start": false},
+
+        {"japanese_text": "そして７１歳の時に、自分が集めた美術品、それから庭園を多くの人に見てもらいたいと考えて、この美術館を作りました。", "english_text": null, "is_paragraph_start": true},
+        {"japanese_text": "美術品は、え、アートの作品のことですね。", "english_text": null, "is_paragraph_start": false},
+        {"japanese_text": "美術品と庭園を見てもらうために、この美術館を作りました。", "english_text": null, "is_paragraph_start": false},
+        {"japanese_text": "足立さんは、「庭園もまた一幅の絵画である」という言葉を残しています。", "english_text": null, "is_paragraph_start": false},
+        {"japanese_text": "絵のことを絵画と言います。", "english_text": null, "is_paragraph_start": false},
+        {"japanese_text": "「一幅の絵画」の一幅っていうのは、掛け軸ですね。", "english_text": null, "is_paragraph_start": false},
+        {"japanese_text": "掛け軸。", "english_text": null, "is_paragraph_start": false},
+        {"japanese_text": "掛け軸が１枚という意味です。", "english_text": null, "is_paragraph_start": false},
+        {"japanese_text": "つまり、庭園は絵画と同じように、美しい芸術作品だと考えていたそうです。", "english_text": null, "is_paragraph_start": false},
+        {"japanese_text": "この考え方が、足立美術館の庭園の大きな特徴になっています。", "english_text": null, "is_paragraph_start": false},
+
+        {"japanese_text": "この庭園の広さは約５万坪。", "english_text": null, "is_paragraph_start": true},
+        {"japanese_text": "５万坪は、東京ドーム３個分以上もあります。", "english_text": null, "is_paragraph_start": false},
+        {"japanese_text": "日本で場所の広さを表す時、東京ドームを基準にすることが多いですね。", "english_text": null, "is_paragraph_start": false},
+        {"japanese_text": "「東京ドームで何個分くらいの広さですよ」っていうのが多いですね。", "english_text": null, "is_paragraph_start": false},
+        {"japanese_text": "この庭園の広さは、東京ドーム３個分です。", "english_text": null, "is_paragraph_start": false},
+        {"japanese_text": "とても広いですね。", "english_text": null, "is_paragraph_start": false}
+      ]
+    }
   ]
 }

@@ -73,6 +73,20 @@ func migrate(db *sql.DB) {
 			key   TEXT NOT NULL PRIMARY KEY,
 			value TEXT NOT NULL
 		)`,
+		`CREATE TABLE IF NOT EXISTS stories (
+			id         INTEGER  PRIMARY KEY AUTOINCREMENT,
+			audio_path TEXT,
+			created_at DATETIME NOT NULL DEFAULT (datetime('now'))
+		)`,
+		`CREATE TABLE IF NOT EXISTS story_sentences (
+			id                 INTEGER PRIMARY KEY AUTOINCREMENT,
+			story_id           INTEGER NOT NULL REFERENCES stories(id) ON DELETE CASCADE,
+			position           INTEGER NOT NULL,
+			words_json         TEXT    NOT NULL,
+			english_text       TEXT,
+			is_paragraph_start INTEGER NOT NULL DEFAULT 0 CHECK (is_paragraph_start IN (0, 1)),
+			UNIQUE(story_id, position)
+		)`,
 	}
 
 	var version int
@@ -329,11 +343,23 @@ type seedSession struct {
 	Answers   []seedAnswer `json:"answers"`
 }
 
+type seedStorySentence struct {
+	JapaneseText     string  `json:"japanese_text"`
+	EnglishText      *string `json:"english_text"`
+	IsParagraphStart bool    `json:"is_paragraph_start"`
+}
+
+type seedStory struct {
+	AudioPath *string             `json:"audio_path"`
+	Sentences []seedStorySentence `json:"sentences"`
+}
+
 // seedData is the top-level shape of seed.json.
 type seedData struct {
 	Kanji    []seedKanjiDef `json:"kanji"`
 	Words    []seedWord     `json:"words"`
 	Sessions []seedSession  `json:"sessions"`
+	Stories  []seedStory    `json:"stories"`
 }
 
 // seedDB loads seed.json and inserts words and drill history if the words table is empty.
@@ -396,6 +422,7 @@ func seedDB(db *sql.DB) {
 	defer wordStmt.Close()
 
 	wordIDs := make(map[string]int64)
+	wordMeanings := make(map[string]string)
 	for _, w := range seed.Words {
 		kat := 0
 		if containsKatakana(w.Word) {
@@ -428,6 +455,9 @@ func seedDB(db *sql.DB) {
 		}
 		id, _ := res.LastInsertId()
 		wordIDs[w.Word] = id
+		if w.Meaning != "" {
+			wordMeanings[w.Word] = w.Meaning
+		}
 	}
 
 	// Insert sessions and their answers.
@@ -471,8 +501,27 @@ func seedDB(db *sql.DB) {
 		}
 	}
 
+	for _, story := range seed.Stories {
+		sentences := make([]storySentenceInput, 0, len(story.Sentences))
+		for _, sentence := range story.Sentences {
+			if sentence.JapaneseText == "" {
+				tx.Rollback()
+				log.Fatal("seed: story sentence japanese_text is required")
+			}
+			sentences = append(sentences, storySentenceInput{
+				Words:            buildStorySentenceWords(sentence.JapaneseText, wordMeanings),
+				EnglishText:      sentence.EnglishText,
+				IsParagraphStart: sentence.IsParagraphStart,
+			})
+		}
+		if _, err := insertStoryTx(tx, story.AudioPath, sentences); err != nil {
+			tx.Rollback()
+			log.Fatal("seed: insert story:", err)
+		}
+	}
+
 	if err := tx.Commit(); err != nil {
 		log.Fatal("seed: commit:", err)
 	}
-	log.Printf("DB seeded: %d words, %d sessions", len(seed.Words), len(seed.Sessions))
+	log.Printf("DB seeded: %d words, %d sessions, %d stories", len(seed.Words), len(seed.Sessions), len(seed.Stories))
 }

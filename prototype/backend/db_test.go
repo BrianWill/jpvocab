@@ -31,11 +31,13 @@ func TestMigrate_CreatesAllTables(t *testing.T) {
 		t.Fatal(err)
 	}
 	want := map[string]bool{
-		"words":          true,
-		"drill_sessions": true,
-		"drill_answers":  true,
-		"kanji":          true,
-		"user_settings":  true,
+		"words":           true,
+		"drill_sessions":  true,
+		"drill_answers":   true,
+		"kanji":           true,
+		"user_settings":   true,
+		"stories":         true,
+		"story_sentences": true,
 	}
 	for _, table := range tables {
 		delete(want, table)
@@ -54,8 +56,8 @@ func TestMigrate_Idempotent(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(tables) != 5 {
-		t.Errorf("expected 5 tables, got %d: %v", len(tables), tables)
+	if len(tables) != 7 {
+		t.Errorf("expected 7 tables, got %d: %v", len(tables), tables)
 	}
 }
 
@@ -123,6 +125,8 @@ func TestValidTableName(t *testing.T) {
 		{"words", true},
 		{"drill_sessions", true},
 		{"drill_answers", true},
+		{"stories", true},
+		{"story_sentences", true},
 		{"sqlite_master", false},
 		{"nonexistent", false},
 		{"'; DROP TABLE words; --", false},
@@ -976,6 +980,151 @@ func TestDeleteWordsByName(t *testing.T) {
 	db.QueryRow(`SELECT word FROM words`).Scan(&remaining)
 	if remaining != "秋" {
 		t.Errorf("remaining word: got %q, want 秋", remaining)
+	}
+}
+
+// --- stories ---
+
+func TestInsertStory_AndListStories(t *testing.T) {
+	db := testDB(t)
+	audioPath := "audio/stories/morning.ogg"
+	en1 := "Good morning."
+	en2 := "Let's do our best today too."
+	ts1 := int64(0)
+	ts2 := int64(700)
+	ts3 := int64(2450)
+
+	id, err := insertStory(db, &audioPath, []storySentenceInput{
+		{
+			Words: []storyWordInput{
+				{DisplayWord: "おはよう", BaseWord: "おはよう", English: "good morning", AudioTimestampMs: &ts1},
+				{DisplayWord: "。", BaseWord: "。", English: ".", AudioTimestampMs: &ts2},
+			},
+			EnglishText:      &en1,
+			IsParagraphStart: true,
+		},
+		{
+			Words: []storyWordInput{
+				{DisplayWord: "今日", BaseWord: "今日", English: "today", AudioTimestampMs: &ts3},
+				{DisplayWord: "も", BaseWord: "も", English: "also"},
+				{DisplayWord: "頑張ろう", BaseWord: "頑張る", English: "let's do our best"},
+				{DisplayWord: "。", BaseWord: "。", English: "."},
+			},
+			EnglishText: &en2,
+		},
+	})
+	if err != nil {
+		t.Fatalf("insertStory: %v", err)
+	}
+	if id == 0 {
+		t.Fatal("expected non-zero story id")
+	}
+
+	stories, err := listStories(db)
+	if err != nil {
+		t.Fatalf("listStories: %v", err)
+	}
+	if len(stories) != 1 {
+		t.Fatalf("expected 1 story, got %d", len(stories))
+	}
+	story := stories[0]
+	if story.AudioPath == nil || *story.AudioPath != audioPath {
+		t.Errorf("audio_path: got %+v", story.AudioPath)
+	}
+	if len(story.Sentences) != 2 {
+		t.Fatalf("expected 2 sentences, got %d", len(story.Sentences))
+	}
+	if story.Sentences[0].Position != 1 || story.Sentences[1].Position != 2 {
+		t.Errorf("positions: got %+v", story.Sentences)
+	}
+	if len(story.Sentences[0].Words) != 2 || len(story.Sentences[1].Words) != 4 {
+		t.Errorf("word counts: got %+v", story.Sentences)
+	}
+	if story.Sentences[1].Words[2].BaseWord != "頑張る" {
+		t.Errorf("base word: got %q, want 頑張る", story.Sentences[1].Words[2].BaseWord)
+	}
+	if story.Sentences[0].Words[0].AudioTimestampMs == nil || *story.Sentences[0].Words[0].AudioTimestampMs != ts1 {
+		t.Errorf("word audio timestamp: got %+v", story.Sentences[0].Words[0].AudioTimestampMs)
+	}
+	if story.Sentences[0].EnglishText == nil || *story.Sentences[0].EnglishText != en1 {
+		t.Errorf("sentence 1 english: got %+v", story.Sentences[0].EnglishText)
+	}
+	if !story.Sentences[0].IsParagraphStart {
+		t.Error("sentence 1 should be marked as paragraph start")
+	}
+	if story.Sentences[1].IsParagraphStart {
+		t.Error("sentence 2 should not be marked as paragraph start")
+	}
+}
+
+func TestInsertStory_RequiresAtLeastOneSentence(t *testing.T) {
+	db := testDB(t)
+
+	_, err := insertStory(db, nil, nil)
+	if err == nil {
+		t.Fatal("expected error for missing sentences")
+	}
+	if !strings.Contains(err.Error(), "at least one sentence") {
+		t.Errorf("unexpected error: %v", err)
+	}
+}
+
+func TestInsertStory_RejectsNegativeAudioTimestamp(t *testing.T) {
+	db := testDB(t)
+	badTs := int64(-1)
+
+	_, err := insertStory(db, nil, []storySentenceInput{
+		{
+			Words: []storyWordInput{
+				{DisplayWord: "文", BaseWord: "文", English: "sentence", AudioTimestampMs: &badTs},
+			},
+		},
+	})
+	if err == nil {
+		t.Fatal("expected error for negative audio timestamp")
+	}
+	if !strings.Contains(err.Error(), "non-negative") {
+		t.Errorf("unexpected error: %v", err)
+	}
+}
+
+func TestInsertStory_RequiresAtLeastOneWordPerSentence(t *testing.T) {
+	db := testDB(t)
+
+	_, err := insertStory(db, nil, []storySentenceInput{{}})
+	if err == nil {
+		t.Fatal("expected error for missing words")
+	}
+	if !strings.Contains(err.Error(), "at least one word") {
+		t.Errorf("unexpected error: %v", err)
+	}
+}
+
+func TestBuildStorySentenceWords_UsesBaseFormsAndGlosses(t *testing.T) {
+	words := buildStorySentenceWords("庭園は庭のことですね。", map[string]string{
+		"庭園": "garden",
+		"庭":  "garden",
+	})
+	if len(words) == 0 {
+		t.Fatal("expected tokenized story words")
+	}
+	if words[0].DisplayWord != "庭園" || words[0].BaseWord != "庭園" {
+		t.Errorf("first token: got %+v", words[0])
+	}
+	if words[0].English != "garden" {
+		t.Errorf("first token english: got %q, want garden", words[0].English)
+	}
+	foundPeriod := false
+	for _, word := range words {
+		if word.DisplayWord == "。" {
+			foundPeriod = true
+			if word.English != "period" {
+				t.Errorf("period english: got %q, want period", word.English)
+			}
+		}
+	}
+	if !foundPeriod {
+		t.Error("expected punctuation token in story words")
 	}
 }
 

@@ -233,7 +233,7 @@ window.addEventListener('beforeunload', () => {
 window.addEventListener('keydown', async e => {
   if (e.code !== 'Space') return;
   const tag = document.activeElement?.tagName;
-  if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'BUTTON' || tag === 'SELECT') return;
+  if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return;
   e.preventDefault();
   ttsBtn.click();
 });
@@ -489,6 +489,10 @@ function renderStory(story) {
     }
     const sentenceSpan = document.createElement('span');
     sentenceSpan.className = 'story-sentence';
+    if (sentence.englishText) {
+      sentenceSpan.dataset.tooltip = sentence.englishText;
+      sentenceSpan.dataset.tooltipClass = 'tooltip-translation';
+    }
 
     let wordOffset = sentenceOffsets[i];
     for (const word of sentence.words) {

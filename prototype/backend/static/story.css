@@ -73,9 +73,14 @@
 .story-sentence {
   white-space: pre-wrap;
   scroll-margin: 5rem 0;
-  padding: 0.25em 0.3em;
+  padding: 0.25em 0.2em;
   -webkit-box-decoration-break: clone;
   box-decoration-break: clone;
+}
+
+.story-sentence:not(.story-sentence--active):hover {
+  background: rgba(205, 214, 244, 0.15);
+  border-radius: 3px;
 }
 
 .story-sentence--active {
@@ -90,6 +95,14 @@
 
 .story-error {
   color: #f38ba8;
+}
+
+.tooltip-translation {
+  font-size: 0.7rem;
+  color: #a6e3a1;
+  line-height: 1.7;
+  max-width: 24rem;
+  white-space: normal;
 }
 
 /* ── Generate-audio progress list ─────────────────────────────────────────── */

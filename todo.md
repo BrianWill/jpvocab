@@ -4,34 +4,20 @@ This file is random notes of possible features and bug fixes.
 
 - clicking the image placeholder or thumbnail shoudl open a file dialog to upload an image file
 
-- story header
-    - play button and scrubber in header
-        - uses tts if no audio file; scrubber is greyed out if TTS (because you can't seek with TTS, right?)
-    - speed adjustment spinner in header
-    - title in header?
-
-- story audio
-    - generate audio modal (button at top of story?)
-        - stored in audio_stories as ogg/opus
-
-    - play cursor displays where it is in text
-        - current sentence played is highlighted
-            - can we get timings down to the words?
-        - click sentence to jump cursor to sentence and start playmode
-            - hotkey to continue play from current cursor position
-
-- stories page
-    - each sentence of Japanese text has map of positions to words, e.g. { pos: 35, word: "言葉" } indicates the word which begins at character 35 (is index of character a reliable way to index into a Japanese sentence?)
-    - maybe each sentence is actually just stored as a list of words, each with its baseform and the actually displayed form in the text
-        (so when displayed, the sentence is constructed from the display forms)
+- story
+    hover tooltip should show translation of current word
+    - story text should be separate scroll area from title and generate/ back buttons
+        (i.e. title should not scroll)
+    - generate AI translation
+        - for both words and complete sentences
+        - for words, use existing translations in db if we have them
+    - suggest words to add to lexicon
+        - scan text to find most frequently occuring words in text that are candidates for the lexicon
+    - click word to add to lexicon
+    - click word to modify its target count
     
-    - translate stories and generate audio via voicevox
-        - can voicevox generate a single audio file but give timemarks for each line?
-            - apparently yes https://gemini.google.com/app/64285ccfa674d709
-        - e.g. given chapter of novel, produce audio
-        - experiment with openAI audio generation. Might be better quality than voicevox
-    
-    - scan text to find most frequently occuring words in text that are candidates for the lexicon
+
+- experiment with openAI audio generation. Might be better quality than voicevox
 
 - play with visual styles
     - use simple organic textures instead of solid background colors

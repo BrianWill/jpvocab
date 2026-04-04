@@ -1,28 +1,48 @@
 import { populateWordTooltip, positionAnchoredWordTooltip, playTts, WORD_TTS_RATE } from './common.js';
 import { renderReading } from './lexicon-utils.js';
 
-let TODAY, HISTORY_START, activityData, stats;
-let wordMap = {};
-let kanjiMap = {};
+const els = {
+  activityBody: document.querySelector('.activity-body'),
+  calendar: document.getElementById('calendar'),
+  calendarWrap: document.querySelector('.calendar-wrap'),
+  dayLabels: document.getElementById('day-labels'),
+  dayModalBackdrop: document.getElementById('day-modal-backdrop'),
+  dayModalBody: document.getElementById('day-modal-body'),
+  dayModalTitle: document.getElementById('day-modal-title'),
+  statsSection: document.getElementById('stats-section'),
+  wordTooltip: document.getElementById('activity-word-tooltip'),
+};
+els.dayModal = els.dayModalBackdrop.querySelector('.modal');
+els.dayModalCloseBtn = els.dayModalBackdrop.querySelector('.modal-close');
+
+const state = {
+  activityData: null,
+  historyStart: null,
+  kanjiMap: {},
+  stats: null,
+  today: null,
+  weeksLoaded: 0,
+  wordMap: {},
+};
 
 // ── Stats utilities ───────────────────────────────────────────────────────────
 
 // Returns average count of `field` per day over the given window.
-// days = number of calendar days ending today; null = all time (from HISTORY_START).
+// days = number of calendar days ending today; null = all time (from historyStart).
 // Days with no entry in activityData count as zero — the denominator is the full window.
 function computeAvg(field, days) {
   let startStr, denom;
   if (days === null) {
-    startStr = HISTORY_START;
-    const ms = new Date(TODAY + 'T00:00:00') - new Date(HISTORY_START + 'T00:00:00');
+    startStr = state.historyStart;
+    const ms = new Date(state.today + 'T00:00:00') - new Date(state.historyStart + 'T00:00:00');
     denom = Math.round(ms / 86400000) + 1;
   } else {
-    const start = addDays(new Date(TODAY + 'T00:00:00'), -(days - 1));
+    const start = addDays(new Date(state.today + 'T00:00:00'), -(days - 1));
     startStr = toDateStr(start);
     denom = days;
   }
   let total = 0;
-  for (const [date, data] of Object.entries(activityData)) {
+  for (const [date, data] of Object.entries(state.activityData)) {
     if (date < startStr) continue;
     total += data[field].length;
   }
@@ -47,23 +67,21 @@ function addDays(d, n) {
 
 const INITIAL_WEEKS = 5;
 const LOAD_BATCH = 4;
-let weeksLoaded = 0;
 
 function appendWeeks(count) {
-  const cal = document.getElementById('calendar');
-  const sun = weekSunday(TODAY);
+  const sun = weekSunday(state.today);
   let added = 0;
   let exhausted = false;
 
   while (added < count) {
-    const start = addDays(sun, -weeksLoaded * 7);
-    if (toDateStr(start) < HISTORY_START) { exhausted = true; break; }
+    const start = addDays(sun, -state.weeksLoaded * 7);
+    if (toDateStr(start) < state.historyStart) { exhausted = true; break; }
     const weekDays = Array.from({length: 7}, (_, j) => toDateStr(addDays(start, j)));
     const row = document.createElement('div');
     row.className = 'week-row';
     weekDays.forEach(dateStr => row.appendChild(buildDayCell(dateStr)));
-    cal.appendChild(row);
-    weeksLoaded++;
+    els.calendar.appendChild(row);
+    state.weeksLoaded++;
     added++;
   }
 
@@ -83,8 +101,7 @@ function dayLabel(dateStr) {
 }
 
 function renderStats() {
-  const el = document.getElementById('stats-section');
-
+  const { stats } = state;
   const wordTotal = stats.drillsCleared + stats.drillsClose + stats.drillsMid + stats.drillsFar;
   const pct = n => (n / wordTotal * 100).toFixed(1);
 
@@ -98,7 +115,7 @@ function renderStats() {
   const avgAdded30 = computeAvg('added', 30);
   const avgAddedAll = computeAvg('added', null);
 
-  el.innerHTML = `
+  els.statsSection.innerHTML = `
     <div class="stat-grid">
       <div class="stat-card" data-tooltip="Total words in your vocabulary">
         <div class="stat-value">${stats.lexiconSize}</div>
@@ -145,30 +162,25 @@ function renderStats() {
 // ── Rendering ─────────────────────────────────────────────────────────────────
 
 function renderCalendar() {
-  const labelsEl = document.getElementById('day-labels');
   ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'].forEach(name => {
     const div = document.createElement('div');
     div.className = 'day-label';
     div.textContent = name;
-    labelsEl.appendChild(div);
+    els.dayLabels.appendChild(div);
   });
 
   appendWeeks(INITIAL_WEEKS);
 
-  const wrap = document.querySelector('.calendar-wrap');
-
   const endBar = document.createElement('div');
   endBar.className = 'calendar-end hidden';
   endBar.textContent = 'Beginning of history';
+  els.calendarWrap.appendChild(endBar);
 
-  wrap.appendChild(endBar);
-
-  const activityBody = document.querySelector('.activity-body');
   let exhausted = false;
 
-  activityBody.addEventListener('scroll', () => {
+  els.activityBody.addEventListener('scroll', () => {
     if (exhausted) return;
-    const { scrollTop, scrollHeight, clientHeight } = activityBody;
+    const { scrollTop, scrollHeight, clientHeight } = els.activityBody;
     if (scrollTop + clientHeight >= scrollHeight - 200) {
       exhausted = appendWeeks(LOAD_BATCH);
       if (exhausted) endBar.classList.remove('hidden');
@@ -180,9 +192,9 @@ function buildDayCell(dateStr) {
   const cell = document.createElement('div');
   cell.className = 'day-cell';
 
-  const isFuture = dateStr > TODAY;
-  const isToday = dateStr === TODAY;
-  const data = activityData[dateStr];
+  const isFuture = dateStr > state.today;
+  const isToday = dateStr === state.today;
+  const data = state.activityData[dateStr];
 
   if (isFuture) cell.classList.add('future');
   if (isToday) cell.classList.add('today');
@@ -229,26 +241,25 @@ function makeBadge(type, text, tooltip) {
 // ── Modal ─────────────────────────────────────────────────────────────────────
 
 function openDayModal(dateStr) {
-  const data = activityData[dateStr];
-  document.getElementById('day-modal-title').textContent = formatDateFull(dateStr);
-  const body = document.getElementById('day-modal-body');
-  body.innerHTML = '';
+  const data = state.activityData[dateStr];
+  els.dayModalTitle.textContent = formatDateFull(dateStr);
+  els.dayModalBody.innerHTML = '';
 
   if (data.drilled.length) {
     const knew = data.drilled.filter(e => e.knew).length;
     const missed = data.drilled.length - knew;
     const note = missed > 0 ? '✗ = wrong at least once this day (may also have been answered correctly the same day)' : null;
-    body.appendChild(buildSection(
+    els.dayModalBody.appendChild(buildSection(
       'Drilled — <span class="drilled-knew-count">' + knew + ' ✓</span>  <span class="drilled-missed-count">' + missed + ' ✗</span>',
       data.drilled,
       'drilled',
       note
     ));
   }
-  if (data.added.length)   body.appendChild(buildSection('Added',   data.added,   'added'));
-  if (data.cleared.length) body.appendChild(buildSection('Cleared', data.cleared, 'cleared'));
+  if (data.added.length)   els.dayModalBody.appendChild(buildSection('Added',   data.added,   'added'));
+  if (data.cleared.length) els.dayModalBody.appendChild(buildSection('Cleared', data.cleared, 'cleared'));
 
-  document.getElementById('day-modal-backdrop').classList.remove('hidden');
+  els.dayModalBackdrop.classList.remove('hidden');
 }
 
 function buildSection(title, words, type, note) {
@@ -268,7 +279,7 @@ function buildSection(title, words, type, note) {
   list.className = 'day-word-list';
 
   words.forEach(entry => {
-    const fullWord = wordMap[entry.word] || null;
+    const fullWord = state.wordMap[entry.word] || null;
     const item = document.createElement('div');
     item.className = 'day-word-item';
     if (type === 'drilled') item.classList.add(entry.knew ? 'knew' : 'missed');
@@ -286,38 +297,31 @@ function buildSection(title, words, type, note) {
 }
 
 function closeDayModal() {
-  document.getElementById('day-modal-backdrop').classList.add('hidden');
-}
-
-function handleDayBackdropClick(e) {
-  if (e.target === document.getElementById('day-modal-backdrop')) closeDayModal();
+  els.dayModalBackdrop.classList.add('hidden');
 }
 
 document.addEventListener('keydown', e => { if (e.key === 'Escape') closeDayModal(); });
 
-// --- Static element event listeners ---
-const dayModalBackdrop = document.getElementById('day-modal-backdrop');
-dayModalBackdrop.addEventListener('click', handleDayBackdropClick);
-dayModalBackdrop.querySelector('.modal-close').addEventListener('click', closeDayModal);
+els.dayModalBackdrop.addEventListener('click', e => {
+  if (e.target === els.dayModalBackdrop) closeDayModal();
+});
+els.dayModalCloseBtn.addEventListener('click', closeDayModal);
 
 // ── Tooltip ───────────────────────────────────────────────────────────────────
-
-const wordTooltip = document.getElementById('activity-word-tooltip');
 
 function showWordTooltip(item) {
   if (!item.dataset.wordInfo) return;
   const data = JSON.parse(item.dataset.wordInfo);
-  populateWordTooltip(wordTooltip, data, kanjiMap, renderReading);
+  populateWordTooltip(els.wordTooltip, data, state.kanjiMap, renderReading);
   positionWordTooltip(item);
-  wordTooltip.classList.add('visible');
+  els.wordTooltip.classList.add('visible');
 }
 
 function positionWordTooltip(item) {
-  const modal = document.querySelector('#day-modal-backdrop .modal');
   const itemRect = item.getBoundingClientRect();
-  const modalRect = modal.getBoundingClientRect();
+  const modalRect = els.dayModal.getBoundingClientRect();
   const overlap = 162;
-  positionAnchoredWordTooltip(wordTooltip, {
+  positionAnchoredWordTooltip(els.wordTooltip, {
     anchorRect: itemRect,
     left: modalRect.right - overlap,
   });
@@ -330,7 +334,7 @@ document.addEventListener('mouseover', e => {
 
 document.addEventListener('mouseout', e => {
   const wordItem = e.target.closest('.day-word-item[data-word-info]');
-  if (wordItem && !wordItem.contains(e.relatedTarget)) wordTooltip.classList.remove('visible');
+  if (wordItem && !wordItem.contains(e.relatedTarget)) els.wordTooltip.classList.remove('visible');
 });
 
 async function init() {
@@ -340,17 +344,17 @@ async function init() {
     fetch('/api/words'),
     fetch('/api/kanji'),
   ]);
-  stats = await statsRes.json();
+  state.stats = await statsRes.json();
   const cal = await calRes.json();
   const words = await wordsRes.json();
   const kanjiList = await kanjiRes.json();
-  TODAY = cal.today;
-  HISTORY_START = cal.historyStart;
-  activityData = cal.days;
-  wordMap = {};
-  words.forEach(word => { wordMap[word.word] = word; });
-  kanjiMap = {};
-  kanjiList.forEach(kanji => { kanjiMap[kanji.id] = kanji; });
+  state.today = cal.today;
+  state.historyStart = cal.historyStart;
+  state.activityData = cal.days;
+  state.wordMap = {};
+  words.forEach(word => { state.wordMap[word.word] = word; });
+  state.kanjiMap = {};
+  kanjiList.forEach(kanji => { state.kanjiMap[kanji.id] = kanji; });
   renderStats();
   renderCalendar();
 }

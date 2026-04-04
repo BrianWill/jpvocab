@@ -167,6 +167,8 @@ The admin UI at `http://localhost:1338/admin` shows live table schemas (column n
 
 - **No inline event handlers.** Do not use `onclick=`, `onmousedown=`, or other `on*` HTML attributes. Use `addEventListener` instead � either on the element directly (for static elements, added once at script load time) or immediately after setting `innerHTML` (for dynamically built elements).
 
+- **Bundle element references into `els`, mutable state into `state`.** At the top of each page script, collect all DOM element references into a single `const els = { ... }` object (using `getElementById`/`querySelector`). Collect all mutable runtime state into a single `const state = { ... }` object with explicit initial values. Do not declare loose module-level `let` variables for state or element refs. Follow the pattern established in `drill.js` / `drill-view.js` / `drill-state.js`: `els` is built once at load time and never mutated structurally; `state` fields are updated in place as the page runs.
+
 ### CSS organisation
 
 Styles shared across pages belong in `common.css`, which is loaded first by all pages. Page-specific files only contain styles unique to that page. When adding new styles, prefer extending `common.css` over duplicating rules across page stylesheets. Current shared styles include: CSS reset, `body` base, page header, nav link, `.btn-header` (the header icon button), and the full modal system.

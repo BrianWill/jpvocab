@@ -2,7 +2,9 @@
 # Print sorted line counts for all .go and .js files under prototype/backend,
 # then totals per language.
 
-DIR="$(cd "$(dirname "$0")/prototype/backend" && pwd)"
+shopt -s nullglob
+
+DIR="$(cd "$(dirname "$0")/backend" && pwd)"
 
 go_src_files=()
 go_test_files=()

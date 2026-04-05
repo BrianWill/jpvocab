@@ -1,6 +1,6 @@
 import { state as lexiconState, typeLabels, reloadWords, renderTable, getSortedWords, closeAddModal, updateWordImagePath, updateWordAudioFlags } from './lexicon.js';
 import { esc, isKanji, detailItemPosSelect, detailItemKanjiReadings, detailItemInput, detailItemExInput } from './lexicon-utils.js';
-import { getVoicevoxSettings, playWordAudio, playSentenceAudio, playDing } from './common.js';
+import { getVoicevoxSettings, playWordAudio, playSentenceAudio, playDing, PROVIDER_MODELS } from './common.js';
 
 const els = {
   addModalSaveBtn: document.querySelector('#add-modal-backdrop .btn-save'),
@@ -955,29 +955,6 @@ function renderStatus() {
 }
 
 function initAddResultFooter() {
-  const providerModels = [
-    { key: 'anthropic', label: 'Anthropic', envKey: 'ANTHROPIC_API_KEY', models: [
-      ['anthropic/claude-haiku-4-5-20251001', 'claude-haiku (fast)'],
-      ['anthropic/claude-sonnet-4-6',         'claude-sonnet (better)'],
-    ]},
-    { key: 'openai',   label: 'OpenAI',   envKey: 'OPENAI_API_KEY',   models: [
-      ['openai/gpt-4o-mini', 'gpt-4o-mini (fast)'],
-      ['openai/gpt-4o',      'gpt-4o (better)'],
-    ]},
-    { key: 'google',   label: 'Google',   envKey: 'GOOGLE_API_KEY',   models: [
-      ['google/gemini-2.0-flash', 'gemini-2.0-flash (fast)'],
-      ['google/gemini-1.5-pro',   'gemini-1.5-pro (better)'],
-    ]},
-    { key: 'mistral',  label: 'Mistral',  envKey: 'MISTRAL_API_KEY',  models: [
-      ['mistral/mistral-small-latest', 'mistral-small (fast)'],
-      ['mistral/mistral-large-latest', 'mistral-large (better)'],
-    ]},
-    { key: 'glm',      label: 'GLM',      envKey: 'GLM_API_KEY',      models: [
-      ['glm/glm-4',       'glm-4 (better)'],
-      ['glm/glm-3-turbo', 'glm-3-turbo (fast)'],
-    ]},
-  ];
-
   const imageSources = [
     { key: 'unsplash', label: 'Unsplash', envKey: 'UNSPLASH_ACCESS_KEY' },
     { key: 'pexels',   label: 'Pexels',   envKey: 'PEXELS_API_KEY'      },
@@ -985,16 +962,16 @@ function initAddResultFooter() {
     { key: 'bing',     label: 'Bing',     envKey: 'BING_API_KEY'        },
   ];
 
-  const hasProviders = lexiconState.providers && providerModels.some(p => lexiconState.providers[p.key]);
+  const hasProviders = lexiconState.providers && PROVIDER_MODELS.some(p => lexiconState.providers[p.key]);
   const progTip = lexiconState.providers
     ? (() => {
-        const lines = providerModels
+        const lines = PROVIDER_MODELS
           .filter(p => !lexiconState.providers[p.key])
           .map(p => p.label + ': set ' + p.envKey + ' to enable');
         return lines.length ? lines.join('\n') + '\n— then restart the program' : null;
       })()
     : null;
-  const optgroupsHtml = providerModels.map(({ key, label, models }) => {
+  const optgroupsHtml = PROVIDER_MODELS.map(({ key, label, models }) => {
     const avail = lexiconState.providers && lexiconState.providers[key];
     const groupLabel = avail ? label : label + ' — no API key';
     const options = models.map(([val, text]) => '<option value="' + val + '">' + text + '</option>').join('');

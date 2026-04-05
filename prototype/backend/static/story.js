@@ -1,4 +1,5 @@
-import { getTtsVoice, getVoicevoxSettings, checkVoicevoxAvailable, playDing } from './common.js';
+import { getTtsVoice, getVoicevoxSettings, checkVoicevoxAvailable, playDing, PROVIDER_MODELS } from './common.js';
+import { esc } from './lexicon-utils.js';
 
 // ── DOM refs ──────────────────────────────────────────────────────────────────
 const els = {
@@ -57,30 +58,6 @@ els.genTranslationModalClose = els.genTranslationModalBackdrop.querySelector('.m
   els.sentencePlayBtn = btn;
 }
 
-// ── Provider models (same list as lexicon-add-edit.js) ───────────────────────
-const PROVIDER_MODELS = [
-  { key: 'anthropic', label: 'Anthropic', envKey: 'ANTHROPIC_API_KEY', models: [
-    ['anthropic/claude-haiku-4-5-20251001', 'claude-haiku (fast)'],
-    ['anthropic/claude-sonnet-4-6',         'claude-sonnet (better)'],
-  ]},
-  { key: 'openai',   label: 'OpenAI',   envKey: 'OPENAI_API_KEY',   models: [
-    ['openai/gpt-4o-mini', 'gpt-4o-mini (fast)'],
-    ['openai/gpt-4o',      'gpt-4o (better)'],
-  ]},
-  { key: 'google',   label: 'Google',   envKey: 'GOOGLE_API_KEY',   models: [
-    ['google/gemini-2.0-flash', 'gemini-2.0-flash (fast)'],
-    ['google/gemini-1.5-pro',   'gemini-1.5-pro (better)'],
-  ]},
-  { key: 'mistral',  label: 'Mistral',  envKey: 'MISTRAL_API_KEY',  models: [
-    ['mistral/mistral-small-latest', 'mistral-small (fast)'],
-    ['mistral/mistral-large-latest', 'mistral-large (better)'],
-  ]},
-  { key: 'glm',      label: 'GLM',      envKey: 'GLM_API_KEY',      models: [
-    ['glm/glm-4',       'glm-4 (better)'],
-    ['glm/glm-3-turbo', 'glm-3-turbo (fast)'],
-  ]},
-];
-
 // ── Playback state ────────────────────────────────────────────────────────────
 const state = {
   activeIdx: -1,
@@ -114,10 +91,6 @@ const state = {
 };
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
-function esc(s) {
-  return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-}
-
 // Returns true if the token is punctuation/whitespace with no meaningful word content.
 function isPunctuation(w) {
   return !/[\u3040-\u30FF\u4E00-\u9FFFa-zA-Z0-9]/.test(w);

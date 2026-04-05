@@ -998,18 +998,18 @@ func TestInsertStory_AndListStories(t *testing.T) {
 	id, err := insertStory(db, title, &audioPath, []storySentenceInput{
 		{
 			Words: []storyWordInput{
-				{DisplayWord: "おはよう", BaseWord: "おはよう", English: "good morning", AudioTimestampMs: &ts1},
-				{DisplayWord: "。", BaseWord: "。", English: ".", AudioTimestampMs: &ts2},
+				{DisplayWord: "おはよう", BaseWord: "おはよう", AudioTimestampMs: &ts1},
+				{DisplayWord: "。", BaseWord: "。", AudioTimestampMs: &ts2},
 			},
 			EnglishText:      &en1,
 			IsParagraphStart: true,
 		},
 		{
 			Words: []storyWordInput{
-				{DisplayWord: "今日", BaseWord: "今日", English: "today", AudioTimestampMs: &ts3},
-				{DisplayWord: "も", BaseWord: "も", English: "also"},
-				{DisplayWord: "頑張ろう", BaseWord: "頑張る", English: "let's do our best"},
-				{DisplayWord: "。", BaseWord: "。", English: "."},
+				{DisplayWord: "今日", BaseWord: "今日", AudioTimestampMs: &ts3},
+				{DisplayWord: "も", BaseWord: "も"},
+				{DisplayWord: "頑張ろう", BaseWord: "頑張る"},
+				{DisplayWord: "。", BaseWord: "。"},
 			},
 			EnglishText: &en2,
 		},
@@ -1080,7 +1080,7 @@ func TestInsertStory_RejectsNegativeAudioTimestamp(t *testing.T) {
 	_, err := insertStory(db, "Bad timestamps", nil, []storySentenceInput{
 		{
 			Words: []storyWordInput{
-				{DisplayWord: "文", BaseWord: "文", English: "sentence", AudioTimestampMs: &badTs},
+				{DisplayWord: "文", BaseWord: "文", AudioTimestampMs: &badTs},
 			},
 		},
 	})
@@ -1108,7 +1108,7 @@ func TestInsertStory_RequiresTitle(t *testing.T) {
 	db := testDB(t)
 
 	_, err := insertStory(db, "", nil, []storySentenceInput{
-		{Words: []storyWordInput{{DisplayWord: "庭園", BaseWord: "庭園", English: "garden"}}},
+		{Words: []storyWordInput{{DisplayWord: "庭園", BaseWord: "庭園"}}},
 	})
 	if err == nil {
 		t.Fatal("expected error for missing title")
@@ -1118,27 +1118,18 @@ func TestInsertStory_RequiresTitle(t *testing.T) {
 	}
 }
 
-func TestBuildStorySentenceWords_UsesBaseFormsAndGlosses(t *testing.T) {
-	words := buildStorySentenceWords("庭園は庭のことですね。", map[string]string{
-		"庭園": "garden",
-		"庭":  "garden",
-	})
+func TestBuildStorySentenceWords_TokenizesDisplayAndBaseForms(t *testing.T) {
+	words := buildStorySentenceWords("庭園は庭のことですね。")
 	if len(words) == 0 {
 		t.Fatal("expected tokenized story words")
 	}
 	if words[0].DisplayWord != "庭園" || words[0].BaseWord != "庭園" {
 		t.Errorf("first token: got %+v", words[0])
 	}
-	if words[0].English != "garden" {
-		t.Errorf("first token english: got %q, want garden", words[0].English)
-	}
 	foundPeriod := false
 	for _, word := range words {
 		if word.DisplayWord == "。" {
 			foundPeriod = true
-			if word.English != "period" {
-				t.Errorf("period english: got %q, want period", word.English)
-			}
 		}
 	}
 	if !foundPeriod {

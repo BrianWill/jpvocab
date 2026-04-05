@@ -12,6 +12,16 @@ const els = {
   genProgressBody: document.getElementById('gen-progress-body'),
   genProgressCount: document.getElementById('gen-progress-count'),
   genSentenceList: document.getElementById('gen-sentence-list'),
+  genTranslationBtn: document.getElementById('story-gen-translation-btn'),
+  genTranslationConfirmBody: document.getElementById('gen-translation-confirm-body'),
+  genTranslationModalBackdrop: document.getElementById('story-gen-translation-modal-backdrop'),
+  genTranslationModalCancel: document.getElementById('story-gen-translation-modal-cancel'),
+  genTranslationModalConfirm: document.getElementById('story-gen-translation-modal-confirm'),
+  genTranslationModalDone: document.getElementById('story-gen-translation-modal-done'),
+  genTranslationModelSelect: document.getElementById('story-gen-translation-model-select'),
+  genTranslationProgressBody: document.getElementById('gen-translation-progress-body'),
+  genTranslationProviderInfo: document.getElementById('story-gen-translation-provider-info'),
+  genTranslationStatusText: document.getElementById('gen-translation-status-text'),
   seekbar: document.getElementById('story-seekbar'),
   speedDec: document.getElementById('story-speed-dec'),
   speedInc: document.getElementById('story-speed-inc'),
@@ -23,6 +33,31 @@ const els = {
   ttsIcon: document.getElementById('story-tts-icon'),
 };
 els.genModalClose = els.genModalBackdrop.querySelector('.modal-close');
+els.genTranslationModalClose = els.genTranslationModalBackdrop.querySelector('.modal-close');
+
+// ── Provider models (same list as lexicon-add-edit.js) ───────────────────────
+const PROVIDER_MODELS = [
+  { key: 'anthropic', label: 'Anthropic', envKey: 'ANTHROPIC_API_KEY', models: [
+    ['anthropic/claude-haiku-4-5-20251001', 'claude-haiku (fast)'],
+    ['anthropic/claude-sonnet-4-6',         'claude-sonnet (better)'],
+  ]},
+  { key: 'openai',   label: 'OpenAI',   envKey: 'OPENAI_API_KEY',   models: [
+    ['openai/gpt-4o-mini', 'gpt-4o-mini (fast)'],
+    ['openai/gpt-4o',      'gpt-4o (better)'],
+  ]},
+  { key: 'google',   label: 'Google',   envKey: 'GOOGLE_API_KEY',   models: [
+    ['google/gemini-2.0-flash', 'gemini-2.0-flash (fast)'],
+    ['google/gemini-1.5-pro',   'gemini-1.5-pro (better)'],
+  ]},
+  { key: 'mistral',  label: 'Mistral',  envKey: 'MISTRAL_API_KEY',  models: [
+    ['mistral/mistral-small-latest', 'mistral-small (fast)'],
+    ['mistral/mistral-large-latest', 'mistral-large (better)'],
+  ]},
+  { key: 'glm',      label: 'GLM',      envKey: 'GLM_API_KEY',      models: [
+    ['glm/glm-4',       'glm-4 (better)'],
+    ['glm/glm-3-turbo', 'glm-3-turbo (fast)'],
+  ]},
+];
 
 // ── Playback state ────────────────────────────────────────────────────────────
 const state = {
@@ -33,6 +68,9 @@ const state = {
   currentUtterance: null,
   generateController: null,
   generating: false,
+  providers: null,
+  translating: false,
+  translationController: null,
   lastWordAbsPos: 0,
   resumeOffset: 0,
   seekbarDragging: false,
@@ -45,6 +83,16 @@ const state = {
   ttsRate: 1.0,
   ttsText: '',
 };
+
+// ── Helpers ───────────────────────────────────────────────────────────────────
+function esc(s) {
+  return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+}
+
+// Returns true if the token is punctuation/whitespace with no meaningful word content.
+function isPunctuation(w) {
+  return !/[\u3040-\u30FF\u4E00-\u9FFFa-zA-Z0-9]/.test(w);
+}
 
 // ── Story ID ──────────────────────────────────────────────────────────────────
 function storyIdFromPath() {
@@ -336,6 +384,136 @@ function markNextRowActive(donePosition) {
   }
 }
 
+// ── Generate translation ──────────────────────────────────────────────────────
+function populateTranslationModelSelect(providers) {
+  const hasProviders = PROVIDER_MODELS.some(p => providers[p.key]);
+  const missingLines = PROVIDER_MODELS
+    .filter(p => !providers[p.key])
+    .map(p => p.label + ': set ' + p.envKey + ' to enable');
+  const tip = missingLines.length ? missingLines.join('\n') + '\n— then restart the program' : null;
+
+  let firstAvailSet = false;
+  const optgroupsHtml = PROVIDER_MODELS.map(({ key, label, models }) => {
+    const avail = providers[key];
+    const groupLabel = avail ? label : label + ' — no API key';
+    const options = models.map(([val, text], i) => {
+      const sel = avail && !firstAvailSet && i === 0 ? ' selected' : '';
+      if (sel) firstAvailSet = true;
+      return '<option value="' + val + '"' + sel + '>' + text + '</option>';
+    }).join('');
+    return '<optgroup label="' + groupLabel + '"' + (avail ? '' : ' disabled') + '>' + options + '</optgroup>';
+  }).join('');
+
+  els.genTranslationModelSelect.innerHTML =
+    (!hasProviders ? '<option value="" selected>no API keys configured</option>' : '') +
+    optgroupsHtml;
+  els.genTranslationModelSelect.disabled = !hasProviders;
+
+  if (tip) {
+    els.genTranslationProviderInfo.dataset.tooltip = tip;
+    els.genTranslationProviderInfo.style.display = '';
+  } else {
+    els.genTranslationProviderInfo.style.display = 'none';
+  }
+
+  els.genTranslationModalConfirm.disabled = !hasProviders;
+}
+
+function setTranslationModalGenerating(generating) {
+  state.translating = generating;
+  els.genTranslationConfirmBody.classList.toggle('hidden', generating);
+  els.genTranslationProgressBody.classList.toggle('hidden', !generating);
+  els.genTranslationModalCancel.classList.toggle('hidden', generating);
+  els.genTranslationModalConfirm.classList.toggle('hidden', generating);
+  els.genTranslationModalDone.classList.add('hidden');
+  els.genTranslationModalClose.disabled = generating;
+}
+
+function openTranslationModal() {
+  setTranslationModalGenerating(false);
+  els.genTranslationModalBackdrop.classList.remove('hidden');
+}
+
+function closeTranslationModal() {
+  if (state.translating) return;
+  els.genTranslationModalBackdrop.classList.add('hidden');
+}
+
+els.genTranslationBtn.addEventListener('click', openTranslationModal);
+els.genTranslationModalClose.addEventListener('click', closeTranslationModal);
+els.genTranslationModalCancel.addEventListener('click', closeTranslationModal);
+els.genTranslationModalBackdrop.addEventListener('click', e => {
+  if (e.target === els.genTranslationModalBackdrop) closeTranslationModal();
+});
+
+els.genTranslationModalConfirm.addEventListener('click', async () => {
+  if (state.translationController) return;
+
+  const aiModel = els.genTranslationModelSelect.value;
+  if (!aiModel) return;
+
+  state.translationController = new AbortController();
+  setTranslationModalGenerating(true);
+  els.genTranslationStatusText.textContent = 'Translating…';
+
+  let allDone = false;
+  try {
+    const res = await fetch(`/api/stories/${STORY_ID}/generate-translation`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ ai_model: aiModel }),
+      signal: state.translationController.signal,
+    });
+
+    if (res.ok) {
+      const reader = res.body.getReader();
+      const decoder = new TextDecoder();
+      let buf = '';
+      while (true) {
+        let value, done;
+        try { ({ value, done } = await reader.read()); } catch (_) { break; }
+        if (done) break;
+        buf += decoder.decode(value, { stream: true });
+        const lines = buf.split('\n');
+        buf = lines.pop();
+        for (const line of lines) {
+          if (!line.trim()) continue;
+          let msg;
+          try { msg = JSON.parse(line); } catch (_) { continue; }
+          if (msg.status === 'translating') {
+            els.genTranslationStatusText.textContent =
+              `Translating ${msg.sentenceCount} sentence${msg.sentenceCount !== 1 ? 's' : ''}` +
+              (msg.wordCount > 0 ? ` and ${msg.wordCount} word${msg.wordCount !== 1 ? 's' : ''}` : '') +
+              '…';
+          } else if (msg.allDone) {
+            allDone = true;
+          }
+        }
+      }
+    }
+  } catch (_) {
+    // Aborted or network error.
+  }
+
+  state.translationController = null;
+
+  if (allDone) {
+    playDing();
+    state.translating = false;
+    els.genTranslationModalConfirm.classList.add('hidden');
+    els.genTranslationModalDone.classList.remove('hidden');
+    els.genTranslationModalClose.disabled = false;
+    // Reload the story to pick up new sentence translations and word glosses.
+    const updated = await fetch(`/api/stories/${STORY_ID}`).then(r => r.json());
+    renderStory(updated);
+  } else {
+    setTranslationModalGenerating(false);
+    closeTranslationModal();
+  }
+});
+
+els.genTranslationModalDone.addEventListener('click', closeTranslationModal);
+
 els.genBtn.addEventListener('click', openGenModal);
 els.genModalClose.addEventListener('click', closeGenModal);
 els.genModalCancel.addEventListener('click', closeGenModal);
@@ -515,6 +693,18 @@ function renderStory(story) {
       wordSpan.textContent = word.displayWord;
       const capturedOffset = wordOffset;
       wordSpan.addEventListener('click', () => seekToWord(capturedOffset));
+      const ispunct = isPunctuation(word.displayWord);
+      const wordTranslation = ispunct ? '' : (word.english || '');
+      if (wordTranslation || sentence.englishText) {
+        let html = '';
+        if (sentence.englishText) html += esc(sentence.englishText);
+        if (!ispunct) {
+          if (sentence.englishText) html += '<br><br>';
+          html += '<strong><span class="tooltip-word-label">' + esc(word.displayWord) + '</span></strong>: ' + esc(wordTranslation);
+        }
+        wordSpan.dataset.tooltipHtml = html;
+        wordSpan.dataset.tooltipClass = 'tooltip-translation';
+      }
       sentenceSpan.appendChild(wordSpan);
       wordOffset += word.displayWord.length;
     }
@@ -523,10 +713,22 @@ function renderStory(story) {
     state.sentenceSpans.push(sentenceSpan);
   }
 
-  // Enable generate button if VoiceVox is available.
+  const endMark = document.createElement('div');
+  endMark.className = 'story-end-mark';
+  endMark.textContent = '※';
+  els.storyContent.appendChild(endMark);
+
+  // Enable generate audio button if VoiceVox is available.
   checkVoicevoxAvailable().then(available => {
     els.genBtn.disabled = !available;
   });
+
+  // Enable generate translation button if AI providers are available.
+  if (state.providers) {
+    populateTranslationModelSelect(state.providers);
+    const hasAny = PROVIDER_MODELS.some(p => state.providers[p.key]);
+    els.genTranslationBtn.disabled = !hasAny;
+  }
 
   applyAudioState(story);
 }
@@ -535,4 +737,10 @@ function renderError() {
   els.storyError.hidden = false;
 }
 
-loadStory(STORY_ID).then(renderStory).catch(renderError);
+Promise.all([
+  loadStory(STORY_ID),
+  fetch('/api/providers').then(r => r.json()).catch(() => null),
+]).then(([story, providers]) => {
+  if (providers?.ai) state.providers = providers.ai;
+  renderStory(story);
+}).catch(renderError);

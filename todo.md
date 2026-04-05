@@ -3,7 +3,10 @@
 This file is random notes of possible features and bug fixes.
 
 - story
-    - hover tooltip should show translation of current word
+    - "tts" used in the code / html / css for funcationality that is about audio playback, not just tts specifically
+    - generate AI translation
+        - for both words and complete sentences
+        - for words, use existing translations in db if we have them
     - display total audio time right of the seek bar
         - hover over seek should indicate the time mark of that position
     - changing playback speed while playing TTS should pause and resume the audio so that the audio speed changes immediately
@@ -12,9 +15,6 @@ This file is random notes of possible features and bug fixes.
         - holding - + should advance (like the spinners in the settings modal)
     - story text should be separate scroll area from title and generate/ back buttons
         (i.e. title should not scroll)
-    - generate AI translation
-        - for both words and complete sentences
-        - for words, use existing translations in db if we have them
     - suggest words to add to lexicon
         - scan text to find most frequently occuring words in text that are candidates for the lexicon
     - click word to add to lexicon

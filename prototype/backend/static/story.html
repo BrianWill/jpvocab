@@ -26,6 +26,40 @@
   </div>
 </div>
 
+<!-- Generate translation modal (confirmation) -->
+<div class="modal-backdrop hidden" id="story-gen-translation-modal-backdrop">
+  <div class="modal">
+    <div class="modal-header">
+      <span class="modal-title">Generate translation</span>
+      <button class="modal-close" aria-label="Close">✕</button>
+    </div>
+    <div class="modal-body" style="padding:1.25rem 1.5rem">
+      <div id="gen-translation-confirm-body">
+        <p style="color:#cdd6f4;line-height:1.6">Generate English sentence translations for this story using AI?<br>
+        Any existing translations will be replaced.</p>
+        <div class="gen-translation-model-row">
+          <label class="gen-translation-model-label">AI provider</label>
+          <select id="story-gen-translation-model-select" class="story-gen-model-select" disabled>
+            <option value="">Loading…</option>
+          </select>
+          <span id="story-gen-translation-provider-info" class="provider-info-icon" style="display:none">?</span>
+        </div>
+      </div>
+      <div id="gen-translation-progress-body" class="hidden">
+        <div class="gen-translation-spinner-row">
+          <span class="spinner"></span>
+          <span id="gen-translation-status-text" class="gen-translation-status-text"></span>
+        </div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn-cancel" id="story-gen-translation-modal-cancel">Cancel</button>
+      <button class="btn-save" id="story-gen-translation-modal-confirm" disabled>Generate</button>
+      <button class="btn-save hidden" id="story-gen-translation-modal-done">Done</button>
+    </div>
+  </div>
+</div>
+
 <!-- Generate audio modal (confirmation + progress) -->
 <div class="modal-backdrop hidden" id="story-gen-modal-backdrop">
   <div class="modal">
@@ -58,7 +92,10 @@
   <div class="story-shell">
     <div class="story-top-bar">
       <a class="story-back-link" href="/stories">← Back to stories</a>
-      <button class="btn-save story-gen-btn" id="story-gen-btn" disabled>Generate audio</button>
+      <div class="story-top-bar-actions">
+        <button class="btn-save story-gen-btn" id="story-gen-translation-btn" disabled>Generate translation</button>
+        <button class="btn-save story-gen-btn" id="story-gen-btn" disabled>Generate audio</button>
+      </div>
     </div>
     <h1 id="story-title" class="story-title"></h1>
     <div id="story-content" class="story-content"></div>

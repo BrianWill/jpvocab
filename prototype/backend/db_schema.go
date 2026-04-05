@@ -78,6 +78,8 @@ func migrate(db *sql.DB) {
 			id         INTEGER  PRIMARY KEY AUTOINCREMENT,
 			title      TEXT     NOT NULL,
 			audio_path TEXT,
+			word_glosses TEXT,
+			has_audio INTEGER NOT NULL DEFAULT 0,
 			created_at DATETIME NOT NULL DEFAULT (datetime('now'))
 		)`,
 		`CREATE TABLE IF NOT EXISTS story_sentences (
@@ -86,11 +88,10 @@ func migrate(db *sql.DB) {
 			position           INTEGER NOT NULL,
 			words_json         TEXT    NOT NULL,
 			english_text       TEXT,
+			audio_duration_ms INTEGER,
 			is_paragraph_start INTEGER NOT NULL DEFAULT 0 CHECK (is_paragraph_start IN (0, 1)),
 			UNIQUE(story_id, position)
 		)`,
-		`ALTER TABLE stories ADD COLUMN has_audio INTEGER NOT NULL DEFAULT 0`,
-		`ALTER TABLE story_sentences ADD COLUMN audio_duration_ms INTEGER`,
 	}
 
 	var version int
@@ -519,7 +520,7 @@ func seedDB(db *sql.DB) {
 				log.Fatal("seed: story sentence japanese_text is required")
 			}
 			sentences = append(sentences, storySentenceInput{
-				Words:            buildStorySentenceWords(sentence.JapaneseText, wordMeanings),
+				Words:            buildStorySentenceWords(sentence.JapaneseText),
 				EnglishText:      sentence.EnglishText,
 				IsParagraphStart: sentence.IsParagraphStart,
 			})

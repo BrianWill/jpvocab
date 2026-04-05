@@ -621,14 +621,18 @@ let _activeTooltipEl = null;
 let _tooltipExtraClass = null;
 
 document.addEventListener('mouseover', e => {
-  const el = e.target.closest('[data-tooltip]');
+  const el = e.target.closest('[data-tooltip], [data-tooltip-html]');
   if (_tooltipExtraClass) {
     _hoverTooltip.classList.remove(_tooltipExtraClass);
     _tooltipExtraClass = null;
   }
   _activeTooltipEl = el ?? null;
   if (!el) { _hoverTooltip.classList.remove('visible'); return; }
-  _hoverTooltip.textContent = el.dataset.tooltip;
+  if (el.dataset.tooltipHtml !== undefined) {
+    _hoverTooltip.innerHTML = el.dataset.tooltipHtml;
+  } else {
+    _hoverTooltip.textContent = el.dataset.tooltip;
+  }
   if (el.dataset.tooltipClass) {
     _tooltipExtraClass = el.dataset.tooltipClass;
     _hoverTooltip.classList.add(_tooltipExtraClass);
@@ -641,8 +645,7 @@ document.addEventListener('mousemove', e => {
   const w = _hoverTooltip.offsetWidth;
   const h = _hoverTooltip.offsetHeight;
   let left = e.clientX + 14;
-  if (left + w > window.innerWidth - pad) left = e.clientX - w - 14;
-  left = Math.max(pad, Math.min(left, window.innerWidth - w - pad));
+  if (left + w > window.innerWidth) left = window.innerWidth - w;
   let top = e.clientY + 18;
   top = Math.max(pad, Math.min(top, window.innerHeight - h - pad));
   _hoverTooltip.style.left = left + 'px';

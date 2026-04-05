@@ -10,14 +10,13 @@ import (
 type storyWordInput struct {
 	DisplayWord      string
 	BaseWord         string
-	English          string
 	AudioTimestampMs *int64
 }
 
 type storyWordJSON struct {
 	DisplayWord      string `json:"displayWord"`
 	BaseWord         string `json:"baseWord"`
-	English          string `json:"english"`
+	English          string `json:"english,omitempty"` // populated from word_glosses at query time; not stored per-token
 	AudioTimestampMs *int64 `json:"audioTimestampMs"`
 }
 
@@ -70,10 +69,63 @@ func insertStoryTx(tx *sql.Tx, title string, audioPath *string, sentences []stor
 		return 0, errors.New("story must have at least one sentence")
 	}
 
+	// Snapshot lexicon meanings for all base words used in this story.
+	// Stored once at creation so the story is independent of future lexicon changes.
+	baseWordSet := map[string]struct{}{}
+	for _, sentence := range sentences {
+		for _, word := range sentence.Words {
+			if word.BaseWord != "" {
+				baseWordSet[word.BaseWord] = struct{}{}
+			}
+		}
+	}
+	glossMap := map[string]string{}
+	if len(baseWordSet) > 0 {
+		placeholders := make([]string, 0, len(baseWordSet))
+		lookupArgs := make([]any, 0, len(baseWordSet))
+		for bw := range baseWordSet {
+			placeholders = append(placeholders, "?")
+			lookupArgs = append(lookupArgs, bw)
+		}
+		glossRows, err := tx.Query(
+			`SELECT word, meaning FROM words WHERE word IN (`+strings.Join(placeholders, ",")+`) AND meaning != ''`,
+			lookupArgs...,
+		)
+		if err != nil {
+			return 0, err
+		}
+		for glossRows.Next() {
+			var w, m string
+			if err := glossRows.Scan(&w, &m); err != nil {
+				glossRows.Close()
+				return 0, err
+			}
+			glossMap[w] = m
+		}
+		glossRows.Close()
+	}
+	// Fill provisional glosses for grammar particles and punctuation not in the lexicon.
+	for _, sentence := range sentences {
+		for _, word := range sentence.Words {
+			if _, ok := glossMap[word.BaseWord]; ok {
+				continue
+			}
+			if g, ok := defaultStoryTokenGlosses[word.BaseWord]; ok {
+				glossMap[word.BaseWord] = g
+			} else if g, ok := defaultStoryTokenGlosses[word.DisplayWord]; ok {
+				glossMap[word.BaseWord] = g
+			}
+		}
+	}
+	wordGlossesJSON, err := json.Marshal(glossMap)
+	if err != nil {
+		return 0, err
+	}
+
 	res, err := tx.Exec(`
-		INSERT INTO stories (title, audio_path)
-		VALUES (?, ?)
-	`, title, audioPath)
+		INSERT INTO stories (title, audio_path, word_glosses)
+		VALUES (?, ?, ?)
+	`, title, audioPath, string(wordGlossesJSON))
 	if err != nil {
 		return 0, err
 	}
@@ -94,16 +146,12 @@ func insertStoryTx(tx *sql.Tx, title string, audioPath *string, sentences []stor
 			if word.BaseWord == "" {
 				return 0, errors.New("story word base word is required")
 			}
-			if word.English == "" {
-				return 0, errors.New("story word english is required")
-			}
 			if word.AudioTimestampMs != nil && *word.AudioTimestampMs < 0 {
 				return 0, errors.New("story word audio timestamp must be non-negative")
 			}
 			words[j] = storyWordJSON{
 				DisplayWord:      word.DisplayWord,
 				BaseWord:         word.BaseWord,
-				English:          word.English,
 				AudioTimestampMs: word.AudioTimestampMs,
 			}
 		}
@@ -226,7 +274,7 @@ func getStoryByID(db *sql.DB, id int64) (*storyJSON, error) {
 
 func queryStories(db *sql.DB, whereClause string, args ...any) ([]storyJSON, error) {
 	rows, err := db.Query(`
-		SELECT s.id, s.title, s.audio_path, s.has_audio, s.created_at,
+		SELECT s.id, s.title, s.audio_path, s.has_audio, s.created_at, s.word_glosses,
 		       ss.id, ss.position, ss.words_json, ss.english_text, ss.is_paragraph_start, ss.audio_duration_ms
 		FROM stories s
 		LEFT JOIN story_sentences ss ON ss.story_id = s.id
@@ -241,6 +289,7 @@ func queryStories(db *sql.DB, whereClause string, args ...any) ([]storyJSON, err
 	var stories []storyJSON
 	var current *storyJSON
 	var currentID int64 = -1
+	var currentGlosses map[string]string
 
 	for rows.Next() {
 		var storyID int64
@@ -248,6 +297,7 @@ func queryStories(db *sql.DB, whereClause string, args ...any) ([]storyJSON, err
 		var audioPath sql.NullString
 		var hasAudio int
 		var createdAt string
+		var wordGlossesJSON sql.NullString
 		var sentenceID sql.NullInt64
 		var position sql.NullInt64
 		var wordsJSON sql.NullString
@@ -256,7 +306,7 @@ func queryStories(db *sql.DB, whereClause string, args ...any) ([]storyJSON, err
 		var audioDurationMs sql.NullInt64
 
 		if err := rows.Scan(
-			&storyID, &title, &audioPath, &hasAudio, &createdAt,
+			&storyID, &title, &audioPath, &hasAudio, &createdAt, &wordGlossesJSON,
 			&sentenceID, &position, &wordsJSON, &englishText, &isParagraphStart, &audioDurationMs,
 		); err != nil {
 			return nil, err
@@ -273,6 +323,13 @@ func queryStories(db *sql.DB, whereClause string, args ...any) ([]storyJSON, err
 			if audioPath.Valid {
 				path := audioPath.String
 				story.AudioPath = &path
+			}
+			currentGlosses = nil
+			if wordGlossesJSON.Valid {
+				var g map[string]string
+				if json.Unmarshal([]byte(wordGlossesJSON.String), &g) == nil {
+					currentGlosses = g
+				}
 			}
 			stories = append(stories, story)
 			current = &stories[len(stories)-1]
@@ -293,6 +350,11 @@ func queryStories(db *sql.DB, whereClause string, args ...any) ([]storyJSON, err
 				if sentence.Words == nil {
 					sentence.Words = []storyWordJSON{}
 				}
+				for k := range sentence.Words {
+					if m, ok := currentGlosses[sentence.Words[k].BaseWord]; ok {
+						sentence.Words[k].English = m
+					}
+				}
 			}
 			if englishText.Valid {
 				text := englishText.String
@@ -311,6 +373,34 @@ func queryStories(db *sql.DB, whereClause string, args ...any) ([]storyJSON, err
 	return stories, rows.Err()
 }
 
+func setSentenceEnglishText(db *sql.DB, sentenceID int64, text string) error {
+	_, err := db.Exec(`UPDATE story_sentences SET english_text = ? WHERE id = ?`, text, sentenceID)
+	return err
+}
+
+// updateStoryWordGlosses merges newGlosses into the story's existing word_glosses map.
+// Lexicon-sourced and default-particle glosses already present are preserved; only the
+// keys present in newGlosses are overwritten.
+func updateStoryWordGlosses(db *sql.DB, storyID int64, newGlosses map[string]string) error {
+	var currentJSON sql.NullString
+	if err := db.QueryRow(`SELECT word_glosses FROM stories WHERE id = ?`, storyID).Scan(&currentJSON); err != nil {
+		return err
+	}
+	merged := map[string]string{}
+	if currentJSON.Valid && currentJSON.String != "" {
+		json.Unmarshal([]byte(currentJSON.String), &merged) //nolint:errcheck — stale JSON is non-fatal
+	}
+	for k, v := range newGlosses {
+		merged[k] = v
+	}
+	b, err := json.Marshal(merged)
+	if err != nil {
+		return err
+	}
+	_, err = db.Exec(`UPDATE stories SET word_glosses = ? WHERE id = ?`, string(b), storyID)
+	return err
+}
+
 func setStoryHasAudio(db *sql.DB, storyID int64, hasAudio bool) error {
 	v := 0
 	if hasAudio {
@@ -325,7 +415,7 @@ func setSentenceAudioDuration(db *sql.DB, sentenceID int64, durationMs int64) er
 	return err
 }
 
-func buildStorySentenceWords(sentence string, glossByBase map[string]string) []storyWordInput {
+func buildStorySentenceWords(sentence string) []storyWordInput {
 	tokens := jpTokenizer.Tokenize(sentence)
 	words := make([]storyWordInput, 0, len(tokens))
 	for _, tok := range tokens {
@@ -342,18 +432,9 @@ func buildStorySentenceWords(sentence string, glossByBase map[string]string) []s
 			}
 		}
 
-		english := glossByBase[base]
-		if english == "" {
-			english = glossByBase[surface]
-		}
-		if english == "" {
-			english = provisionalStoryTokenGloss(surface, base)
-		}
-
 		words = append(words, storyWordInput{
 			DisplayWord: surface,
 			BaseWord:    base,
-			English:     english,
 		})
 	}
 	return words

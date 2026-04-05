@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"sort"
 	"strconv"
 	"strings"
 
@@ -187,3 +188,148 @@ func apiGenerateStoryAudio(db *sql.DB) http.HandlerFunc {
 	}
 }
 
+// apiGenerateStoryTranslation calls an AI provider to translate all sentences in the story
+// and generate brief glosses for words not already in the lexicon with a meaning.
+// The response is streamed as NDJSON:
+//
+//	{"status": "translating", "sentenceCount": N, "wordCount": M}  — emitted immediately
+//	{"allDone": true}                                               — on success
+//	{"error": "..."}                                               — on failure
+func apiGenerateStoryTranslation(db *sql.DB) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		id, err := strconv.ParseInt(chi.URLParam(r, "id"), 10, 64)
+		if err != nil {
+			http.Error(w, "invalid story id", http.StatusBadRequest)
+			return
+		}
+
+		var body struct {
+			AIModel string `json:"ai_model"`
+		}
+		if err := json.NewDecoder(r.Body).Decode(&body); err != nil || body.AIModel == "" {
+			http.Error(w, "ai_model is required", http.StatusBadRequest)
+			return
+		}
+
+		story, err := getStoryByID(db, id)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		if story == nil {
+			http.Error(w, "story not found", http.StatusNotFound)
+			return
+		}
+
+		// Collect unique base words across all sentences.
+		baseWordSet := map[string]struct{}{}
+		for _, s := range story.Sentences {
+			for _, w := range s.Words {
+				if w.BaseWord != "" {
+					baseWordSet[w.BaseWord] = struct{}{}
+				}
+			}
+		}
+
+		// Find which base words already have meanings in the lexicon.
+		inLexicon := map[string]bool{}
+		if len(baseWordSet) > 0 {
+			placeholders := make([]string, 0, len(baseWordSet))
+			args := make([]any, 0, len(baseWordSet))
+			for bw := range baseWordSet {
+				placeholders = append(placeholders, "?")
+				args = append(args, bw)
+			}
+			rows, err := db.QueryContext(r.Context(),
+				`SELECT word FROM words WHERE word IN (`+strings.Join(placeholders, ",")+`) AND meaning != ''`,
+				args...,
+			)
+			if err != nil {
+				http.Error(w, err.Error(), http.StatusInternalServerError)
+				return
+			}
+			for rows.Next() {
+				var word string
+				rows.Scan(&word) //nolint:errcheck
+				inLexicon[word] = true
+			}
+			rows.Close()
+		}
+
+		// Words to gloss: in story but not in lexicon with a meaning.
+		var wordsToGloss []string
+		for bw := range baseWordSet {
+			if !inLexicon[bw] {
+				wordsToGloss = append(wordsToGloss, bw)
+			}
+		}
+		sort.Strings(wordsToGloss)
+
+		// Build sentence input list (skip blank sentences).
+		var sentenceTexts []string
+		var sentenceIDs []int64
+		for _, s := range story.Sentences {
+			text := storySentenceText(s)
+			if strings.TrimSpace(text) == "" {
+				continue
+			}
+			sentenceTexts = append(sentenceTexts, text)
+			sentenceIDs = append(sentenceIDs, s.ID)
+		}
+
+		// Start streaming NDJSON.
+		w.Header().Set("Content-Type", "application/x-ndjson")
+		w.Header().Set("Cache-Control", "no-cache")
+		w.Header().Set("X-Accel-Buffering", "no")
+		flusher, _ := w.(http.Flusher)
+
+		streamEvent := func(v any) {
+			data, _ := json.Marshal(v)
+			w.Write(append(data, '\n')) //nolint:errcheck
+			if flusher != nil {
+				flusher.Flush()
+			}
+		}
+
+		streamEvent(map[string]any{
+			"status":        "translating",
+			"sentenceCount": len(sentenceTexts),
+			"wordCount":     len(wordsToGloss),
+		})
+
+		result, err := translateStory(sentenceTexts, wordsToGloss, body.AIModel)
+		if err != nil {
+			streamEvent(map[string]string{"error": err.Error()})
+			return
+		}
+
+		// Save sentence translations by index (AI returns them in the same order).
+		for i, translation := range result.Sentences {
+			if i >= len(sentenceIDs) || translation == "" {
+				break
+			}
+			if err := setSentenceEnglishText(db, sentenceIDs[i], translation); err != nil {
+				streamEvent(map[string]string{"error": "db error: " + err.Error()})
+				return
+			}
+		}
+
+		// Save word glosses (merge into existing map).
+		if len(result.Words) > 0 {
+			newGlosses := make(map[string]string, len(result.Words))
+			for _, wg := range result.Words {
+				if wg.Word != "" && wg.Gloss != "" {
+					newGlosses[wg.Word] = wg.Gloss
+				}
+			}
+			if len(newGlosses) > 0 {
+				if err := updateStoryWordGlosses(db, id, newGlosses); err != nil {
+					streamEvent(map[string]string{"error": "db error: " + err.Error()})
+					return
+				}
+			}
+		}
+
+		streamEvent(map[string]bool{"allDone": true})
+	}
+}

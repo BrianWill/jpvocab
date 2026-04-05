@@ -269,7 +269,7 @@ func TestAPIGetStories_ReturnsTitle(t *testing.T) {
 	_, err := insertStory(db, title, nil, []storySentenceInput{
 		{
 			Words: []storyWordInput{
-				{DisplayWord: "庭園", BaseWord: "庭園", English: "garden"},
+				{DisplayWord: "庭園", BaseWord: "庭園"},
 			},
 			IsParagraphStart: true,
 		},
@@ -299,7 +299,7 @@ func TestAPIGetStory_ReturnsStoryByID(t *testing.T) {
 	db := testDB(t)
 	title := "Garden Story"
 	id, err := insertStory(db, title, nil, []storySentenceInput{
-		{Words: []storyWordInput{{DisplayWord: "庭園", BaseWord: "庭園", English: "garden"}}, IsParagraphStart: true},
+		{Words: []storyWordInput{{DisplayWord: "庭園", BaseWord: "庭園"}}, IsParagraphStart: true},
 	})
 	if err != nil {
 		t.Fatal(err)

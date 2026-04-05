@@ -362,3 +362,87 @@ func marshalUserMsg(v map[string]string) string {
 	b, _ := json.Marshal(v)
 	return string(b)
 }
+
+// storyTranslateSentence is one sentence in the translation request payload.
+// storyTranslationResult holds AI-generated translations for a story batch.
+type storyTranslationResult struct {
+	Sentences []string             `json:"sentences"`
+	Words     []storyTranslatedWord `json:"words"`
+}
+
+// storyTranslatedWord is one word gloss in the AI response.
+type storyTranslatedWord struct {
+	Word  string `json:"word"`
+	Gloss string `json:"gloss"`
+}
+
+const translateStorySystemPrompt = `You are a Japanese language teacher helping English-speaking students read Japanese stories. Given a JSON object with sentences to translate and words to gloss, return translations and glosses.
+
+Instructions:
+- Sentences: the input is an ordered array of Japanese sentence strings; return an equally ordered array of English translations, one per input sentence. Translate each sentence in isolation — do not use surrounding sentences for context. Favor literal, morpheme-by-morpheme accuracy over natural English fluency — the goal is to help learners understand Japanese grammatical structure, not to produce polished prose.
+- Words: return an array of {"word":"...","gloss":"..."} objects in the same order as the input words array. Each gloss should be 2–5 words capturing the core meaning.
+
+Example input:
+{"sentences":["猫が窓の外を見ている。","彼女はゆっくりと立ち上がった。"],"words":["猫","窓","立ち上がる","ゆっくり"]}
+
+Example output:
+{"sentences":["The cat is looking at the outside of the window.","She slowly stood up."],"words":[{"word":"猫","gloss":"cat"},{"word":"窓","gloss":"window"},{"word":"立ち上がる","gloss":"to stand up"},{"word":"ゆっくり","gloss":"slowly, at a leisurely pace"}]}
+
+Return only valid JSON with no markdown, no code fences, and no extra commentary.`
+
+// translateStory sends all sentences and words to the AI in a single call and returns
+// sentence translations and word glosses. providerModel must be "provider/model" format.
+// sentences is an ordered slice of plain Japanese sentence strings; the returned
+// Sentences slice has the same length and order.
+func translateStory(sentences []string, words []string, providerModel string) (*storyTranslationResult, error) {
+	parts := strings.SplitN(providerModel, "/", 2)
+	if len(parts) != 2 {
+		return nil, fmt.Errorf("invalid ai_model value %q", providerModel)
+	}
+	provider, model := parts[0], parts[1]
+
+	type inputPayload struct {
+		Sentences []string `json:"sentences"`
+		Words     []string `json:"words"`
+	}
+	userMsg, err := json.Marshal(inputPayload{Sentences: sentences, Words: words})
+	if err != nil {
+		return nil, err
+	}
+
+	const maxTokens = 8192
+	var text, jsonPrefix string
+
+	if provider == "anthropic" {
+		msgs := []message{
+			{Role: "user", Content: string(userMsg)},
+			{Role: "assistant", Content: "{"},
+		}
+		text, err = callAnthropic(model, translateStorySystemPrompt, msgs, maxTokens)
+		jsonPrefix = "{"
+	} else {
+		msgs := []message{
+			{Role: "system", Content: translateStorySystemPrompt},
+			{Role: "user", Content: string(userMsg)},
+		}
+		switch provider {
+		case "openai":
+			text, err = callOpenAI(model, msgs)
+		case "google":
+			text, err = callGoogle(model, "", msgs)
+		case "mistral":
+			text, err = callMistral(model, msgs)
+		default: // glm
+			text, err = callGLM(model, msgs)
+		}
+	}
+	if err != nil {
+		return nil, err
+	}
+
+	var result storyTranslationResult
+	if err := json.Unmarshal([]byte(jsonPrefix+text), &result); err != nil {
+		return nil, fmt.Errorf("parse translation JSON: %w", err)
+	}
+	return &result, nil
+}

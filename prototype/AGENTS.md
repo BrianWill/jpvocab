@@ -81,6 +81,15 @@ AI integration tests live in `backend/ai_integration_test.go` and are gated behi
 
 - **Note:** `/api/words/{id}/reroll-meaning` and `/api/words/{id}/reroll-examples` may be dead code � the old edit modal that used them was removed (commit `f119e10`). Confirm before adding new callers.
 
+
+## Stories Features
+
+- **Generate audio** — the story detail page (`story.html`) has a "Generate audio" button that calls `POST /api/stories/{id}/generate-audio`. Streams NDJSON progress per sentence. Audio files go to `static/audio/story_{id}/sentence_{position}.ogg`.
+
+- **Generate translation** — the story detail page has a "Generate translation" button that opens a confirmation modal with an AI provider selector (same provider/model list as the lexicon add-edit modal). On confirm, calls `POST /api/stories/{id}/generate-translation` with `{ai_model}`. The backend sends all sentences as a plain ordered string array plus unique base words not already in the lexicon with meanings; the AI returns a matching array of literal English sentence translations plus `{word, gloss}` pairs. Translations are stored in `story_sentences.english_text`; word glosses are merged into `stories.word_glosses`. Response is NDJSON: `{status, sentenceCount, wordCount}` immediately, then `{allDone:true}` on success. Literal translation over natural English is intentional — sentences are translated individually with no cross-sentence context, which is the desired behaviour for language learning.
+
+- **Story length limit and auto-split (planned)** — when a story is added that exceeds a sentence-count threshold (exact limit TBD, roughly 50–75 sentences), the add flow should detect the overrun and ask the user to confirm auto-splitting. If confirmed, the story is split into roughly equal chunks and inserted as separate stories titled `"{Title} (1 / N)"`, `"{Title} (2 / N)"`, etc. This keeps translation quality high (shorter stories translate better) and keeps the UI manageable. Users can always split long source text manually before adding.
+
 ## Frontend Pages
 
 The HTML/CSS/JS frontend files live in `backend/static/` and are served by the backend.
@@ -101,11 +110,12 @@ The HTML/CSS/JS frontend files live in `backend/static/` and are served by the b
 - **`db_words.go`** � all word and kanji database operations: insert, update, delete, list, upsert kanji.
 - **`db_activity.go`** � drill session persistence and answer recording (`createDrillSession`, `getCurrentDrillSession`, `recordDrillAnswer`), plus activity stats and calendar queries.
 - **`db_settings.go`** � user settings: `getDrillSettings` and `putDrillSettings` read/write the `user_settings` table using key/value pairs. `drillSettings` always returns fully-populated values with no null fields � `MaxWords` defaults to `100`, `RoundSize` to `10`, `WordTypes` to all four types. `MaxWords` is always = 1; `0` is not a valid value. The frontend should treat the `GET /api/settings/drill` response as always having concrete values and needs no null-handling.
-- **`db_stories.go`** - story persistence helpers. `insertStory` creates a titled story plus its ordered sentence rows in one transaction; `listStories` returns stories with nested sentence data for the stories page. Sentence Japanese content is stored as `words_json` token data rather than duplicated raw sentence text. The same file also contains the Kagome-based helper used during seeding to turn raw Japanese story sentences into token arrays with display/base forms and provisional glosses.
-- **`routes.go`** � `serverInit` (router setup), activity/drill/admin HTTP handlers, and template render helpers. Includes `GET /api/stories` for the stories index and `GET /api/stories/{id}` for story detail data. No direct DB access; handlers call functions from the `db_*.go` files.
+- **`db_stories.go`** - story persistence helpers. `insertStory` creates a titled story plus its ordered sentence rows in one transaction; `listStories` returns stories with nested sentence data for the stories page. Sentence Japanese content is stored as `words_json` token data rather than duplicated raw sentence text. Also contains: `setSentenceEnglishText` (update one sentence translation), `updateStoryWordGlosses` (merge new AI glosses into the story-level `word_glosses` JSON map), and the Kagome-based helper used during seeding to turn raw Japanese story sentences into token arrays with display/base forms and provisional glosses.
+- **`routes.go`** � `serverInit` (router setup), activity/drill/admin HTTP handlers, and template render helpers. No direct DB access; handlers call functions from the `db_*.go` files.
+- **`routes_stories.go`** — story API handlers: `GET /api/stories`, `GET /api/stories/{id}`, `POST /api/stories/{id}/generate-audio` (VoiceVox, NDJSON streaming), `POST /api/stories/{id}/generate-translation` (AI translation, NDJSON streaming).
 - **`routes_words.go`** — word and kanji API handlers: GET/PATCH/DELETE words, single and batch autofill, reroll meaning/examples, GET kanji.
 - **`routes_handlers_test.go`** � HTTP handler tests for backend JSON endpoints, focused on request validation, status codes, and basic success-path responses for word, drill-session, and drill-settings APIs.
-- **`ai.go`** - Shared AI types, prompts, few-shot examples, and provider-dispatch functions (`autoFillWord`, `autoFillWordsBatch`, `rerollMeaning`, `rerollExamples`). `autoFillWordsBatch` splits words into chunks of `autoFillBatchSize` (20) and runs chunks concurrently, each as a single AI call returning a JSON array. No direct DB access. Environment variables: `ANTHROPIC_API_KEY`, `OPENAI_API_KEY`, `GOOGLE_API_KEY`, `MISTRAL_API_KEY`, `GLM_API_KEY`.
+- **`ai.go`** - Shared AI types, prompts, few-shot examples, and provider-dispatch functions (`autoFillWord`, `autoFillWordsBatch`, `rerollMeaning`, `rerollExamples`, `translateStory`). `autoFillWordsBatch` splits words into chunks of `autoFillBatchSize` (20) and runs chunks concurrently, each as a single AI call returning a JSON array. `translateStory` sends all story sentences and unlexiconed words in one call, returning ordered translation strings and word glosses. No direct DB access. Environment variables: `ANTHROPIC_API_KEY`, `OPENAI_API_KEY`, `GOOGLE_API_KEY`, `MISTRAL_API_KEY`, `GLM_API_KEY`.
 - **`ai_anthropic.go`** — Anthropic Messages API: `callAnthropic` HTTP helper + single and batch autofill/reroll implementations.
 - **`ai_openai.go`** — OpenAI Chat Completions API: `callOpenAI` HTTP helper + single and batch autofill/reroll implementations.
 - **`ai_google.go`** — Google Generative Language API: `callGoogle` HTTP helper + single and batch autofill/reroll implementations.
@@ -135,7 +145,7 @@ Key API endpoints (beyond CRUD on `/api/words` and `/api/kanji`):
 | `POST` | `/api/words/{id}/reroll-meaning` | Regenerate just the meaning via AI *(may be unused � see Lexicon Features note)* |
 | `POST` | `/api/words/{id}/reroll-examples` | Regenerate just the example sentences via AI *(may be unused � see Lexicon Features note)* |
 | `GET` | `/api/drill/sessions/current` | Return the current in-progress drill session, if one exists |
-| `GET` | `/api/stories` | Return all stories with title, date, and nested sentence/token data |
+| `POST` | `/api/stories/{id}/generate-translation` | AI-generate English sentence translations and word glosses for a story; body: `{ai_model}`; streams NDJSON |
 | `POST` | `/api/drill/sessions` | Start a new drill session |
 | `POST` | `/api/drill/sessions/{id}/answers` | Record an answer within a session |
 | `GET` | `/api/settings/drill` | Retrieve saved drill defaults (maxWords, roundSize, wordTypes) |

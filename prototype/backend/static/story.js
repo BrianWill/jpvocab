@@ -104,14 +104,74 @@ function storyIdFromPath() {
 const STORY_ID = storyIdFromPath();
 
 // ── Speed stepper ─────────────────────────────────────────────────────────────
-els.speedDec.addEventListener('click', () => {
-  state.ttsRate = Math.max(0.5, parseFloat((state.ttsRate - 0.05).toFixed(2)));
-  els.speedVal.value = state.ttsRate.toFixed(2);
-});
-els.speedInc.addEventListener('click', () => {
-  state.ttsRate = Math.min(2.0, parseFloat((state.ttsRate + 0.05).toFixed(2)));
-  els.speedVal.value = state.ttsRate.toFixed(2);
-});
+const SPEED_STEPPER_INTERVAL = 230;
+
+function clampTtsRate(rate) {
+  return Math.min(2.0, Math.max(0.5, parseFloat(rate.toFixed(2))));
+}
+
+async function restartPlaybackForRateChange() {
+  if (state.audioMode) {
+    if (state.audioEl) state.audioEl.playbackRate = state.ttsRate;
+    return;
+  }
+
+  if (!window.speechSynthesis.speaking) return;
+  stopTts();
+  await startTts();
+}
+
+async function setTtsRate(nextRate) {
+  const clamped = clampTtsRate(nextRate);
+  if (clamped === state.ttsRate) {
+    els.speedVal.textContent = clamped.toFixed(2);
+    return;
+  }
+
+  state.ttsRate = clamped;
+  els.speedVal.textContent = state.ttsRate.toFixed(2);
+  await restartPlaybackForRateChange();
+}
+
+function attachHoldRateButton(button, delta) {
+  let stepTimer = null;
+  let suppressClick = false;
+
+  const stopStep = () => {
+    if (stepTimer) {
+      clearInterval(stepTimer);
+      stepTimer = null;
+    }
+  };
+
+  const startStep = () => {
+    suppressClick = true;
+    setTtsRate(state.ttsRate + delta);
+    stepTimer = setInterval(() => {
+      setTtsRate(state.ttsRate + delta);
+    }, SPEED_STEPPER_INTERVAL);
+  };
+
+  button.addEventListener('pointerdown', event => {
+    if (event.button !== 0) return;
+    stopStep();
+    startStep();
+  });
+  button.addEventListener('pointerup', stopStep);
+  button.addEventListener('pointercancel', stopStep);
+  button.addEventListener('pointerleave', stopStep);
+  button.addEventListener('click', event => {
+    if (suppressClick) {
+      suppressClick = false;
+      event.preventDefault();
+      return;
+    }
+    setTtsRate(state.ttsRate + delta);
+  });
+}
+
+attachHoldRateButton(els.speedDec, -0.05);
+attachHoldRateButton(els.speedInc, 0.05);
 
 // ── Icons ─────────────────────────────────────────────────────────────────────
 const ICON_PLAY = '<path d="M8 5v14l11-7z"/>';

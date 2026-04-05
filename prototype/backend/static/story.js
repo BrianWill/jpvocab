@@ -438,7 +438,7 @@ async function addHoveredWordToNotedWords() {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         baseWord: state.hoveredWord.baseWord,
-        displayWord: state.hoveredWord.baseWord,
+        displayWord: state.hoveredWord.displayWord,
       }),
     });
     if (!res.ok) throw new Error('failed to add noted word');

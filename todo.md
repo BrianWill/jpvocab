@@ -3,8 +3,7 @@
 This file is random notes of possible features and bug fixes.
 
 - story noted words
-    - button to add a noted word to lexicon?
-    - add to lexicon button brings up modal that lets you check/uncheck words?
+    - add to lexicon button brings up modal that lets you check/uncheck noted words to include?
     - spinner buttons to modify a words target count?
     - display drill counts for words that are in the lexicon
     - scan text to auto suggest noted words from the frequently occuring unique words in the story
@@ -13,6 +12,8 @@ This file is random notes of possible features and bug fixes.
     - should also display the reading information about the word
     - also display kanji info?
         
+- proper error messages for failed API requests
+    - what if user runs out of tokens? or other API failures
 
 - experiment with openAI audio generation. Might be better quality than voicevox
 

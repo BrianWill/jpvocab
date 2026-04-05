@@ -31,8 +31,8 @@ const els = {
   storyContent: document.getElementById('story-content'),
   storyError: document.getElementById('story-error'),
   storyTitle: document.getElementById('story-title'),
-  ttsBtn: document.getElementById('story-tts-btn'),
-  ttsIcon: document.getElementById('story-tts-icon'),
+  playbackBtn: document.getElementById('story-playback-btn'),
+  playbackIcon: document.getElementById('story-playback-icon'),
 };
 els.genModalClose = els.genModalBackdrop.querySelector('.modal-close');
 els.genTranslationModalClose = els.genTranslationModalBackdrop.querySelector('.modal-close');
@@ -82,8 +82,8 @@ const state = {
   sentenceSpans: [],
   story: null,
   totalDurationMs: 0,
-  ttsRate: 1.0,
-  ttsText: '',
+  playbackRate: 1.0,
+  speechText: '',
 };
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -106,30 +106,30 @@ const STORY_ID = storyIdFromPath();
 // ── Speed stepper ─────────────────────────────────────────────────────────────
 const SPEED_STEPPER_INTERVAL = 230;
 
-function clampTtsRate(rate) {
+function clampPlaybackRate(rate) {
   return Math.min(2.0, Math.max(0.5, parseFloat(rate.toFixed(2))));
 }
 
 async function restartPlaybackForRateChange() {
   if (state.audioMode) {
-    if (state.audioEl) state.audioEl.playbackRate = state.ttsRate;
+    if (state.audioEl) state.audioEl.playbackRate = state.playbackRate;
     return;
   }
 
   if (!window.speechSynthesis.speaking) return;
-  stopTts();
-  await startTts();
+  stopSpeechPlayback();
+  await startSpeechPlayback();
 }
 
-async function setTtsRate(nextRate) {
-  const clamped = clampTtsRate(nextRate);
-  if (clamped === state.ttsRate) {
+async function setPlaybackRate(nextRate) {
+  const clamped = clampPlaybackRate(nextRate);
+  if (clamped === state.playbackRate) {
     els.speedVal.textContent = clamped.toFixed(2);
     return;
   }
 
-  state.ttsRate = clamped;
-  els.speedVal.textContent = state.ttsRate.toFixed(2);
+  state.playbackRate = clamped;
+  els.speedVal.textContent = state.playbackRate.toFixed(2);
   await restartPlaybackForRateChange();
 }
 
@@ -146,9 +146,9 @@ function attachHoldRateButton(button, delta) {
 
   const startStep = () => {
     suppressClick = true;
-    setTtsRate(state.ttsRate + delta);
+    setPlaybackRate(state.playbackRate + delta);
     stepTimer = setInterval(() => {
-      setTtsRate(state.ttsRate + delta);
+      setPlaybackRate(state.playbackRate + delta);
     }, SPEED_STEPPER_INTERVAL);
   };
 
@@ -166,7 +166,7 @@ function attachHoldRateButton(button, delta) {
       event.preventDefault();
       return;
     }
-    setTtsRate(state.ttsRate + delta);
+    setPlaybackRate(state.playbackRate + delta);
   });
 }
 
@@ -177,9 +177,9 @@ attachHoldRateButton(els.speedInc, 0.05);
 const ICON_PLAY = '<path d="M8 5v14l11-7z"/>';
 const ICON_STOP = '<rect x="6" y="6" width="12" height="12"/>';
 
-function setTtsPlaying(playing) {
-  els.ttsIcon.innerHTML = playing ? ICON_STOP : ICON_PLAY;
-  els.ttsBtn.setAttribute('aria-label', playing ? 'Stop reading' : 'Play story');
+function setPlaybackPlaying(playing) {
+  els.playbackIcon.innerHTML = playing ? ICON_STOP : ICON_PLAY;
+  els.playbackBtn.setAttribute('aria-label', playing ? 'Stop reading' : 'Play story');
 }
 
 // ── Sentence / word highlight (shared by both modes) ──────────────────────────
@@ -198,7 +198,7 @@ function clearHighlight() {
   state.lastWordAbsPos = 0;
 }
 
-// ── TTS mode ──────────────────────────────────────────────────────────────────
+// ── Speech-synthesis mode ─────────────────────────────────────────────────────
 function highlightAt(charIndex) {
   state.lastWordAbsPos = state.resumeOffset + charIndex;
   const abs = state.lastWordAbsPos;
@@ -211,7 +211,7 @@ function highlightAt(charIndex) {
   if (sIdx !== state.activeIdx) setActiveIdx(sIdx);
 }
 
-function stopTts() {
+function stopSpeechPlayback() {
   state.resumeOffset = state.lastWordAbsPos;
   if (state.currentUtterance) {
     state.currentUtterance.onboundary = null;
@@ -220,23 +220,23 @@ function stopTts() {
     state.currentUtterance = null;
   }
   window.speechSynthesis.cancel();
-  setTtsPlaying(false);
+  setPlaybackPlaying(false);
 }
 
-async function startTts() {
+async function startSpeechPlayback() {
   if (!speechSynthesis.getVoices().length) {
     await new Promise(resolve => speechSynthesis.addEventListener('voiceschanged', resolve, { once: true }));
   }
-  state.currentUtterance = new SpeechSynthesisUtterance(state.ttsText.slice(state.resumeOffset));
+  state.currentUtterance = new SpeechSynthesisUtterance(state.speechText.slice(state.resumeOffset));
   state.currentUtterance.lang = 'ja-JP';
-  state.currentUtterance.rate = state.ttsRate;
+  state.currentUtterance.rate = state.playbackRate;
   const voice = getTtsVoice('ja-JP');
   if (voice) state.currentUtterance.voice = voice;
   state.currentUtterance.onboundary = e => highlightAt(e.charIndex);
-  state.currentUtterance.onend = () => { state.currentUtterance = null; clearHighlight(); setTtsPlaying(false); };
-  state.currentUtterance.onerror = () => { state.currentUtterance = null; clearHighlight(); setTtsPlaying(false); };
+  state.currentUtterance.onend = () => { state.currentUtterance = null; clearHighlight(); setPlaybackPlaying(false); };
+  state.currentUtterance.onerror = () => { state.currentUtterance = null; clearHighlight(); setPlaybackPlaying(false); };
   window.speechSynthesis.speak(state.currentUtterance);
-  setTtsPlaying(true);
+  setPlaybackPlaying(true);
 }
 
 // ── Audio-file mode ───────────────────────────────────────────────────────────
@@ -259,7 +259,7 @@ function loadSentenceAudio(idx, startSec = 0) {
   if (idx >= state.sentenceSpans.length) {
     // Reached end of story.
     clearHighlight();
-    setTtsPlaying(false);
+    setPlaybackPlaying(false);
     els.seekbar.value = 1000;
     return;
   }
@@ -268,20 +268,20 @@ function loadSentenceAudio(idx, startSec = 0) {
 
   const sentence = state.story.sentences[idx];
   state.audioEl.src = audioFileUrl(sentence.position);
-  state.audioEl.playbackRate = state.ttsRate;
+  state.audioEl.playbackRate = state.playbackRate;
   state.audioEl.currentTime = startSec;
   state.audioEl.play().catch(() => {});
 }
 
 function stopAudio() {
   state.audioEl.pause();
-  setTtsPlaying(false);
+  setPlaybackPlaying(false);
   // Keep highlight and position for resume.
 }
 
 function startAudio(idx = state.audioSentenceIdx, startSec = 0) {
   loadSentenceAudio(idx, startSec);
-  setTtsPlaying(true);
+  setPlaybackPlaying(true);
 }
 
 function seekToAudioPosition(positionMs) {
@@ -295,7 +295,7 @@ function seekToAudioPosition(positionMs) {
 }
 
 // ── Play/stop button ──────────────────────────────────────────────────────────
-els.ttsBtn.addEventListener('click', async () => {
+els.playbackBtn.addEventListener('click', async () => {
   if (state.audioMode) {
     if (!state.audioEl.paused) {
       stopAudio();
@@ -305,9 +305,9 @@ els.ttsBtn.addEventListener('click', async () => {
     return;
   }
   if (window.speechSynthesis.speaking) {
-    stopTts();
+    stopSpeechPlayback();
   } else {
-    await startTts();
+    await startSpeechPlayback();
   }
 });
 
@@ -325,7 +325,7 @@ async function seekToWord(absPos) {
     return;
   }
 
-  if (sIdx === state.activeIdx && window.speechSynthesis.speaking) { stopTts(); return; }
+  if (sIdx === state.activeIdx && window.speechSynthesis.speaking) { stopSpeechPlayback(); return; }
   if (state.currentUtterance) {
     state.currentUtterance.onboundary = null;
     state.currentUtterance.onend = null;
@@ -335,7 +335,7 @@ async function seekToWord(absPos) {
   }
   state.resumeOffset = absPos;
   state.lastWordAbsPos = absPos;
-  await startTts();
+  await startSpeechPlayback();
 }
 
 // ── Seekbar interaction ───────────────────────────────────────────────────────
@@ -346,7 +346,7 @@ els.seekbar.addEventListener('mouseup', () => {
   const posMs = els.seekbar.value / 1000 * state.totalDurationMs;
   const wasPlaying = !state.audioEl.paused;
   seekToAudioPosition(posMs);
-  if (!wasPlaying) { state.audioEl.pause(); setTtsPlaying(false); }
+  if (!wasPlaying) { state.audioEl.pause(); setPlaybackPlaying(false); }
 });
 els.seekbar.addEventListener('input', () => {
   // Update time display while dragging (visual only; seek happens on mouseup).
@@ -355,7 +355,7 @@ els.seekbar.addEventListener('input', () => {
 // ── beforeunload cleanup ──────────────────────────────────────────────────────
 window.addEventListener('beforeunload', () => {
   if (state.audioMode) state.audioEl?.pause();
-  else stopTts();
+  else stopSpeechPlayback();
 });
 
 // ── Keyboard shortcuts ────────────────────────────────────────────────────────
@@ -364,13 +364,13 @@ window.addEventListener('keydown', async e => {
   const tag = document.activeElement?.tagName;
   if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return;
   e.preventDefault();
-  els.ttsBtn.click();
+  els.playbackBtn.click();
 });
 
 // ── Generate audio ────────────────────────────────────────────────────────────
 function openGenModal() {
   if (state.audioMode) { if (!state.audioEl.paused) stopAudio(); }
-  else if (window.speechSynthesis.speaking) stopTts();
+  else if (window.speechSynthesis.speaking) stopSpeechPlayback();
   // Always reset to confirmation state when opening.
   setModalGenerating(false);
   els.genModalBackdrop.classList.remove('hidden');
@@ -717,8 +717,8 @@ function applyAudioState(story) {
     state.audioEl.addEventListener('timeupdate', () => {
       updateSeekbar();
     });
-    state.audioEl.addEventListener('pause', () => setTtsPlaying(false));
-    state.audioEl.addEventListener('play', () => setTtsPlaying(true));
+    state.audioEl.addEventListener('pause', () => setPlaybackPlaying(false));
+    state.audioEl.addEventListener('play', () => setPlaybackPlaying(true));
   }
 
   state.audioMode = true;
@@ -754,8 +754,8 @@ function renderStory(story) {
     textParts.push(text);
     offset += text.length + SEPARATOR.length;
   }
-  state.ttsText = textParts.join(SEPARATOR);
-  els.ttsBtn.disabled = false;
+  state.speechText = textParts.join(SEPARATOR);
+  els.playbackBtn.disabled = false;
 
   els.storyContent.innerHTML = '';
   let currentParagraph = null;

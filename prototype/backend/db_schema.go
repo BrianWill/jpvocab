@@ -80,6 +80,7 @@ func migrate(db *sql.DB) {
 			audio_path TEXT,
 			word_glosses TEXT,
 			has_audio INTEGER NOT NULL DEFAULT 0,
+			noted_words_json TEXT NOT NULL DEFAULT '[]',
 			created_at DATETIME NOT NULL DEFAULT (datetime('now'))
 		)`,
 		`CREATE TABLE IF NOT EXISTS story_sentences (

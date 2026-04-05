@@ -2,14 +2,17 @@
 
 This file is random notes of possible features and bug fixes.
 
-- story
-    - the translation tooltip should also display the reading information about the word
-        - what about kanji info?
+- story noted words
+    - button to add a noted word to lexicon?
+    - add to lexicon button brings up modal that lets you check/uncheck words?
+    - spinner buttons to modify a words target count?
+    - display drill counts for words that are in the lexicon
+    - scan text to auto suggest noted words from the frequently occuring unique words in the story
     
-    - suggest words to add to lexicon
-        - scan text to find most frequently occuring words in text that are candidates for the lexicon
-    - click word to add to lexicon
-    - click word to modify its target count    
+- story translation tooltip
+    - should also display the reading information about the word
+    - also display kanji info?
+        
 
 - experiment with openAI audio generation. Might be better quality than voicevox
 

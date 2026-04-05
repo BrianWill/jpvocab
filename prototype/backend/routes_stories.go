@@ -15,6 +15,120 @@ import (
 	"github.com/go-chi/chi/v5"
 )
 
+func findStoryWord(story *storyJSON, baseWord, displayWord string) *storyWordJSON {
+	for _, sentence := range story.Sentences {
+		for _, word := range sentence.Words {
+			if word.BaseWord != baseWord {
+				continue
+			}
+			if strings.TrimSpace(displayWord) == "" || word.DisplayWord == displayWord {
+				w := word
+				return &w
+			}
+		}
+	}
+	return nil
+}
+
+func apiAddStoryNotedWord(db *sql.DB) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		id, err := strconv.ParseInt(chi.URLParam(r, "id"), 10, 64)
+		if err != nil {
+			http.Error(w, "invalid story id", http.StatusBadRequest)
+			return
+		}
+
+		var body struct {
+			BaseWord    string `json:"baseWord"`
+			DisplayWord string `json:"displayWord"`
+		}
+		if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+			http.Error(w, "bad request", http.StatusBadRequest)
+			return
+		}
+
+		story, err := getStoryByID(db, id)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		if story == nil {
+			http.Error(w, "story not found", http.StatusNotFound)
+			return
+		}
+
+		word := findStoryWord(story, strings.TrimSpace(body.BaseWord), strings.TrimSpace(body.DisplayWord))
+		if word == nil {
+			http.Error(w, "word not found in story", http.StatusBadRequest)
+			return
+		}
+
+		if err := addStoryNotedWord(db, id, storyNotedWordJSON{
+			DisplayWord: word.BaseWord,
+			BaseWord:    word.BaseWord,
+			English:     word.English,
+		}); err != nil {
+			if err.Error() == "story not found" {
+				http.Error(w, err.Error(), http.StatusNotFound)
+				return
+			}
+			if strings.Contains(err.Error(), "required") {
+				http.Error(w, err.Error(), http.StatusBadRequest)
+				return
+			}
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+
+		updated, err := getStoryByID(db, id)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(map[string]any{"notedWords": updated.NotedWords})
+	}
+}
+
+func apiDeleteStoryNotedWord(db *sql.DB) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		id, err := strconv.ParseInt(chi.URLParam(r, "id"), 10, 64)
+		if err != nil {
+			http.Error(w, "invalid story id", http.StatusBadRequest)
+			return
+		}
+
+		var body struct {
+			BaseWord string `json:"baseWord"`
+		}
+		if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+			http.Error(w, "bad request", http.StatusBadRequest)
+			return
+		}
+
+		if err := removeStoryNotedWord(db, id, body.BaseWord); err != nil {
+			if err.Error() == "story not found" {
+				http.Error(w, err.Error(), http.StatusNotFound)
+				return
+			}
+			if strings.Contains(err.Error(), "required") {
+				http.Error(w, err.Error(), http.StatusBadRequest)
+				return
+			}
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+
+		updated, err := getStoryByID(db, id)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(map[string]any{"notedWords": updated.NotedWords})
+	}
+}
+
 // storySentenceText reconstructs the plain text of a sentence from its word tokens.
 func storySentenceText(s storySentenceJSON) string {
 	parts := make([]string, len(s.Words))

@@ -40,6 +40,8 @@ func serverInit(db *sql.DB) {
 	r.Get("/api/activity/calendar", apiGetActivityCalendar(db))
 	r.Get("/api/stories", apiGetStories(db))
 	r.Get("/api/stories/{id}", apiGetStory(db))
+	r.Post("/api/stories/{id}/noted-words", apiAddStoryNotedWord(db))
+	r.Delete("/api/stories/{id}/noted-words", apiDeleteStoryNotedWord(db))
 	r.Post("/api/stories/{id}/generate-audio", apiGenerateStoryAudio(db))
 	r.Post("/api/stories/{id}/generate-translation", apiGenerateStoryTranslation(db))
 

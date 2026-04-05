@@ -1118,6 +1118,61 @@ func TestInsertStory_RequiresTitle(t *testing.T) {
 	}
 }
 
+func TestStoryNotedWords_PersistOnStory(t *testing.T) {
+	db := testDB(t)
+	id, err := insertStory(db, "Garden Story", nil, []storySentenceInput{
+		{
+			Words: []storyWordInput{
+				{DisplayWord: "庭園", BaseWord: "庭園"},
+				{DisplayWord: "へ", BaseWord: "へ"},
+				{DisplayWord: "行く", BaseWord: "行く"},
+			},
+			IsParagraphStart: true,
+		},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if err := addStoryNotedWord(db, id, storyNotedWordJSON{DisplayWord: "行く", BaseWord: "行く"}); err != nil {
+		t.Fatalf("addStoryNotedWord: %v", err)
+	}
+	if err := addStoryNotedWord(db, id, storyNotedWordJSON{DisplayWord: "行く", BaseWord: "行く"}); err != nil {
+		t.Fatalf("duplicate addStoryNotedWord: %v", err)
+	}
+	if err := addStoryNotedWord(db, id, storyNotedWordJSON{DisplayWord: "庭園", BaseWord: "庭園"}); err != nil {
+		t.Fatalf("second addStoryNotedWord: %v", err)
+	}
+
+	story, err := getStoryByID(db, id)
+	if err != nil {
+		t.Fatalf("getStoryByID: %v", err)
+	}
+	if story == nil {
+		t.Fatal("expected story")
+	}
+	if len(story.NotedWords) != 2 {
+		t.Fatalf("expected 2 noted words, got %d", len(story.NotedWords))
+	}
+	if story.NotedWords[0].BaseWord != "行く" {
+		t.Errorf("first noted word base: got %q, want %q", story.NotedWords[0].BaseWord, "行く")
+	}
+	if story.NotedWords[1].DisplayWord != "庭園" {
+		t.Errorf("second noted word display: got %q, want %q", story.NotedWords[1].DisplayWord, "庭園")
+	}
+
+	if err := removeStoryNotedWord(db, id, "行く"); err != nil {
+		t.Fatalf("removeStoryNotedWord: %v", err)
+	}
+	story, err = getStoryByID(db, id)
+	if err != nil {
+		t.Fatalf("getStoryByID after remove: %v", err)
+	}
+	if len(story.NotedWords) != 1 || story.NotedWords[0].BaseWord != "庭園" {
+		t.Fatalf("unexpected noted words after remove: %+v", story.NotedWords)
+	}
+}
+
 func TestBuildStorySentenceWords_TokenizesDisplayAndBaseForms(t *testing.T) {
 	words := buildStorySentenceWords("庭園は庭のことですね。")
 	if len(words) == 0 {

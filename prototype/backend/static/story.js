@@ -30,8 +30,15 @@ const els = {
   speedDec: document.getElementById('story-speed-dec'),
   speedInc: document.getElementById('story-speed-inc'),
   speedVal: document.getElementById('story-speed-val'),
+  storyLayout: document.getElementById('story-layout'),
   storyContent: document.getElementById('story-content'),
   storyError: document.getElementById('story-error'),
+  storyNotedAddAll: document.getElementById('story-noted-add-all'),
+  storyNotedClose: document.getElementById('story-noted-close'),
+  storyNotedCount: document.getElementById('story-noted-count'),
+  storyNotedEmpty: document.getElementById('story-noted-empty'),
+  storyNotedList: document.getElementById('story-noted-list'),
+  storyNotedTab: document.getElementById('story-noted-tab'),
   storyTitle: document.getElementById('story-title'),
   playbackBtn: document.getElementById('story-playback-btn'),
   playbackIcon: document.getElementById('story-playback-icon'),
@@ -72,9 +79,13 @@ const state = {
   currentUtterance: null,
   generateController: null,
   generating: false,
+  hoveredWord: null,
+  notedWords: [],
+  notedWordsOpen: false,
   providers: null,
   translating: false,
   translationController: null,
+  updatingNotedWords: false,
   lastWordAbsPos: 0,
   resumeOffset: 0,
   seekbarDragging: false,
@@ -84,6 +95,7 @@ const state = {
   sentenceSpans: [],
   story: null,
   totalDurationMs: 0,
+  wordTokenMetas: [],
   playbackRate: 1.0,
   speechText: '',
 };
@@ -103,6 +115,10 @@ function formatDuration(ms) {
   const minutes = Math.floor(totalSeconds / 60);
   const seconds = totalSeconds % 60;
   return `${minutes}:${String(seconds).padStart(2, '0')}`;
+}
+
+function pluralize(count, singular, plural = singular + 's') {
+  return `${count} ${count === 1 ? singular : plural}`;
 }
 
 // ── Story ID ──────────────────────────────────────────────────────────────────
@@ -355,6 +371,103 @@ async function seekToWord(absPos) {
   await startSpeechPlayback();
 }
 
+function escapeTooltipText(s) {
+  return esc(String(s ?? '')).replace(/\n/g, '<br>');
+}
+
+function isWordNoted(baseWord) {
+  return state.notedWords.some(word => word.baseWord === baseWord);
+}
+
+function buildWordTooltipHtml(word, sentenceEnglish) {
+  const ispunct = isPunctuation(word.displayWord);
+  const wordTranslation = ispunct ? '' : (word.english || '');
+  let html = '';
+  if (sentenceEnglish) html += escapeTooltipText(sentenceEnglish);
+  if (!ispunct && wordTranslation) {
+    if (sentenceEnglish) html += '<br><br>';
+    html += '<strong><span class="tooltip-word-label">' + esc(word.displayWord) + ':</span></strong> ' + escapeTooltipText(wordTranslation);
+  }
+  if (!ispunct) {
+    if (html) html += '<br><br>';
+    html += '<span class="tooltip-word-note">' +
+      esc(isWordNoted(word.baseWord) ? 'Already in noted words' : 'Hit \'A\' to add this word to noted words') +
+      '</span>';
+  }
+  return html;
+}
+
+function updateWordTokenUI() {
+  for (const meta of state.wordTokenMetas) {
+    meta.el.dataset.tooltipHtml = buildWordTooltipHtml(meta.word, meta.sentenceEnglishText);
+    meta.el.dataset.tooltipClass = 'tooltip-translation';
+    meta.el.classList.toggle('story-word--noted', isWordNoted(meta.word.baseWord));
+  }
+}
+
+function setNotedWordsOpen(open) {
+  state.notedWordsOpen = !!open;
+  els.storyLayout.classList.toggle('story-layout--noted-open', state.notedWordsOpen);
+  els.storyNotedTab.textContent = `Noted Words (${state.notedWords.length})`;
+}
+
+function renderNotedWords(autoOpen = false) {
+  els.storyNotedCount.textContent = pluralize(state.notedWords.length, 'word');
+  els.storyNotedList.innerHTML = state.notedWords.map(word => `
+    <div class="story-noted-item">
+      <div class="story-noted-item-main">
+        <p class="story-noted-item-word">${esc(word.baseWord || word.displayWord)}</p>
+        ${word.displayWord && word.baseWord && word.displayWord !== word.baseWord ? `<p class="story-noted-item-base">Seen in story as: ${esc(word.displayWord)}</p>` : ''}
+        ${word.english ? `<p class="story-noted-item-meaning">${esc(word.english)}</p>` : ''}
+      </div>
+      <button class="story-noted-item-remove" type="button" data-base-word="${esc(word.baseWord)}" aria-label="Remove ${esc(word.baseWord || word.displayWord)}">✕</button>
+    </div>
+  `).join('');
+  els.storyNotedEmpty.hidden = state.notedWords.length > 0;
+  if (autoOpen) setNotedWordsOpen(true);
+  else setNotedWordsOpen(state.notedWordsOpen);
+  updateWordTokenUI();
+}
+
+async function addHoveredWordToNotedWords() {
+  if (!state.hoveredWord || state.updatingNotedWords || isWordNoted(state.hoveredWord.baseWord)) return;
+  state.updatingNotedWords = true;
+  try {
+    const res = await fetch(`/api/stories/${STORY_ID}/noted-words`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        baseWord: state.hoveredWord.baseWord,
+        displayWord: state.hoveredWord.baseWord,
+      }),
+    });
+    if (!res.ok) throw new Error('failed to add noted word');
+    const data = await res.json();
+    state.notedWords = Array.isArray(data.notedWords) ? data.notedWords : [];
+    renderNotedWords(true);
+  } finally {
+    state.updatingNotedWords = false;
+  }
+}
+
+async function removeNotedWord(baseWord) {
+  if (!baseWord || state.updatingNotedWords) return;
+  state.updatingNotedWords = true;
+  try {
+    const res = await fetch(`/api/stories/${STORY_ID}/noted-words`, {
+      method: 'DELETE',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ baseWord }),
+    });
+    if (!res.ok) throw new Error('failed to remove noted word');
+    const data = await res.json();
+    state.notedWords = Array.isArray(data.notedWords) ? data.notedWords : [];
+    renderNotedWords();
+  } finally {
+    state.updatingNotedWords = false;
+  }
+}
+
 // ── Seekbar interaction ───────────────────────────────────────────────────────
 els.seekbar.addEventListener('mousedown', () => { state.seekbarDragging = true; });
 els.seekbar.addEventListener('mouseup', () => {
@@ -379,6 +492,16 @@ window.addEventListener('beforeunload', () => {
 
 // ── Keyboard shortcuts ────────────────────────────────────────────────────────
 window.addEventListener('keydown', async e => {
+  if (e.code === 'KeyA' && !e.metaKey && !e.ctrlKey && !e.altKey) {
+    const activeEl = document.activeElement;
+    const tag = activeEl?.tagName;
+    const editing = activeEl?.isContentEditable || tag === 'TEXTAREA' || tag === 'SELECT' || tag === 'INPUT';
+    if (!editing && state.hoveredWord && !e.repeat) {
+      e.preventDefault();
+      addHoveredWordToNotedWords().catch(() => {});
+      return;
+    }
+  }
   if (e.code !== 'Space') return;
   const activeEl = document.activeElement;
   const tag = activeEl?.tagName;
@@ -386,6 +509,20 @@ window.addEventListener('keydown', async e => {
   if (tag === 'INPUT' && activeEl?.type !== 'range') return;
   e.preventDefault();
   els.playbackBtn.click();
+});
+
+els.storyNotedTab.addEventListener('click', () => {
+  setNotedWordsOpen(true);
+});
+
+els.storyNotedClose.addEventListener('click', () => {
+  setNotedWordsOpen(false);
+});
+
+els.storyNotedList.addEventListener('click', event => {
+  const btn = event.target.closest('[data-base-word]');
+  if (!btn) return;
+  removeNotedWord(btn.dataset.baseWord).catch(() => {});
 });
 
 // ── Generate audio ────────────────────────────────────────────────────────────
@@ -767,6 +904,9 @@ function sentenceText(sentence) {
 
 function renderStory(story) {
   state.story = story;
+  state.hoveredWord = null;
+  state.notedWords = Array.isArray(story.notedWords) ? story.notedWords : [];
+  state.notedWordsOpen = false;
   document.title = `${story.title} | Story`;
   els.storyTitle.textContent = story.title;
 
@@ -785,6 +925,7 @@ function renderStory(story) {
   els.playbackBtn.disabled = false;
 
   els.storyContent.innerHTML = '';
+  state.wordTokenMetas = [];
   let currentParagraph = null;
   for (let i = 0; i < story.sentences.length; i++) {
     const sentence = story.sentences[i];
@@ -808,18 +949,24 @@ function renderStory(story) {
       const capturedOffset = wordOffset;
       wordSpan.addEventListener('click', () => seekToWord(capturedOffset));
       const ispunct = isPunctuation(word.displayWord);
-      const wordTranslation = ispunct ? '' : (word.english || '');
-      if (wordTranslation || sentence.englishText) {
-        let html = '';
-        if (sentence.englishText) html += esc(sentence.englishText);
-        if (!ispunct && wordTranslation) {
-          if (sentence.englishText) html += '<br><br>';
-          html += '<strong><span class="tooltip-word-label">' + esc(word.displayWord) + ':</span></strong> ' + esc(wordTranslation);
-        }
-        wordSpan.dataset.tooltipHtml = html;
+      if (!ispunct || sentence.englishText) {
+        wordSpan.dataset.tooltipHtml = buildWordTooltipHtml(word, sentence.englishText);
         wordSpan.dataset.tooltipClass = 'tooltip-translation';
       }
-      if (wordTranslation) wordSpan.classList.add('story-word--translated');
+      if (!ispunct && word.english) wordSpan.classList.add('story-word--translated');
+      if (!ispunct) {
+        wordSpan.addEventListener('mouseenter', () => {
+          state.hoveredWord = word;
+        });
+        wordSpan.addEventListener('mouseleave', () => {
+          if (state.hoveredWord === word) state.hoveredWord = null;
+        });
+      }
+      state.wordTokenMetas.push({
+        el: wordSpan,
+        sentenceEnglishText: sentence.englishText || '',
+        word,
+      });
       sentenceSpan.appendChild(wordSpan);
       wordOffset += word.displayWord.length;
     }
@@ -832,6 +979,7 @@ function renderStory(story) {
   endMark.className = 'story-end-mark';
   endMark.textContent = '※';
   els.storyContent.appendChild(endMark);
+  renderNotedWords();
 
   // Enable generate audio button if VoiceVox is available.
   checkVoicevoxAvailable().then(available => {

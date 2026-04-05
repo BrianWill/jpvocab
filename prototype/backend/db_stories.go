@@ -35,13 +35,21 @@ type storySentenceJSON struct {
 	AudioDurationMs  *int64          `json:"audioDurationMs"`
 }
 
+type storyNotedWordJSON struct {
+	DisplayWord string `json:"displayWord"`
+	BaseWord    string `json:"baseWord"`
+	English     string `json:"english,omitempty"`
+	CreatedAt   string `json:"createdAt"`
+}
+
 type storyJSON struct {
-	ID        int64               `json:"id"`
-	Title     string              `json:"title"`
-	AudioPath *string             `json:"audioPath"`
-	HasAudio  bool                `json:"hasAudio"`
-	CreatedAt string              `json:"createdAt"`
-	Sentences []storySentenceJSON `json:"sentences"`
+	ID         int64                `json:"id"`
+	Title      string               `json:"title"`
+	AudioPath  *string              `json:"audioPath"`
+	HasAudio   bool                 `json:"hasAudio"`
+	CreatedAt  string               `json:"createdAt"`
+	NotedWords []storyNotedWordJSON `json:"notedWords"`
+	Sentences  []storySentenceJSON  `json:"sentences"`
 }
 
 func insertStory(db *sql.DB, title string, audioPath *string, sentences []storySentenceInput) (int64, error) {
@@ -274,7 +282,7 @@ func getStoryByID(db *sql.DB, id int64) (*storyJSON, error) {
 
 func queryStories(db *sql.DB, whereClause string, args ...any) ([]storyJSON, error) {
 	rows, err := db.Query(`
-		SELECT s.id, s.title, s.audio_path, s.has_audio, s.created_at, s.word_glosses,
+		SELECT s.id, s.title, s.audio_path, s.has_audio, s.created_at, s.word_glosses, s.noted_words_json,
 		       ss.id, ss.position, ss.words_json, ss.english_text, ss.is_paragraph_start, ss.audio_duration_ms
 		FROM stories s
 		LEFT JOIN story_sentences ss ON ss.story_id = s.id
@@ -298,6 +306,7 @@ func queryStories(db *sql.DB, whereClause string, args ...any) ([]storyJSON, err
 		var hasAudio int
 		var createdAt string
 		var wordGlossesJSON sql.NullString
+		var notedWordsJSON sql.NullString
 		var sentenceID sql.NullInt64
 		var position sql.NullInt64
 		var wordsJSON sql.NullString
@@ -306,7 +315,7 @@ func queryStories(db *sql.DB, whereClause string, args ...any) ([]storyJSON, err
 		var audioDurationMs sql.NullInt64
 
 		if err := rows.Scan(
-			&storyID, &title, &audioPath, &hasAudio, &createdAt, &wordGlossesJSON,
+			&storyID, &title, &audioPath, &hasAudio, &createdAt, &wordGlossesJSON, &notedWordsJSON,
 			&sentenceID, &position, &wordsJSON, &englishText, &isParagraphStart, &audioDurationMs,
 		); err != nil {
 			return nil, err
@@ -314,11 +323,12 @@ func queryStories(db *sql.DB, whereClause string, args ...any) ([]storyJSON, err
 
 		if current == nil || storyID != currentID {
 			story := storyJSON{
-				ID:        storyID,
-				Title:     title,
-				HasAudio:  hasAudio == 1,
-				CreatedAt: createdAt,
-				Sentences: []storySentenceJSON{},
+				ID:         storyID,
+				Title:      title,
+				HasAudio:   hasAudio == 1,
+				CreatedAt:  createdAt,
+				NotedWords: []storyNotedWordJSON{},
+				Sentences:  []storySentenceJSON{},
 			}
 			if audioPath.Valid {
 				path := audioPath.String
@@ -329,6 +339,19 @@ func queryStories(db *sql.DB, whereClause string, args ...any) ([]storyJSON, err
 				var g map[string]string
 				if json.Unmarshal([]byte(wordGlossesJSON.String), &g) == nil {
 					currentGlosses = g
+				}
+			}
+			if notedWordsJSON.Valid && notedWordsJSON.String != "" {
+				json.Unmarshal([]byte(notedWordsJSON.String), &story.NotedWords) //nolint:errcheck
+				if story.NotedWords == nil {
+					story.NotedWords = []storyNotedWordJSON{}
+				}
+				for i := range story.NotedWords {
+					if story.NotedWords[i].English == "" {
+						if gloss, ok := currentGlosses[story.NotedWords[i].BaseWord]; ok {
+							story.NotedWords[i].English = gloss
+						}
+					}
 				}
 			}
 			stories = append(stories, story)
@@ -376,6 +399,89 @@ func queryStories(db *sql.DB, whereClause string, args ...any) ([]storyJSON, err
 func setSentenceEnglishText(db *sql.DB, sentenceID int64, text string) error {
 	_, err := db.Exec(`UPDATE story_sentences SET english_text = ? WHERE id = ?`, text, sentenceID)
 	return err
+}
+
+func setStoryNotedWords(db *sql.DB, storyID int64, words []storyNotedWordJSON) error {
+	b, err := json.Marshal(words)
+	if err != nil {
+		return err
+	}
+	_, err = db.Exec(`UPDATE stories SET noted_words_json = ? WHERE id = ?`, string(b), storyID)
+	return err
+}
+
+func addStoryNotedWord(db *sql.DB, storyID int64, word storyNotedWordJSON) error {
+	story, err := getStoryByID(db, storyID)
+	if err != nil {
+		return err
+	}
+	if story == nil {
+		return errors.New("story not found")
+	}
+
+	word.BaseWord = strings.TrimSpace(word.BaseWord)
+	word.DisplayWord = strings.TrimSpace(word.DisplayWord)
+	if word.BaseWord == "" {
+		return errors.New("base word is required")
+	}
+	if word.DisplayWord == "" {
+		return errors.New("display word is required")
+	}
+
+	for _, existing := range story.NotedWords {
+		if existing.BaseWord == word.BaseWord {
+			return nil
+		}
+	}
+	if word.CreatedAt == "" {
+		var createdAt string
+		if err := db.QueryRow(`SELECT datetime('now')`).Scan(&createdAt); err != nil {
+			return err
+		}
+		word.CreatedAt = createdAt
+	}
+	if word.English == "" {
+		for _, sentence := range story.Sentences {
+			for _, token := range sentence.Words {
+				if token.BaseWord == word.BaseWord {
+					word.English = token.English
+					if word.DisplayWord == "" {
+						word.DisplayWord = token.DisplayWord
+					}
+					break
+				}
+			}
+			if word.English != "" {
+				break
+			}
+		}
+	}
+
+	story.NotedWords = append(story.NotedWords, word)
+	return setStoryNotedWords(db, storyID, story.NotedWords)
+}
+
+func removeStoryNotedWord(db *sql.DB, storyID int64, baseWord string) error {
+	story, err := getStoryByID(db, storyID)
+	if err != nil {
+		return err
+	}
+	if story == nil {
+		return errors.New("story not found")
+	}
+
+	baseWord = strings.TrimSpace(baseWord)
+	if baseWord == "" {
+		return errors.New("base word is required")
+	}
+
+	filtered := make([]storyNotedWordJSON, 0, len(story.NotedWords))
+	for _, word := range story.NotedWords {
+		if word.BaseWord != baseWord {
+			filtered = append(filtered, word)
+		}
+	}
+	return setStoryNotedWords(db, storyID, filtered)
 }
 
 // updateStoryWordGlosses merges newGlosses into the story's existing word_glosses map.
@@ -451,39 +557,39 @@ func provisionalStoryTokenGloss(surface, base string) string {
 }
 
 var defaultStoryTokenGlosses = map[string]string{
-	"。":     "period",
-	"、":     "comma",
-	"「":     "opening quote",
-	"」":     "closing quote",
-	"（":     "opening paren",
-	"）":     "closing paren",
-	"は":     "topic marker",
-	"が":     "subject marker",
-	"を":     "object marker",
-	"に":     "at; in; to",
-	"で":     "at; by; with",
-	"の":     "of",
-	"と":     "and; with; that",
-	"も":     "also",
-	"か":     "question marker",
-	"から":    "from",
-	"へ":     "toward",
-	"ね":     "right?",
-	"よ":     "emphasis",
-	"て":     "and; te-form",
-	"た":     "past tense",
-	"だ":     "is",
-	"です":    "is; polite copula",
-	"ます":    "polite ending",
-	"いる":    "to be; exist",
-	"ある":    "to be; exist",
-	"する":    "to do",
-	"なる":    "to become",
-	"れる":    "passive; potential helper",
-	"そう":    "it seems",
-	"その":    "that",
-	"この":    "this",
-	"それ":    "that",
-	"一緒":    "together",
-	"約":     "about; approximately",
+	"。":  "period",
+	"、":  "comma",
+	"「":  "opening quote",
+	"」":  "closing quote",
+	"（":  "opening paren",
+	"）":  "closing paren",
+	"は":  "topic marker",
+	"が":  "subject marker",
+	"を":  "object marker",
+	"に":  "at; in; to",
+	"で":  "at; by; with",
+	"の":  "of",
+	"と":  "and; with; that",
+	"も":  "also",
+	"か":  "question marker",
+	"から": "from",
+	"へ":  "toward",
+	"ね":  "right?",
+	"よ":  "emphasis",
+	"て":  "and; te-form",
+	"た":  "past tense",
+	"だ":  "is",
+	"です": "is; polite copula",
+	"ます": "polite ending",
+	"いる": "to be; exist",
+	"ある": "to be; exist",
+	"する": "to do",
+	"なる": "to become",
+	"れる": "passive; potential helper",
+	"そう": "it seems",
+	"その": "that",
+	"この": "this",
+	"それ": "that",
+	"一緒": "together",
+	"約":  "about; approximately",
 }

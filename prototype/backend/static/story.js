@@ -24,6 +24,8 @@ const els = {
   genTranslationProviderInfo: document.getElementById('story-gen-translation-provider-info'),
   genTranslationSpinner: document.getElementById('gen-translation-spinner'),
   genTranslationStatusText: document.getElementById('gen-translation-status-text'),
+  currentTime: document.getElementById('story-current-time'),
+  duration: document.getElementById('story-duration'),
   seekbar: document.getElementById('story-seekbar'),
   speedDec: document.getElementById('story-speed-dec'),
   speedInc: document.getElementById('story-speed-inc'),
@@ -94,6 +96,13 @@ function esc(s) {
 // Returns true if the token is punctuation/whitespace with no meaningful word content.
 function isPunctuation(w) {
   return !/[\u3040-\u30FF\u4E00-\u9FFFa-zA-Z0-9]/.test(w);
+}
+
+function formatDuration(ms) {
+  const totalSeconds = Math.max(0, Math.round(ms / 1000));
+  const minutes = Math.floor(totalSeconds / 60);
+  const seconds = totalSeconds % 60;
+  return `${minutes}:${String(seconds).padStart(2, '0')}`;
 }
 
 // ── Story ID ──────────────────────────────────────────────────────────────────
@@ -250,9 +259,15 @@ function seekbarPositionMs() {
   return state.sentenceCumulative[state.audioSentenceIdx] + state.audioEl.currentTime * 1000;
 }
 
+function setCurrentTimeLabel(positionMs) {
+  els.currentTime.textContent = formatDuration(positionMs);
+}
+
 function updateSeekbar() {
   if (state.seekbarDragging || state.totalDurationMs === 0) return;
-  els.seekbar.value = Math.round(seekbarPositionMs() / state.totalDurationMs * 1000);
+  const positionMs = seekbarPositionMs();
+  els.seekbar.value = Math.round(positionMs / state.totalDurationMs * 1000);
+  setCurrentTimeLabel(positionMs);
 }
 
 function loadSentenceAudio(idx, startSec = 0) {
@@ -261,6 +276,7 @@ function loadSentenceAudio(idx, startSec = 0) {
     clearHighlight();
     setPlaybackPlaying(false);
     els.seekbar.value = 1000;
+    setCurrentTimeLabel(state.totalDurationMs);
     return;
   }
   state.audioSentenceIdx = idx;
@@ -270,6 +286,7 @@ function loadSentenceAudio(idx, startSec = 0) {
   state.audioEl.src = audioFileUrl(sentence.position);
   state.audioEl.playbackRate = state.playbackRate;
   state.audioEl.currentTime = startSec;
+  setCurrentTimeLabel(state.sentenceCumulative[idx] + startSec * 1000);
   state.audioEl.play().catch(() => {});
 }
 
@@ -349,7 +366,9 @@ els.seekbar.addEventListener('mouseup', () => {
   if (!wasPlaying) { state.audioEl.pause(); setPlaybackPlaying(false); }
 });
 els.seekbar.addEventListener('input', () => {
-  // Update time display while dragging (visual only; seek happens on mouseup).
+  if (!state.audioMode) return;
+  const posMs = els.seekbar.value / 1000 * state.totalDurationMs;
+  setCurrentTimeLabel(posMs);
 });
 
 // ── beforeunload cleanup ──────────────────────────────────────────────────────
@@ -361,8 +380,10 @@ window.addEventListener('beforeunload', () => {
 // ── Keyboard shortcuts ────────────────────────────────────────────────────────
 window.addEventListener('keydown', async e => {
   if (e.code !== 'Space') return;
-  const tag = document.activeElement?.tagName;
-  if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return;
+  const activeEl = document.activeElement;
+  const tag = activeEl?.tagName;
+  if (tag === 'TEXTAREA' || tag === 'SELECT') return;
+  if (tag === 'INPUT' && activeEl?.type !== 'range') return;
   e.preventDefault();
   els.playbackBtn.click();
 });
@@ -696,6 +717,8 @@ function applyAudioState(story) {
   state.story = story;
   if (!story.hasAudio) {
     els.seekbar.hidden = true;
+    els.currentTime.hidden = true;
+    els.duration.hidden = true;
     state.audioMode = false;
     return;
   }
@@ -723,8 +746,12 @@ function applyAudioState(story) {
 
   state.audioMode = true;
   state.audioSentenceIdx = 0;
+  els.currentTime.hidden = false;
   els.seekbar.hidden = false;
   els.seekbar.value = 0;
+  els.currentTime.textContent = '0:00';
+  els.duration.hidden = false;
+  els.duration.textContent = formatDuration(state.totalDurationMs);
 }
 
 // ── Render ────────────────────────────────────────────────────────────────────

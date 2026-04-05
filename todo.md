@@ -3,18 +3,9 @@
 This file is random notes of possible features and bug fixes.
 
 - story
-    - "tts" used in the code / html / css for funcationality that is about audio playback, not just tts specifically
     - the translation tooltip should also display the reading information about the word
         - what about kanji info?
     
-    - display total audio time right of the seek bar
-        - hover over seek should indicate the time mark of that position
-    - changing playback speed while playing TTS should pause and resume the audio so that the audio speed changes immediately
-        - not necessary for audio file playback
-        - should be able to edit number with text entry (can place cursor, but can't edit text right now)
-        - holding - + should advance (like the spinners in the settings modal)
-    - story text should be separate scroll area from title and generate/ back buttons
-        (i.e. title should not scroll)
     - suggest words to add to lexicon
         - scan text to find most frequently occuring words in text that are candidates for the lexicon
     - click word to add to lexicon

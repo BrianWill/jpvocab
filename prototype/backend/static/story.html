@@ -19,7 +19,9 @@
   <button class="btn-header" id="story-playback-btn" aria-label="Play story" disabled>
     <svg id="story-playback-icon" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M8 5v14l11-7z"/></svg>
   </button>
+  <span id="story-current-time" class="story-time-label" hidden>0:00</span>
   <input type="range" id="story-seekbar" class="story-seekbar" min="0" max="1000" step="1" value="0" hidden>
+  <span id="story-duration" class="story-time-label story-duration" hidden>0:00</span>
   <div class="nav-and-settings">
     <button class="btn-settings" id="settings-btn" aria-label="Settings"><svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M19.14 12.94c.04-.3.06-.61.06-.94 0-.32-.02-.64-.07-.94l2.03-1.58c.18-.14.23-.41.12-.61l-1.92-3.32c-.12-.22-.37-.29-.59-.22l-2.39.96c-.5-.38-1.03-.7-1.62-.94l-.36-2.54c-.04-.24-.24-.41-.48-.41h-3.84c-.24 0-.43.17-.47.41l-.36 2.54c-.59.24-1.13.57-1.62.94l-2.39-.96c-.22-.08-.47 0-.59.22L2.74 8.87c-.12.21-.08.47.12.61l2.03 1.58c-.05.3-.09.63-.09.94s.02.64.07.94l-2.03 1.58c-.18.14-.23.41-.12.61l1.92 3.32c.12.22.37.29.59.22l2.39-.96c.5.38 1.03.7 1.62.94l.36 2.54c.05.24.24.41.48.41h3.84c.24 0 .44-.17.47-.41l.36-2.54c.59-.24 1.13-.56 1.62-.94l2.39.96c.22.08.47 0 .59-.22l1.92-3.32c.12-.22.07-.47-.12-.61l-2.01-1.58zM12 15.6c-1.98 0-3.6-1.62-3.6-3.6s1.62-3.6 3.6-3.6 3.6 1.62 3.6 3.6-1.62 3.6-3.6 3.6z"/></svg></button>
     {{template "app_nav" .}}
@@ -89,18 +91,25 @@
   </div>
 </div>
 
-<main class="story-body">
+<div class="story-title-bar">
   <div class="story-shell">
-    <div class="story-top-bar">
-      <a class="story-back-link" href="/stories">← Back to stories</a>
-      <div class="story-top-bar-actions">
-        <button class="btn-save story-gen-btn" id="story-gen-translation-btn" disabled>Generate translation</button>
-        <button class="btn-save story-gen-btn" id="story-gen-btn" disabled>Generate audio</button>
-      </div>
-    </div>
     <h1 id="story-title" class="story-title"></h1>
-    <div id="story-content" class="story-content"></div>
-    <p id="story-error" class="story-error" hidden>Could not load this story.</p>
+  </div>
+</div>
+
+<main class="story-body">
+  <div class="story-scroll-area">
+    <div class="story-shell">
+      <div class="story-top-bar">
+        <a class="story-back-link" href="/stories">← Back to stories</a>
+        <div class="story-top-bar-actions">
+          <button class="btn-save story-gen-btn" id="story-gen-translation-btn" disabled>Generate translation</button>
+          <button class="btn-save story-gen-btn" id="story-gen-btn" disabled>Generate audio</button>
+        </div>
+      </div>
+      <div id="story-content" class="story-content"></div>
+      <p id="story-error" class="story-error" hidden>Could not load this story.</p>
+    </div>
   </div>
 </main>
 

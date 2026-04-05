@@ -332,8 +332,8 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 1.6rem;
-  height: 1.6rem;
+  width: 1.25rem;
+  height: 1.25rem;
   border-radius: 50%;
   background: rgba(137, 180, 250, 0.85);
   color: #1e1e2e;
@@ -424,7 +424,8 @@
   margin-top: 0.55rem;
   padding-top: 0.45rem;
   border-top: 1px solid rgba(137, 180, 250, 0.18);
-  color: #cdd6f4;
+  color: #6c7086;
+  font-size: 0.82em;
 }
 
 /* ── Generate translation modal ──────────────────────────────────────────── */

@@ -110,7 +110,7 @@ const state = {
   playbackRate: 1.0,
   speechText: '',
   sentencePlayBtnTargetIdx: -1,
-  sentencePlayFadeTimer: null,
+  sentencePlayHideTimer: null,
 };
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -254,71 +254,57 @@ function clearHighlight() {
 }
 
 // ── Floating sentence play button ─────────────────────────────────────────────
-function cancelSentencePlayFade() {
-  if (state.sentencePlayFadeTimer !== null) {
-    clearTimeout(state.sentencePlayFadeTimer);
-    state.sentencePlayFadeTimer = null;
+function hideSentencePlayBtn() {
+  els.sentencePlayBtn.style.opacity = '0';
+  els.sentencePlayBtn.style.pointerEvents = 'none';
+  state.sentencePlayBtnTargetIdx = -1;
+}
+
+function scheduleSentencePlayHide() {
+  if (state.sentencePlayHideTimer !== null) clearTimeout(state.sentencePlayHideTimer);
+  state.sentencePlayHideTimer = setTimeout(() => {
+    state.sentencePlayHideTimer = null;
+    hideSentencePlayBtn();
+  }, 230);
+}
+
+function cancelSentencePlayHide() {
+  if (state.sentencePlayHideTimer !== null) {
+    clearTimeout(state.sentencePlayHideTimer);
+    state.sentencePlayHideTimer = null;
   }
 }
 
-function scheduleSentencePlayFade() {
-  state.sentencePlayFadeTimer = setTimeout(() => {
-    state.sentencePlayFadeTimer = null;
-    fadeSentencePlayBtn();
-  }, 1200);
-}
-
-function fadeSentencePlayBtn() {
-  els.sentencePlayBtn.style.transition = 'opacity 0.8s ease';
-  els.sentencePlayBtn.style.opacity = '0';
-  state.sentencePlayFadeTimer = setTimeout(() => {
-    els.sentencePlayBtn.style.pointerEvents = 'none';
-    state.sentencePlayBtnTargetIdx = -1;
-    state.sentencePlayFadeTimer = null;
-  }, 800);
-}
-
 function showSentencePlayBtn(idx) {
-  cancelSentencePlayFade();
+  cancelSentencePlayHide();
   state.sentencePlayBtnTargetIdx = idx;
   const span = state.sentenceSpans[idx];
   const firstWord = span?.querySelector('.story-word');
   const rect = (firstWord ?? span)?.getBoundingClientRect();
   if (!rect) return;
   const btnSize = els.sentencePlayBtn.offsetHeight || 20;
-  els.sentencePlayBtn.style.transition = 'opacity 0.1s ease';
   els.sentencePlayBtn.style.opacity = '1';
   els.sentencePlayBtn.style.pointerEvents = 'auto';
   els.sentencePlayBtn.style.left = `${rect.left - btnSize / 1.4}px`;
-  els.sentencePlayBtn.style.top = `${rect.top - btnSize / 1.1}px`;
-  scheduleSentencePlayFade();
+  els.sentencePlayBtn.style.top = `${rect.top - btnSize / 1.4}px`;
   updateSentencePlayBtnIcon();
 }
 
-els.sentencePlayBtn.addEventListener('mouseenter', () => {
-  cancelSentencePlayFade();
-  els.sentencePlayBtn.style.transition = 'opacity 0.1s ease';
-  els.sentencePlayBtn.style.opacity = '1';
-});
-els.sentencePlayBtn.addEventListener('mouseleave', () => {
-  if (state.sentencePlayBtnTargetIdx >= 0) scheduleSentencePlayFade();
-});
+els.sentencePlayBtn.addEventListener('mouseenter', cancelSentencePlayHide);
+els.sentencePlayBtn.addEventListener('mouseleave', scheduleSentencePlayHide);
 els.sentencePlayBtn.addEventListener('click', async () => {
   const idx = state.sentencePlayBtnTargetIdx;
   if (idx < 0) return;
 
   if (isSentencePlaying(idx)) {
-    // Stop — show play icon immediately, keep button visible, restart fade timer.
     if (state.audioMode) stopAudio();
     else stopSpeechPlayback();
     els.sentencePlayBtn.innerHTML = ICON_PLAY_SM;
     els.sentencePlayBtn.setAttribute('aria-label', 'Play from this sentence');
-    if (state.sentencePlayFadeTimer === null) scheduleSentencePlayFade();
     return;
   }
 
-  // Play — keep button visible; cancel fade timer so stop button stays up.
-  cancelSentencePlayFade();
+  // (no timer management needed — button visibility is driven by hover)
 
   if (state.audioMode) {
     startAudio(idx, 0);
@@ -1048,6 +1034,7 @@ function renderStory(story) {
       sentenceSpan.appendChild(wordSpan);
     }
     sentenceSpan.addEventListener('mouseenter', () => showSentencePlayBtn(i));
+    sentenceSpan.addEventListener('mouseleave', scheduleSentencePlayHide);
     currentParagraph.appendChild(sentenceSpan);
     currentParagraph.appendChild(document.createTextNode(' '));
     state.sentenceSpans.push(sentenceSpan);

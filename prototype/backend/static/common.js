@@ -655,7 +655,12 @@ document.addEventListener('mousemove', e => {
 });
 
 export function refreshTooltip(el) {
-  if (_activeTooltipEl === el) _hoverTooltip.textContent = el.dataset.tooltip;
+  if (_activeTooltipEl !== el) return;
+  if (el.dataset.tooltipHtml !== undefined) {
+    _hoverTooltip.innerHTML = el.dataset.tooltipHtml;
+  } else {
+    _hoverTooltip.textContent = el.dataset.tooltip;
+  }
 }
 
 export function renderWordTooltipKanji(container, word, kanjiMap) {

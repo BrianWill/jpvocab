@@ -1,6 +1,7 @@
-import { getTtsVoice, getVoicevoxSettings, checkVoicevoxAvailable, playDing, PROVIDER_MODELS } from './common.js';
+import { getTtsVoice, getVoicevoxSettings, checkVoicevoxAvailable, playDing, PROVIDER_MODELS, refreshTooltip } from './common.js';
 import { esc } from './lexicon-utils.js';
 import { initGenerateModals, populateTranslationModelSelect } from './story-generate.js';
+import { initPlayback, applyAudioState, showSentencePlayBtn, scheduleSentencePlayHide, hideSentencePlayBtn, cancelSentencePlayHide, stopPlayback } from './story-playback.js';
 
 // ── DOM refs ──────────────────────────────────────────────────────────────────
 const els = {
@@ -59,7 +60,7 @@ els.genTranslationModalClose = els.genTranslationModalBackdrop.querySelector('.m
   els.sentencePlayBtn = btn;
 }
 
-// ── Playback state ────────────────────────────────────────────────────────────
+// ── State ─────────────────────────────────────────────────────────────────────
 const state = {
   activeIdx: -1,
   audioEl: null,
@@ -97,13 +98,6 @@ function isPunctuation(w) {
   return !/[\u3040-\u30FF\u4E00-\u9FFFa-zA-Z0-9]/.test(w);
 }
 
-function formatDuration(ms) {
-  const totalSeconds = Math.max(0, Math.round(ms / 1000));
-  const minutes = Math.floor(totalSeconds / 60);
-  const seconds = totalSeconds % 60;
-  return `${minutes}:${String(seconds).padStart(2, '0')}`;
-}
-
 function pluralize(count, singular, plural = singular + 's') {
   return `${count} ${count === 1 ? singular : plural}`;
 }
@@ -115,309 +109,7 @@ function storyIdFromPath() {
 }
 const STORY_ID = storyIdFromPath();
 
-// ── Speed stepper ─────────────────────────────────────────────────────────────
-const SPEED_STEPPER_INTERVAL = 230;
-
-function clampPlaybackRate(rate) {
-  return Math.min(2.0, Math.max(0.5, parseFloat(rate.toFixed(2))));
-}
-
-async function restartPlaybackForRateChange() {
-  if (state.audioMode) {
-    if (state.audioEl) state.audioEl.playbackRate = state.playbackRate;
-    return;
-  }
-
-  if (!window.speechSynthesis.speaking) return;
-  stopSpeechPlayback();
-  await startSpeechPlayback();
-}
-
-async function setPlaybackRate(nextRate) {
-  const clamped = clampPlaybackRate(nextRate);
-  if (clamped === state.playbackRate) {
-    els.speedVal.textContent = clamped.toFixed(2);
-    return;
-  }
-
-  state.playbackRate = clamped;
-  els.speedVal.textContent = state.playbackRate.toFixed(2);
-  await restartPlaybackForRateChange();
-}
-
-function attachHoldRateButton(button, delta) {
-  let stepTimer = null;
-  let suppressClick = false;
-
-  const stopStep = () => {
-    if (stepTimer) {
-      clearInterval(stepTimer);
-      stepTimer = null;
-    }
-  };
-
-  const startStep = () => {
-    suppressClick = true;
-    setPlaybackRate(state.playbackRate + delta);
-    stepTimer = setInterval(() => {
-      setPlaybackRate(state.playbackRate + delta);
-    }, SPEED_STEPPER_INTERVAL);
-  };
-
-  button.addEventListener('pointerdown', event => {
-    if (event.button !== 0) return;
-    stopStep();
-    startStep();
-  });
-  button.addEventListener('pointerup', stopStep);
-  button.addEventListener('pointercancel', stopStep);
-  button.addEventListener('pointerleave', stopStep);
-  button.addEventListener('click', event => {
-    if (suppressClick) {
-      suppressClick = false;
-      event.preventDefault();
-      return;
-    }
-    setPlaybackRate(state.playbackRate + delta);
-  });
-}
-
-attachHoldRateButton(els.speedDec, -0.05);
-attachHoldRateButton(els.speedInc, 0.05);
-
-// ── Icons ─────────────────────────────────────────────────────────────────────
-const ICON_PLAY = '<path d="M8 5v14l11-7z"/>';
-const ICON_STOP = '<rect x="6" y="6" width="12" height="12"/>';
-const ICON_PLAY_SM = '<svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M8 5v14l11-7z"/></svg>';
-const ICON_STOP_SM = '<svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><rect x="6" y="6" width="12" height="12"/></svg>';
-
-function isSentencePlaying(idx) {
-  if (state.audioMode) return state.audioSentenceIdx === idx && !!state.audioEl && !state.audioEl.paused;
-  return state.activeIdx === idx && window.speechSynthesis.speaking;
-}
-
-function updateSentencePlayBtnIcon() {
-  const idx = state.sentencePlayBtnTargetIdx;
-  if (idx < 0) return;
-  const playing = isSentencePlaying(idx);
-  els.sentencePlayBtn.innerHTML = playing ? ICON_STOP_SM : ICON_PLAY_SM;
-  els.sentencePlayBtn.setAttribute('aria-label', playing ? 'Stop' : 'Play from this sentence');
-}
-
-function setPlaybackPlaying(playing) {
-  els.playbackIcon.innerHTML = playing ? ICON_STOP : ICON_PLAY;
-  els.playbackBtn.setAttribute('aria-label', playing ? 'Stop reading' : 'Play story');
-  updateSentencePlayBtnIcon();
-}
-
-// ── Sentence / word highlight (shared by both modes) ──────────────────────────
-function setActiveIdx(idx) {
-  state.sentenceSpans[state.activeIdx]?.classList.remove('story-sentence--active');
-  state.activeIdx = idx;
-  const span = state.sentenceSpans[state.activeIdx];
-  span?.classList.add('story-sentence--active');
-  span?.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
-  updateSentencePlayBtnIcon();
-}
-
-function clearHighlight() {
-  state.sentenceSpans[state.activeIdx]?.classList.remove('story-sentence--active');
-  state.activeIdx = -1;
-  state.resumeOffset = 0;
-  state.lastWordAbsPos = 0;
-}
-
-// ── Floating sentence play button ─────────────────────────────────────────────
-function hideSentencePlayBtn() {
-  els.sentencePlayBtn.style.opacity = '0';
-  els.sentencePlayBtn.style.pointerEvents = 'none';
-  state.sentencePlayBtnTargetIdx = -1;
-}
-
-function scheduleSentencePlayHide() {
-  if (state.sentencePlayHideTimer !== null) clearTimeout(state.sentencePlayHideTimer);
-  state.sentencePlayHideTimer = setTimeout(() => {
-    state.sentencePlayHideTimer = null;
-    hideSentencePlayBtn();
-  }, 230);
-}
-
-function cancelSentencePlayHide() {
-  if (state.sentencePlayHideTimer !== null) {
-    clearTimeout(state.sentencePlayHideTimer);
-    state.sentencePlayHideTimer = null;
-  }
-}
-
-function showSentencePlayBtn(idx) {
-  cancelSentencePlayHide();
-  state.sentencePlayBtnTargetIdx = idx;
-  const span = state.sentenceSpans[idx];
-  const firstWord = span?.querySelector('.story-word');
-  const rect = (firstWord ?? span)?.getBoundingClientRect();
-  if (!rect) return;
-  const btnSize = els.sentencePlayBtn.offsetHeight || 20;
-  els.sentencePlayBtn.style.opacity = '1';
-  els.sentencePlayBtn.style.pointerEvents = 'auto';
-  els.sentencePlayBtn.style.left = `${rect.left - btnSize / 1.4}px`;
-  els.sentencePlayBtn.style.top = `${rect.top - btnSize / 1.4}px`;
-  updateSentencePlayBtnIcon();
-}
-
-els.sentencePlayBtn.addEventListener('mouseenter', cancelSentencePlayHide);
-els.sentencePlayBtn.addEventListener('mouseleave', scheduleSentencePlayHide);
-els.sentencePlayBtn.addEventListener('click', async () => {
-  const idx = state.sentencePlayBtnTargetIdx;
-  if (idx < 0) return;
-
-  if (isSentencePlaying(idx)) {
-    if (state.audioMode) stopAudio();
-    else stopSpeechPlayback();
-    els.sentencePlayBtn.innerHTML = ICON_PLAY_SM;
-    els.sentencePlayBtn.setAttribute('aria-label', 'Play from this sentence');
-    return;
-  }
-
-  // (no timer management needed — button visibility is driven by hover)
-
-  if (state.audioMode) {
-    startAudio(idx, 0);
-  } else {
-    if (state.currentUtterance) {
-      state.currentUtterance.onboundary = null;
-      state.currentUtterance.onend = null;
-      state.currentUtterance.onerror = null;
-      state.currentUtterance = null;
-      window.speechSynthesis.cancel();
-    }
-    state.resumeOffset = state.sentenceOffsets[idx];
-    state.lastWordAbsPos = state.resumeOffset;
-    await startSpeechPlayback();
-  }
-});
-
-// ── Speech-synthesis mode ─────────────────────────────────────────────────────
-function highlightAt(charIndex) {
-  state.lastWordAbsPos = state.resumeOffset + charIndex;
-  const abs = state.lastWordAbsPos;
-
-  let sIdx = 0;
-  for (let i = 1; i < state.sentenceOffsets.length; i++) {
-    if (state.sentenceOffsets[i] <= abs) sIdx = i;
-    else break;
-  }
-  if (sIdx !== state.activeIdx) setActiveIdx(sIdx);
-}
-
-function stopSpeechPlayback() {
-  state.resumeOffset = state.lastWordAbsPos;
-  if (state.currentUtterance) {
-    state.currentUtterance.onboundary = null;
-    state.currentUtterance.onend = null;
-    state.currentUtterance.onerror = null;
-    state.currentUtterance = null;
-  }
-  window.speechSynthesis.cancel();
-  setPlaybackPlaying(false);
-}
-
-async function startSpeechPlayback() {
-  if (!speechSynthesis.getVoices().length) {
-    await new Promise(resolve => speechSynthesis.addEventListener('voiceschanged', resolve, { once: true }));
-  }
-  state.currentUtterance = new SpeechSynthesisUtterance(state.speechText.slice(state.resumeOffset));
-  state.currentUtterance.lang = 'ja-JP';
-  state.currentUtterance.rate = state.playbackRate;
-  const voice = getTtsVoice('ja-JP');
-  if (voice) state.currentUtterance.voice = voice;
-  state.currentUtterance.onboundary = e => highlightAt(e.charIndex);
-  state.currentUtterance.onend = () => { state.currentUtterance = null; clearHighlight(); setPlaybackPlaying(false); };
-  state.currentUtterance.onerror = () => { state.currentUtterance = null; clearHighlight(); setPlaybackPlaying(false); };
-  window.speechSynthesis.speak(state.currentUtterance);
-  setPlaybackPlaying(true);
-}
-
-// ── Audio-file mode ───────────────────────────────────────────────────────────
-function audioFileUrl(sentencePosition) {
-  return `/static/audio/story_${STORY_ID}/sentence_${sentencePosition}.ogg`;
-}
-
-function seekbarPositionMs() {
-  // Current playback position in the full story timeline (ms).
-  if (!state.audioEl) return 0;
-  return state.sentenceCumulative[state.audioSentenceIdx] + state.audioEl.currentTime * 1000;
-}
-
-function setCurrentTimeLabel(positionMs) {
-  els.currentTime.textContent = formatDuration(positionMs);
-}
-
-function updateSeekbar() {
-  if (state.seekbarDragging || state.totalDurationMs === 0) return;
-  const positionMs = seekbarPositionMs();
-  els.seekbar.value = Math.round(positionMs / state.totalDurationMs * 1000);
-  setCurrentTimeLabel(positionMs);
-}
-
-function loadSentenceAudio(idx, startSec = 0) {
-  if (idx >= state.sentenceSpans.length) {
-    // Reached end of story.
-    clearHighlight();
-    setPlaybackPlaying(false);
-    els.seekbar.value = 1000;
-    setCurrentTimeLabel(state.totalDurationMs);
-    return;
-  }
-  state.audioSentenceIdx = idx;
-  setActiveIdx(idx);
-
-  const sentence = state.story.sentences[idx];
-  state.audioEl.src = audioFileUrl(sentence.position);
-  state.audioEl.playbackRate = state.playbackRate;
-  state.audioEl.currentTime = startSec;
-  setCurrentTimeLabel(state.sentenceCumulative[idx] + startSec * 1000);
-  state.audioEl.play().catch(() => {});
-}
-
-function stopAudio() {
-  state.audioEl.pause();
-  setPlaybackPlaying(false);
-  // Keep highlight and position for resume.
-}
-
-function startAudio(idx = state.audioSentenceIdx, startSec = 0) {
-  loadSentenceAudio(idx, startSec);
-  setPlaybackPlaying(true);
-}
-
-function seekToAudioPosition(positionMs) {
-  // Find which sentence contains positionMs.
-  let idx = 0;
-  for (let i = state.sentenceCumulative.length - 1; i >= 0; i--) {
-    if (state.sentenceCumulative[i] <= positionMs) { idx = i; break; }
-  }
-  const offsetMs = positionMs - state.sentenceCumulative[idx];
-  startAudio(idx, offsetMs / 1000);
-}
-
-// ── Play/stop button ──────────────────────────────────────────────────────────
-els.playbackBtn.addEventListener('click', async () => {
-  if (state.audioMode) {
-    if (!state.audioEl.paused) {
-      stopAudio();
-    } else {
-      startAudio(state.audioSentenceIdx, state.audioEl.currentTime);
-    }
-    return;
-  }
-  if (window.speechSynthesis.speaking) {
-    stopSpeechPlayback();
-  } else {
-    await startSpeechPlayback();
-  }
-});
-
-
+// ── Noted words ───────────────────────────────────────────────────────────────
 function escapeTooltipText(s) {
   return esc(String(s ?? '')).replace(/\n/g, '<br>');
 }
@@ -426,7 +118,7 @@ function isWordNoted(baseWord) {
   return state.notedWords.some(word => word.baseWord === baseWord);
 }
 
-function buildWordTooltipHtml(word, sentenceEnglish) {
+function buildWordTooltipHtml(word, sentenceEnglish, isNoted = isWordNoted(word.baseWord)) {
   const ispunct = isPunctuation(word.displayWord);
   const wordTranslation = ispunct ? '' : (word.english || '');
   let html = '';
@@ -438,7 +130,7 @@ function buildWordTooltipHtml(word, sentenceEnglish) {
   if (!ispunct) {
     if (html) html += '<br><br>';
     html += '<span class="tooltip-word-note">' +
-      esc(isWordNoted(word.baseWord) ? 'Already in noted words' : 'Click to add this word to noted words') +
+      esc(isNoted ? 'Click to remove from noted words' : 'Click to add this word to noted words') +
       '</span>';
   }
   return html;
@@ -517,39 +209,6 @@ async function removeNotedWord(baseWord) {
   }
 }
 
-// ── Seekbar interaction ───────────────────────────────────────────────────────
-els.seekbar.addEventListener('mousedown', () => { state.seekbarDragging = true; });
-els.seekbar.addEventListener('mouseup', () => {
-  state.seekbarDragging = false;
-  if (!state.audioMode) return;
-  const posMs = els.seekbar.value / 1000 * state.totalDurationMs;
-  const wasPlaying = !state.audioEl.paused;
-  seekToAudioPosition(posMs);
-  if (!wasPlaying) { state.audioEl.pause(); setPlaybackPlaying(false); }
-});
-els.seekbar.addEventListener('input', () => {
-  if (!state.audioMode) return;
-  const posMs = els.seekbar.value / 1000 * state.totalDurationMs;
-  setCurrentTimeLabel(posMs);
-});
-
-// ── beforeunload cleanup ──────────────────────────────────────────────────────
-window.addEventListener('beforeunload', () => {
-  if (state.audioMode) state.audioEl?.pause();
-  else stopSpeechPlayback();
-});
-
-// ── Keyboard shortcuts ────────────────────────────────────────────────────────
-window.addEventListener('keydown', async e => {
-  if (e.code !== 'Space') return;
-  const activeEl = document.activeElement;
-  const tag = activeEl?.tagName;
-  if (tag === 'TEXTAREA' || tag === 'SELECT') return;
-  if (tag === 'INPUT' && activeEl?.type !== 'range') return;
-  e.preventDefault();
-  els.playbackBtn.click();
-});
-
 els.storyNotedTab.addEventListener('click', () => {
   setNotedWordsOpen(true);
 });
@@ -563,48 +222,6 @@ els.storyNotedList.addEventListener('click', event => {
   if (!btn) return;
   removeNotedWord(btn.dataset.baseWord).catch(() => {});
 });
-
-// ── Apply hasAudio state ──────────────────────────────────────────────────────
-function applyAudioState(story) {
-  state.story = story;
-  if (!story.hasAudio) {
-    els.seekbar.hidden = true;
-    els.currentTime.hidden = true;
-    els.duration.hidden = true;
-    state.audioMode = false;
-    return;
-  }
-
-  state.sentenceDurations = story.sentences.map(s => s.audioDurationMs ?? 0);
-  state.sentenceCumulative = [];
-  let cum = 0;
-  for (const d of state.sentenceDurations) {
-    state.sentenceCumulative.push(cum);
-    cum += d;
-  }
-  state.totalDurationMs = cum;
-
-  if (!state.audioEl) {
-    state.audioEl = new Audio();
-    state.audioEl.addEventListener('ended', () => {
-      loadSentenceAudio(state.audioSentenceIdx + 1, 0);
-    });
-    state.audioEl.addEventListener('timeupdate', () => {
-      updateSeekbar();
-    });
-    state.audioEl.addEventListener('pause', () => setPlaybackPlaying(false));
-    state.audioEl.addEventListener('play', () => setPlaybackPlaying(true));
-  }
-
-  state.audioMode = true;
-  state.audioSentenceIdx = 0;
-  els.currentTime.hidden = false;
-  els.seekbar.hidden = false;
-  els.seekbar.value = 0;
-  els.currentTime.textContent = '0:00';
-  els.duration.hidden = false;
-  els.duration.textContent = formatDuration(state.totalDurationMs);
-}
 
 // ── Render ────────────────────────────────────────────────────────────────────
 async function loadStory(id) {
@@ -675,7 +292,14 @@ function renderStory(story) {
         });
         wordSpan.addEventListener('click', () => {
           state.hoveredWord = word;
-          addHoveredWordToNotedWords().catch(() => {});
+          const currentlyNoted = isWordNoted(word.baseWord);
+          wordSpan.dataset.tooltipHtml = buildWordTooltipHtml(word, sentence.englishText, !currentlyNoted);
+          refreshTooltip(wordSpan);
+          if (currentlyNoted) {
+            removeNotedWord(word.baseWord).catch(() => {});
+          } else {
+            addHoveredWordToNotedWords().catch(() => {});
+          }
         });
       }
       state.wordTokenMetas.push({
@@ -717,14 +341,14 @@ function renderError() {
   els.storyError.hidden = false;
 }
 
+// ── Init ──────────────────────────────────────────────────────────────────────
+initPlayback(els, state, STORY_ID);
+
 initGenerateModals(els, state, {
   storyId: STORY_ID,
   onAudioDone: applyAudioState,
   onTranslationDone: renderStory,
-  stopPlayback: () => {
-    if (state.audioMode) { if (!state.audioEl.paused) stopAudio(); }
-    else if (window.speechSynthesis.speaking) stopSpeechPlayback();
-  },
+  stopPlayback,
 });
 
 Promise.all([

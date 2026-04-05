@@ -1,6 +1,6 @@
 import { state as lexiconState, typeLabels, reloadWords, renderTable, getSortedWords, closeAddModal, updateWordImagePath, updateWordAudioFlags } from './lexicon.js';
 import { esc, isKanji, detailItemPosSelect, detailItemKanjiReadings, detailItemInput, detailItemExInput } from './lexicon-utils.js';
-import { getVoicevoxSettings, playWordAudio, playSentenceAudio } from './common.js';
+import { getVoicevoxSettings, playWordAudio, playSentenceAudio, playDing } from './common.js';
 
 const els = {
   addModalSaveBtn: document.querySelector('#add-modal-backdrop .btn-save'),
@@ -28,8 +28,10 @@ export const state = {
   addPhase: 'idle', // 'loading' | 'done' | 'cancelled'
   fieldErrorTimer: null,
   generateType: 'word-info',
+  generationCancelled: false,
   isSingleEdit: false,
   pendingGenerates: 0,
+  prevPendingGenerates: 0,
   pendingRemoveAction: null,
   skippedCount: 0,
 };
@@ -760,6 +762,7 @@ function clearAutofillSpinners() {
 }
 
 function cancelAllGenerates() {
+  state.generationCancelled = true;
   els.addResultBody.querySelectorAll('.btn-generate--cancellable').forEach(btn => {
     if (btn._generateAbort) btn._generateAbort.abort();
   });
@@ -840,6 +843,10 @@ async function generateAllAutofillBatch(rows) {
 }
 
 function renderStatus() {
+  if (state.pendingGenerates > 0 && state.prevPendingGenerates === 0) state.generationCancelled = false;
+  if (state.prevPendingGenerates > 0 && state.pendingGenerates === 0 && !state.generationCancelled) playDing();
+  state.prevPendingGenerates = state.pendingGenerates;
+
   els.addResultTitle.textContent = 'Edit words';
 
   const locked = state.addPhase === 'loading' || state.pendingGenerates > 0;
@@ -901,7 +908,8 @@ function renderStatus() {
             '</button>'
           ).join('') +
         '</div>' +
-      '</div>';
+      '</div>' +
+      (state.generateType === 'audio' ? '<span class="provider-info-icon" data-tooltip="VoiceVox must be running on this &#10;machine at http://localhost:50021&#10;&#10;Download: https://voicevox.hiroshiba.jp/">?</span>' : '');
   if (actionEl) {
     actionEl.innerHTML = actionHtml;
     if (state.pendingGenerates > 0) {
@@ -1017,7 +1025,7 @@ function initAddResultFooter() {
       optgroupsHtml +
     '</select>' +
     (progTip ? '<span class="provider-info-icon" data-tooltip="' + progTip + '">?</span>' : '') +
-    '<div id="add-result-modal-action" style="margin-left:0.4rem"></div>' +
+    '<div id="add-result-modal-action" style="margin-left:0.4rem;display:flex;align-items:center;gap:0.4rem"></div>' +
     '<select id="add-result-image-source-select" class="add-result-model-select" style="display:none">' +
       imageSourceOptions +
     '</select>' +

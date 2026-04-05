@@ -2,13 +2,6 @@
 
 This file is random notes of possible features and bug fixes.
 
-- write the README
-    - need setup instructions
-        - add these instructions or link them on the welcome page
-    - explain drilling theory / workflow
-
-- clicking the image placeholder or thumbnail shoudl open a file dialog to upload an image file
-
 - story
     - hover tooltip should show translation of current word
     - display total audio time right of the seek bar
@@ -25,8 +18,7 @@ This file is random notes of possible features and bug fixes.
     - suggest words to add to lexicon
         - scan text to find most frequently occuring words in text that are candidates for the lexicon
     - click word to add to lexicon
-    - click word to modify its target count
-    
+    - click word to modify its target count    
 
 - experiment with openAI audio generation. Might be better quality than voicevox
 
@@ -43,8 +35,20 @@ This file is random notes of possible features and bug fixes.
     - once ready, we'll move the prototype project to main dir
 
 
+- write the README
+    - need setup instructions
+        - add these instructions or link them on the welcome page
+    - explain drilling theory / workflow
 
-- grammatical analysis
+- clicking the image placeholder or thumbnail shoudl open a file dialog to upload an image file
+
+- grammatical analysis of story sentences
+    - click sentence to open analysis modal 
+        - what is hotkey? how to distinguish from click-to-play? ctrl-click? hover popup next to sentence?
+        - uses AI to give breakdown of phrases / clauses
+        - has chat window so user can ask about points of grammar (continues context of the sentence breakdown)
+        - analysis and chat session of each sentence is preserved in db
+            - maybe option to clear the conversation?
     - sentence breakdown
     - isolate, classify, and explain phrases
 

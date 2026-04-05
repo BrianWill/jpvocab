@@ -1,4 +1,4 @@
-import { getTtsVoice, getVoicevoxSettings, checkVoicevoxAvailable } from './common.js';
+import { getTtsVoice, getVoicevoxSettings, checkVoicevoxAvailable, playDing } from './common.js';
 
 // ── DOM refs ──────────────────────────────────────────────────────────────────
 const els = {
@@ -404,6 +404,8 @@ els.genModalConfirm.addEventListener('click', async () => {
   state.generateController = null;
 
   if (allDone) {
+    playDing();
+
     // Unlock the modal so the user can close it manually; keep the progress view visible.
     state.generating = false;
     els.genCancelGenerationBtn.classList.add('hidden');

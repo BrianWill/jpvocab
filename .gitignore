@@ -83,3 +83,5 @@ prototype/backend/jpvocab-backend
 
 prototype/tmp/
 *.stackdump
+
+prototype/backend/static/images/words/

@@ -47,15 +47,16 @@
       </div>
       <div id="gen-translation-progress-body" class="hidden">
         <div class="gen-translation-spinner-row">
-          <span class="spinner"></span>
+          <span id="gen-translation-spinner" class="spinner"></span>
           <span id="gen-translation-status-text" class="gen-translation-status-text"></span>
         </div>
       </div>
     </div>
     <div class="modal-footer">
-      <button class="btn-cancel" id="story-gen-translation-modal-cancel">Cancel</button>
-      <button class="btn-save" id="story-gen-translation-modal-confirm" disabled>Generate</button>
-      <button class="btn-save hidden" id="story-gen-translation-modal-done">Done</button>
+      <button class="btn-danger" id="story-gen-translation-modal-cancel">Cancel</button>
+      <button class="btn-danger hidden" id="story-gen-translation-modal-cancel-gen">Cancel</button>
+      <button class="btn-save btn-save--dirty" id="story-gen-translation-modal-confirm" disabled>Generate</button>
+      <button class="btn-save btn-save--dirty hidden" id="story-gen-translation-modal-done">Done</button>
     </div>
   </div>
 </div>

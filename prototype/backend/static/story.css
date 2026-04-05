@@ -97,6 +97,9 @@
   cursor: pointer;
   border-radius: 2px;
 }
+.story-word--translated:hover {
+  color: #89b4fa;
+}
 
 .story-end-mark {
   margin-top: 3rem;

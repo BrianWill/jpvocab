@@ -10,6 +10,7 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/go-chi/chi/v5"
 )
@@ -297,7 +298,23 @@ func apiGenerateStoryTranslation(db *sql.DB) http.HandlerFunc {
 			"wordCount":     len(wordsToGloss),
 		})
 
+		// Send periodic heartbeats so the client knows the request is still alive.
+		done := make(chan struct{})
+		go func() {
+			ticker := time.NewTicker(3 * time.Second)
+			defer ticker.Stop()
+			for {
+				select {
+				case <-ticker.C:
+					streamEvent(map[string]string{"status": "working"})
+				case <-done:
+					return
+				}
+			}
+		}()
+
 		result, err := translateStory(sentenceTexts, wordsToGloss, body.AIModel)
+		close(done)
 		if err != nil {
 			streamEvent(map[string]string{"error": err.Error()})
 			return

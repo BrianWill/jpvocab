@@ -4,9 +4,6 @@ This file is random notes of possible features and bug fixes.
 
 - story
     - "tts" used in the code / html / css for funcationality that is about audio playback, not just tts specifically
-    - generate AI translation
-        - for both words and complete sentences
-        - for words, use existing translations in db if we have them
     - display total audio time right of the seek bar
         - hover over seek should indicate the time mark of that position
     - changing playback speed while playing TTS should pause and resume the audio so that the audio speed changes immediately

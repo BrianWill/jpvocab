@@ -16,11 +16,13 @@ const els = {
   genTranslationConfirmBody: document.getElementById('gen-translation-confirm-body'),
   genTranslationModalBackdrop: document.getElementById('story-gen-translation-modal-backdrop'),
   genTranslationModalCancel: document.getElementById('story-gen-translation-modal-cancel'),
+  genTranslationModalCancelGen: document.getElementById('story-gen-translation-modal-cancel-gen'),
   genTranslationModalConfirm: document.getElementById('story-gen-translation-modal-confirm'),
   genTranslationModalDone: document.getElementById('story-gen-translation-modal-done'),
   genTranslationModelSelect: document.getElementById('story-gen-translation-model-select'),
   genTranslationProgressBody: document.getElementById('gen-translation-progress-body'),
   genTranslationProviderInfo: document.getElementById('story-gen-translation-provider-info'),
+  genTranslationSpinner: document.getElementById('gen-translation-spinner'),
   genTranslationStatusText: document.getElementById('gen-translation-status-text'),
   seekbar: document.getElementById('story-seekbar'),
   speedDec: document.getElementById('story-speed-dec'),
@@ -424,6 +426,7 @@ function setTranslationModalGenerating(generating) {
   els.genTranslationConfirmBody.classList.toggle('hidden', generating);
   els.genTranslationProgressBody.classList.toggle('hidden', !generating);
   els.genTranslationModalCancel.classList.toggle('hidden', generating);
+  els.genTranslationModalCancelGen.classList.toggle('hidden', !generating);
   els.genTranslationModalConfirm.classList.toggle('hidden', generating);
   els.genTranslationModalDone.classList.add('hidden');
   els.genTranslationModalClose.disabled = generating;
@@ -442,6 +445,9 @@ function closeTranslationModal() {
 els.genTranslationBtn.addEventListener('click', openTranslationModal);
 els.genTranslationModalClose.addEventListener('click', closeTranslationModal);
 els.genTranslationModalCancel.addEventListener('click', closeTranslationModal);
+els.genTranslationModalCancelGen.addEventListener('click', () => {
+  if (state.translationController) state.translationController.abort();
+});
 els.genTranslationModalBackdrop.addEventListener('click', e => {
   if (e.target === els.genTranslationModalBackdrop) closeTranslationModal();
 });
@@ -457,6 +463,20 @@ els.genTranslationModalConfirm.addEventListener('click', async () => {
   els.genTranslationStatusText.textContent = 'Translating…';
 
   let allDone = false;
+  let baseStatusText = 'Translating…';
+  let elapsedSecs = 0;
+  let elapsedTimer = null;
+
+  const startElapsedTimer = () => {
+    elapsedTimer = setInterval(() => {
+      elapsedSecs++;
+      els.genTranslationStatusText.textContent = `${baseStatusText} (${elapsedSecs}s)`;
+    }, 1000);
+  };
+  const stopElapsedTimer = () => {
+    if (elapsedTimer !== null) { clearInterval(elapsedTimer); elapsedTimer = null; }
+  };
+
   try {
     const res = await fetch(`/api/stories/${STORY_ID}/generate-translation`, {
       method: 'POST',
@@ -481,10 +501,12 @@ els.genTranslationModalConfirm.addEventListener('click', async () => {
           let msg;
           try { msg = JSON.parse(line); } catch (_) { continue; }
           if (msg.status === 'translating') {
-            els.genTranslationStatusText.textContent =
+            baseStatusText =
               `Translating ${msg.sentenceCount} sentence${msg.sentenceCount !== 1 ? 's' : ''}` +
               (msg.wordCount > 0 ? ` and ${msg.wordCount} word${msg.wordCount !== 1 ? 's' : ''}` : '') +
               '…';
+            els.genTranslationStatusText.textContent = baseStatusText;
+            startElapsedTimer();
           } else if (msg.allDone) {
             allDone = true;
           }
@@ -495,11 +517,16 @@ els.genTranslationModalConfirm.addEventListener('click', async () => {
     // Aborted or network error.
   }
 
+  stopElapsedTimer();
+
   state.translationController = null;
 
   if (allDone) {
     playDing();
     state.translating = false;
+    els.genTranslationSpinner.classList.add('hidden');
+    els.genTranslationModalCancelGen.classList.add('hidden');
+    els.genTranslationStatusText.textContent = baseStatusText.replace(/^Translating/, 'Translated').replace(/….*$/, '.');
     els.genTranslationModalConfirm.classList.add('hidden');
     els.genTranslationModalDone.classList.remove('hidden');
     els.genTranslationModalClose.disabled = false;
@@ -698,13 +725,14 @@ function renderStory(story) {
       if (wordTranslation || sentence.englishText) {
         let html = '';
         if (sentence.englishText) html += esc(sentence.englishText);
-        if (!ispunct) {
+        if (!ispunct && wordTranslation) {
           if (sentence.englishText) html += '<br><br>';
-          html += '<strong><span class="tooltip-word-label">' + esc(word.displayWord) + '</span></strong>: ' + esc(wordTranslation);
+          html += '<strong><span class="tooltip-word-label">' + esc(word.displayWord) + ':</span></strong> ' + esc(wordTranslation);
         }
         wordSpan.dataset.tooltipHtml = html;
         wordSpan.dataset.tooltipClass = 'tooltip-translation';
       }
+      if (wordTranslation) wordSpan.classList.add('story-word--translated');
       sentenceSpan.appendChild(wordSpan);
       wordOffset += word.displayWord.length;
     }

@@ -127,6 +127,7 @@ body {
   font-size: 0.65rem;
   color: #cdd6f4;
   z-index: 200;
+  width: max-content;
   max-width: 320px;
   white-space: pre-line;
 }
@@ -395,6 +396,8 @@ body {
   animation: spin 0.7s linear infinite;
   flex-shrink: 0;
 }
+
+.spinner.hidden { display: none; }
 
 /* --- Modal status bar --- */
 .modal-status {

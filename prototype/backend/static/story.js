@@ -1,5 +1,6 @@
 import { getTtsVoice, getVoicevoxSettings, checkVoicevoxAvailable, playDing, PROVIDER_MODELS } from './common.js';
 import { esc } from './lexicon-utils.js';
+import { initGenerateModals, populateTranslationModelSelect } from './story-generate.js';
 
 // ── DOM refs ──────────────────────────────────────────────────────────────────
 const els = {
@@ -455,6 +456,8 @@ function setNotedWordsOpen(open) {
   state.notedWordsOpen = !!open;
   els.storyLayout.classList.toggle('story-layout--noted-open', state.notedWordsOpen);
   els.storyNotedTab.textContent = `Noted Words (${state.notedWords.length})`;
+  cancelSentencePlayHide();
+  hideSentencePlayBtn();
 }
 
 function renderNotedWords(autoOpen = false) {
@@ -560,330 +563,6 @@ els.storyNotedList.addEventListener('click', event => {
   if (!btn) return;
   removeNotedWord(btn.dataset.baseWord).catch(() => {});
 });
-
-// ── Generate audio ────────────────────────────────────────────────────────────
-function openGenModal() {
-  if (state.audioMode) { if (!state.audioEl.paused) stopAudio(); }
-  else if (window.speechSynthesis.speaking) stopSpeechPlayback();
-  // Always reset to confirmation state when opening.
-  setModalGenerating(false);
-  els.genModalBackdrop.classList.remove('hidden');
-}
-
-function closeGenModal() {
-  if (state.generating) return;
-  els.genModalBackdrop.classList.add('hidden');
-}
-
-function setModalGenerating(generating) {
-  state.generating = generating;
-  els.genConfirmBody.classList.toggle('hidden', generating);
-  els.genProgressBody.classList.toggle('hidden', !generating);
-  els.genModalCancel.classList.toggle('hidden', generating);
-  els.genModalConfirm.classList.toggle('hidden', generating);
-  els.genCancelGenerationBtn.classList.toggle('hidden', !generating);
-  els.genModalDone.classList.add('hidden');
-  els.genModalClose.disabled = generating;
-}
-
-function buildSentenceList() {
-  els.genSentenceList.innerHTML = '';
-  for (const sentence of state.story.sentences) {
-    const text = sentence.words.map(w => w.displayWord).join('');
-    const preview = text.length > 35 ? text.slice(0, 35) + '…' : text;
-
-    const row = document.createElement('div');
-    row.className = 'gen-sentence-row';
-    row.id = `gen-row-${sentence.position}`;
-
-    const icon = document.createElement('span');
-    icon.className = 'gen-sentence-icon';
-    const dot = document.createElement('span');
-    dot.className = 'gen-pending-dot';
-    icon.appendChild(dot);
-
-    const previewEl = document.createElement('span');
-    previewEl.className = 'gen-sentence-preview';
-    previewEl.textContent = preview;
-
-    row.appendChild(icon);
-    row.appendChild(previewEl);
-    els.genSentenceList.appendChild(row);
-  }
-}
-
-function setRowActive(position) {
-  const row = document.getElementById(`gen-row-${position}`);
-  if (!row) return;
-  row.classList.add('gen-sentence-row--active');
-  const icon = row.querySelector('.gen-sentence-icon');
-  icon.innerHTML = '<span class="spinner"></span>';
-  row.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
-}
-
-function setRowDone(position) {
-  const row = document.getElementById(`gen-row-${position}`);
-  if (!row) return;
-  row.classList.remove('gen-sentence-row--active');
-  row.classList.add('gen-sentence-row--done');
-  const icon = row.querySelector('.gen-sentence-icon');
-  icon.innerHTML = '<span class="gen-checkmark">✓</span>';
-}
-
-function markNextRowActive(donePosition) {
-  const positions = state.story.sentences.map(s => s.position);
-  const idx = positions.indexOf(donePosition);
-  if (idx < 0 || idx + 1 >= positions.length) return;
-  const nextRow = document.getElementById(`gen-row-${positions[idx + 1]}`);
-  if (nextRow && !nextRow.classList.contains('gen-sentence-row--done')) {
-    setRowActive(positions[idx + 1]);
-  }
-}
-
-// ── Generate translation ──────────────────────────────────────────────────────
-function populateTranslationModelSelect(providers) {
-  const hasProviders = PROVIDER_MODELS.some(p => providers[p.key]);
-  const missingLines = PROVIDER_MODELS
-    .filter(p => !providers[p.key])
-    .map(p => p.label + ': set ' + p.envKey + ' to enable');
-  const tip = missingLines.length ? missingLines.join('\n') + '\n— then restart the program' : null;
-
-  let firstAvailSet = false;
-  const optgroupsHtml = PROVIDER_MODELS.map(({ key, label, models }) => {
-    const avail = providers[key];
-    const groupLabel = avail ? label : label + ' — no API key';
-    const options = models.map(([val, text], i) => {
-      const sel = avail && !firstAvailSet && i === 0 ? ' selected' : '';
-      if (sel) firstAvailSet = true;
-      return '<option value="' + val + '"' + sel + '>' + text + '</option>';
-    }).join('');
-    return '<optgroup label="' + groupLabel + '"' + (avail ? '' : ' disabled') + '>' + options + '</optgroup>';
-  }).join('');
-
-  els.genTranslationModelSelect.innerHTML =
-    (!hasProviders ? '<option value="" selected>no API keys configured</option>' : '') +
-    optgroupsHtml;
-  els.genTranslationModelSelect.disabled = !hasProviders;
-
-  if (tip) {
-    els.genTranslationProviderInfo.dataset.tooltip = tip;
-    els.genTranslationProviderInfo.style.display = '';
-  } else {
-    els.genTranslationProviderInfo.style.display = 'none';
-  }
-
-  els.genTranslationModalConfirm.disabled = !hasProviders;
-}
-
-function setTranslationModalGenerating(generating) {
-  state.translating = generating;
-  els.genTranslationConfirmBody.classList.toggle('hidden', generating);
-  els.genTranslationProgressBody.classList.toggle('hidden', !generating);
-  els.genTranslationModalCancel.classList.toggle('hidden', generating);
-  els.genTranslationModalCancelGen.classList.toggle('hidden', !generating);
-  els.genTranslationModalConfirm.classList.toggle('hidden', generating);
-  els.genTranslationModalDone.classList.add('hidden');
-  els.genTranslationModalClose.disabled = generating;
-}
-
-function openTranslationModal() {
-  setTranslationModalGenerating(false);
-  els.genTranslationModalBackdrop.classList.remove('hidden');
-}
-
-function closeTranslationModal() {
-  if (state.translating) return;
-  els.genTranslationModalBackdrop.classList.add('hidden');
-}
-
-els.genTranslationBtn.addEventListener('click', openTranslationModal);
-els.genTranslationModalClose.addEventListener('click', closeTranslationModal);
-els.genTranslationModalCancel.addEventListener('click', closeTranslationModal);
-els.genTranslationModalCancelGen.addEventListener('click', () => {
-  if (state.translationController) state.translationController.abort();
-});
-els.genTranslationModalBackdrop.addEventListener('click', e => {
-  if (e.target === els.genTranslationModalBackdrop) closeTranslationModal();
-});
-
-els.genTranslationModalConfirm.addEventListener('click', async () => {
-  if (state.translationController) return;
-
-  const aiModel = els.genTranslationModelSelect.value;
-  if (!aiModel) return;
-
-  state.translationController = new AbortController();
-  setTranslationModalGenerating(true);
-  els.genTranslationStatusText.textContent = 'Translating…';
-
-  let allDone = false;
-  let baseStatusText = 'Translating…';
-  let elapsedSecs = 0;
-  let elapsedTimer = null;
-
-  const startElapsedTimer = () => {
-    elapsedTimer = setInterval(() => {
-      elapsedSecs++;
-      els.genTranslationStatusText.textContent = `${baseStatusText} (${elapsedSecs}s)`;
-    }, 1000);
-  };
-  const stopElapsedTimer = () => {
-    if (elapsedTimer !== null) { clearInterval(elapsedTimer); elapsedTimer = null; }
-  };
-
-  try {
-    const res = await fetch(`/api/stories/${STORY_ID}/generate-translation`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ ai_model: aiModel }),
-      signal: state.translationController.signal,
-    });
-
-    if (res.ok) {
-      const reader = res.body.getReader();
-      const decoder = new TextDecoder();
-      let buf = '';
-      while (true) {
-        let value, done;
-        try { ({ value, done } = await reader.read()); } catch (_) { break; }
-        if (done) break;
-        buf += decoder.decode(value, { stream: true });
-        const lines = buf.split('\n');
-        buf = lines.pop();
-        for (const line of lines) {
-          if (!line.trim()) continue;
-          let msg;
-          try { msg = JSON.parse(line); } catch (_) { continue; }
-          if (msg.status === 'translating') {
-            baseStatusText =
-              `Translating ${msg.sentenceCount} sentence${msg.sentenceCount !== 1 ? 's' : ''}` +
-              (msg.wordCount > 0 ? ` and ${msg.wordCount} word${msg.wordCount !== 1 ? 's' : ''}` : '') +
-              '…';
-            els.genTranslationStatusText.textContent = baseStatusText;
-            startElapsedTimer();
-          } else if (msg.allDone) {
-            allDone = true;
-          }
-        }
-      }
-    }
-  } catch (_) {
-    // Aborted or network error.
-  }
-
-  stopElapsedTimer();
-
-  state.translationController = null;
-
-  if (allDone) {
-    playDing();
-    state.translating = false;
-    els.genTranslationSpinner.classList.add('hidden');
-    els.genTranslationModalCancelGen.classList.add('hidden');
-    els.genTranslationStatusText.textContent = baseStatusText.replace(/^Translating/, 'Translated').replace(/….*$/, '.');
-    els.genTranslationModalConfirm.classList.add('hidden');
-    els.genTranslationModalDone.classList.remove('hidden');
-    els.genTranslationModalClose.disabled = false;
-    // Reload the story to pick up new sentence translations and word glosses.
-    const updated = await fetch(`/api/stories/${STORY_ID}`).then(r => r.json());
-    renderStory(updated);
-  } else {
-    setTranslationModalGenerating(false);
-    closeTranslationModal();
-  }
-});
-
-els.genTranslationModalDone.addEventListener('click', closeTranslationModal);
-
-els.genBtn.addEventListener('click', openGenModal);
-els.genModalClose.addEventListener('click', closeGenModal);
-els.genModalCancel.addEventListener('click', closeGenModal);
-els.genModalBackdrop.addEventListener('click', e => { if (e.target === els.genModalBackdrop) closeGenModal(); });
-
-els.genModalConfirm.addEventListener('click', async () => {
-  if (state.generateController) return;
-
-  const vv = getVoicevoxSettings();
-  state.generateController = new AbortController();
-
-  const total = state.story?.sentences.length ?? 0;
-  let completed = 0;
-
-  function updateProgressCount() {
-    els.genProgressCount.textContent = `${completed} / ${total} sentences`;
-  }
-
-  buildSentenceList();
-  setModalGenerating(true);
-  updateProgressCount();
-  if (total > 0) {
-    setRowActive(state.story.sentences[0].position);
-  }
-
-  let allDone = false;
-  try {
-    const res = await fetch(`/api/stories/${STORY_ID}/generate-audio`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ speaker: vv.speaker, speedScale: vv.speedScale, intonationScale: vv.intonationScale }),
-      signal: state.generateController.signal,
-    });
-
-    if (res.ok) {
-      const reader = res.body.getReader();
-      const decoder = new TextDecoder();
-      let buf = '';
-      outer: while (true) {
-        let value, done;
-        try { ({ value, done } = await reader.read()); } catch (_) { break; }
-        if (done) break;
-        buf += decoder.decode(value, { stream: true });
-        const lines = buf.split('\n');
-        buf = lines.pop();
-        for (const line of lines) {
-          if (!line.trim()) continue;
-          let msg;
-          try { msg = JSON.parse(line); } catch (_) { continue; }
-          if (msg.sentencePosition !== undefined) {
-            completed++;
-            updateProgressCount();
-            setRowDone(msg.sentencePosition);
-            markNextRowActive(msg.sentencePosition);
-          } else if (msg.allDone) {
-            allDone = true;
-            break outer;
-          }
-        }
-      }
-    }
-  } catch (_) {
-    // Aborted or network error.
-  }
-
-  state.generateController = null;
-
-  if (allDone) {
-    playDing();
-
-    // Unlock the modal so the user can close it manually; keep the progress view visible.
-    state.generating = false;
-    els.genCancelGenerationBtn.classList.add('hidden');
-    els.genModalDone.classList.remove('hidden');
-    els.genModalClose.disabled = false;
-    const updated = await fetch(`/api/stories/${STORY_ID}`).then(r => r.json());
-    applyAudioState(updated);
-  } else {
-    // Cancelled or error — close and reset immediately.
-    setModalGenerating(false);
-    closeGenModal();
-  }
-});
-
-els.genCancelGenerationBtn.addEventListener('click', () => {
-  state.generateController?.abort();
-});
-
-els.genModalDone.addEventListener('click', closeGenModal);
 
 // ── Apply hasAudio state ──────────────────────────────────────────────────────
 function applyAudioState(story) {
@@ -1037,6 +716,16 @@ function renderStory(story) {
 function renderError() {
   els.storyError.hidden = false;
 }
+
+initGenerateModals(els, state, {
+  storyId: STORY_ID,
+  onAudioDone: applyAudioState,
+  onTranslationDone: renderStory,
+  stopPlayback: () => {
+    if (state.audioMode) { if (!state.audioEl.paused) stopAudio(); }
+    else if (window.speechSynthesis.speaking) stopSpeechPlayback();
+  },
+});
 
 Promise.all([
   loadStory(STORY_ID),

@@ -46,6 +46,18 @@ const els = {
 els.genModalClose = els.genModalBackdrop.querySelector('.modal-close');
 els.genTranslationModalClose = els.genTranslationModalBackdrop.querySelector('.modal-close');
 
+// Floating sentence-play button (created dynamically; positioned via JS)
+{
+  const btn = document.createElement('button');
+  btn.className = 'sentence-play-btn';
+  btn.setAttribute('aria-label', 'Play from this sentence');
+  btn.innerHTML = '<svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M8 5v14l11-7z"/></svg>';
+  btn.style.opacity = '0';
+  btn.style.pointerEvents = 'none';
+  document.body.appendChild(btn);
+  els.sentencePlayBtn = btn;
+}
+
 // ── Provider models (same list as lexicon-add-edit.js) ───────────────────────
 const PROVIDER_MODELS = [
   { key: 'anthropic', label: 'Anthropic', envKey: 'ANTHROPIC_API_KEY', models: [
@@ -98,6 +110,8 @@ const state = {
   wordTokenMetas: [],
   playbackRate: 1.0,
   speechText: '',
+  sentencePlayBtnTargetIdx: -1,
+  sentencePlayFadeTimer: null,
 };
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -222,6 +236,81 @@ function clearHighlight() {
   state.resumeOffset = 0;
   state.lastWordAbsPos = 0;
 }
+
+// ── Floating sentence play button ─────────────────────────────────────────────
+function fadeSentencePlayBtn() {
+  els.sentencePlayBtn.style.transition = 'opacity 0.8s ease';
+  els.sentencePlayBtn.style.opacity = '0';
+  state.sentencePlayFadeTimer = setTimeout(() => {
+    els.sentencePlayBtn.style.pointerEvents = 'none';
+    state.sentencePlayBtnTargetIdx = -1;
+    state.sentencePlayFadeTimer = null;
+  }, 800);
+}
+
+function showSentencePlayBtn(idx) {
+  if (state.sentencePlayFadeTimer !== null) {
+    clearTimeout(state.sentencePlayFadeTimer);
+    state.sentencePlayFadeTimer = null;
+  }
+  state.sentencePlayBtnTargetIdx = idx;
+  const span = state.sentenceSpans[idx];
+  const firstWord = span?.querySelector('.story-word');
+  const rect = (firstWord ?? span)?.getBoundingClientRect();
+  if (!rect) return;
+  const btnHeight = els.sentencePlayBtn.offsetHeight || 28;
+  els.sentencePlayBtn.style.transition = 'opacity 0.1s ease';
+  els.sentencePlayBtn.style.opacity = '1';
+  els.sentencePlayBtn.style.pointerEvents = 'auto';
+  els.sentencePlayBtn.style.left = `${rect.left}px`;
+  els.sentencePlayBtn.style.top = `${Math.max(4, rect.top - btnHeight - 4)}px`;
+  state.sentencePlayFadeTimer = setTimeout(() => {
+    state.sentencePlayFadeTimer = null;
+    fadeSentencePlayBtn();
+  }, 2500);
+}
+
+els.sentencePlayBtn.addEventListener('mouseenter', () => {
+  if (state.sentencePlayFadeTimer !== null) {
+    clearTimeout(state.sentencePlayFadeTimer);
+    state.sentencePlayFadeTimer = null;
+  }
+  els.sentencePlayBtn.style.transition = 'opacity 0.1s ease';
+  els.sentencePlayBtn.style.opacity = '1';
+});
+els.sentencePlayBtn.addEventListener('mouseleave', () => {
+  if (state.sentencePlayBtnTargetIdx >= 0) {
+    state.sentencePlayFadeTimer = setTimeout(() => {
+      state.sentencePlayFadeTimer = null;
+      fadeSentencePlayBtn();
+    }, 2500);
+  }
+});
+els.sentencePlayBtn.addEventListener('click', async () => {
+  const idx = state.sentencePlayBtnTargetIdx;
+  if (idx < 0) return;
+  clearTimeout(state.sentencePlayFadeTimer);
+  state.sentencePlayFadeTimer = null;
+  els.sentencePlayBtn.style.transition = 'none';
+  els.sentencePlayBtn.style.opacity = '0';
+  els.sentencePlayBtn.style.pointerEvents = 'none';
+  state.sentencePlayBtnTargetIdx = -1;
+
+  if (state.audioMode) {
+    startAudio(idx, 0);
+  } else {
+    if (state.currentUtterance) {
+      state.currentUtterance.onboundary = null;
+      state.currentUtterance.onend = null;
+      state.currentUtterance.onerror = null;
+      state.currentUtterance = null;
+      window.speechSynthesis.cancel();
+    }
+    state.resumeOffset = state.sentenceOffsets[idx];
+    state.lastWordAbsPos = state.resumeOffset;
+    await startSpeechPlayback();
+  }
+});
 
 // ── Speech-synthesis mode ─────────────────────────────────────────────────────
 function highlightAt(charIndex) {
@@ -970,6 +1059,7 @@ function renderStory(story) {
       sentenceSpan.appendChild(wordSpan);
       wordOffset += word.displayWord.length;
     }
+    sentenceSpan.addEventListener('mouseenter', () => showSentencePlayBtn(i));
     currentParagraph.appendChild(sentenceSpan);
     currentParagraph.appendChild(document.createTextNode(' '));
     state.sentenceSpans.push(sentenceSpan);

@@ -2,6 +2,8 @@
 
 This file is random notes of possible features and bug fixes.
 
+- try to organize the static files
+
 - story noted words
     - add to lexicon button brings up modal that lets you check/uncheck noted words to include?
     - spinner buttons to modify a words target count?

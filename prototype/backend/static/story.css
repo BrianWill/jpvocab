@@ -326,6 +326,26 @@
   color: #e7e79e;
 }
 
+.sentence-play-btn {
+  position: fixed;
+  z-index: 200;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.6rem;
+  height: 1.6rem;
+  border-radius: 50%;
+  background: rgba(137, 180, 250, 0.85);
+  color: #1e1e2e;
+  border: none;
+  cursor: pointer;
+  padding: 0;
+}
+
+.sentence-play-btn:hover {
+  background: #89b4fa;
+}
+
 .story-end-mark {
   margin-top: 3rem;
   text-align: center;

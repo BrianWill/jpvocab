@@ -1,6 +1,7 @@
 package main
 
 import (
+	"flag"
 	"fmt"
 	"log"
 	"time"
@@ -16,6 +17,9 @@ const (
 )
 
 func main() {
+	serverOnly := flag.Bool("server-only", false, "run the web server without opening the Wails desktop window")
+	flag.Parse()
+
 	initTokenizer()
 
 	db := initDB(dbPath)
@@ -23,6 +27,12 @@ func main() {
 
 	log.Printf("jpvocab backend running on http://localhost:%d", port)
 	log.Printf("Admin UI: http://localhost:%d/admin", port)
+
+	if *serverOnly {
+		// Blocking: run the web server on the main goroutine with no GUI.
+		serverInit(db)
+		return
+	}
 
 	// Run the web server in the background; serverInit blocks on ListenAndServe.
 	go serverInit(db)
@@ -37,10 +47,10 @@ func main() {
 	})
 
 	app.Window.NewWithOptions(application.WebviewWindowOptions{
-		Title:              "jpvocab",
-		Width:              1280,
-		Height:             800,
-		URL:                fmt.Sprintf("http://localhost:%d/welcome", port),
+		Title:  "jpvocab",
+		Width:  1280,
+		Height: 800,
+		URL:    fmt.Sprintf("http://localhost:%d/welcome", port),
 		// ZoomControlEnabled allows Ctrl+scroll to reach the page's JS wheel
 		// handler (in app_nav.html) rather than being consumed by WebView2.
 		ZoomControlEnabled: true,

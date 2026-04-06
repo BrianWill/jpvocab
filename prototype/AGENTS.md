@@ -61,7 +61,12 @@ cd backend && go test -tags integration ./...
 
 # Go dependencies
 go mod tidy
+
+# Regenerate Windows icon resource (run after changing static/favicon.ico)
+cd backend && wails3 generate syso -icon static/favicon.ico -manifest wails.exe.manifest -out wails_windows.syso -arch amd64
 ```
+
+`backend/wails_windows.syso` is a compiled Windows resource file that embeds the app icon at resource ID 3, which is where Wails v3 looks for it. `backend/wails.exe.manifest` is its required companion (embeds DPI awareness settings). Both are checked into the repo. If `static/favicon.ico` changes, the syso must be regenerated and the app rebuilt for the new icon to appear.
 
 The Go backend has a test suite. The frontend has tests for pure JS business logic (no DOM) using the Node.js built-in test runner (`node:test`). Do not write tests for DOM operations, HTML, or browser-specific behaviour.
 

@@ -8,15 +8,22 @@
   <a class="app-logo" href="/welcome">語</a>
 </div>
 <script>
-// Zoom handling for the Wails desktop window. Placed here (not in a JS module)
-// because Wails does not initialize its runtime on externally-served pages, making
-// ExecJS and module-level code unreliable. A plain inline script is the only
-// guaranteed injection point.
+// Zoom handling for the Wails desktop window. Placed here as an inline script
+// rather than in common.js (module) for two reasons:
 //
-// Ctrl+scroll and Ctrl++/-/0 are handled here. ZoomControlEnabled must be true
-// in the Wails window options so that WebView2 forwards Ctrl+scroll events to JS
-// rather than consuming them itself. e.preventDefault() on the wheel event stops
-// WebView2 from also applying its own native zoom on top of ours.
+// 1. The applyZoom() call at the bottom restores the stored zoom level on every
+//    page load. Inline scripts run synchronously during HTML parsing, before the
+//    first paint, avoiding a visible flash of the unzoomed page. ES modules are
+//    always deferred until after DOMContentLoaded, which would cause that flash.
+//
+// 2. Wails does not initialize its runtime on externally-served pages, so ExecJS
+//    (which requires the Wails runtime to signal ready) never fires. An inline
+//    script bypasses that mechanism entirely.
+//
+// ZoomControlEnabled must be true in the Wails window options so that WebView2
+// forwards Ctrl+scroll events to JS rather than consuming them itself.
+// e.preventDefault() on the wheel event stops WebView2 from also applying its
+// own native zoom on top of ours.
 //
 // Zoom is stored in localStorage so it persists across page navigations.
 (function() {

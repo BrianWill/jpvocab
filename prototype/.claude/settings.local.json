@@ -31,7 +31,8 @@
       "WebFetch(domain:ghostty.org)",
       "Bash(xxd)",
       "Bash(go get:*)",
-      "Bash(powershell:*)"
+      "Bash(powershell:*)",
+      "Bash(wails3 generate:*)"
     ]
   },
   "outputStyle": "Explanatory"

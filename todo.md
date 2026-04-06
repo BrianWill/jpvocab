@@ -3,16 +3,15 @@
 This file is random notes of possible features and bug fixes.
 
 - wails
-    - launch flag option to use wails or not
-    - wails window should use app icon
     - double scrollbar appears on start of wails
-        - once ready, we'll move the prototype project to main dir
-
+    - once ready, move the prototype project to main dir
 
 - story noted words
     - scan text to auto suggest noted words from the frequently occuring unique words in the story
 
-
+- lexicon
+    - should we worry about load time once the lexicon has thousands of words?
+        - also what about sort times?
 
 - story list
     - add a date last viewed to optionally sort by?

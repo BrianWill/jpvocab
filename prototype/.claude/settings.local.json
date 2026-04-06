@@ -29,7 +29,9 @@
       "Bash(python3 -c ':*)",
       "WebSearch",
       "WebFetch(domain:ghostty.org)",
-      "Bash(xxd)"
+      "Bash(xxd)",
+      "Bash(go get:*)",
+      "Bash(powershell:*)"
     ]
   },
   "outputStyle": "Explanatory"

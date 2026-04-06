@@ -2,18 +2,30 @@
 
 This file is random notes of possible features and bug fixes.
 
+- wails
+    - launch flag option to use wails or not
+    - wails window should use app icon
+    - double scrollbar appears on start of wails
+        - once ready, we'll move the prototype project to main dir
+
+
 - story noted words
     - scan text to auto suggest noted words from the frequently occuring unique words in the story
+
+
 
 - story list
     - add a date last viewed to optionally sort by?
 
 - story page
     - option to filter out presenting translations/info of particles and other very common words
+    - words in lexicon should be colored differently (both in story text and in the noted words list)
+    - words in lexicon cannot be added to noted words list (so they should be removed once they're added)
+    - for words in lexicon, the hover tooltip displays their current remaining target drill count
+        - + (=) while hovering to decrease increase the remaining target drill count
+    
 
-- enable wails in the prototype
-    - once ready, we'll move the prototype project to main dir
-
+- increase the base size of fonts i.e. effective base zoom level
 
 - write the README
     - need setup instructions

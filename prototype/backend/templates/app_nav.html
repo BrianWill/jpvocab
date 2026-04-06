@@ -7,4 +7,39 @@
   <a class="page-nav-link{{if eq .CurrentPage "lexicon"}} page-nav-link--current{{end}}" href="/lexicon">Lexicon</a>
   <a class="app-logo" href="/welcome">語</a>
 </div>
+<script>
+// Zoom handling for the Wails desktop window. Placed here (not in a JS module)
+// because Wails does not initialize its runtime on externally-served pages, making
+// ExecJS and module-level code unreliable. A plain inline script is the only
+// guaranteed injection point.
+//
+// Ctrl+scroll and Ctrl++/-/0 are handled here. ZoomControlEnabled must be true
+// in the Wails window options so that WebView2 forwards Ctrl+scroll events to JS
+// rather than consuming them itself. e.preventDefault() on the wheel event stops
+// WebView2 from also applying its own native zoom on top of ours.
+//
+// Zoom is stored in localStorage so it persists across page navigations.
+(function() {
+  var STEP = 0.1, MIN = 0.5, MAX = 3.0, KEY = 'appZoom';
+  function applyZoom(z) {
+    z = Math.min(MAX, Math.max(MIN, z));
+    document.documentElement.style.zoom = z;
+    localStorage.setItem(KEY, z);
+  }
+  applyZoom(parseFloat(localStorage.getItem(KEY)) || 1.0);
+  document.addEventListener('wheel', function(e) {
+    if (!e.ctrlKey) return;
+    e.preventDefault();
+    var z = parseFloat(localStorage.getItem(KEY)) || 1.0;
+    applyZoom(z + (e.deltaY < 0 ? STEP : -STEP));
+  }, { passive: false });
+  document.addEventListener('keydown', function(e) {
+    if (!e.ctrlKey) return;
+    var z = parseFloat(localStorage.getItem(KEY)) || 1.0;
+    if (e.key === '+' || e.key === '=') { e.preventDefault(); applyZoom(z + STEP); }
+    else if (e.key === '-')             { e.preventDefault(); applyZoom(z - STEP); }
+    else if (e.key === '0')             { e.preventDefault(); applyZoom(1.0); }
+  });
+})();
+</script>
 {{end}}

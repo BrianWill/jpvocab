@@ -50,30 +50,30 @@ A word tracks three timestamps:
 ## Commands
 
 ```bash
-# Run with hot-reload (from backend/)
-cd backend && air
+# Run with hot-reload (from src/)
+cd src && air
 
 # Run backend tests
-cd backend && go test ./...
+cd src && go test ./...
 
 # Run AI integration tests (makes real API calls � ask the user for permission first)
-cd backend && go test -tags integration ./...
+cd src && go test -tags integration ./...
 
 # Go dependencies
 go mod tidy
 
 # Regenerate Windows icon resource (run after changing static/favicon.ico)
-cd backend && wails3 generate syso -icon static/favicon.ico -manifest wails.exe.manifest -out wails_windows.syso -arch amd64
+cd src && wails3 generate syso -icon static/favicon.ico -manifest wails.exe.manifest -out wails_windows.syso -arch amd64
 ```
 
-`backend/wails_windows.syso` is a compiled Windows resource file that embeds the app icon at resource ID 3, which is where Wails v3 looks for it. `backend/wails.exe.manifest` is its required companion (embeds DPI awareness settings). Both are checked into the repo. If `static/favicon.ico` changes, the syso must be regenerated and the app rebuilt for the new icon to appear.
+`src/wails_windows.syso` is a compiled Windows resource file that embeds the app icon at resource ID 3, which is where Wails v3 looks for it. `src/wails.exe.manifest` is its required companion (embeds DPI awareness settings). Both are checked into the repo. If `static/favicon.ico` changes, the syso must be regenerated and the app rebuilt for the new icon to appear.
 
 The Go backend has a test suite. The frontend has tests for pure JS business logic (no DOM) using the Node.js built-in test runner (`node:test`). Do not write tests for DOM operations, HTML, or browser-specific behaviour.
 
-AI integration tests live in `backend/ai_integration_test.go` and are gated behind the `integration` build tag so they are excluded from normal runs. They make real API calls to OpenAI, Anthropic, Google, and/or Mistral. **Always ask the user for explicit permission before running them.**
+AI integration tests live in `src/ai_integration_test.go` and are gated behind the `integration` build tag so they are excluded from normal runs. They make real API calls to OpenAI, Anthropic, Google, and/or Mistral. **Always ask the user for explicit permission before running them.**
 
-- **Frontend test location:** `backend/static/tests/`
-- **Run frontend tests:** `node --test "backend/static/tests/*.test.js"` does not expand reliably in PowerShell. Prefer an explicit file list such as `$files = Get-ChildItem 'backend/static/tests' -Filter '*.test.js' | ForEach-Object { $_.FullName }; node --test $files`
+- **Frontend test location:** `src/static/tests/`
+- **Run frontend tests:** `node --test "src/static/tests/*.test.js"` does not expand reliably in PowerShell. Prefer an explicit file list such as `$files = Get-ChildItem 'src/static/tests' -Filter '*.test.js' | ForEach-Object { $_.FullName }; node --test $files`
 - **Pure utility functions** that have no DOM dependencies live in `lexicon-utils.js` and `drill-state.js` and are the primary target for frontend tests. Current exports under test include `isKanji`, `esc`, `renderReading`, `timeAgo`, `getSortedWords`, the detail item HTML builders (`detailItemPosSelect`, `detailItemKanjiReadings`, `detailItemInput`, `detailItemExInput`), and drill state helpers such as `createDrillState`, `matchesFilter`, `getFilteredWords`, `createSidebarItems`, `applySidebarAnswer`, `isSessionComplete`, `buildRoundState`, `getNextRevealState`, and `serializeSessionState`.
 
 ## Lexicon Features
@@ -110,7 +110,7 @@ AI integration tests live in `backend/ai_integration_test.go` and are gated behi
 
 ## Frontend Pages
 
-The HTML/CSS/JS frontend files live in `backend/static/` and are served by the backend.
+The HTML/CSS/JS frontend files live in `src/static/` and are served by the backend.
 
 - **drill.html** � the drill view
 - **lexicon.html** � the lexicon/word management view
@@ -121,7 +121,7 @@ The HTML/CSS/JS frontend files live in `backend/static/` and are served by the b
 
 ### Backend
 
-`backend/` is a standalone Go module (separate `go.mod`) that runs a SQLite-backed HTTP server on port **49200** (dynamic/private range). `main.go` also launches a Wails v3 desktop window on the main goroutine; the web server runs in a background goroutine. The Wails window loads `http://localhost:49200/welcome` directly — no Wails JS runtime or Go↔JS bridge is used.
+`src/` is a standalone Go module (separate `go.mod`) that runs a SQLite-backed HTTP server on port **49200** (dynamic/private range). `main.go` also launches a Wails v3 desktop window on the main goroutine; the web server runs in a background goroutine. The Wails window loads `http://localhost:49200/welcome` directly — no Wails JS runtime or Go↔JS bridge is used.
 
 - **`main.go`** \u{FFFD} entry point; opens the DB, starts the web server as a goroutine, then runs the Wails v3 desktop window on the main thread. Key window options: `ZoomControlEnabled` (lets Ctrl+scroll reach JS), `DevToolsEnabled`, and key bindings for Ctrl+R / Ctrl+Shift+R reload.
 - **`db_schema.go`** � `initDB`, `migrate`, `resetDB`, `seedDB`, and schema-introspection helpers (`listTableInfos`, `queryTable`, etc.). No SQL appears outside the `db_*.go` files.
@@ -176,10 +176,10 @@ Key API endpoints (beyond CRUD on `/api/words` and `/api/kanji`):
 | `GET` | `/api/settings/drill` | Retrieve saved drill defaults (maxWords, roundSize, wordTypes) |
 | `PUT` | `/api/settings/drill` | Save drill defaults |
 
-Run with hot-reload from the `backend/` directory:
+Run with hot-reload from the `src/` directory:
 
 ```bash
-cd backend && air
+cd src && air
 ```
 
 #### Database schema
@@ -226,6 +226,6 @@ When adding new fields to the word edit/add modal, follow whichever convention m
 ## Working conventions
 
 - **Scope changes to this project directory.** Do not read or write files outside the project directory without explicit instruction.
-- **Ask before touching unfamiliar files.** If a file has not been part of the current conversation and has not been recently discussed, confirm with the user before editing it. This applies especially to Go source files, config files, and anything outside `backend/`.
+- **Ask before touching unfamiliar files.** If a file has not been part of the current conversation and has not been recently discussed, confirm with the user before editing it. This applies especially to Go source files, config files, and anything outside `src/`.
 - **Keep AGENTS.md current.** After any non-trivial change � new files, new endpoints, renamed functions, changed conventions, new features, or shifted architecture � proactively propose specific updates to this file. Do not wait to be asked. If you added a file, added an endpoint, or changed how something works, edit AGENTS.md immediately (but be sure to tell me when you).
 - **Use `git mv` for all file moves and renames.** Never copy-and-delete or use the Write tool to recreate a file at a new path. Always use `git mv <old> <new>` so history is preserved.

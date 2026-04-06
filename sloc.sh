@@ -1,10 +1,10 @@
 #!/usr/bin/env bash
-# Print sorted line counts for all .go and .js files under prototype/backend,
+# Print sorted line counts for all .go and .js files under ,
 # then totals per language.
 
 shopt -s nullglob
 
-DIR="$(cd "$(dirname "$0")/backend" && pwd)"
+DIR="$(cd "$(dirname "$0")/src" && pwd)"
 
 go_src_files=()
 go_test_files=()

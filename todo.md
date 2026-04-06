@@ -4,10 +4,8 @@ This file is random notes of possible features and bug fixes.
 
 - wails
     - double scrollbar appears on start of wails
-    - once ready, move the prototype project to main dir
 
-- story noted words
-    - scan text to auto suggest noted words from the frequently occuring unique words in the story
+
 
 - lexicon
     - should we worry about load time once the lexicon has thousands of words?
@@ -23,6 +21,9 @@ This file is random notes of possible features and bug fixes.
     - for words in lexicon, the hover tooltip displays their current remaining target drill count
         - + (=) while hovering to decrease increase the remaining target drill count
     
+
+- story noted words
+    - scan text to auto suggest noted words from the frequently occuring unique words in the story
 
 - increase the base size of fonts i.e. effective base zoom level
 

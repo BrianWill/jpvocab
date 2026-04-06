@@ -8,12 +8,7 @@ This file is random notes of possible features and bug fixes.
     - scan text to auto suggest noted words from the frequently occuring unique words in the story
 
 - story list
-    - add / remove stories
-    - we don't need the title on the page (implied from the nav bar link)
-    - put + add button in header (like lexicon + button)
-    - how to sort the stories? 
-        show their dates added and sort by that? 
-        add a date last viewed to sort by?
+    - add a date last viewed to optionally sort by?
 
 - story page
     - option to filter out presenting translations/info of particles and other very common words
@@ -30,8 +25,9 @@ This file is random notes of possible features and bug fixes.
 - clicking the image placeholder or thumbnail shoudl open a file dialog to upload an image file
 
 - story translation tooltip
-    = reading should include pitch info and separated by kanji (like on lexicon or in drill)
+    - reading should include pitch info and separated by kanji (like on lexicon or in drill)
     - also display kanji info? per kanji info would allow for consistent display 
+        - make it match the word info tooltip of the drill page? (even include image?)
         
 - proper error messages for failed API requests
     - what if user runs out of tokens? or other API failures

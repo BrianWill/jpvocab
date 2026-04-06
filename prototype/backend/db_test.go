@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"strings"
 	"testing"
+	"time"
 
 	_ "modernc.org/sqlite"
 )
@@ -20,6 +21,18 @@ func testDB(t *testing.T) *sql.DB {
 	migrate(db)
 	t.Cleanup(func() { db.Close() })
 	return db
+}
+
+func parseDBDateTime(t *testing.T, value string) time.Time {
+	t.Helper()
+	for _, layout := range []string{time.RFC3339, "2006-01-02 15:04:05"} {
+		parsed, err := time.Parse(layout, value)
+		if err == nil {
+			return parsed
+		}
+	}
+	t.Fatalf("unable to parse datetime %q", value)
+	return time.Time{}
 }
 
 // --- migrate ---
@@ -1035,6 +1048,10 @@ func TestInsertStory_AndListStories(t *testing.T) {
 	if story.AudioPath == nil || *story.AudioPath != audioPath {
 		t.Errorf("audio_path: got %+v", story.AudioPath)
 	}
+	if story.CreatedAt == "" {
+		t.Fatal("expected created_at timestamp")
+	}
+	parseDBDateTime(t, story.CreatedAt)
 	if len(story.Sentences) != 2 {
 		t.Fatalf("expected 2 sentences, got %d", len(story.Sentences))
 	}

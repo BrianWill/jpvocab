@@ -12,6 +12,7 @@
 
 <div class="page-header">
   <div class="nav-and-settings">
+    <button class="btn-settings" id="settings-btn" aria-label="Settings"><svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M19.14 12.94c.04-.3.06-.61.06-.94 0-.32-.02-.64-.07-.94l2.03-1.58c.18-.14.23-.41.12-.61l-1.92-3.32c-.12-.22-.37-.29-.59-.22l-2.39.96c-.5-.38-1.03-.7-1.62-.94l-.36-2.54c-.04-.24-.24-.41-.48-.41h-3.84c-.24 0-.43.17-.47.41l-.36 2.54c-.59.24-1.13.57-1.62.94l-2.39-.96c-.22-.08-.47 0-.59.22L2.74 8.87c-.12.21-.08.47.12.61l2.03 1.58c-.05.3-.09.63-.09.94s.02.64.07.94l-2.03 1.58c-.18.14-.23.41-.12.61l1.92 3.32c.12.22.37.29.59.22l2.39-.96c.5.38 1.03.7 1.62.94l.36 2.54c.05.24.24.41.48.41h3.84c.24 0 .44-.17.47-.41l.36-2.54c.59-.24 1.13-.56 1.62-.94l2.39.96c.22.08.47 0 .59-.22l1.92-3.32c.12-.22.07-.47-.12-.61l-2.01-1.58zM12 15.6c-1.98 0-3.6-1.62-3.6-3.6s1.62-3.6 3.6-3.6 3.6 1.62 3.6 3.6-1.62 3.6-3.6 3.6z"/></svg></button>
     {{template "app_nav" .}}
   </div>
 </div>
@@ -33,7 +34,7 @@
 
     <!-- Card 1: Drill -->
     <div class="feature-card">
-      <span class="feature-card-number">01</span>
+      <span class="feature-card-number">一</span>
       <span class="feature-card-kanji" style="color: #a6e3a1; text-shadow: 0 0 40px rgba(166,227,161,0.2);">練</span>
       <span class="feature-card-tag tag-green">Drill</span>
       <h2 class="feature-card-title">Round-based flashcard practice</h2>
@@ -50,7 +51,7 @@
 
     <!-- Card 4: Activity -->
     <div class="feature-card" style="border-left: none;">
-      <span class="feature-card-number">02</span>
+      <span class="feature-card-number">二</span>
       <span class="feature-card-kanji" style="color: #f9e2af; text-shadow: 0 0 40px rgba(249,226,175,0.2);">歴</span>
       <span class="feature-card-tag tag-yellow">Activity</span>
       <h2 class="feature-card-title">Weekly calendar & stats</h2>
@@ -67,7 +68,7 @@
 
     <!-- Card 5: AI generation -->
     <div class="feature-card">
-      <span class="feature-card-number">03</span>
+      <span class="feature-card-number">三</span>
       <span class="feature-card-kanji" style="color: #cba6f7; text-shadow: 0 0 40px rgba(203,166,247,0.2);">辞</span>
       <span class="feature-card-tag tag-mauve">Lexicon</span>
       <h2 class="feature-card-title">AI-powered word data</h2>
@@ -78,6 +79,20 @@
         if the output needs a nudge.
       </p>
       <a class="feature-card-link feature-card-link--mauve" href="/lexicon">Add words →</a>
+    </div>
+
+    <div class="feature-card">
+      <span class="feature-card-number">四</span>
+      <span class="feature-card-kanji" style="color: #89b4fa; text-shadow: 0 0 40px rgba(137,180,250,0.2);">話</span>
+      <span class="feature-card-tag tag-blue">Stories</span>
+      <h2 class="feature-card-title">Read, translate, and revisit stories</h2>
+      <p class="feature-card-body">
+        Save Japanese stories into the app and read them sentence by sentence.
+        Generate literal English translations, build story audio, and note
+        interesting words as you go so the text becomes study material rather
+        than just reference reading.
+      </p>
+      <a class="feature-card-link feature-card-link--blue" href="/stories">Open stories →</a>
     </div>
 
     <!-- Kanji strip -->

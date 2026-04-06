@@ -39,6 +39,15 @@
   position: relative;
 }
 
+.story-card-heading {
+  align-items: baseline;
+  display: flex;
+  gap: 0.9rem;
+  justify-content: space-between;
+  margin-bottom: 0.45rem;
+  padding-right: 2.5rem;
+}
+
 .story-card:hover {
   border-color: #45475a;
   background: #1e1e2e;
@@ -83,7 +92,6 @@
   display: flex;
   flex-wrap: wrap;
   gap: 0.75rem;
-  margin-bottom: 0.45rem;
   padding-right: 2.5rem;
   font-size: 0.72rem;
   text-transform: uppercase;
@@ -95,6 +103,13 @@
   margin: 0;
   font-size: 1.2rem;
   color: #cdd6f4;
+}
+
+.story-card-date {
+  color: #f9c74f;
+  flex-shrink: 0;
+  font-size: 0.82rem;
+  white-space: nowrap;
 }
 
 .stories-empty {
@@ -163,4 +178,12 @@
 #story-content-input::placeholder,
 #story-title-input::placeholder {
   color: #313244;
+}
+
+@media (max-width: 640px) {
+  .story-card-heading {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 0.3rem;
+  }
 }

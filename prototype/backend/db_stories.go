@@ -9,6 +9,7 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
+	"time"
 )
 
 type storyWordInput struct {
@@ -139,11 +140,12 @@ func insertStoryTx(tx *sql.Tx, title string, audioPath *string, sentences []stor
 	if err != nil {
 		return 0, err
 	}
+	createdAt := time.Now().UTC().Format("2006-01-02 15:04:05")
 
 	res, err := tx.Exec(`
-		INSERT INTO stories (title, audio_path, word_glosses)
-		VALUES (?, ?, ?)
-	`, title, audioPath, string(wordGlossesJSON))
+		INSERT INTO stories (title, audio_path, word_glosses, created_at)
+		VALUES (?, ?, ?, ?)
+	`, title, audioPath, string(wordGlossesJSON), createdAt)
 	if err != nil {
 		return 0, err
 	}

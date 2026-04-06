@@ -324,6 +324,10 @@ func TestAPICreateStory_Success(t *testing.T) {
 	if story.Title != "New Story" {
 		t.Fatalf("title: got %q, want %q", story.Title, "New Story")
 	}
+	if story.CreatedAt == "" {
+		t.Fatal("expected createdAt timestamp")
+	}
+	parseDBDateTime(t, story.CreatedAt)
 	if len(story.Sentences) != 3 {
 		t.Fatalf("sentences: got %d, want 3", len(story.Sentences))
 	}

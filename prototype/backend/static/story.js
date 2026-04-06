@@ -1,6 +1,7 @@
 import { getTtsVoice, getVoicevoxSettings, checkVoicevoxAvailable, playDing, PROVIDER_MODELS, refreshTooltip } from './common.js';
 import { esc } from './lexicon-utils.js';
 import { initGenerateModals, populateTranslationModelSelect } from './story-generate.js';
+import { initStoryAddToLexicon, addWordsToLexicon } from './story-add-to-lexicon.js';
 import { initPlayback, applyAudioState, showSentencePlayBtn, scheduleSentencePlayHide, hideSentencePlayBtn, cancelSentencePlayHide, stopPlayback } from './story-playback.js';
 
 // ── DOM refs ──────────────────────────────────────────────────────────────────
@@ -154,6 +155,7 @@ function setNotedWordsOpen(open) {
 
 function renderNotedWords(autoOpen = false) {
   els.storyNotedCount.textContent = pluralize(state.notedWords.length, 'word');
+  els.storyNotedAddAll.disabled = state.notedWords.length === 0 || state.updatingNotedWords;
   els.storyNotedList.innerHTML = state.notedWords.map(word => `
     <div class="story-noted-item">
       <div class="story-noted-item-main">
@@ -185,9 +187,9 @@ async function addHoveredWordToNotedWords() {
     if (!res.ok) throw new Error('failed to add noted word');
     const data = await res.json();
     state.notedWords = Array.isArray(data.notedWords) ? data.notedWords : [];
-    renderNotedWords(true);
   } finally {
     state.updatingNotedWords = false;
+    renderNotedWords(true);
   }
 }
 
@@ -203,9 +205,9 @@ async function removeNotedWord(baseWord) {
     if (!res.ok) throw new Error('failed to remove noted word');
     const data = await res.json();
     state.notedWords = Array.isArray(data.notedWords) ? data.notedWords : [];
-    renderNotedWords();
   } finally {
     state.updatingNotedWords = false;
+    renderNotedWords();
   }
 }
 
@@ -221,6 +223,18 @@ els.storyNotedList.addEventListener('click', event => {
   const btn = event.target.closest('[data-base-word]');
   if (!btn) return;
   removeNotedWord(btn.dataset.baseWord).catch(() => {});
+});
+
+els.storyNotedAddAll.addEventListener('click', async () => {
+  if (state.notedWords.length === 0 || state.updatingNotedWords) return;
+  els.storyNotedAddAll.disabled = true;
+  try {
+    await addWordsToLexicon(state.notedWords.map(word => word.baseWord || word.displayWord));
+  } catch (_) {
+    els.storyNotedAddAll.disabled = false;
+    return;
+  }
+  renderNotedWords();
 });
 
 // ── Render ────────────────────────────────────────────────────────────────────
@@ -343,6 +357,7 @@ function renderError() {
 
 // ── Init ──────────────────────────────────────────────────────────────────────
 initPlayback(els, state, STORY_ID);
+initStoryAddToLexicon().catch(() => {});
 
 initGenerateModals(els, state, {
   storyId: STORY_ID,

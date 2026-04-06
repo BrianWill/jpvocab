@@ -1,6 +1,7 @@
 import { state as lexiconState, typeLabels, reloadWords, renderTable, getSortedWords, closeAddModal, updateWordImagePath, updateWordAudioFlags } from './lexicon.js';
 import { esc, isKanji, detailItemPosSelect, detailItemKanjiReadings, detailItemInput, detailItemExInput } from './lexicon-utils.js';
 import { getVoicevoxSettings, playWordAudio, playSentenceAudio, playDing, PROVIDER_MODELS } from './common.js';
+import { sortAddResultRows } from './add-to-lexicon.js';
 
 const els = {
   addModalSaveBtn: document.querySelector('#add-modal-backdrop .btn-save'),
@@ -283,15 +284,6 @@ export async function closeAddResultModal() {
 }
 
 async function saveAddModal() {
-  function sortWordRows() {
-    const rows = Array.from(els.addResultBody.children);
-    rows.sort((a, b) => {
-      const aLexicon = a.dataset.reason === 'already in lexicon' ? 1 : 0;
-      const bLexicon = b.dataset.reason === 'already in lexicon' ? 1 : 0;
-      return aLexicon - bLexicon;
-    });
-    rows.forEach(r => els.addResultBody.appendChild(r));
-  }
   function setModalStatus(type, text) {
     const el = document.getElementById('add-result-modal-status');
     const spinner = type === 'loading' ? '<span class="spinner"></span>' : '';
@@ -343,7 +335,7 @@ async function saveAddModal() {
         if (data.done) {
           state.addPhase = 'done';
           clearAutofillSpinners();
-          sortWordRows();
+          sortAddResultRows(els.addResultBody);
           renderStatus();
           await reloadWords();
           updateAddResultFooter();

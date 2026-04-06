@@ -9,7 +9,13 @@ This file is random notes of possible features and bug fixes.
     - spinner buttons to modify a words target count?
     - display drill counts for words that are in the lexicon
     - scan text to auto suggest noted words from the frequently occuring unique words in the story
-    
+
+- story list
+    - add / remove stories
+    - we don't need the title on the page (implied from the nav bar link)
+    - put + add button in header (like lexicon + button)
+    - but x remove button stories, requires confirm modal
+
 - story translation tooltip
     - should also display the reading information about the word
     - also display kanji info?

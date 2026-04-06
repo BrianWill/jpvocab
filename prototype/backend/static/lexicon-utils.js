@@ -146,6 +146,16 @@ export function timeAgo(dateStr) {
   return yr + ' year' + (yr === 1 ? '' : 's') + ' ago';
 }
 
+export const typeLabels = {
+  'godan-verb':   'Godan verb — Group 1 (五段動詞)',
+  'ichidan-verb': 'Ichidan verb — Group 2 (一段動詞)',
+  'noun':         'Noun (名詞)',
+  'i-adjective':  'い-adjective (い形容詞)',
+  'na-adjective': 'な-adjective (な形容詞)',
+  'adverb':       'Adverb (副詞)',
+  'other':        'Other',
+};
+
 export function detailItemPosSelect(value, typeLabels) {
   const known = value in typeLabels;
   let options = known ? '' : '<option value="" selected>—</option>';

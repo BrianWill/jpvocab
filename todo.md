@@ -2,8 +2,6 @@
 
 This file is random notes of possible features and bug fixes.
 
-- try to organize the static files
-
 - story noted words
     - scan text to auto suggest noted words from the frequently occuring unique words in the story
 
@@ -21,8 +19,6 @@ This file is random notes of possible features and bug fixes.
     - need setup instructions
         - add these instructions or link them on the welcome page
     - explain drilling theory / workflow
-
-- clicking the image placeholder or thumbnail shoudl open a file dialog to upload an image file
 
 - story translation tooltip
     - reading should include pitch info and separated by kanji (like on lexicon or in drill)

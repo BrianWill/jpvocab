@@ -2,6 +2,7 @@ import { esc, typeLabels } from './lexicon-utils.js';
 import { getVoicevoxSettings, playWordAudio, playSentenceAudio, playDing, PROVIDER_MODELS, checkVoicevoxAvailable, checkFfmpegAvailable } from './common.js';
 import {
   adjustWordTarget,
+  bindWordResultImageUpload,
   bindWordResultEditorEvents,
   buildWordResultDetails,
   buildWordResultImage,
@@ -156,6 +157,10 @@ function bindEvents() {
     closeButtonId: 'story-btn-add-result-close',
     state,
     onSaveRowEdits: saveWordRowEdits,
+  });
+
+  bindWordResultImageUpload({
+    containerEl: els.addResultBody,
   });
 
   els.removeConfirmModalBackdrop.addEventListener('click', e => {

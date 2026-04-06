@@ -80,6 +80,7 @@ func serverInit(db *sql.DB) {
 	r.Patch("/api/words/{id}", apiUpdateWord(db))
 	r.Patch("/api/words/{id}/target", apiUpdateWordTarget(db))
 	r.Delete("/api/words/{id}", apiDeleteWord(db))
+	r.Post("/api/words/{id}/upload-image", apiUploadWordImage(db))
 	r.Post("/api/words/{id}/download-image", apiDownloadWordImage(db))
 	r.Post("/api/words/{id}/find-image", apiFindWordImage(db))
 	r.Post("/api/words/{id}/reroll-meaning", apiRerollMeaning())

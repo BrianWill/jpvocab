@@ -3,6 +3,7 @@ import { esc } from './lexicon-utils.js';
 import { getVoicevoxSettings, playWordAudio, playSentenceAudio, playDing, PROVIDER_MODELS } from './common.js';
 import {
   adjustWordTarget,
+  bindWordResultImageUpload,
   bindWordResultEditorEvents,
   buildWordResultDetails,
   buildWordResultImage,
@@ -171,6 +172,11 @@ bindWordResultEditorEvents({
   closeButtonId: 'btn-add-result-close',
   state,
   onSaveRowEdits: saveWordRowEdits,
+});
+
+bindWordResultImageUpload({
+  containerEl: els.addResultBody,
+  onUploadComplete: (wordId, imagePath) => updateWordImagePath(wordId, imagePath),
 });
 
 export async function closeAddResultModal() {

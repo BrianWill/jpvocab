@@ -4,8 +4,11 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"mime/multipart"
 	"net/http"
 	"net/http/httptest"
+	"os"
+	"path/filepath"
 	"strconv"
 	"strings"
 	"testing"
@@ -108,6 +111,82 @@ func TestAPIUpdateWordTarget_Success(t *testing.T) {
 	}
 	if target != 6 {
 		t.Errorf("target: got %d, want 6", target)
+	}
+}
+
+func TestAPIUploadWordImage_MissingImage(t *testing.T) {
+	db := testDB(t)
+	wordID := insertTestWord(t, db, "upload-missing", 1)
+	req := httptest.NewRequest(http.MethodPost, "/api/words/1/upload-image", bytes.NewBuffer(nil))
+	req = withURLParam(req, "id", int64ToString(wordID))
+	rec := httptest.NewRecorder()
+
+	apiUploadWordImage(db).ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusBadRequest {
+		t.Fatalf("status: got %d, want %d", rec.Code, http.StatusBadRequest)
+	}
+}
+
+func TestAPIUploadWordImage_Success(t *testing.T) {
+	db := testDB(t)
+	wordID := insertTestWord(t, db, "upload-success", 1)
+
+	var body bytes.Buffer
+	writer := multipart.NewWriter(&body)
+	part, err := writer.CreateFormFile("image", "word.png")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := part.Write([]byte{
+		0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a,
+		0x00, 0x00, 0x00, 0x0d, 0x49, 0x48, 0x44, 0x52,
+		0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x01,
+		0x08, 0x06, 0x00, 0x00, 0x00, 0x1f, 0x15, 0xc4,
+		0x89, 0x00, 0x00, 0x00, 0x0d, 0x49, 0x44, 0x41,
+		0x54, 0x78, 0x9c, 0x63, 0xf8, 0xcf, 0xc0, 0x00,
+		0x00, 0x03, 0x01, 0x01, 0x00, 0xc9, 0xfe, 0x92,
+		0xef, 0x00, 0x00, 0x00, 0x00, 0x49, 0x45, 0x4e,
+		0x44, 0xae, 0x42, 0x60, 0x82,
+	}); err != nil {
+		t.Fatal(err)
+	}
+	if err := writer.Close(); err != nil {
+		t.Fatal(err)
+	}
+
+	req := httptest.NewRequest(http.MethodPost, "/api/words/1/upload-image", &body)
+	req.Header.Set("Content-Type", writer.FormDataContentType())
+	req = withURLParam(req, "id", int64ToString(wordID))
+	rec := httptest.NewRecorder()
+
+	apiUploadWordImage(db).ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status: got %d, want %d body=%q", rec.Code, http.StatusOK, rec.Body.String())
+	}
+	var resp struct {
+		ImagePath string `json:"image_path"`
+	}
+	if err := json.NewDecoder(rec.Body).Decode(&resp); err != nil {
+		t.Fatal(err)
+	}
+	if resp.ImagePath != "images/words/upload-success.png" {
+		t.Fatalf("image_path: got %q", resp.ImagePath)
+	}
+	t.Cleanup(func() {
+		_ = os.Remove(filepath.Join("static", filepath.FromSlash(resp.ImagePath)))
+	})
+
+	var imagePath string
+	if err := db.QueryRow(`SELECT image_path FROM words WHERE id = ?`, wordID).Scan(&imagePath); err != nil {
+		t.Fatal(err)
+	}
+	if imagePath != resp.ImagePath {
+		t.Fatalf("db image_path: got %q, want %q", imagePath, resp.ImagePath)
+	}
+	if _, err := os.Stat(filepath.Join("static", filepath.FromSlash(resp.ImagePath))); err != nil {
+		t.Fatalf("saved file missing: %v", err)
 	}
 }
 

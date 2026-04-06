@@ -19,8 +19,11 @@ export function sortAddResultRows(container) {
 }
 
 export function buildWordResultImage(imagePath, imageState, bust = '') {
+  const baseAttrs =
+    ' type="button" data-tooltip="Choose an image from your computer"' +
+    ' aria-label="Choose an image from your computer"';
   if (imagePath) {
-    return '<div class="word-result-image"><img src="/static/' + esc(imagePath) + (bust ? '?v=' + bust : '') + '" alt=""></div>';
+    return '<button class="word-result-image"' + baseAttrs + '><img src="/static/' + esc(imagePath) + (bust ? '?v=' + bust : '') + '" alt=""></button>';
   }
   const classes = ['word-result-image', 'word-result-image--empty'];
   let overlay = '';
@@ -30,13 +33,67 @@ export function buildWordResultImage(imagePath, imageState, bust = '') {
   } else if (imageState === 'failed') {
     classes.push('word-result-image--failed');
   }
-  return '<div class="' + classes.join(' ') + '">' + overlay + imagePlaceholderSvg + '</div>';
+  return '<button class="' + classes.join(' ') + '"' + baseAttrs + '>' + overlay + imagePlaceholderSvg + '</button>';
 }
 
 export function setWordRowImage(row, imagePath, imageState = '', bust = '') {
   const imageEl = row?.querySelector('.word-result-image');
   if (!imageEl) return;
   imageEl.outerHTML = buildWordResultImage(imagePath, imageState, bust);
+}
+
+export function bindWordResultImageUpload({ containerEl, onUploadComplete }) {
+  const inputEl = document.createElement('input');
+  inputEl.type = 'file';
+  inputEl.accept = 'image/*';
+  inputEl.hidden = true;
+  document.body.appendChild(inputEl);
+
+  let activeRow = null;
+
+  containerEl.addEventListener('click', event => {
+    const imageEl = event.target.closest('.word-result-image');
+    if (!imageEl) return;
+    const row = imageEl.closest('.word-result-row');
+    if (!row?._wordId || row._imageUploadBusy) return;
+    activeRow = row;
+    inputEl.value = '';
+    inputEl.click();
+  });
+
+  inputEl.addEventListener('change', async () => {
+    const row = activeRow;
+    activeRow = null;
+    const file = inputEl.files?.[0];
+    if (!row || !file) return;
+
+    row._imageUploadBusy = true;
+    const prevImageHtml = row.querySelector('.word-result-image')?.outerHTML ?? null;
+    setWordRowImage(row, '', 'loading');
+
+    try {
+      const formData = new FormData();
+      formData.append('image', file);
+
+      const res = await fetch('/api/words/' + row._wordId + '/upload-image', {
+        method: 'POST',
+        body: formData,
+      });
+      if (!res.ok) throw new Error(await res.text());
+
+      const data = await res.json();
+      if (!row.isConnected) return;
+      setWordRowImage(row, data.image_path, '', Date.now());
+      onUploadComplete?.(row._wordId, data.image_path, row);
+    } catch (_) {
+      if (!row.isConnected) return;
+      const imageEl = row.querySelector('.word-result-image');
+      if (imageEl && prevImageHtml) imageEl.outerHTML = prevImageHtml;
+      else setWordRowImage(row, '', 'failed');
+    } finally {
+      row._imageUploadBusy = false;
+    }
+  });
 }
 
 export function buildWordResultDetails(word, data, typeLabels) {

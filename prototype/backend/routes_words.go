@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"io"
 	"mime"
+	"mime/multipart"
 	"net/http"
 	"net/url"
 	"os"
@@ -118,6 +119,50 @@ func apiDeleteWord(db *sql.DB) http.HandlerFunc {
 			return
 		}
 		w.WriteHeader(http.StatusNoContent)
+	}
+}
+
+func apiUploadWordImage(db *sql.DB) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		id, err := strconv.ParseInt(chi.URLParam(r, "id"), 10, 64)
+		if err != nil {
+			http.Error(w, "invalid id", http.StatusBadRequest)
+			return
+		}
+
+		info, err := getWordImageInfo(db, id)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		if info == nil {
+			http.Error(w, "word not found", http.StatusNotFound)
+			return
+		}
+
+		file, header, err := r.FormFile("image")
+		if err != nil {
+			http.Error(w, "missing image", http.StatusBadRequest)
+			return
+		}
+		defer file.Close()
+
+		imagePath, err := saveUploadedWordImage(info.Word, header.Header.Get("Content-Type"), header.Filename, file)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusBadRequest)
+			return
+		}
+		if err := updateWordImagePath(db, id, imagePath); err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+
+		if info.ImagePath != nil && *info.ImagePath != "" && *info.ImagePath != imagePath {
+			_ = os.Remove(filepath.Join("static", filepath.FromSlash(*info.ImagePath)))
+		}
+
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(map[string]string{"image_path": imagePath})
 	}
 }
 
@@ -451,9 +496,34 @@ func downloadWordImage(r *http.Request, word, imageURL string) (string, error) {
 		return "", errors.New("image download failed: file is too large")
 	}
 
-	ext := imageExtension(res.Header.Get("Content-Type"), imageURL, data)
+	imagePath, err := saveWordImageData(word, res.Header.Get("Content-Type"), imageURL, data)
+	if err != nil {
+		if strings.Contains(err.Error(), "image upload failed:") {
+			return "", errors.New(strings.Replace(err.Error(), "image upload failed:", "image download failed:", 1))
+		}
+		return "", err
+	}
+	return imagePath, nil
+}
+
+func saveUploadedWordImage(word, contentType, rawName string, src multipart.File) (string, error) {
+	const maxImageBytes = 10 << 20
+
+	data, err := io.ReadAll(io.LimitReader(src, maxImageBytes+1))
+	if err != nil {
+		return "", err
+	}
+	if len(data) > maxImageBytes {
+		return "", errors.New("image upload failed: file is too large")
+	}
+
+	return saveWordImageData(word, contentType, rawName, data)
+}
+
+func saveWordImageData(word, contentType, rawName string, data []byte) (string, error) {
+	ext := imageExtension(contentType, rawName, data)
 	if ext == "" {
-		return "", errors.New("image download failed: unsupported image format")
+		return "", errors.New("image upload failed: unsupported image format")
 	}
 
 	dir := filepath.Join("static", "images", "words")
@@ -461,31 +531,9 @@ func downloadWordImage(r *http.Request, word, imageURL string) (string, error) {
 		return "", err
 	}
 
-	tmp, err := os.CreateTemp(dir, "download-*"+ext)
-	if err != nil {
-		return "", err
-	}
-	tmpName := tmp.Name()
-	defer os.Remove(tmpName)
-
-	if _, err := tmp.Write(data); err != nil {
-		tmp.Close()
-		return "", err
-	}
-	if err := tmp.Close(); err != nil {
-		return "", err
-	}
-
 	fileName := word + ext
 	finalFSPath := filepath.Join(dir, fileName)
-	if _, err := os.Stat(finalFSPath); err == nil {
-		if err := os.Remove(finalFSPath); err != nil {
-			return "", err
-		}
-	} else if !errors.Is(err, os.ErrNotExist) {
-		return "", err
-	}
-	if err := os.Rename(tmpName, finalFSPath); err != nil {
+	if err := os.WriteFile(finalFSPath, data, 0o644); err != nil {
 		return "", err
 	}
 

@@ -157,6 +157,7 @@ Key API endpoints (beyond CRUD on `/api/words` and `/api/kanji`):
 | `DELETE` | `/api/stories/{id}/noted-words` | Remove one story word from the story's persisted noted-words list; body: `{baseWord}` |
 | `PATCH` | `/api/words/{id}` | Update a word's reading, type, meaning, and example sentences |
 | `PATCH` | `/api/words/{id}/target` | Update a word's target drill count |
+| `POST` | `/api/words/{id}/upload-image` | Upload a local image file for a word; saves it under `static/images/words/` and replaces any previous word image |
 | `POST` | `/api/words/autofill-batch` | AI-generate reading, meaning, and examples for multiple words at once; body: `{words:[{id,word}], ai_model}`; words are chunked (≤20 per AI call) and chunks run concurrently |
 | `POST` | `/api/words/{id}/autofill` | AI-generate reading, meaning, and examples for a single word |
 | `POST` | `/api/words/{id}/generate-audio` | Generate WAV audio via local VoiceVox engine; sets `has_word_audio`/`has_sentence_audio` flags |
@@ -208,6 +209,13 @@ The edit modal uses two distinct field styles to signal interaction type:
 - **Bordered button** (full border, rounded corners) � dropdown selects (`.detail-pos-select`)
 
 When adding new fields to the word edit/add modal, follow whichever convention matches the field type. Do not use CSS `text-transform` or `letter-spacing` on `<select>` elements � browsers exclude these from intrinsic width calculations, causing text to overflow. Apply transforms in JS when generating `<option>` text instead.
+
+## Recent updates
+
+- The shared word edit modal now supports direct local image uploads in both the lexicon page and the story-side add-to-lexicon flow.
+- Clicking a word image or empty image placeholder in that modal opens a standard file picker.
+- The selected file uploads through `POST /api/words/{id}/upload-image`, is stored under `static/images/words/`, and replaces any previous image for that word.
+- `add-to-lexicon.js` owns the shared click-to-upload modal image behavior used by both modal variants.
 
 ## Working conventions
 

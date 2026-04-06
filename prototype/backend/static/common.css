@@ -409,6 +409,11 @@ body {
   border-bottom: 1px solid #313244;
   color: #585b70;
 }
+.modal-status-counts {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+}
 .modal-status-loading   { color: #89b4fa; }
 .modal-status-done      { color: #a6e3a1; }
 .modal-status-cancelled,

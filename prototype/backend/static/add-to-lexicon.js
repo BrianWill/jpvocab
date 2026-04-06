@@ -1,3 +1,12 @@
+import { esc, detailItemPosSelect, detailItemKanjiReadings, detailItemInput, detailItemExInput } from './lexicon-utils.js';
+
+const imagePlaceholderSvg =
+  '<svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">' +
+    '<rect x="3" y="3" width="18" height="18" rx="2" stroke="currentColor" stroke-width="1.5"/>' +
+    '<circle cx="8.5" cy="8.5" r="1.5" fill="currentColor"/>' +
+    '<polyline points="3,21 8,14 12,18 16,13 21,18" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round"/>' +
+  '</svg>';
+
 export function sortAddResultRows(container) {
   if (!container) return;
   const rows = Array.from(container.children);
@@ -7,4 +16,197 @@ export function sortAddResultRows(container) {
     return aLexicon - bLexicon;
   });
   rows.forEach(row => container.appendChild(row));
+}
+
+export function buildWordResultImage(imagePath, imageState, bust = '') {
+  if (imagePath) {
+    return '<div class="word-result-image"><img src="/static/' + esc(imagePath) + (bust ? '?v=' + bust : '') + '" alt=""></div>';
+  }
+  const classes = ['word-result-image', 'word-result-image--empty'];
+  let overlay = '';
+  if (imageState === 'loading') {
+    classes.push('word-result-image--loading');
+    overlay = '<span class="spinner word-result-image-spinner" aria-hidden="true"></span>';
+  } else if (imageState === 'failed') {
+    classes.push('word-result-image--failed');
+  }
+  return '<div class="' + classes.join(' ') + '">' + overlay + imagePlaceholderSvg + '</div>';
+}
+
+export function setWordRowImage(row, imagePath, imageState = '', bust = '') {
+  const imageEl = row?.querySelector('.word-result-image');
+  if (!imageEl) return;
+  imageEl.outerHTML = buildWordResultImage(imagePath, imageState, bust);
+}
+
+export function buildWordResultDetails(word, data, typeLabels) {
+  return (
+    '<div class="word-result-details">' +
+      detailItemInput('reading', data.reading, 'detail-reading') +
+      detailItemKanjiReadings(word, data.kanji_data) +
+      detailItemPosSelect(data.part_of_speech, typeLabels) +
+      detailItemInput('meaning', data.meaning, 'detail-meaning') +
+      detailItemExInput(data.example_jp, data.example_en) +
+    '</div>'
+  );
+}
+
+export function getWordBtnLabel(generateType) {
+  return generateType === 'image'
+    ? 'generate image'
+    : generateType === 'audio'
+      ? 'generate audio'
+      : 'generate word info';
+}
+
+export function getAudioGenerationTooltip({ voicevoxAvailable, ffmpegAvailable, readyMessage = 'Generate audio with VoiceVox' }) {
+  if (!voicevoxAvailable) return 'VoiceVox is not running';
+  if (!ffmpegAvailable) return 'ffmpeg is not installed (required for audio generation)';
+  return readyMessage;
+}
+
+export function bindWordResultEditorEvents({ containerEl, footerEl, closeButtonId, state, onSaveRowEdits }) {
+  containerEl.addEventListener('keydown', event => {
+    if (event.key !== 'Enter' || event.isComposing || !event.target.classList.contains('detail-input')) return;
+    event.preventDefault();
+    event.target.blur();
+  });
+
+  containerEl.addEventListener('input', event => {
+    if (event.isComposing || !event.target.classList.contains('detail-input')) return;
+    enforceFieldLanguage(event.target, footerEl, closeButtonId, state);
+  });
+
+  containerEl.addEventListener('compositionend', event => {
+    if (!event.target.classList.contains('detail-input')) return;
+    enforceFieldLanguage(event.target, footerEl, closeButtonId, state);
+  });
+
+  containerEl.addEventListener('paste', event => {
+    const fieldEl = event.target;
+    if (!fieldEl.classList.contains('detail-input')) return;
+    const filter = getFieldLanguageFilter(fieldEl);
+    if (!filter) return;
+    event.preventDefault();
+    const text = (event.clipboardData || window.clipboardData).getData('text/plain');
+    document.execCommand('insertText', false, filter(text));
+  });
+
+  containerEl.addEventListener('focusout', event => {
+    if (!event.target.classList.contains('detail-input')) return;
+    const row = event.target.closest('.word-result-row');
+    if (row) onSaveRowEdits(row);
+  });
+
+  containerEl.addEventListener('change', event => {
+    if (!event.target.classList.contains('detail-pos-select')) return;
+    const row = event.target.closest('.word-result-row');
+    if (row) onSaveRowEdits(row);
+  });
+}
+
+export function saveWordRowEdits(row) {
+  if (!row._wordId) return;
+  const reading = (row.querySelector('.detail-reading .detail-input')?.textContent ?? '').trim();
+  const type = row.querySelector('.detail-pos-select')?.value ?? '';
+  const meaning = (row.querySelector('.detail-meaning .detail-input')?.textContent ?? '').trim();
+  const exInputs = row.querySelectorAll('.detail-ex .detail-input');
+  const exampleJp = (exInputs[0]?.textContent ?? '').trim();
+  const exampleEn = (exInputs[1]?.textContent ?? '').trim();
+  const targetEl = row.querySelector('.drill-target-val');
+  const target = targetEl ? (parseInt(targetEl.dataset.target, 10) || 0) : 0;
+  const kanjiData = Array.from(row.querySelectorAll('.kanji-reading-input')).map(el => ({
+    id: parseInt(el.dataset.kanjiId, 10),
+    reading: el.textContent.trim(),
+  }));
+  fetch('/api/words/' + row._wordId, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ reading, type, meaning, exampleJp, exampleEn, target, kanjiData }),
+  });
+}
+
+export async function adjustWordTarget(event, wordId, delta, btn) {
+  event.stopPropagation();
+  const stepper = btn.closest('.target-stepper');
+  const valEl = stepper.querySelector('.drill-target-val');
+  const drillRow = btn.closest('.word-result-drill');
+  const currentTarget = parseInt(valEl.dataset.target, 10);
+  const correctMatch = drillRow.querySelector('.drill-correct').textContent.match(/\d+/);
+  const correct = correctMatch ? parseInt(correctMatch[0], 10) : 0;
+  const newTarget = Math.max(correct, currentTarget + delta);
+  if (newTarget === currentTarget) return;
+
+  btn.disabled = true;
+  try {
+    const res = await fetch('/api/words/' + wordId + '/target', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ target: newTarget }),
+    });
+    if (!res.ok) throw new Error(await res.text());
+    valEl.dataset.target = newTarget;
+    valEl.textContent = newTarget;
+  } finally {
+    btn.disabled = false;
+  }
+}
+
+function getFieldLanguageFilter(el) {
+  if (el.closest('.detail-ex')) {
+    const isEn = el.classList.contains('detail-input--en');
+    return text => isEn
+      ? text.replace(/[\u3040-\u30FF\u4E00-\u9FFF\u3400-\u4DBF\uFF01-\uFF9F]/g, '')
+      : text.replace(/[a-zA-Z]/g, '');
+  }
+  if (el.closest('.detail-reading') || el.classList.contains('kanji-reading-input')) {
+    return text => text.replace(/[a-zA-Z]/g, '');
+  }
+  return null;
+}
+
+function getFieldLanguageErrorMsg(el) {
+  if (el.closest('.detail-ex') && el.classList.contains('detail-input--en')) {
+    return 'English only - Japanese characters are not allowed here';
+  }
+  return 'Japanese only - Latin letters are not allowed here';
+}
+
+function showFieldError(el, footerEl, closeButtonId, state, msg) {
+  el.classList.remove('detail-input--flash-error');
+  void el.offsetWidth;
+  el.classList.add('detail-input--flash-error');
+  el.addEventListener('animationend', () => el.classList.remove('detail-input--flash-error'), { once: true });
+
+  let errEl = footerEl.querySelector('.footer-field-error');
+  if (!errEl) {
+    errEl = document.createElement('span');
+    errEl.className = 'footer-field-error';
+    const closeBtn = document.getElementById(closeButtonId);
+    footerEl.insertBefore(errEl, closeBtn);
+  }
+  errEl.textContent = msg;
+  clearTimeout(state.fieldErrorTimer);
+  state.fieldErrorTimer = setTimeout(() => errEl.remove(), 3000);
+}
+
+function enforceFieldLanguage(el, footerEl, closeButtonId, state) {
+  const filter = getFieldLanguageFilter(el);
+  if (!filter) return;
+  const original = el.textContent;
+  const filtered = filter(original);
+  if (filtered === original) return;
+  const selection = window.getSelection();
+  const rawOffset = selection.rangeCount > 0 ? selection.getRangeAt(0).startOffset : 0;
+  const removedBefore = rawOffset - filter(original.slice(0, rawOffset)).length;
+  const newOffset = Math.max(0, rawOffset - removedBefore);
+  el.textContent = filtered;
+  if (el.firstChild) {
+    const range = document.createRange();
+    range.setStart(el.firstChild, Math.min(newOffset, filtered.length));
+    range.collapse(true);
+    selection.removeAllRanges();
+    selection.addRange(range);
+  }
+  showFieldError(el, footerEl, closeButtonId, state, getFieldLanguageErrorMsg(el));
 }

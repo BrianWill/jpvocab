@@ -1,6 +1,16 @@
-import { esc, detailItemPosSelect, detailItemKanjiReadings, detailItemInput, detailItemExInput, typeLabels } from './lexicon-utils.js';
+import { esc, typeLabels } from './lexicon-utils.js';
 import { getVoicevoxSettings, playWordAudio, playSentenceAudio, playDing, PROVIDER_MODELS, checkVoicevoxAvailable, checkFfmpegAvailable } from './common.js';
-import { sortAddResultRows } from './add-to-lexicon.js';
+import {
+  adjustWordTarget,
+  bindWordResultEditorEvents,
+  buildWordResultDetails,
+  buildWordResultImage,
+  getAudioGenerationTooltip,
+  getWordBtnLabel,
+  saveWordRowEdits,
+  setWordRowImage,
+  sortAddResultRows,
+} from './add-to-lexicon.js';
 
 const els = {};
 
@@ -8,6 +18,7 @@ const state = {
   addedWords: [],
   fieldErrorTimer: null,
   generateType: 'word-info',
+  generationCancelled: false,
   imageSources: null,
   pendingGenerates: 0,
   pendingRemoveAction: null,
@@ -17,13 +28,6 @@ const state = {
   voicevoxAvailable: false,
   ffmpegAvailable: false,
 };
-
-const imagePlaceholderSvg =
-  '<svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">' +
-    '<rect x="3" y="3" width="18" height="18" rx="2" stroke="currentColor" stroke-width="1.5"/>' +
-    '<circle cx="8.5" cy="8.5" r="1.5" fill="currentColor"/>' +
-    '<polyline points="3,21 8,14 12,18 16,13 21,18" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round"/>' +
-  '</svg>';
 
 let eventsBound = false;
 
@@ -118,63 +122,6 @@ function closeGenerateConfirm() {
   els.generateConfirmModalBackdrop.classList.add('hidden');
 }
 
-function getFieldLanguageFilter(el) {
-  if (el.closest('.detail-ex')) {
-    const isEn = el.classList.contains('detail-input--en');
-    return text => isEn
-      ? text.replace(/[\u3040-\u30FF\u4E00-\u9FFF\u3400-\u4DBF\uFF01-\uFF9F]/g, '')
-      : text.replace(/[a-zA-Z]/g, '');
-  }
-  if (el.closest('.detail-reading') || el.classList.contains('kanji-reading-input')) {
-    return text => text.replace(/[a-zA-Z]/g, '');
-  }
-  return null;
-}
-
-function getFieldLanguageErrorMsg(el) {
-  if (el.closest('.detail-ex') && el.classList.contains('detail-input--en')) return 'English only - Japanese characters are not allowed here';
-  return 'Japanese only - Latin letters are not allowed here';
-}
-
-function showFieldError(el, msg) {
-  el.classList.remove('detail-input--flash-error');
-  void el.offsetWidth;
-  el.classList.add('detail-input--flash-error');
-  el.addEventListener('animationend', () => el.classList.remove('detail-input--flash-error'), { once: true });
-
-  let errEl = els.addResultFooter.querySelector('.footer-field-error');
-  if (!errEl) {
-    errEl = document.createElement('span');
-    errEl.className = 'footer-field-error';
-    const closeBtn = document.getElementById('story-btn-add-result-close');
-    els.addResultFooter.insertBefore(errEl, closeBtn);
-  }
-  errEl.textContent = msg;
-  clearTimeout(state.fieldErrorTimer);
-  state.fieldErrorTimer = setTimeout(() => errEl.remove(), 3000);
-}
-
-function enforceFieldLanguage(el) {
-  const filter = getFieldLanguageFilter(el);
-  if (!filter) return;
-  const original = el.textContent;
-  const filtered = filter(original);
-  if (filtered === original) return;
-  const sel = window.getSelection();
-  const rawOffset = sel.rangeCount > 0 ? sel.getRangeAt(0).startOffset : 0;
-  const removedBefore = rawOffset - filter(original.slice(0, rawOffset)).length;
-  const newOffset = Math.max(0, rawOffset - removedBefore);
-  el.textContent = filtered;
-  if (el.firstChild) {
-    const range = document.createRange();
-    range.setStart(el.firstChild, Math.min(newOffset, filtered.length));
-    range.collapse(true);
-    sel.removeAllRanges();
-    sel.addRange(range);
-  }
-  showFieldError(el, getFieldLanguageErrorMsg(el));
-}
-
 function bindEvents() {
   if (eventsBound) return;
   eventsBound = true;
@@ -203,36 +150,12 @@ function bindEvents() {
     }
   });
 
-  els.addResultBody.addEventListener('keydown', e => {
-    if (e.key !== 'Enter' || e.isComposing || !e.target.classList.contains('detail-input')) return;
-    e.preventDefault();
-    e.target.blur();
-  });
-  els.addResultBody.addEventListener('input', e => {
-    if (e.isComposing || !e.target.classList.contains('detail-input')) return;
-    enforceFieldLanguage(e.target);
-  });
-  els.addResultBody.addEventListener('compositionend', e => {
-    if (e.target.classList.contains('detail-input')) enforceFieldLanguage(e.target);
-  });
-  els.addResultBody.addEventListener('paste', e => {
-    const el = e.target;
-    if (!el.classList.contains('detail-input')) return;
-    const filter = getFieldLanguageFilter(el);
-    if (!filter) return;
-    e.preventDefault();
-    const text = (e.clipboardData || window.clipboardData).getData('text/plain');
-    document.execCommand('insertText', false, filter(text));
-  });
-  els.addResultBody.addEventListener('focusout', e => {
-    if (!e.target.classList.contains('detail-input')) return;
-    const row = e.target.closest('.word-result-row');
-    if (row) saveWordRowEdits(row);
-  });
-  els.addResultBody.addEventListener('change', e => {
-    if (!e.target.classList.contains('detail-pos-select')) return;
-    const row = e.target.closest('.word-result-row');
-    if (row) saveWordRowEdits(row);
+  bindWordResultEditorEvents({
+    containerEl: els.addResultBody,
+    footerEl: els.addResultFooter,
+    closeButtonId: 'story-btn-add-result-close',
+    state,
+    onSaveRowEdits: saveWordRowEdits,
   });
 
   els.removeConfirmModalBackdrop.addEventListener('click', e => {
@@ -265,27 +188,6 @@ async function loadSupportState() {
     checkVoicevoxAvailable(),
     checkFfmpegAvailable(),
   ]);
-}
-
-function buildWordResultImage(imagePath, imageState, bust = '') {
-  if (imagePath) {
-    return '<div class="word-result-image"><img src="/static/' + esc(imagePath) + (bust ? '?v=' + bust : '') + '" alt=""></div>';
-  }
-  const classes = ['word-result-image', 'word-result-image--empty'];
-  let overlay = '';
-  if (imageState === 'loading') {
-    classes.push('word-result-image--loading');
-    overlay = '<span class="spinner word-result-image-spinner" aria-hidden="true"></span>';
-  } else if (imageState === 'failed') {
-    classes.push('word-result-image--failed');
-  }
-  return '<div class="' + classes.join(' ') + '">' + overlay + imagePlaceholderSvg + '</div>';
-}
-
-function setWordRowImage(row, imagePath, imageState = '', bust = '') {
-  const imageEl = row.querySelector('.word-result-image');
-  if (!imageEl) return;
-  imageEl.outerHTML = buildWordResultImage(imagePath, imageState, bust);
 }
 
 export async function initStoryAddToLexicon() {
@@ -358,7 +260,7 @@ function appendWordRow(data) {
   const removeBtn = '<button class="btn-delete btn-word-remove" data-tooltip="Remove word" data-word="' + esc(data.word) + '">x</button>';
   const hasProviders = !!(state.providers && PROVIDER_MODELS.some(p => state.providers[p.key]));
   const generateBtn = data.word_id
-    ? '<button class="btn-generate"' + (hasProviders ? '' : ' disabled') + ' data-tooltip="Uses an AI API request to get the word\'s reading, part-of-speech, meaning, and an example sentence">' + getWordBtnLabel() + '</button>'
+    ? '<button class="btn-generate"' + (hasProviders ? '' : ' disabled') + ' data-tooltip="Uses an AI API request to get the word\'s reading, part-of-speech, meaning, and an example sentence">' + getWordBtnLabel(state.generateType) + '</button>'
     : '';
   let inlineExtra;
   if (data.word_id) {
@@ -381,14 +283,7 @@ function appendWordRow(data) {
     inlineExtra = '<span class="word-result-drill">' + removeBtn + '</span>';
   }
 
-  const details =
-    '<div class="word-result-details">' +
-      detailItemInput('reading', data.reading, 'detail-reading') +
-      detailItemKanjiReadings(data.word, data.kanji_data) +
-      detailItemPosSelect(data.part_of_speech, typeLabels) +
-      detailItemInput('meaning', data.meaning, 'detail-meaning') +
-      detailItemExInput(data.example_jp, data.example_en) +
-    '</div>';
+  const details = buildWordResultDetails(data.word, data, typeLabels);
 
   row.innerHTML =
     '<div class="word-result-main"><span class="result-word">' + esc(data.word) + '</span>' + badge + inlineExtra + '</div>' +
@@ -418,14 +313,7 @@ function appendWordRow(data) {
 function updateWordRowDetails(data) {
   const row = Array.from(els.addResultBody.children).find(el => el._resolvedWord === data.word);
   if (!row) return;
-  row.querySelector('.word-result-details').outerHTML =
-    '<div class="word-result-details">' +
-      detailItemInput('reading', data.reading, 'detail-reading') +
-      detailItemKanjiReadings(data.word, data.kanji_data) +
-      detailItemPosSelect(data.part_of_speech, typeLabels) +
-      detailItemInput('meaning', data.meaning, 'detail-meaning') +
-      detailItemExInput(data.example_jp, data.example_en) +
-    '</div>';
+  row.querySelector('.word-result-details').outerHTML = buildWordResultDetails(data.word, data, typeLabels);
 }
 
 function getGenerateType() {
@@ -434,66 +322,6 @@ function getGenerateType() {
 
 function getImageSource() {
   return document.getElementById('story-add-result-image-source-select')?.value || 'wikimedia';
-}
-
-function getWordBtnLabel() {
-  return state.generateType === 'image'
-    ? 'generate image'
-    : state.generateType === 'audio'
-      ? 'generate audio'
-      : 'generate word info';
-}
-
-function audioReadyTooltip() {
-  if (!state.voicevoxAvailable) return 'VoiceVox is not running';
-  if (!state.ffmpegAvailable) return 'ffmpeg is not installed (required for audio generation)';
-  return 'Generate audio with VoiceVox';
-}
-
-function saveWordRowEdits(row) {
-  if (!row._wordId) return;
-  const reading = (row.querySelector('.detail-reading .detail-input')?.textContent ?? '').trim();
-  const type = row.querySelector('.detail-pos-select')?.value ?? '';
-  const meaning = (row.querySelector('.detail-meaning .detail-input')?.textContent ?? '').trim();
-  const exInputs = row.querySelectorAll('.detail-ex .detail-input');
-  const exampleJp = (exInputs[0]?.textContent ?? '').trim();
-  const exampleEn = (exInputs[1]?.textContent ?? '').trim();
-  const targetEl = row.querySelector('.drill-target-val');
-  const target = targetEl ? (parseInt(targetEl.dataset.target, 10) || 0) : 0;
-  const kanjiData = Array.from(row.querySelectorAll('.kanji-reading-input')).map(el => ({
-    id: parseInt(el.dataset.kanjiId, 10),
-    reading: el.textContent.trim(),
-  }));
-  fetch('/api/words/' + row._wordId, {
-    method: 'PATCH',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ reading, type, meaning, exampleJp, exampleEn, target, kanjiData }),
-  });
-}
-
-async function adjustWordTarget(event, wordId, delta, btn) {
-  event.stopPropagation();
-  const stepper = btn.closest('.target-stepper');
-  const valEl = stepper.querySelector('.drill-target-val');
-  const drillRow = btn.closest('.word-result-drill');
-  const currentTarget = parseInt(valEl.dataset.target, 10);
-  const correctMatch = drillRow.querySelector('.drill-correct').textContent.match(/\d+/);
-  const correct = correctMatch ? parseInt(correctMatch[0], 10) : 0;
-  const newTarget = Math.max(correct, currentTarget + delta);
-  if (newTarget === currentTarget) return;
-  btn.disabled = true;
-  try {
-    const res = await fetch('/api/words/' + wordId + '/target', {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ target: newTarget }),
-    });
-    if (!res.ok) throw new Error(await res.text());
-    valEl.dataset.target = newTarget;
-    valEl.textContent = newTarget;
-  } finally {
-    btn.disabled = false;
-  }
 }
 
 async function generateWordAutofill(event, wordId, word, btn) {
@@ -524,7 +352,7 @@ async function generateWordAutofill(event, wordId, word, btn) {
       btn._generateAbort = null;
       if (btn.classList.contains('btn-generate--busy')) {
         btn.classList.remove('btn-generate--busy', 'btn-generate--cancellable');
-        btn.innerHTML = getWordBtnLabel();
+        btn.innerHTML = getWordBtnLabel(state.generateType);
         state.pendingGenerates = Math.max(0, state.pendingGenerates - 1);
         renderStatus();
       }
@@ -573,7 +401,7 @@ async function generateWordImage(event, wordId, word, btn) {
       btn._generateAbort = null;
       if (btn.classList.contains('btn-generate--busy')) {
         btn.classList.remove('btn-generate--busy', 'btn-generate--cancellable');
-        btn.innerHTML = getWordBtnLabel();
+        btn.innerHTML = getWordBtnLabel(state.generateType);
         state.pendingGenerates = Math.max(0, state.pendingGenerates - 1);
         renderStatus();
       }
@@ -614,7 +442,7 @@ async function generateWordAudio(event, wordId, word, btn) {
       btn._generateAbort = null;
       if (btn.classList.contains('btn-generate--busy')) {
         btn.classList.remove('btn-generate--busy', 'btn-generate--cancellable');
-        btn.innerHTML = getWordBtnLabel();
+        btn.innerHTML = getWordBtnLabel(state.generateType);
         state.pendingGenerates = Math.max(0, state.pendingGenerates - 1);
         renderStatus();
       }
@@ -694,7 +522,7 @@ async function generateAllAutofillBatch(rows) {
       item.btn.classList.remove('btn-generate--cancellable');
       if (item.btn.classList.contains('btn-generate--busy')) {
         item.btn.classList.remove('btn-generate--busy');
-        item.btn.innerHTML = getWordBtnLabel();
+        item.btn.innerHTML = getWordBtnLabel(state.generateType);
         state.pendingGenerates = Math.max(0, state.pendingGenerates - 1);
       }
     }
@@ -702,8 +530,27 @@ async function generateAllAutofillBatch(rows) {
   }
 }
 
+function clearAutofillSpinners() {
+  els.addResultBody.querySelectorAll('.btn-generate--busy').forEach(btn => {
+    btn._generateAbort = null;
+    btn.classList.remove('btn-generate--busy', 'btn-generate--cancellable');
+    btn.innerHTML = getWordBtnLabel(state.generateType);
+  });
+  state.pendingGenerates = 0;
+}
+
+function cancelAllGenerates() {
+  state.generationCancelled = true;
+  els.addResultBody.querySelectorAll('.btn-generate--cancellable').forEach(btn => {
+    if (btn._generateAbort) btn._generateAbort.abort();
+  });
+  clearAutofillSpinners();
+  renderStatus();
+}
+
 function renderStatus() {
-  if (state.prevPendingGenerates > 0 && state.pendingGenerates === 0) playDing();
+  if (state.pendingGenerates > 0 && state.prevPendingGenerates === 0) state.generationCancelled = false;
+  if (state.prevPendingGenerates > 0 && state.pendingGenerates === 0 && !state.generationCancelled) playDing();
   state.prevPendingGenerates = state.pendingGenerates;
 
   els.addResultTitle.textContent = 'Edit words';
@@ -711,9 +558,13 @@ function renderStatus() {
   if (sel) sel.disabled = state.pendingGenerates > 0 || !(state.providers && PROVIDER_MODELS.some(p => state.providers[p.key]));
   const statusEl = document.getElementById('story-add-result-modal-status');
   const actionEl = document.getElementById('story-add-result-modal-action');
-  const skippedHtml = state.skippedCount > 0 ? ', <span class="status-skipped">' + state.skippedCount + ' skipped</span>' : '';
+  const skippedHtml = state.skippedCount > 0 ? '<span class="status-skipped">' + state.skippedCount + ' skipped</span>' : '';
   statusEl.className = 'modal-status ' + (state.pendingGenerates > 0 ? 'modal-status-loading' : 'modal-status-done');
-  statusEl.innerHTML = '<span>' + state.addedWords.length + ' added' + skippedHtml + '</span>';
+  statusEl.innerHTML =
+    '<span class="modal-status-counts">' +
+      '<span>' + state.addedWords.length + ' added</span>' +
+      skippedHtml +
+    '</span>';
 
   const hasProviders = !!(state.providers && PROVIDER_MODELS.some(p => state.providers[p.key]));
   const genType = getGenerateType();
@@ -721,32 +572,40 @@ function renderStatus() {
   const enabled = els.addResultBody.querySelectorAll('.word-result-row .btn-generate:not(.btn-generate--busy):not([disabled])').length > 0 &&
     (genType === 'audio' ? audioReady : hasProviders);
   const labels = { 'word-info': 'Generate word info', 'image': 'Generate images', 'audio': 'Generate audio' };
-  actionEl.innerHTML =
-    '<div class="split-btn-wrap">' +
-      '<button class="btn-save btn-generate--all split-btn-main story-split-btn-main"' + (enabled ? '' : ' disabled') + '>' + labels[genType] + '</button>' +
-      '<button class="btn-save btn-generate--all split-btn-arrow story-split-btn-arrow"' + (enabled ? '' : ' disabled') + '>▾</button>' +
-      '<div class="split-btn-menu" id="story-split-btn-menu" hidden>' +
-        ['word-info', 'image', 'audio'].map(type => '<button class="split-btn-option' + (type === genType ? ' split-btn-option--active' : '') + '" data-type="' + type + '">' + labels[type] + '</button>').join('') +
+  if (state.pendingGenerates > 0) {
+    actionEl.innerHTML =
+      '<button class="btn-danger btn-generate--cancel">' +
+        '<span class="spinner"></span>Cancel generation' +
+      '</button>';
+    actionEl.querySelector('button')?.addEventListener('mousedown', cancelAllGenerates);
+  } else {
+    actionEl.innerHTML =
+      '<div class="split-btn-wrap">' +
+        '<button class="btn-save btn-generate--all split-btn-main story-split-btn-main"' + (enabled ? '' : ' disabled') + '>' + labels[genType] + '</button>' +
+        '<button class="btn-save btn-generate--all split-btn-arrow story-split-btn-arrow"' + (enabled ? '' : ' disabled') + '>▾</button>' +
+        '<div class="split-btn-menu" id="story-split-btn-menu" hidden>' +
+          ['word-info', 'image', 'audio'].map(type => '<button class="split-btn-option' + (type === genType ? ' split-btn-option--active' : '') + '" data-type="' + type + '">' + labels[type] + '</button>').join('') +
+        '</div>' +
       '</div>' +
-    '</div>' +
-    (genType === 'audio' ? '<span class="provider-info-icon" data-tooltip="' + audioReadyTooltip() + '">?</span>' : '');
+      (genType === 'audio' ? '<span class="provider-info-icon" data-tooltip="' + getAudioGenerationTooltip({ voicevoxAvailable: state.voicevoxAvailable, ffmpegAvailable: state.ffmpegAvailable }) + '">?</span>' : '');
 
-  const mainBtn = actionEl.querySelector('.split-btn-main');
-  const arrowBtn = actionEl.querySelector('.split-btn-arrow');
-  const menu = document.getElementById('story-split-btn-menu');
-  mainBtn?.addEventListener('mousedown', openGenerateConfirm);
-  arrowBtn?.addEventListener('mousedown', e => {
-    e.stopPropagation();
-    menu.hidden = !menu.hidden;
-  });
-  menu?.querySelectorAll('.split-btn-option').forEach(option => {
-    option.addEventListener('mousedown', e => {
+    const mainBtn = actionEl.querySelector('.split-btn-main');
+    const arrowBtn = actionEl.querySelector('.split-btn-arrow');
+    const menu = document.getElementById('story-split-btn-menu');
+    mainBtn?.addEventListener('mousedown', openGenerateConfirm);
+    arrowBtn?.addEventListener('mousedown', e => {
       e.stopPropagation();
-      state.generateType = option.dataset.type;
-      menu.hidden = true;
-      renderStatus();
+      menu.hidden = !menu.hidden;
     });
-  });
+    menu?.querySelectorAll('.split-btn-option').forEach(option => {
+      option.addEventListener('mousedown', e => {
+        e.stopPropagation();
+        state.generateType = option.dataset.type;
+        menu.hidden = true;
+        renderStatus();
+      });
+    });
+  }
 
   const sourceDisplay = genType === 'image' ? '' : 'none';
   const sourceSel = document.getElementById('story-add-result-image-source-select');
@@ -836,3 +695,4 @@ export function closeAddResultModal() {
   if (state.pendingGenerates > 0) return;
   els.addResultModalBackdrop.classList.add('hidden');
 }
+

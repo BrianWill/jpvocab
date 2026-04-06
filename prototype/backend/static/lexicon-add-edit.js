@@ -1,7 +1,17 @@
 import { state as lexiconState, typeLabels, reloadWords, renderTable, getSortedWords, closeAddModal, updateWordImagePath, updateWordAudioFlags } from './lexicon.js';
-import { esc, isKanji, detailItemPosSelect, detailItemKanjiReadings, detailItemInput, detailItemExInput } from './lexicon-utils.js';
+import { esc } from './lexicon-utils.js';
 import { getVoicevoxSettings, playWordAudio, playSentenceAudio, playDing, PROVIDER_MODELS } from './common.js';
-import { sortAddResultRows } from './add-to-lexicon.js';
+import {
+  adjustWordTarget,
+  bindWordResultEditorEvents,
+  buildWordResultDetails,
+  buildWordResultImage,
+  getAudioGenerationTooltip,
+  getWordBtnLabel,
+  saveWordRowEdits,
+  setWordRowImage,
+  sortAddResultRows,
+} from './add-to-lexicon.js';
 
 const els = {
   addModalSaveBtn: document.querySelector('#add-modal-backdrop .btn-save'),
@@ -36,34 +46,6 @@ export const state = {
   pendingRemoveAction: null,
   skippedCount: 0,
 };
-
-const imagePlaceholderSvg =
-  '<svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">' +
-    '<rect x="3" y="3" width="18" height="18" rx="2" stroke="currentColor" stroke-width="1.5"/>' +
-    '<circle cx="8.5" cy="8.5" r="1.5" fill="currentColor"/>' +
-    '<polyline points="3,21 8,14 12,18 16,13 21,18" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round"/>' +
-  '</svg>';
-
-function buildWordResultImage(imagePath, imageState, bust = '') {
-  if (imagePath) {
-    return '<div class="word-result-image"><img src="/static/' + esc(imagePath) + (bust ? '?v=' + bust : '') + '" alt=""></div>';
-  }
-  const classes = ['word-result-image', 'word-result-image--empty'];
-  let overlay = '';
-  if (imageState === 'loading') {
-    classes.push('word-result-image--loading');
-    overlay = '<span class="spinner word-result-image-spinner" aria-hidden="true"></span>';
-  } else if (imageState === 'failed') {
-    classes.push('word-result-image--failed');
-  }
-  return '<div class="' + classes.join(' ') + '">' + overlay + imagePlaceholderSvg + '</div>';
-}
-
-function setWordRowImage(row, imagePath, imageState = '', bust = '') {
-  const imageEl = row.querySelector('.word-result-image');
-  if (!imageEl) return;
-  imageEl.outerHTML = buildWordResultImage(imagePath, imageState, bust);
-}
 
 // --- Add/edit modal ---
 // Handles two scenarios:
@@ -183,96 +165,12 @@ els.generateConfirmOk.addEventListener('click', () => {
 
 els.addModalSaveBtn.addEventListener('click', saveAddModal);
 
-// Prevent newlines in contenteditable fields; Enter blurs instead
-els.addResultBody.addEventListener('keydown', function(e) {
-  if (e.key !== 'Enter') return;
-  if (e.isComposing) return; // let IME handle its own Enter (commit keystroke)
-  if (!e.target.classList.contains('detail-input')) return;
-  e.preventDefault();
-  e.target.blur();
-});
-
-// Language enforcement for detail input fields
-function _getFieldLanguageFilter(el) {
-  if (el.closest('.detail-ex')) {
-    const isEn = el.classList.contains('detail-input--en');
-    return text => isEn
-      ? text.replace(/[\u3040-\u30FF\u4E00-\u9FFF\u3400-\u4DBF\uFF01-\uFF9F]/g, '')
-      : text.replace(/[a-zA-Z]/g, '');
-  }
-  if (el.closest('.detail-reading') || el.classList.contains('kanji-reading-input')) {
-    return text => text.replace(/[a-zA-Z]/g, '');
-  }
-  return null;
-}
-function _getFieldLanguageErrorMsg(el) {
-  if (el.closest('.detail-ex') && el.classList.contains('detail-input--en')) return 'English only — Japanese characters are not allowed here';
-  return 'Japanese only — Latin letters are not allowed here';
-}
-function _showFieldError(el, msg) {
-  el.classList.remove('detail-input--flash-error');
-  void el.offsetWidth; // force reflow to restart animation
-  el.classList.add('detail-input--flash-error');
-  el.addEventListener('animationend', () => el.classList.remove('detail-input--flash-error'), { once: true });
-
-  let errEl = els.addResultFooter.querySelector('.footer-field-error');
-  if (!errEl) {
-    errEl = document.createElement('span');
-    errEl.className = 'footer-field-error';
-    const closeBtn = document.getElementById('btn-add-result-close');
-    els.addResultFooter.insertBefore(errEl, closeBtn);
-  }
-  errEl.textContent = msg;
-  clearTimeout(state.fieldErrorTimer);
-  state.fieldErrorTimer = setTimeout(() => errEl.remove(), 3000);
-}
-function _enforceFieldLanguage(el) {
-  const filter = _getFieldLanguageFilter(el);
-  if (!filter) return;
-  const original = el.textContent;
-  const filtered = filter(original);
-  if (filtered === original) return;
-  const sel = window.getSelection();
-  const rawOffset = sel.rangeCount > 0 ? sel.getRangeAt(0).startOffset : 0;
-  const removedBefore = rawOffset - filter(original.slice(0, rawOffset)).length;
-  const newOffset = Math.max(0, rawOffset - removedBefore);
-  el.textContent = filtered;
-  if (el.firstChild) {
-    const range = document.createRange();
-    range.setStart(el.firstChild, Math.min(newOffset, filtered.length));
-    range.collapse(true);
-    sel.removeAllRanges();
-    sel.addRange(range);
-  }
-  _showFieldError(el, _getFieldLanguageErrorMsg(el));
-}
-els.addResultBody.addEventListener('input', function(e) {
-  if (e.isComposing) return;
-  if (e.target.classList.contains('detail-input')) _enforceFieldLanguage(e.target);
-});
-els.addResultBody.addEventListener('compositionend', function(e) {
-  if (e.target.classList.contains('detail-input')) _enforceFieldLanguage(e.target);
-});
-els.addResultBody.addEventListener('paste', function(e) {
-  const el = e.target;
-  if (!el.classList.contains('detail-input')) return;
-  const filter = _getFieldLanguageFilter(el);
-  if (!filter) return;
-  e.preventDefault();
-  const text = (e.clipboardData || window.clipboardData).getData('text/plain');
-  document.execCommand('insertText', false, filter(text));
-});
-
-// Auto-save word info edits in the add-result modal
-els.addResultBody.addEventListener('focusout', function(e) {
-  if (!e.target.classList.contains('detail-input')) return;
-  const row = e.target.closest('.word-result-row');
-  if (row) saveWordRowEdits(row);
-});
-els.addResultBody.addEventListener('change', function(e) {
-  if (!e.target.classList.contains('detail-pos-select')) return;
-  const row = e.target.closest('.word-result-row');
-  if (row) saveWordRowEdits(row);
+bindWordResultEditorEvents({
+  containerEl: els.addResultBody,
+  footerEl: els.addResultFooter,
+  closeButtonId: 'btn-add-result-close',
+  state,
+  onSaveRowEdits: saveWordRowEdits,
 });
 
 export async function closeAddResultModal() {
@@ -396,7 +294,7 @@ function appendWordRow(data) {
     ? '<button class="btn-generate"' +
         (hasProviders ? '' : ' disabled') +
         ' data-tooltip="Uses an AI API request to get the word\'s reading, part-of-speech, meaning, and an example sentence"' +
-        '>' + getWordBtnLabel() + '</button>'
+        '>' + getWordBtnLabel(state.generateType) + '</button>'
     : '';
   let inlineExtra;
   if (data.word_id) {
@@ -419,14 +317,7 @@ function appendWordRow(data) {
     inlineExtra = '<span class="word-result-drill">' + removeBtn + '</span>';
   }
 
-  const details =
-    '<div class="word-result-details">' +
-      detailItemInput('reading', data.reading,        'detail-reading') +
-      detailItemKanjiReadings(data.word, data.kanji_data) +
-      detailItemPosSelect(data.part_of_speech, typeLabels) +
-      detailItemInput('meaning', data.meaning,        'detail-meaning') +
-      detailItemExInput(data.example_jp, data.example_en) +
-    '</div>';
+  const details = buildWordResultDetails(data.word, data, typeLabels);
 
   const imageHtml = buildWordResultImage(data.image_path, '');
 
@@ -469,19 +360,12 @@ function updateWordRowDetails(data) {
     if (el._resolvedWord === data.word) { row = el; break; }
   }
   if (!row) return;
-  const newDetails =
-    '<div class="word-result-details">' +
-      detailItemInput('reading', data.reading,        'detail-reading') +
-      detailItemKanjiReadings(row._resolvedWord, data.kanji_data) +
-      detailItemPosSelect(data.part_of_speech, typeLabels) +
-      detailItemInput('meaning', data.meaning,        'detail-meaning') +
-      detailItemExInput(data.example_jp, data.example_en) +
-    '</div>';
+  const newDetails = buildWordResultDetails(row._resolvedWord, data, typeLabels);
   row.querySelector('.word-result-details').outerHTML = newDetails;
   const genBtn = row.querySelector('.btn-generate');
   if (genBtn && genBtn.classList.contains('btn-generate--busy') && !genBtn._generateAbort) {
     genBtn.classList.remove('btn-generate--busy');
-    genBtn.innerHTML = 'generate';
+    genBtn.innerHTML = getWordBtnLabel(state.generateType);
     state.pendingGenerates = Math.max(0, state.pendingGenerates - 1);
     renderStatus();
   }
@@ -515,30 +399,24 @@ function getImageSource() {
   return document.getElementById('add-result-image-source-select')?.value ?? 'wikimedia';
 }
 
-function audioReadyTooltip() {
-  if (!lexiconState.voicevoxAvailable) return 'VoiceVox is not running';
-  if (!lexiconState.ffmpegAvailable) return 'ffmpeg is not installed (required for audio generation)';
-  return 'Generates audio via the local VoiceVox engine';
-}
-
-function getWordBtnLabel() {
-  return state.generateType === 'image' ? 'generate image' : state.generateType === 'audio' ? 'generate audio' : 'generate word info';
-}
-
 function updateGenerateBtnStates() {
   const type = getGenerateType();
   const hasProviders = lexiconState.providers && (lexiconState.providers.anthropic || lexiconState.providers.openai || lexiconState.providers.google || lexiconState.providers.mistral || lexiconState.providers.glm);
   const audioReady = lexiconState.voicevoxAvailable && lexiconState.ffmpegAvailable;
   const disabled = type === 'audio' ? !audioReady : !hasProviders;
   const tooltip = type === 'audio'
-    ? audioReadyTooltip()
+    ? getAudioGenerationTooltip({
+        voicevoxAvailable: lexiconState.voicevoxAvailable,
+        ffmpegAvailable: lexiconState.ffmpegAvailable,
+        readyMessage: 'Generates audio via the local VoiceVox engine',
+      })
     : type === 'image'
       ? 'Uses an AI API request to find and download an image for this word'
       : 'Uses an AI API request to get the word\'s reading, part-of-speech, meaning, and an example sentence';
   els.addResultBody.querySelectorAll('.btn-generate:not(.btn-generate--busy)').forEach(btn => {
     btn.disabled = disabled;
     btn.dataset.tooltip = tooltip;
-    btn.innerHTML = getWordBtnLabel();
+    btn.innerHTML = getWordBtnLabel(state.generateType);
   });
 }
 
@@ -572,7 +450,7 @@ async function generateWordAutofill(event, wordId, word, btn) {
       btn._generateAbort = null;
       if (btn.classList.contains('btn-generate--busy')) {
         btn.classList.remove('btn-generate--busy', 'btn-generate--cancellable');
-        btn.innerHTML = getWordBtnLabel();
+        btn.innerHTML = getWordBtnLabel(state.generateType);
         state.pendingGenerates = Math.max(0, state.pendingGenerates - 1);
         renderStatus();
       }
@@ -622,7 +500,7 @@ async function generateWordImage(event, wordId, word, btn) {
       btn._generateAbort = null;
       if (btn.classList.contains('btn-generate--busy')) {
         btn.classList.remove('btn-generate--busy', 'btn-generate--cancellable');
-        btn.innerHTML = getWordBtnLabel();
+        btn.innerHTML = getWordBtnLabel(state.generateType);
         state.pendingGenerates = Math.max(0, state.pendingGenerates - 1);
         renderStatus();
       }
@@ -664,7 +542,7 @@ async function generateWordAudio(event, wordId, word, btn) {
       btn._generateAbort = null;
       if (btn.classList.contains('btn-generate--busy')) {
         btn.classList.remove('btn-generate--busy', 'btn-generate--cancellable');
-        btn.innerHTML = getWordBtnLabel();
+        btn.innerHTML = getWordBtnLabel(state.generateType);
         state.pendingGenerates = Math.max(0, state.pendingGenerates - 1);
         renderStatus();
       }
@@ -696,59 +574,11 @@ function removeWordRow(event, btn) {
   });
 }
 
-function saveWordRowEdits(row) {
-  if (!row._wordId) return;
-  const reading   = (row.querySelector('.detail-reading .detail-input')?.textContent ?? '').trim();
-  const type      = row.querySelector('.detail-pos-select')?.value ?? '';
-  const meaning   = (row.querySelector('.detail-meaning .detail-input')?.textContent ?? '').trim();
-  const exInputs  = row.querySelectorAll('.detail-ex .detail-input');
-  const exampleJp = (exInputs[0]?.textContent ?? '').trim();
-  const exampleEn = (exInputs[1]?.textContent ?? '').trim();
-  const targetEl  = row.querySelector('.drill-target-val');
-  const target    = targetEl ? (parseInt(targetEl.dataset.target, 10) || 0) : 0;
-  const kanjiData = Array.from(row.querySelectorAll('.kanji-reading-input')).map(el => ({
-    id: parseInt(el.dataset.kanjiId, 10),
-    reading: el.textContent.trim(),
-  }));
-  fetch('/api/words/' + row._wordId, {
-    method: 'PATCH',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ reading, type, meaning, exampleJp, exampleEn, target, kanjiData }),
-  });
-}
-
-async function adjustWordTarget(event, wordId, delta, btn) {
-  event.stopPropagation();
-  const stepper = btn.closest('.target-stepper');
-  const valEl = stepper.querySelector('.drill-target-val');
-  const drillRow = btn.closest('.word-result-drill');
-
-  const currentTarget = parseInt(valEl.dataset.target, 10);
-  const correctMatch = drillRow.querySelector('.drill-correct').textContent.match(/\d+/);
-  const correct = correctMatch ? parseInt(correctMatch[0], 10) : 0;
-  const newTarget = Math.max(correct, currentTarget + delta);
-  if (newTarget === currentTarget) return;
-
-  btn.disabled = true;
-  try {
-    const res = await fetch('/api/words/' + wordId + '/target', {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ target: newTarget }),
-    });
-    if (!res.ok) throw new Error(await res.text());
-    valEl.dataset.target = newTarget;
-    valEl.textContent = newTarget;
-  } finally {
-    btn.disabled = false;
-  }
-}
-
 function clearAutofillSpinners() {
   els.addResultBody.querySelectorAll('.btn-generate--busy').forEach(btn => {
     btn._generateAbort = null;
     btn.classList.remove('btn-generate--busy', 'btn-generate--cancellable');
-    btn.innerHTML = getWordBtnLabel();
+    btn.innerHTML = getWordBtnLabel(state.generateType);
   });
   state.pendingGenerates = 0;
 }
@@ -826,7 +656,7 @@ async function generateAllAutofillBatch(rows) {
       btn.classList.remove('btn-generate--cancellable');
       if (btn.classList.contains('btn-generate--busy')) {
         btn.classList.remove('btn-generate--busy');
-        btn.innerHTML = getWordBtnLabel();
+        btn.innerHTML = getWordBtnLabel(state.generateType);
         state.pendingGenerates = Math.max(0, state.pendingGenerates - 1);
       }
     }
@@ -865,14 +695,22 @@ function renderStatus() {
   const el = document.getElementById('add-result-modal-status');
   const actionEl = document.getElementById('add-result-modal-action');
   const skippedHtml = state.skippedCount > 0
-    ? ', <span class="status-skipped">' + state.skippedCount + ' skipped</span>'
+    ? '<span class="status-skipped">' + state.skippedCount + ' skipped</span>'
     : '';
-  const countsHtml = '<span>' + state.addedWords.length + ' added' + skippedHtml + '</span>';
+  const countsHtml =
+    '<span class="modal-status-counts">' +
+      '<span>' + state.addedWords.length + ' added</span>' +
+      skippedHtml +
+    '</span>';
   const hasProviders = lexiconState.providers && (lexiconState.providers.anthropic || lexiconState.providers.openai || lexiconState.providers.google || lexiconState.providers.mistral || lexiconState.providers.glm);
   const genType = getGenerateType();
   const audioReady = lexiconState.voicevoxAvailable && lexiconState.ffmpegAvailable;
   const genAllTooltip = genType === 'audio'
-    ? audioReadyTooltip()
+    ? getAudioGenerationTooltip({
+        voicevoxAvailable: lexiconState.voicevoxAvailable,
+        ffmpegAvailable: lexiconState.ffmpegAvailable,
+        readyMessage: 'Generates audio via the local VoiceVox engine',
+      })
     : genType === 'image'
       ? 'Uses an AI API request to find and download an image for each word'
       : 'Uses an AI API request to get the reading, part-of-speech, meaning, and an example sentence for each word';

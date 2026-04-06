@@ -129,6 +129,77 @@ func apiDeleteStoryNotedWord(db *sql.DB) http.HandlerFunc {
 	}
 }
 
+func apiDeleteStory(db *sql.DB) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		id, err := strconv.ParseInt(chi.URLParam(r, "id"), 10, 64)
+		if err != nil {
+			http.Error(w, "invalid story id", http.StatusBadRequest)
+			return
+		}
+
+		if err := deleteStory(db, id); err != nil {
+			if err.Error() == "story not found" {
+				http.Error(w, err.Error(), http.StatusNotFound)
+				return
+			}
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+
+		w.WriteHeader(http.StatusNoContent)
+	}
+}
+
+func apiCreateStory(db *sql.DB) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		var body struct {
+			Title   string `json:"title"`
+			Content string `json:"content"`
+		}
+		if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+			http.Error(w, "bad request", http.StatusBadRequest)
+			return
+		}
+
+		title := strings.TrimSpace(body.Title)
+		content := strings.TrimSpace(body.Content)
+		if title == "" {
+			http.Error(w, "story title is required", http.StatusBadRequest)
+			return
+		}
+		if content == "" {
+			http.Error(w, "story content is required", http.StatusBadRequest)
+			return
+		}
+
+		sentences := buildStorySentencesFromText(content)
+		if len(sentences) == 0 {
+			http.Error(w, "story must have at least one sentence", http.StatusBadRequest)
+			return
+		}
+
+		id, err := insertStory(db, title, nil, sentences)
+		if err != nil {
+			if strings.Contains(err.Error(), "required") || strings.Contains(err.Error(), "at least one sentence") {
+				http.Error(w, err.Error(), http.StatusBadRequest)
+				return
+			}
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+
+		story, err := getStoryByID(db, id)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusCreated)
+		json.NewEncoder(w).Encode(story)
+	}
+}
+
 // storySentenceText reconstructs the plain text of a sentence from its word tokens.
 func storySentenceText(s storySentenceJSON) string {
 	parts := make([]string, len(s.Words))
@@ -447,14 +518,17 @@ func apiGenerateStoryTranslation(db *sql.DB) http.HandlerFunc {
 
 		// Save word glosses (merge into existing map).
 		if len(result.Words) > 0 {
-			newGlosses := make(map[string]string, len(result.Words))
+			newGlosses := make(map[string]storyWordGlossJSON, len(result.Words))
 			for _, wg := range result.Words {
-				if wg.Word != "" && wg.Gloss != "" {
-					newGlosses[wg.Word] = wg.Gloss
+				if wg.Word != "" && (wg.Gloss != "" || wg.Reading != "") {
+					newGlosses[wg.Word] = storyWordGlossJSON{
+						English: wg.Gloss,
+						Reading: wg.Reading,
+					}
 				}
 			}
 			if len(newGlosses) > 0 {
-				if err := updateStoryWordGlosses(db, id, newGlosses); err != nil {
+				if err := mergeStoryWordGlosses(db, id, newGlosses); err != nil {
 					streamEvent(map[string]string{"error": "db error: " + err.Error()})
 					return
 				}

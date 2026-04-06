@@ -1173,6 +1173,75 @@ func TestStoryNotedWords_PersistOnStory(t *testing.T) {
 	}
 }
 
+func TestGetStoryByID_PopulatesWordReadingFromStructuredGlosses(t *testing.T) {
+	db := testDB(t)
+	id, err := insertStory(db, "Reading Story", nil, []storySentenceInput{
+		{
+			Words: []storyWordInput{
+				{DisplayWord: "猫", BaseWord: "猫"},
+				{DisplayWord: "が", BaseWord: "が"},
+			},
+			IsParagraphStart: true,
+		},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if err := mergeStoryWordGlosses(db, id, map[string]storyWordGlossJSON{
+		"猫": {English: "cat", Reading: "ねこ"},
+	}); err != nil {
+		t.Fatalf("mergeStoryWordGlosses: %v", err)
+	}
+
+	story, err := getStoryByID(db, id)
+	if err != nil {
+		t.Fatalf("getStoryByID: %v", err)
+	}
+	if story == nil || len(story.Sentences) == 0 || len(story.Sentences[0].Words) == 0 {
+		t.Fatalf("unexpected story payload: %+v", story)
+	}
+	if story.Sentences[0].Words[0].English != "cat" {
+		t.Errorf("english: got %q, want %q", story.Sentences[0].Words[0].English, "cat")
+	}
+	if story.Sentences[0].Words[0].Reading != "ねこ" {
+		t.Errorf("reading: got %q, want %q", story.Sentences[0].Words[0].Reading, "ねこ")
+	}
+}
+
+func TestGetStoryByID_PreservesLegacyStringGlosses(t *testing.T) {
+	db := testDB(t)
+	id, err := insertStory(db, "Legacy Gloss Story", nil, []storySentenceInput{
+		{
+			Words: []storyWordInput{
+				{DisplayWord: "窓", BaseWord: "窓"},
+			},
+			IsParagraphStart: true,
+		},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if _, err := db.Exec(`UPDATE stories SET word_glosses = ? WHERE id = ?`, `{"窓":"window"}`, id); err != nil {
+		t.Fatalf("set legacy word_glosses: %v", err)
+	}
+
+	story, err := getStoryByID(db, id)
+	if err != nil {
+		t.Fatalf("getStoryByID: %v", err)
+	}
+	if story == nil || len(story.Sentences) == 0 || len(story.Sentences[0].Words) == 0 {
+		t.Fatalf("unexpected story payload: %+v", story)
+	}
+	if story.Sentences[0].Words[0].English != "window" {
+		t.Errorf("english: got %q, want %q", story.Sentences[0].Words[0].English, "window")
+	}
+	if story.Sentences[0].Words[0].Reading != "" {
+		t.Errorf("reading: got %q, want empty", story.Sentences[0].Words[0].Reading)
+	}
+}
+
 func TestBuildStorySentenceWords_TokenizesDisplayAndBaseForms(t *testing.T) {
 	words := buildStorySentenceWords("庭園は庭のことですね。")
 	if len(words) == 0 {

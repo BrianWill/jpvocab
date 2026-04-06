@@ -5,23 +5,40 @@ This file is random notes of possible features and bug fixes.
 - try to organize the static files
 
 - story noted words
-    - add to lexicon button brings up modal that lets you check/uncheck noted words to include?
-    - spinner buttons to modify a words target count?
-    - display drill counts for words that are in the lexicon
     - scan text to auto suggest noted words from the frequently occuring unique words in the story
 
 - story list
     - add / remove stories
     - we don't need the title on the page (implied from the nav bar link)
     - put + add button in header (like lexicon + button)
-    - but x remove button stories, requires confirm modal
+    - how to sort the stories? 
+        show their dates added and sort by that? 
+        add a date last viewed to sort by?
+
+
+- story page
+    option to filter out presenting translations/info of particles and other very common words
+
+- enable wails in the prototype
+    - once ready, we'll move the prototype project to main dir
+
+
+- write the README
+    - need setup instructions
+        - add these instructions or link them on the welcome page
+    - explain drilling theory / workflow
+
+- clicking the image placeholder or thumbnail shoudl open a file dialog to upload an image file
 
 - story translation tooltip
-    - should also display the reading information about the word
-    - also display kanji info?
+    = reading should include pitch info and separated by kanji (like on lexicon or in drill)
+    - also display kanji info? per kanji info would allow for consistent display 
         
 - proper error messages for failed API requests
     - what if user runs out of tokens? or other API failures
+
+
+
 
 - experiment with openAI audio generation. Might be better quality than voicevox
 
@@ -34,16 +51,6 @@ This file is random notes of possible features and bug fixes.
         - marble animals? 
     - shadcn
 
-- enable wails in the prototype
-    - once ready, we'll move the prototype project to main dir
-
-
-- write the README
-    - need setup instructions
-        - add these instructions or link them on the welcome page
-    - explain drilling theory / workflow
-
-- clicking the image placeholder or thumbnail shoudl open a file dialog to upload an image file
 
 - grammatical analysis of story sentences
     - click sentence to open analysis modal 

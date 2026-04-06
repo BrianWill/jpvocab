@@ -17,7 +17,7 @@ type message struct {
 // kanjiAutoFillEntry holds AI-generated data for one kanji character within a word.
 type kanjiAutoFillEntry struct {
 	Character string   `json:"character"`
-	Reading   string   `json:"reading"`  // hiragana for kun'yomi, katakana for on'yomi
+	Reading   string   `json:"reading"` // hiragana for kun'yomi, katakana for on'yomi
 	Meanings  []string `json:"meanings"`
 }
 
@@ -74,21 +74,21 @@ type autoFillExample struct {
 // They cover: a verb with kun'yomi kanji, a noun with on'yomi kanji, and a pure-kana word.
 var autoFillExamples = []autoFillExample{
 	{
-		word: "食べる",
+		word:   "食べる",
 		result: `{"reading":"たべる","pitch_accent":2,"part_of_speech":"ichidan-verb","meaning":"to eat","example_jp":"朝ごはんを食べる。","example_en":"I eat breakfast.","kanji":[{"character":"食","reading":"た","meanings":["eat","food","meal"]}]}`,
 	},
 	{
-		word: "電話",
+		word:   "電話",
 		result: `{"reading":"でんわ","pitch_accent":0,"part_of_speech":"noun","meaning":"telephone; phone call","example_jp":"電話をかけてもいいですか。","example_en":"May I make a phone call?","kanji":[{"character":"電","reading":"デン","meanings":["electricity","lightning","electric"]},{"character":"話","reading":"ワ","meanings":["talk","speech","story","conversation"]}]}`,
 	},
 	{
-		word: "きれい",
+		word:   "きれい",
 		result: `{"reading":"きれい","pitch_accent":0,"part_of_speech":"na-adjective","meaning":"beautiful; clean; pretty","example_jp":"この花はきれいですね。","example_en":"This flower is beautiful, isn't it?","kanji":[]}`,
 	},
 	{
 		// Demonstrates that kanji readings must match the word's actual pronunciation,
 		// not the kanji's most common standalone reading (日 → ニ here, not ニチ).
-		word: "日本語",
+		word:   "日本語",
 		result: `{"reading":"にほんご","pitch_accent":0,"part_of_speech":"noun","meaning":"Japanese language","example_jp":"日本語を毎日勉強しています。","example_en":"I study Japanese every day.","kanji":[{"character":"日","reading":"ニ","meanings":["sun","day","Japan"]},{"character":"本","reading":"ホン","meanings":["book","origin","Japan"]},{"character":"語","reading":"ゴ","meanings":["language","word","speech"]}]}`,
 	},
 }
@@ -366,14 +366,15 @@ func marshalUserMsg(v map[string]string) string {
 // storyTranslateSentence is one sentence in the translation request payload.
 // storyTranslationResult holds AI-generated translations for a story batch.
 type storyTranslationResult struct {
-	Sentences []string             `json:"sentences"`
+	Sentences []string              `json:"sentences"`
 	Words     []storyTranslatedWord `json:"words"`
 }
 
 // storyTranslatedWord is one word gloss in the AI response.
 type storyTranslatedWord struct {
-	Word  string `json:"word"`
-	Gloss string `json:"gloss"`
+	Word    string `json:"word"`
+	Gloss   string `json:"gloss"`
+	Reading string `json:"reading"`
 }
 
 const translateStorySystemPrompt = `You are a Japanese language teacher helping English-speaking students read Japanese stories. Given a JSON object with sentences to translate and words to gloss, return translations and glosses.
@@ -400,6 +401,19 @@ func translateStory(sentences []string, words []string, providerModel string) (*
 		return nil, fmt.Errorf("invalid ai_model value %q", providerModel)
 	}
 	provider, model := parts[0], parts[1]
+	prompt := `You are a Japanese language teacher helping English-speaking students read Japanese stories. Given a JSON object with sentences to translate and words to gloss, return translations and glosses.
+
+Instructions:
+- Sentences: the input is an ordered array of Japanese sentence strings; return an equally ordered array of English translations, one per input sentence. Translate each sentence in isolation and do not use surrounding sentences for context. Favor literal, morpheme-by-morpheme accuracy over natural English fluency because the goal is to help learners understand Japanese grammatical structure, not to produce polished prose.
+- Words: return an array of {"word":"...","gloss":"...","reading":"..."} objects in the same order as the input words array. Each gloss should be 2-5 words capturing the core meaning. Each reading must be the full reading of the word in hiragana; use katakana only for loanwords.
+
+Example input:
+{"sentences":["猫が窓の外を見ている。","彼女はゆっくりと立ち上がった。"],"words":["猫","窓","立ち上がる","ゆっくり"]}
+
+Example output:
+{"sentences":["The cat is looking at the outside of the window.","She slowly stood up."],"words":[{"word":"猫","gloss":"cat","reading":"ねこ"},{"word":"窓","gloss":"window","reading":"まど"},{"word":"立ち上がる","gloss":"to stand up","reading":"たちあがる"},{"word":"ゆっくり","gloss":"slowly, at a leisurely pace","reading":"ゆっくり"}]}
+
+Return only valid JSON with no markdown, no code fences, and no extra commentary.`
 
 	type inputPayload struct {
 		Sentences []string `json:"sentences"`
@@ -418,11 +432,11 @@ func translateStory(sentences []string, words []string, providerModel string) (*
 			{Role: "user", Content: string(userMsg)},
 			{Role: "assistant", Content: "{"},
 		}
-		text, err = callAnthropic(model, translateStorySystemPrompt, msgs, maxTokens)
+		text, err = callAnthropic(model, prompt, msgs, maxTokens)
 		jsonPrefix = "{"
 	} else {
 		msgs := []message{
-			{Role: "system", Content: translateStorySystemPrompt},
+			{Role: "system", Content: prompt},
 			{Role: "user", Content: string(userMsg)},
 		}
 		switch provider {

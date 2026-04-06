@@ -295,6 +295,49 @@ func TestAPIGetStories_ReturnsTitle(t *testing.T) {
 	}
 }
 
+func TestAPICreateStory_BadJSON(t *testing.T) {
+	db := testDB(t)
+	req := httptest.NewRequest(http.MethodPost, "/api/stories", bytes.NewBufferString(`{`))
+	rec := httptest.NewRecorder()
+
+	apiCreateStory(db).ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusBadRequest {
+		t.Fatalf("status: got %d, want %d", rec.Code, http.StatusBadRequest)
+	}
+}
+
+func TestAPICreateStory_Success(t *testing.T) {
+	db := testDB(t)
+	req := httptest.NewRequest(http.MethodPost, "/api/stories", bytes.NewBufferString("{\"title\":\"New Story\",\"content\":\"皆さん、こんにちは。今日は庭園に行きます。\\n\\nとても静かです。\"}"))
+	rec := httptest.NewRecorder()
+
+	apiCreateStory(db).ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusCreated {
+		t.Fatalf("status: got %d, want %d", rec.Code, http.StatusCreated)
+	}
+	var story storyJSON
+	if err := json.NewDecoder(rec.Body).Decode(&story); err != nil {
+		t.Fatal(err)
+	}
+	if story.Title != "New Story" {
+		t.Fatalf("title: got %q, want %q", story.Title, "New Story")
+	}
+	if len(story.Sentences) != 3 {
+		t.Fatalf("sentences: got %d, want 3", len(story.Sentences))
+	}
+	if !story.Sentences[0].IsParagraphStart {
+		t.Fatal("sentence 1 should start a paragraph")
+	}
+	if story.Sentences[1].IsParagraphStart {
+		t.Fatal("sentence 2 should not start a paragraph")
+	}
+	if !story.Sentences[2].IsParagraphStart {
+		t.Fatal("sentence 3 should start a new paragraph")
+	}
+}
+
 func TestAPIGetStory_ReturnsStoryByID(t *testing.T) {
 	db := testDB(t)
 	title := "Garden Story"
@@ -323,6 +366,56 @@ func TestAPIGetStory_ReturnsStoryByID(t *testing.T) {
 	}
 	if story.Title != title {
 		t.Errorf("title: got %q, want %q", story.Title, title)
+	}
+}
+
+func TestAPIDeleteStory_InvalidID(t *testing.T) {
+	db := testDB(t)
+	req := httptest.NewRequest(http.MethodDelete, "/api/stories/nope", nil)
+	req = withURLParam(req, "id", "nope")
+	rec := httptest.NewRecorder()
+
+	apiDeleteStory(db).ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusBadRequest {
+		t.Fatalf("status: got %d, want %d", rec.Code, http.StatusBadRequest)
+	}
+}
+
+func TestAPIDeleteStory_Success(t *testing.T) {
+	db := testDB(t)
+	id, err := insertStory(db, "Garden Story", nil, []storySentenceInput{
+		{Words: []storyWordInput{{DisplayWord: "庭園", BaseWord: "庭園"}}, IsParagraphStart: true},
+		{Words: []storyWordInput{{DisplayWord: "歩く", BaseWord: "歩く"}}, IsParagraphStart: false},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	req := httptest.NewRequest(http.MethodDelete, "/api/stories/1", nil)
+	req = withURLParam(req, "id", int64ToString(id))
+	rec := httptest.NewRecorder()
+
+	apiDeleteStory(db).ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusNoContent {
+		t.Fatalf("status: got %d, want %d", rec.Code, http.StatusNoContent)
+	}
+
+	var storyCount int
+	if err := db.QueryRow(`SELECT COUNT(*) FROM stories WHERE id = ?`, id).Scan(&storyCount); err != nil {
+		t.Fatal(err)
+	}
+	if storyCount != 0 {
+		t.Fatalf("story should be deleted after successful DELETE, got count %d", storyCount)
+	}
+
+	var sentenceCount int
+	if err := db.QueryRow(`SELECT COUNT(*) FROM story_sentences WHERE story_id = ?`, id).Scan(&sentenceCount); err != nil {
+		t.Fatal(err)
+	}
+	if sentenceCount != 0 {
+		t.Fatalf("story sentences should be deleted after successful DELETE, got count %d", sentenceCount)
 	}
 }
 

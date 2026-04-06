@@ -122,11 +122,22 @@ function isWordNoted(baseWord) {
 function buildWordTooltipHtml(word, sentenceEnglish, isNoted = isWordNoted(word.baseWord)) {
   const ispunct = isPunctuation(word.displayWord);
   const wordTranslation = ispunct ? '' : (word.english || '');
+  const wordReading = ispunct ? '' : (word.reading || '');
+  const tooltipWordLabel = word.baseWord || word.displayWord;
   let html = '';
   if (sentenceEnglish) html += escapeTooltipText(sentenceEnglish);
   if (!ispunct && wordTranslation) {
     if (sentenceEnglish) html += '<br><br>';
-    html += '<strong><span class="tooltip-word-label">' + esc(word.displayWord) + ':</span></strong> ' + escapeTooltipText(wordTranslation);
+    html += '<strong><span class="tooltip-word-label">' + esc(tooltipWordLabel) + ':</span></strong> ' + escapeTooltipText(wordTranslation);
+  }
+  if (!ispunct && wordReading) {
+    if (wordTranslation) {
+      html += '<br>';
+    } else {
+      if (sentenceEnglish) html += '<br><br>';
+      html += '<strong><span class="tooltip-word-label">' + esc(tooltipWordLabel) + ':</span></strong><br>';
+    }
+    html += '<span class="tooltip-word-reading">' + esc(wordReading) + '</span>';
   }
   if (!ispunct) {
     if (html) html += '<br><br>';

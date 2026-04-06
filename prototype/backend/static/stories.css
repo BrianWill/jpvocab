@@ -36,6 +36,7 @@
   border: 1px solid #313244;
   border-radius: 10px;
   padding: 1rem 1.1rem;
+  position: relative;
 }
 
 .story-card:hover {
@@ -43,10 +44,47 @@
   background: #1e1e2e;
 }
 
+.story-card-delete {
+  align-items: center;
+  background: none;
+  border: 1px solid #45475a;
+  border-radius: 4px;
+  color: #585b70;
+  cursor: pointer;
+  display: inline-flex;
+  font-size: 0.8rem;
+  height: 1.5rem;
+  justify-content: center;
+  padding: 0;
+  position: absolute;
+  right: 0.8rem;
+  top: 50%;
+  transform: translateY(-50%);
+  visibility: hidden;
+  width: 1.5rem;
+}
+
+.story-card-delete:hover {
+  border-color: #6c7086;
+  color: #cdd6f4;
+}
+
+.story-card-delete:focus-visible {
+  outline: 2px solid #89b4fa;
+  outline-offset: 2px;
+}
+
+.story-card:hover .story-card-delete,
+.story-card-delete:focus-visible {
+  visibility: visible;
+}
+
 .story-card-meta {
   display: flex;
+  flex-wrap: wrap;
   gap: 0.75rem;
   margin-bottom: 0.45rem;
+  padding-right: 2.5rem;
   font-size: 0.72rem;
   text-transform: uppercase;
   letter-spacing: 0.08em;
@@ -62,4 +100,67 @@
 .stories-empty {
   margin: 0;
   color: #7b8cb8;
+}
+
+.modal--story-add {
+  max-width: 680px;
+}
+
+.story-add-modal-body {
+  padding: 0;
+}
+
+.story-add-modal-main {
+  flex: 1;
+  padding: 1.25rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.story-add-modal-main .modal-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+
+.story-add-modal-main .modal-field label {
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  color: #585b70;
+}
+
+.story-add-modal-main .modal-field input,
+.story-add-modal-main .modal-field textarea {
+  background: #11111b;
+  border: 1px solid #313244;
+  border-radius: 4px;
+  color: #cdd6f4;
+  font-family: inherit;
+}
+
+.story-add-modal-main .modal-field input:focus,
+.story-add-modal-main .modal-field textarea:focus {
+  outline: 1px solid #89b4fa;
+}
+
+#story-title-input {
+  font-size: 0.9rem;
+  padding: 0.4rem 0.6rem;
+  width: 100%;
+}
+
+#story-content-input {
+  font-size: 0.95rem;
+  line-height: 1.7;
+  padding: 0.5rem 0.6rem;
+  width: 100%;
+  min-height: 20rem;
+  resize: vertical;
+}
+
+#story-content-input::placeholder,
+#story-title-input::placeholder {
+  color: #313244;
 }

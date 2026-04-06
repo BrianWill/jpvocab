@@ -4,6 +4,10 @@ import (
 	"database/sql"
 	"encoding/json"
 	"errors"
+	"os"
+	"path/filepath"
+	"regexp"
+	"strconv"
 	"strings"
 )
 
@@ -17,7 +21,13 @@ type storyWordJSON struct {
 	DisplayWord      string `json:"displayWord"`
 	BaseWord         string `json:"baseWord"`
 	English          string `json:"english,omitempty"` // populated from word_glosses at query time; not stored per-token
+	Reading          string `json:"reading,omitempty"` // populated from story gloss metadata at query time; not stored per-token
 	AudioTimestampMs *int64 `json:"audioTimestampMs"`
+}
+
+type storyWordGlossJSON struct {
+	English string `json:"english,omitempty"`
+	Reading string `json:"reading,omitempty"`
 }
 
 type storySentenceInput struct {
@@ -87,7 +97,7 @@ func insertStoryTx(tx *sql.Tx, title string, audioPath *string, sentences []stor
 			}
 		}
 	}
-	glossMap := map[string]string{}
+	glossMap := map[string]storyWordGlossJSON{}
 	if len(baseWordSet) > 0 {
 		placeholders := make([]string, 0, len(baseWordSet))
 		lookupArgs := make([]any, 0, len(baseWordSet))
@@ -108,7 +118,7 @@ func insertStoryTx(tx *sql.Tx, title string, audioPath *string, sentences []stor
 				glossRows.Close()
 				return 0, err
 			}
-			glossMap[w] = m
+			glossMap[w] = storyWordGlossJSON{English: m}
 		}
 		glossRows.Close()
 	}
@@ -119,9 +129,9 @@ func insertStoryTx(tx *sql.Tx, title string, audioPath *string, sentences []stor
 				continue
 			}
 			if g, ok := defaultStoryTokenGlosses[word.BaseWord]; ok {
-				glossMap[word.BaseWord] = g
+				glossMap[word.BaseWord] = storyWordGlossJSON{English: g}
 			} else if g, ok := defaultStoryTokenGlosses[word.DisplayWord]; ok {
-				glossMap[word.BaseWord] = g
+				glossMap[word.BaseWord] = storyWordGlossJSON{English: g}
 			}
 		}
 	}
@@ -280,6 +290,39 @@ func getStoryByID(db *sql.DB, id int64) (*storyJSON, error) {
 	return &stories[0], nil
 }
 
+func deleteStory(db *sql.DB, id int64) error {
+	tx, err := db.Begin()
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+
+	var count int
+	if err := tx.QueryRow(`SELECT COUNT(*) FROM stories WHERE id = ?`, id).Scan(&count); err != nil {
+		return err
+	}
+	if count == 0 {
+		return errors.New("story not found")
+	}
+
+	if _, err := tx.Exec(`DELETE FROM story_sentences WHERE story_id = ?`, id); err != nil {
+		return err
+	}
+	if _, err := tx.Exec(`DELETE FROM stories WHERE id = ?`, id); err != nil {
+		return err
+	}
+	if err := tx.Commit(); err != nil {
+		return err
+	}
+
+	audioDir := filepath.Join("static", "audio", "story_"+strconv.FormatInt(id, 10))
+	if err := os.RemoveAll(audioDir); err != nil && !errors.Is(err, os.ErrNotExist) {
+		return err
+	}
+
+	return nil
+}
+
 func queryStories(db *sql.DB, whereClause string, args ...any) ([]storyJSON, error) {
 	rows, err := db.Query(`
 		SELECT s.id, s.title, s.audio_path, s.has_audio, s.created_at, s.word_glosses, s.noted_words_json,
@@ -297,7 +340,7 @@ func queryStories(db *sql.DB, whereClause string, args ...any) ([]storyJSON, err
 	var stories []storyJSON
 	var current *storyJSON
 	var currentID int64 = -1
-	var currentGlosses map[string]string
+	var currentGlosses map[string]storyWordGlossJSON
 
 	for rows.Next() {
 		var storyID int64
@@ -336,10 +379,7 @@ func queryStories(db *sql.DB, whereClause string, args ...any) ([]storyJSON, err
 			}
 			currentGlosses = nil
 			if wordGlossesJSON.Valid {
-				var g map[string]string
-				if json.Unmarshal([]byte(wordGlossesJSON.String), &g) == nil {
-					currentGlosses = g
-				}
+				currentGlosses = parseStoryWordGlosses(wordGlossesJSON.String)
 			}
 			if notedWordsJSON.Valid && notedWordsJSON.String != "" {
 				json.Unmarshal([]byte(notedWordsJSON.String), &story.NotedWords) //nolint:errcheck
@@ -349,7 +389,7 @@ func queryStories(db *sql.DB, whereClause string, args ...any) ([]storyJSON, err
 				for i := range story.NotedWords {
 					if story.NotedWords[i].English == "" {
 						if gloss, ok := currentGlosses[story.NotedWords[i].BaseWord]; ok {
-							story.NotedWords[i].English = gloss
+							story.NotedWords[i].English = gloss.English
 						}
 					}
 				}
@@ -374,8 +414,9 @@ func queryStories(db *sql.DB, whereClause string, args ...any) ([]storyJSON, err
 					sentence.Words = []storyWordJSON{}
 				}
 				for k := range sentence.Words {
-					if m, ok := currentGlosses[sentence.Words[k].BaseWord]; ok {
-						sentence.Words[k].English = m
+					if gloss, ok := currentGlosses[sentence.Words[k].BaseWord]; ok {
+						sentence.Words[k].English = gloss.English
+						sentence.Words[k].Reading = gloss.Reading
 					}
 				}
 			}
@@ -487,12 +528,54 @@ func removeStoryNotedWord(db *sql.DB, storyID int64, baseWord string) error {
 // updateStoryWordGlosses merges newGlosses into the story's existing word_glosses map.
 // Lexicon-sourced and default-particle glosses already present are preserved; only the
 // keys present in newGlosses are overwritten.
-func updateStoryWordGlosses(db *sql.DB, storyID int64, newGlosses map[string]string) error {
+func parseStoryWordGlosses(raw string) map[string]storyWordGlossJSON {
+	if strings.TrimSpace(raw) == "" {
+		return nil
+	}
+	var structured map[string]storyWordGlossJSON
+	if err := json.Unmarshal([]byte(raw), &structured); err == nil {
+		return structured
+	}
+	var legacy map[string]string
+	if err := json.Unmarshal([]byte(raw), &legacy); err == nil {
+		converted := make(map[string]storyWordGlossJSON, len(legacy))
+		for word, english := range legacy {
+			converted[word] = storyWordGlossJSON{English: english}
+		}
+		return converted
+	}
+	return nil
+}
+
+func mergeStoryWordGlosses(db *sql.DB, storyID int64, newGlosses map[string]storyWordGlossJSON) error {
 	var currentJSON sql.NullString
 	if err := db.QueryRow(`SELECT word_glosses FROM stories WHERE id = ?`, storyID).Scan(&currentJSON); err != nil {
 		return err
 	}
-	merged := map[string]string{}
+	merged := map[string]storyWordGlossJSON{}
+	if currentJSON.Valid && currentJSON.String != "" {
+		merged = parseStoryWordGlosses(currentJSON.String)
+		if merged == nil {
+			merged = map[string]storyWordGlossJSON{}
+		}
+	}
+	for k, v := range newGlosses {
+		merged[k] = v
+	}
+	b, err := json.Marshal(merged)
+	if err != nil {
+		return err
+	}
+	_, err = db.Exec(`UPDATE stories SET word_glosses = ? WHERE id = ?`, string(b), storyID)
+	return err
+}
+
+func updateStoryWordGlosses(db *sql.DB, storyID int64, newGlosses map[string]storyWordGlossJSON) error {
+	var currentJSON sql.NullString
+	if err := db.QueryRow(`SELECT word_glosses FROM stories WHERE id = ?`, storyID).Scan(&currentJSON); err != nil {
+		return err
+	}
+	merged := map[string]storyWordGlossJSON{}
 	if currentJSON.Valid && currentJSON.String != "" {
 		json.Unmarshal([]byte(currentJSON.String), &merged) //nolint:errcheck — stale JSON is non-fatal
 	}
@@ -592,4 +675,38 @@ var defaultStoryTokenGlosses = map[string]string{
 	"それ": "that",
 	"一緒": "together",
 	"約":  "about; approximately",
+}
+var storySentenceSplitRE = regexp.MustCompile(`[^。！？!?]+[。！？!?]?`)
+
+func buildStorySentencesFromText(content string) []storySentenceInput {
+	normalized := strings.ReplaceAll(content, "\r\n", "\n")
+	paragraphs := strings.Split(normalized, "\n\n")
+	sentences := make([]storySentenceInput, 0)
+
+	for _, paragraph := range paragraphs {
+		paragraph = strings.TrimSpace(paragraph)
+		if paragraph == "" {
+			continue
+		}
+
+		matches := storySentenceSplitRE.FindAllString(paragraph, -1)
+		paragraphHasSentence := false
+		for _, match := range matches {
+			text := strings.TrimSpace(match)
+			if text == "" {
+				continue
+			}
+			words := buildStorySentenceWords(text)
+			if len(words) == 0 {
+				continue
+			}
+			sentences = append(sentences, storySentenceInput{
+				Words:            words,
+				IsParagraphStart: !paragraphHasSentence,
+			})
+			paragraphHasSentence = true
+		}
+	}
+
+	return sentences
 }

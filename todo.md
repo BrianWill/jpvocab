@@ -15,9 +15,8 @@ This file is random notes of possible features and bug fixes.
         show their dates added and sort by that? 
         add a date last viewed to sort by?
 
-
 - story page
-    option to filter out presenting translations/info of particles and other very common words
+    - option to filter out presenting translations/info of particles and other very common words
 
 - enable wails in the prototype
     - once ready, we'll move the prototype project to main dir

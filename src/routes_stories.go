@@ -7,7 +7,6 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
-	"sort"
 	"strings"
 	"time"
 )
@@ -426,13 +425,12 @@ func apiGenerateStoryAudio(db *sql.DB) http.HandlerFunc {
 	}
 }
 
-// apiGenerateStoryTranslation calls an AI provider to translate all sentences in the story
-// and generate brief glosses for words not already in the lexicon with a meaning.
-// The response is streamed as NDJSON:
+// apiGenerateStoryTranslation calls an AI provider to translate all sentences in the
+// story. Streams NDJSON:
 //
-//	{"status": "translating", "sentenceCount": N, "wordCount": M}  — emitted immediately
-//	{"allDone": true}                                               — on success
-//	{"error": "..."}                                               — on failure
+//	{"status": "translating", "sentenceCount": N}  — emitted immediately
+//	{"allDone": true}                               — on success
+//	{"error": "..."}                               — on failure
 func apiGenerateStoryTranslation(db *sql.DB) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		id, ok := parseRouteInt64(w, r, "id", "invalid story id")
@@ -458,51 +456,6 @@ func apiGenerateStoryTranslation(db *sql.DB) http.HandlerFunc {
 			return
 		}
 
-		// Collect unique base words across all sentences.
-		baseWordSet := map[string]struct{}{}
-		for _, s := range story.Sentences {
-			for _, w := range s.Words {
-				if w.BaseWord != "" {
-					baseWordSet[w.BaseWord] = struct{}{}
-				}
-			}
-		}
-
-		// Find which base words already have meanings in the lexicon.
-		inLexicon := map[string]bool{}
-		if len(baseWordSet) > 0 {
-			placeholders := make([]string, 0, len(baseWordSet))
-			args := make([]any, 0, len(baseWordSet))
-			for bw := range baseWordSet {
-				placeholders = append(placeholders, "?")
-				args = append(args, bw)
-			}
-			rows, err := db.QueryContext(r.Context(),
-				`SELECT word FROM words WHERE word IN (`+strings.Join(placeholders, ",")+`) AND meaning != ''`,
-				args...,
-			)
-			if err != nil {
-				http.Error(w, err.Error(), http.StatusInternalServerError)
-				return
-			}
-			for rows.Next() {
-				var word string
-				rows.Scan(&word) //nolint:errcheck
-				inLexicon[word] = true
-			}
-			rows.Close()
-		}
-
-		// Words to gloss: in story but not in lexicon with a meaning.
-		var wordsToGloss []string
-		for bw := range baseWordSet {
-			if !inLexicon[bw] {
-				wordsToGloss = append(wordsToGloss, bw)
-			}
-		}
-		sort.Strings(wordsToGloss)
-
-		// Build sentence input list (skip blank sentences).
 		var sentenceTexts []string
 		var sentenceIDs []int64
 		for _, s := range story.Sentences {
@@ -515,14 +468,11 @@ func apiGenerateStoryTranslation(db *sql.DB) http.HandlerFunc {
 		}
 
 		streamEvent := newNDJSONStreamer(w)
-
 		streamEvent(map[string]any{
 			"status":        "translating",
 			"sentenceCount": len(sentenceTexts),
-			"wordCount":     len(wordsToGloss),
 		})
 
-		// Send periodic heartbeats so the client knows the request is still alive.
 		done := make(chan struct{})
 		go func() {
 			ticker := time.NewTicker(3 * time.Second)
@@ -537,14 +487,13 @@ func apiGenerateStoryTranslation(db *sql.DB) http.HandlerFunc {
 			}
 		}()
 
-		result, err := translateStory(db, sentenceTexts, wordsToGloss, body.AIModel)
+		result, err := translateStory(db, sentenceTexts, body.AIModel)
 		close(done)
 		if err != nil {
 			streamEvent(map[string]string{"error": err.Error()})
 			return
 		}
 
-		// Save sentence translations by index (AI returns them in the same order).
 		for i, translation := range result.Sentences {
 			if i >= len(sentenceIDs) || translation == "" {
 				break
@@ -555,12 +504,125 @@ func apiGenerateStoryTranslation(db *sql.DB) http.HandlerFunc {
 			}
 		}
 
-		// Write word info into the words table for any word that doesn't yet have it.
-		for _, wg := range result.Words {
-			if wg.Word == "" {
+		streamEvent(map[string]bool{"allDone": true})
+	}
+}
+
+// apiGenerateStoryWordInfo runs autofill for all story words that have no word info yet
+// (meaning, reading, part_of_speech, example_jp, example_en all empty). Streams NDJSON:
+//
+//	{"status": "autofilling", "wordCount": N}  — emitted immediately
+//	{"allDone": true}                           — on success
+//	{"error": "..."}                           — on failure
+func apiGenerateStoryWordInfo(db *sql.DB) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		id, ok := parseRouteInt64(w, r, "id", "invalid story id")
+		if !ok {
+			return
+		}
+
+		var body struct {
+			AIModel string `json:"ai_model"`
+		}
+		if err := json.NewDecoder(r.Body).Decode(&body); err != nil || body.AIModel == "" {
+			http.Error(w, "ai_model is required", http.StatusBadRequest)
+			return
+		}
+
+		story, err := getStoryByID(db, id)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		if story == nil {
+			http.Error(w, "story not found", http.StatusNotFound)
+			return
+		}
+
+		streamEvent := newNDJSONStreamer(w)
+
+		if len(story.StoryWords) == 0 {
+			streamEvent(map[string]bool{"allDone": true})
+			return
+		}
+
+		// Find story words that have no word info at all yet.
+		placeholders := make([]string, len(story.StoryWords))
+		args := make([]any, len(story.StoryWords))
+		for i, bw := range story.StoryWords {
+			placeholders[i] = "?"
+			args[i] = bw
+		}
+		rows, err := db.QueryContext(r.Context(),
+			`SELECT id, word FROM words
+			 WHERE word IN (`+strings.Join(placeholders, ",")+`)
+			 AND COALESCE(reading,'') = ''
+			 AND COALESCE(part_of_speech,'') = ''
+			 AND COALESCE(meaning,'') = ''
+			 AND COALESCE(example_jp,'') = ''
+			 AND COALESCE(example_en,'') = ''`,
+			args...,
+		)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		type wordEntry struct {
+			ID   int64
+			Word string
+		}
+		var wordsToFill []wordEntry
+		for rows.Next() {
+			var e wordEntry
+			if err := rows.Scan(&e.ID, &e.Word); err != nil {
+				rows.Close()
+				http.Error(w, err.Error(), http.StatusInternalServerError)
+				return
+			}
+			wordsToFill = append(wordsToFill, e)
+		}
+		rows.Close()
+
+		if len(wordsToFill) == 0 {
+			streamEvent(map[string]bool{"allDone": true})
+			return
+		}
+
+		streamEvent(map[string]any{
+			"status":    "autofilling",
+			"wordCount": len(wordsToFill),
+		})
+
+		done := make(chan struct{})
+		go func() {
+			ticker := time.NewTicker(3 * time.Second)
+			defer ticker.Stop()
+			for {
+				select {
+				case <-ticker.C:
+					streamEvent(map[string]string{"status": "working"})
+				case <-done:
+					return
+				}
+			}
+		}()
+
+		wordStrings := make([]string, len(wordsToFill))
+		for i, e := range wordsToFill {
+			wordStrings[i] = e.Word
+		}
+		fills, err := autoFillWordsBatch(db, wordStrings, body.AIModel)
+		close(done)
+		if err != nil {
+			streamEvent(map[string]string{"error": err.Error()})
+			return
+		}
+
+		for i, e := range wordsToFill {
+			if fills[i] == nil {
 				continue
 			}
-			if err := updateWordInfoIfEmpty(db, wg.Word, wg.Gloss, wg.Reading); err != nil {
+			if _, err := persistWordAutoFill(db, e.ID, fills[i]); err != nil {
 				streamEvent(map[string]string{"error": "db error: " + err.Error()})
 				return
 			}

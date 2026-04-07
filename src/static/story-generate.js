@@ -163,14 +163,16 @@ export function initGenerateModals(els, state, { storyId, onAudioDone, onTransla
 
     _state.translationController = new AbortController();
     setTranslationModalGenerating(true);
-    _els.genTranslationStatusText.textContent = 'Translating…';
 
-    let allDone = false;
-    let baseStatusText = 'Translating…';
     let elapsedSecs = 0;
     let elapsedTimer = null;
+    let baseStatusText = '';
 
-    const startElapsedTimer = () => {
+    const startElapsedTimer = (text) => {
+      baseStatusText = text;
+      elapsedSecs = 0;
+      if (elapsedTimer !== null) clearInterval(elapsedTimer);
+      _els.genTranslationStatusText.textContent = text;
       elapsedTimer = setInterval(() => {
         elapsedSecs++;
         _els.genTranslationStatusText.textContent = `${baseStatusText} (${elapsedSecs}s)`;
@@ -180,41 +182,70 @@ export function initGenerateModals(els, state, { storyId, onAudioDone, onTransla
       if (elapsedTimer !== null) { clearInterval(elapsedTimer); elapsedTimer = null; }
     };
 
+    // Helper: consume an NDJSON stream; calls onMsg for each parsed message.
+    // Returns true if the stream ended with {allDone: true}.
+    const readNDJSON = async (res, onMsg) => {
+      if (!res.ok) return false;
+      const reader = res.body.getReader();
+      const decoder = new TextDecoder();
+      let buf = '';
+      let done = false;
+      while (true) {
+        let value, streamDone;
+        try { ({ value, done: streamDone } = await reader.read()); } catch (_) { break; }
+        if (streamDone) break;
+        buf += decoder.decode(value, { stream: true });
+        const lines = buf.split('\n');
+        buf = lines.pop();
+        for (const line of lines) {
+          if (!line.trim()) continue;
+          let msg;
+          try { msg = JSON.parse(line); } catch (_) { continue; }
+          if (msg.allDone) { done = true; }
+          else { onMsg(msg); }
+        }
+      }
+      return done;
+    };
+
+    let phase1Done = false;
+    let phase2Done = false;
+
     try {
-      const res = await fetch(`/api/stories/${_storyId}/generate-translation`, {
+      // Phase 1: translate sentences.
+      _els.genTranslationStatusText.textContent = 'Translating…';
+      const res1 = await fetch(`/api/stories/${_storyId}/generate-translation`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ ai_model: aiModel }),
         signal: _state.translationController.signal,
       });
-
-      if (res.ok) {
-        const reader = res.body.getReader();
-        const decoder = new TextDecoder();
-        let buf = '';
-        while (true) {
-          let value, done;
-          try { ({ value, done } = await reader.read()); } catch (_) { break; }
-          if (done) break;
-          buf += decoder.decode(value, { stream: true });
-          const lines = buf.split('\n');
-          buf = lines.pop();
-          for (const line of lines) {
-            if (!line.trim()) continue;
-            let msg;
-            try { msg = JSON.parse(line); } catch (_) { continue; }
-            if (msg.status === 'translating') {
-              baseStatusText =
-                `Translating ${msg.sentenceCount} sentence${msg.sentenceCount !== 1 ? 's' : ''}` +
-                (msg.wordCount > 0 ? ` and ${msg.wordCount} word${msg.wordCount !== 1 ? 's' : ''}` : '') +
-                '…';
-              _els.genTranslationStatusText.textContent = baseStatusText;
-              startElapsedTimer();
-            } else if (msg.allDone) {
-              allDone = true;
-            }
-          }
+      phase1Done = await readNDJSON(res1, msg => {
+        if (msg.status === 'translating') {
+          startElapsedTimer(
+            `Translating ${msg.sentenceCount} sentence${msg.sentenceCount !== 1 ? 's' : ''}…`
+          );
         }
+      });
+      stopElapsedTimer();
+
+      // Phase 2: autofill word info (only if phase 1 succeeded and not aborted).
+      if (phase1Done) {
+        _els.genTranslationStatusText.textContent = 'Looking up word info…';
+        const res2 = await fetch(`/api/stories/${_storyId}/generate-word-info`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ ai_model: aiModel }),
+          signal: _state.translationController.signal,
+        });
+        phase2Done = await readNDJSON(res2, msg => {
+          if (msg.status === 'autofilling') {
+            startElapsedTimer(
+              `Looking up ${msg.wordCount} word${msg.wordCount !== 1 ? 's' : ''}…`
+            );
+          }
+        });
+        stopElapsedTimer();
       }
     } catch (_) {
       // Aborted or network error.
@@ -223,12 +254,12 @@ export function initGenerateModals(els, state, { storyId, onAudioDone, onTransla
     stopElapsedTimer();
     _state.translationController = null;
 
-    if (allDone) {
+    if (phase1Done && phase2Done) {
       playDing();
       _state.translating = false;
       _els.genTranslationSpinner.classList.add('hidden');
       _els.genTranslationModalCancelGen.classList.add('hidden');
-      _els.genTranslationStatusText.textContent = baseStatusText.replace(/^Translating/, 'Translated').replace(/….*$/, '.');
+      _els.genTranslationStatusText.textContent = 'Done.';
       _els.genTranslationModalConfirm.classList.add('hidden');
       _els.genTranslationModalDone.classList.remove('hidden');
       _els.genTranslationModalClose.disabled = false;

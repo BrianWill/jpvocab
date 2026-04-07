@@ -414,35 +414,29 @@ type storyTranslationResult struct {
 	Sentences []string `json:"sentences"`
 }
 
-// translateStory sends all sentences and words to the AI in a single call and returns
-// sentence translations and word glosses. providerModel must be "provider/model" format.
-// sentences is an ordered slice of plain Japanese sentence strings; the returned
-// Sentences slice has the same length and order.
-func translateStory(db *sql.DB, sentences []string, words []string, providerModel string) (*storyTranslationResult, error) {
+// translateStory sends all sentences to the AI in a single call and returns ordered
+// English translations. providerModel must be "provider/model" format.
+func translateStory(db *sql.DB, sentences []string, providerModel string) (*storyTranslationResult, error) {
 	parts := strings.SplitN(providerModel, "/", 2)
 	if len(parts) != 2 {
 		return nil, fmt.Errorf("invalid ai_model value %q", providerModel)
 	}
 	provider, model := parts[0], parts[1]
-	prompt := `You are a Japanese language teacher helping English-speaking students read Japanese stories. Given a JSON object with sentences to translate and words to gloss, return translations and glosses.
+	prompt := `You are a Japanese language teacher helping English-speaking students read Japanese stories. Given a JSON array of Japanese sentences, return an equally ordered JSON array of English translations.
 
 Instructions:
-- Sentences: the input is an ordered array of Japanese sentence strings; return an equally ordered array of English translations, one per input sentence. Translate each sentence in isolation and do not use surrounding sentences for context. Favor literal, morpheme-by-morpheme accuracy over natural English fluency because the goal is to help learners understand Japanese grammatical structure, not to produce polished prose.
-- Words: return an array of {"word":"...","gloss":"...","reading":"..."} objects in the same order as the input words array. Each gloss should be 2-5 words capturing the core meaning. Each reading must be the full reading of the word in hiragana; use katakana only for loanwords.
+- Translate each sentence in isolation without using surrounding sentences for context.
+- Favor literal, morpheme-by-morpheme accuracy over natural English fluency — the goal is to help learners understand Japanese grammatical structure, not to produce polished prose.
 
 Example input:
-{"sentences":["猫が窓の外を見ている。","彼女はゆっくりと立ち上がった。"],"words":["猫","窓","立ち上がる","ゆっくり"]}
+["猫が窓の外を見ている。","彼女はゆっくりと立ち上がった。"]
 
 Example output:
-{"sentences":["The cat is looking at the outside of the window.","She slowly stood up."],"words":[{"word":"猫","gloss":"cat","reading":"ねこ"},{"word":"窓","gloss":"window","reading":"まど"},{"word":"立ち上がる","gloss":"to stand up","reading":"たちあがる"},{"word":"ゆっくり","gloss":"slowly, at a leisurely pace","reading":"ゆっくり"}]}
+{"sentences":["The cat is looking at the outside of the window.","She slowly stood up."]}
 
 Return only valid JSON with no markdown, no code fences, and no extra commentary.`
 
-	type inputPayload struct {
-		Sentences []string `json:"sentences"`
-		Words     []string `json:"words"`
-	}
-	userMsg, err := json.Marshal(inputPayload{Sentences: sentences, Words: words})
+	userMsg, err := json.Marshal(sentences)
 	if err != nil {
 		return nil, err
 	}

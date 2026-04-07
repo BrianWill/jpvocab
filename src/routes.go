@@ -68,6 +68,7 @@ func serverInit(db *sql.DB) {
 	r.Delete("/api/stories/{id}/noted-words", apiDeleteStoryNotedWord(db))
 	r.Post("/api/stories/{id}/generate-audio", apiGenerateStoryAudio(db))
 	r.Post("/api/stories/{id}/generate-translation", apiGenerateStoryTranslation(db))
+	r.Post("/api/stories/{id}/generate-word-info", apiGenerateStoryWordInfo(db))
 
 	r.Get("/api/providers", func(w http.ResponseWriter, r *http.Request) {
 		p := checkAIProviders()

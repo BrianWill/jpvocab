@@ -15,6 +15,21 @@ import (
 	"github.com/go-chi/chi/v5"
 )
 
+func newNDJSONStreamer(w http.ResponseWriter) func(v any) {
+	w.Header().Set("Content-Type", "application/x-ndjson")
+	w.Header().Set("Cache-Control", "no-cache")
+	w.Header().Set("X-Accel-Buffering", "no")
+
+	flusher, _ := w.(http.Flusher)
+	return func(v any) {
+		data, _ := json.Marshal(v)
+		w.Write(append(data, '\n')) //nolint:errcheck
+		if flusher != nil {
+			flusher.Flush()
+		}
+	}
+}
+
 func findStoryWord(story *storyJSON, baseWord, displayWord string) *storyWordJSON {
 	for _, sentence := range story.Sentences {
 		for _, word := range sentence.Words {
@@ -326,19 +341,7 @@ func apiGenerateStoryAudio(db *sql.DB) http.HandlerFunc {
 			return
 		}
 
-		// Start streaming NDJSON.
-		w.Header().Set("Content-Type", "application/x-ndjson")
-		w.Header().Set("Cache-Control", "no-cache")
-		w.Header().Set("X-Accel-Buffering", "no")
-		flusher, _ := w.(http.Flusher)
-
-		streamEvent := func(v any) {
-			data, _ := json.Marshal(v)
-			w.Write(append(data, '\n'))
-			if flusher != nil {
-				flusher.Flush()
-			}
-		}
+		streamEvent := newNDJSONStreamer(w)
 
 		type sentenceDuration struct {
 			id         int64
@@ -526,19 +529,7 @@ func apiGenerateStoryTranslation(db *sql.DB) http.HandlerFunc {
 			sentenceIDs = append(sentenceIDs, s.ID)
 		}
 
-		// Start streaming NDJSON.
-		w.Header().Set("Content-Type", "application/x-ndjson")
-		w.Header().Set("Cache-Control", "no-cache")
-		w.Header().Set("X-Accel-Buffering", "no")
-		flusher, _ := w.(http.Flusher)
-
-		streamEvent := func(v any) {
-			data, _ := json.Marshal(v)
-			w.Write(append(data, '\n')) //nolint:errcheck
-			if flusher != nil {
-				flusher.Flush()
-			}
-		}
+		streamEvent := newNDJSONStreamer(w)
 
 		streamEvent(map[string]any{
 			"status":        "translating",

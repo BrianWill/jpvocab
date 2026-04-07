@@ -28,16 +28,15 @@ func apiGetTutorSystemPrompt() http.HandlerFunc {
 
 func apiGetTutorSession() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(tutorSession)
+		writeJSON(w, tutorSession)
 	}
 }
 
 func apiClearTutorSession() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		tutorSession.AIModel   = ""
+		tutorSession.AIModel = ""
 		tutorSession.TutorMode = ""
-		tutorSession.Messages  = nil
+		tutorSession.Messages = nil
 		w.WriteHeader(http.StatusNoContent)
 	}
 }
@@ -89,11 +88,10 @@ func apiTutorChat(db *sql.DB) http.HandlerFunc {
 		}
 
 		// Persist the full conversation (including the new reply) so it survives navigation.
-		tutorSession.AIModel   = req.AIModel
+		tutorSession.AIModel = req.AIModel
 		tutorSession.TutorMode = req.TutorMode
-		tutorSession.Messages  = append(req.Messages, message{Role: "assistant", Content: reply})
+		tutorSession.Messages = append(req.Messages, message{Role: "assistant", Content: reply})
 
-		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(map[string]any{"response": response})
+		writeJSON(w, map[string]any{"response": response})
 	}
 }

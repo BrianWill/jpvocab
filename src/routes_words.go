@@ -16,11 +16,8 @@ import (
 	"os/exec"
 	"path"
 	"path/filepath"
-	"strconv"
 	"strings"
 	"time"
-
-	"github.com/go-chi/chi/v5"
 )
 
 type wordImageWriter func(r *http.Request, info *wordImageInfo) (string, int, error)
@@ -35,16 +32,14 @@ func apiGetWords(db *sql.DB) http.HandlerFunc {
 		if words == nil {
 			words = []wordJSON{}
 		}
-		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(words)
+		writeJSON(w, words)
 	}
 }
 
 func apiUpdateWord(db *sql.DB) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		id, err := strconv.ParseInt(chi.URLParam(r, "id"), 10, 64)
-		if err != nil {
-			http.Error(w, "invalid id", http.StatusBadRequest)
+		id, ok := parseRouteInt64(w, r, "id", "invalid id")
+		if !ok {
 			return
 		}
 		var body struct {
@@ -89,9 +84,8 @@ func apiUpdateWord(db *sql.DB) http.HandlerFunc {
 
 func apiUpdateWordTarget(db *sql.DB) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		id, err := strconv.ParseInt(chi.URLParam(r, "id"), 10, 64)
-		if err != nil {
-			http.Error(w, "invalid id", http.StatusBadRequest)
+		id, ok := parseRouteInt64(w, r, "id", "invalid id")
+		if !ok {
 			return
 		}
 		var body struct {
@@ -111,9 +105,8 @@ func apiUpdateWordTarget(db *sql.DB) http.HandlerFunc {
 
 func apiDeleteWord(db *sql.DB) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		id, err := strconv.ParseInt(chi.URLParam(r, "id"), 10, 64)
-		if err != nil {
-			http.Error(w, "invalid id", http.StatusBadRequest)
+		id, ok := parseRouteInt64(w, r, "id", "invalid id")
+		if !ok {
 			return
 		}
 		if err := deleteWordByID(db, id); err != nil {
@@ -125,9 +118,8 @@ func apiDeleteWord(db *sql.DB) http.HandlerFunc {
 }
 
 func handleWordImageUpdate(db *sql.DB, w http.ResponseWriter, r *http.Request, writeImage wordImageWriter) {
-	id, err := strconv.ParseInt(chi.URLParam(r, "id"), 10, 64)
-	if err != nil {
-		http.Error(w, "invalid id", http.StatusBadRequest)
+	id, ok := parseRouteInt64(w, r, "id", "invalid id")
+	if !ok {
 		return
 	}
 
@@ -155,8 +147,7 @@ func handleWordImageUpdate(db *sql.DB, w http.ResponseWriter, r *http.Request, w
 		_ = os.Remove(filepath.Join("static", filepath.FromSlash(*info.ImagePath)))
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(map[string]string{"image_path": imagePath})
+	writeJSON(w, map[string]string{"image_path": imagePath})
 }
 
 func persistWordAutoFill(db *sql.DB, wordID int64, filled *wordAutoFill) ([]kanjiDataEntry, error) {
@@ -270,9 +261,8 @@ func apiFindWordImage(db *sql.DB) http.HandlerFunc {
 
 func apiAutofillWord(db *sql.DB) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		id, err := strconv.ParseInt(chi.URLParam(r, "id"), 10, 64)
-		if err != nil {
-			http.Error(w, "bad id", http.StatusBadRequest)
+		id, ok := parseRouteInt64(w, r, "id", "bad id")
+		if !ok {
 			return
 		}
 		var body struct {
@@ -293,8 +283,7 @@ func apiAutofillWord(db *sql.DB) http.HandlerFunc {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
-		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(map[string]any{
+		writeJSON(w, map[string]any{
 			"word":           body.Word,
 			"reading":        filled.Reading,
 			"pitch_accent":   filled.PitchAccent,
@@ -321,8 +310,7 @@ func apiAutofillWordsBatch(db *sql.DB) http.HandlerFunc {
 			return
 		}
 		if len(body.Words) == 0 {
-			w.Header().Set("Content-Type", "application/json")
-			w.Write([]byte("[]"))
+			writeJSON(w, []any{})
 			return
 		}
 
@@ -374,8 +362,7 @@ func apiAutofillWordsBatch(db *sql.DB) http.HandlerFunc {
 			}
 		}
 
-		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(results)
+		writeJSON(w, results)
 	}
 }
 
@@ -598,8 +585,7 @@ func synthesizeVoicevoxToFile(ctx context.Context, text string, p voicevoxParams
 func apiFfmpegAvailable() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		_, err := exec.LookPath("ffmpeg")
-		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(map[string]bool{"available": err == nil})
+		writeJSON(w, map[string]bool{"available": err == nil})
 	}
 }
 
@@ -613,8 +599,7 @@ func apiVoicevoxSpeakers() http.HandlerFunc {
 		resp, err := (&http.Client{Timeout: 5 * time.Second}).Do(req)
 		if err != nil {
 			// VoiceVox not running — return empty list so the UI degrades gracefully.
-			w.Header().Set("Content-Type", "application/json")
-			w.Write([]byte("[]"))
+			writeJSON(w, []any{})
 			return
 		}
 		defer resp.Body.Close()
@@ -656,9 +641,8 @@ func apiVoicevoxPreview() http.HandlerFunc {
 
 func apiGenerateWordAudio(db *sql.DB) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		id, err := strconv.ParseInt(chi.URLParam(r, "id"), 10, 64)
-		if err != nil {
-			http.Error(w, "invalid id", http.StatusBadRequest)
+		id, ok := parseRouteInt64(w, r, "id", "invalid id")
+		if !ok {
 			return
 		}
 		p := defaultVoicevoxParams()
@@ -711,8 +695,7 @@ func apiGenerateWordAudio(db *sql.DB) http.HandlerFunc {
 			return
 		}
 
-		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(map[string]any{
+		writeJSON(w, map[string]any{
 			"hasWordAudio":     true,
 			"hasSentenceAudio": hasSentence,
 		})
@@ -726,7 +709,6 @@ func apiGetKanji(db *sql.DB) http.HandlerFunc {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
-		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(kanji)
+		writeJSON(w, kanji)
 	}
 }

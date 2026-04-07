@@ -15,6 +15,26 @@ import (
 	"github.com/go-chi/chi/v5/middleware"
 )
 
+func parseRouteInt64(w http.ResponseWriter, r *http.Request, paramName, invalidMsg string) (int64, bool) {
+	value, err := strconv.ParseInt(chi.URLParam(r, paramName), 10, 64)
+	if err != nil {
+		http.Error(w, invalidMsg, http.StatusBadRequest)
+		return 0, false
+	}
+	return value, true
+}
+
+func writeJSON(w http.ResponseWriter, v any) {
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(v) //nolint:errcheck
+}
+
+func writeJSONStatus(w http.ResponseWriter, status int, v any) {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(status)
+	json.NewEncoder(w).Encode(v) //nolint:errcheck
+}
+
 func serverInit(db *sql.DB) {
 	r := chi.NewRouter()
 	r.Use(middleware.Logger)
@@ -52,8 +72,7 @@ func serverInit(db *sql.DB) {
 	r.Get("/api/providers", func(w http.ResponseWriter, r *http.Request) {
 		p := checkAIProviders()
 		s := checkImageSources()
-		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(map[string]any{
+		writeJSON(w, map[string]any{
 			"ai": map[string]bool{
 				"anthropic": p.AnthropicAvail,
 				"openai":    p.OpenAIAvail,
@@ -175,8 +194,7 @@ func apiGetTokenUsage(db *sql.DB) http.HandlerFunc {
 		if log == nil {
 			log = []tokenUsageEntry{}
 		}
-		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(map[string]any{
+		writeJSON(w, map[string]any{
 			"totals": map[string]int{
 				"calls":         totalCalls,
 				"input_tokens":  totalInput,
@@ -195,8 +213,7 @@ func apiGetActivityStats(db *sql.DB) http.HandlerFunc {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
-		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(stats)
+		writeJSON(w, stats)
 	}
 }
 
@@ -207,8 +224,7 @@ func apiGetActivityCalendar(db *sql.DB) http.HandlerFunc {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
-		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(cal)
+		writeJSON(w, cal)
 	}
 }
 
@@ -226,8 +242,7 @@ func apiCreateDrillSession(db *sql.DB) http.HandlerFunc {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
-		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(map[string]int64{"id": id})
+		writeJSON(w, map[string]int64{"id": id})
 	}
 }
 
@@ -238,16 +253,14 @@ func apiGetCurrentDrillSession(db *sql.DB) http.HandlerFunc {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
-		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(map[string]any{"session": session})
+		writeJSON(w, map[string]any{"session": session})
 	}
 }
 
 func apiRecordDrillAnswer(db *sql.DB) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		sessionID, err := strconv.ParseInt(chi.URLParam(r, "id"), 10, 64)
-		if err != nil {
-			http.Error(w, "invalid session id", http.StatusBadRequest)
+		sessionID, ok := parseRouteInt64(w, r, "id", "invalid session id")
+		if !ok {
 			return
 		}
 		var body struct {
@@ -274,8 +287,7 @@ func apiGetDrillSettings(db *sql.DB) http.HandlerFunc {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
-		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(s)
+		writeJSON(w, s)
 	}
 }
 

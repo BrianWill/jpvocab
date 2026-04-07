@@ -8,11 +8,8 @@ import (
 	"os"
 	"path/filepath"
 	"sort"
-	"strconv"
 	"strings"
 	"time"
-
-	"github.com/go-chi/chi/v5"
 )
 
 func newNDJSONStreamer(w http.ResponseWriter) func(v any) {
@@ -55,16 +52,14 @@ func apiGetStories(db *sql.DB) http.HandlerFunc {
 		if stories == nil {
 			stories = []storyJSON{}
 		}
-		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(stories)
+		writeJSON(w, stories)
 	}
 }
 
 func apiGetStory(db *sql.DB) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		id, err := strconv.ParseInt(chi.URLParam(r, "id"), 10, 64)
-		if err != nil {
-			http.Error(w, "invalid story id", http.StatusBadRequest)
+		id, ok := parseRouteInt64(w, r, "id", "invalid story id")
+		if !ok {
 			return
 		}
 		story, err := getStoryByID(db, id)
@@ -103,16 +98,14 @@ func apiGetStory(db *sql.DB) http.HandlerFunc {
 			setStoryNotedWords(db, id, cleanedNoted) //nolint:errcheck
 		}
 
-		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(story)
+		writeJSON(w, story)
 	}
 }
 
 func apiAddStoryNotedWord(db *sql.DB) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		id, err := strconv.ParseInt(chi.URLParam(r, "id"), 10, 64)
-		if err != nil {
-			http.Error(w, "invalid story id", http.StatusBadRequest)
+		id, ok := parseRouteInt64(w, r, "id", "invalid story id")
+		if !ok {
 			return
 		}
 
@@ -163,16 +156,14 @@ func apiAddStoryNotedWord(db *sql.DB) http.HandlerFunc {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
-		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(map[string]any{"notedWords": updated.NotedWords})
+		writeJSON(w, map[string]any{"notedWords": updated.NotedWords})
 	}
 }
 
 func apiDeleteStoryNotedWord(db *sql.DB) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		id, err := strconv.ParseInt(chi.URLParam(r, "id"), 10, 64)
-		if err != nil {
-			http.Error(w, "invalid story id", http.StatusBadRequest)
+		id, ok := parseRouteInt64(w, r, "id", "invalid story id")
+		if !ok {
 			return
 		}
 
@@ -202,16 +193,14 @@ func apiDeleteStoryNotedWord(db *sql.DB) http.HandlerFunc {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
-		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(map[string]any{"notedWords": updated.NotedWords})
+		writeJSON(w, map[string]any{"notedWords": updated.NotedWords})
 	}
 }
 
 func apiDeleteStory(db *sql.DB) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		id, err := strconv.ParseInt(chi.URLParam(r, "id"), 10, 64)
-		if err != nil {
-			http.Error(w, "invalid story id", http.StatusBadRequest)
+		id, ok := parseRouteInt64(w, r, "id", "invalid story id")
+		if !ok {
 			return
 		}
 
@@ -272,9 +261,7 @@ func apiCreateStory(db *sql.DB) http.HandlerFunc {
 			return
 		}
 
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusCreated)
-		json.NewEncoder(w).Encode(story)
+		writeJSONStatus(w, http.StatusCreated, story)
 	}
 }
 
@@ -301,9 +288,8 @@ func storySentenceText(s storySentenceJSON) string {
 // once all sentences complete. On cancellation the temp files are deleted.
 func apiGenerateStoryAudio(db *sql.DB) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		id, err := strconv.ParseInt(chi.URLParam(r, "id"), 10, 64)
-		if err != nil {
-			http.Error(w, "invalid story id", http.StatusBadRequest)
+		id, ok := parseRouteInt64(w, r, "id", "invalid story id")
+		if !ok {
 			return
 		}
 
@@ -449,9 +435,8 @@ func apiGenerateStoryAudio(db *sql.DB) http.HandlerFunc {
 //	{"error": "..."}                                               — on failure
 func apiGenerateStoryTranslation(db *sql.DB) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		id, err := strconv.ParseInt(chi.URLParam(r, "id"), 10, 64)
-		if err != nil {
-			http.Error(w, "invalid story id", http.StatusBadRequest)
+		id, ok := parseRouteInt64(w, r, "id", "invalid story id")
+		if !ok {
 			return
 		}
 

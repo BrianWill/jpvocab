@@ -524,10 +524,6 @@ func adminAddWordsBatch(db *sql.DB) http.HandlerFunc {
 		}
 
 		// Phase 4: autofill each inserted word now that all counts are settled.
-		type kdEntry struct {
-			ID      int64  `json:"id"`
-			Reading string `json:"reading"`
-		}
 	fillLoop:
 		for _, ins := range toFill {
 			select {
@@ -540,29 +536,11 @@ func adminAddWordsBatch(db *sql.DB) http.HandlerFunc {
 			if fillErr != nil {
 				continue
 			}
-
-			reading := filled.Reading
-			pos := filled.PartOfSpeech
-			meaning := filled.Meaning
-			exJP := filled.ExampleJP
-			exEN := filled.ExampleEN
-
-			kd := make([]kdEntry, 0, len(filled.Kanji))
-			for _, k := range filled.Kanji {
-				kID, kErr := upsertKanji(db, k.Character, k.Meanings)
-				if kErr != nil {
-					continue
-				}
-				kd = append(kd, kdEntry{ID: kID, Reading: k.Reading})
-			}
-			b, _ := json.Marshal(kd)
-			kanjiDataStr := string(b)
-
-			if err := updateWordFill(db, ins.wordID, reading, filled.PitchAccent, pos, meaning, exJP, exEN, kanjiDataStr); err != nil {
+			if _, err := persistWordAutoFill(db, ins.wordID, filled); err != nil {
 				continue
 			}
 			send(batchWordResult{Input: ins.input, Word: ins.norm, Updated: true,
-				Reading: reading, PartOfSpeech: pos, Meaning: meaning, ExampleJP: exJP, ExampleEN: exEN})
+				Reading: filled.Reading, PartOfSpeech: filled.PartOfSpeech, Meaning: filled.Meaning, ExampleJP: filled.ExampleJP, ExampleEN: filled.ExampleEN})
 		}
 
 		send(map[string]bool{"done": true})

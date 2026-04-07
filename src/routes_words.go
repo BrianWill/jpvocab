@@ -23,6 +23,8 @@ import (
 	"github.com/go-chi/chi/v5"
 )
 
+type wordImageWriter func(r *http.Request, info *wordImageInfo) (string, int, error)
+
 func apiGetWords(db *sql.DB) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		words, err := listWords(db)
@@ -122,173 +124,147 @@ func apiDeleteWord(db *sql.DB) http.HandlerFunc {
 	}
 }
 
+func handleWordImageUpdate(db *sql.DB, w http.ResponseWriter, r *http.Request, writeImage wordImageWriter) {
+	id, err := strconv.ParseInt(chi.URLParam(r, "id"), 10, 64)
+	if err != nil {
+		http.Error(w, "invalid id", http.StatusBadRequest)
+		return
+	}
+
+	info, err := getWordImageInfo(db, id)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	if info == nil {
+		http.Error(w, "word not found", http.StatusNotFound)
+		return
+	}
+
+	imagePath, status, err := writeImage(r, info)
+	if err != nil {
+		http.Error(w, err.Error(), status)
+		return
+	}
+	if err := updateWordImagePath(db, id, imagePath); err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	if info.ImagePath != nil && *info.ImagePath != "" && *info.ImagePath != imagePath {
+		_ = os.Remove(filepath.Join("static", filepath.FromSlash(*info.ImagePath)))
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]string{"image_path": imagePath})
+}
+
+func persistWordAutoFill(db *sql.DB, wordID int64, filled *wordAutoFill) ([]kanjiDataEntry, error) {
+	kd := make([]kanjiDataEntry, 0, len(filled.Kanji))
+	for _, k := range filled.Kanji {
+		kID, err := upsertKanji(db, k.Character, k.Meanings)
+		if err != nil {
+			continue
+		}
+		kd = append(kd, kanjiDataEntry{ID: kID, Reading: k.Reading})
+	}
+	b, _ := json.Marshal(kd)
+	if err := updateWordFill(db, wordID, filled.Reading, filled.PitchAccent, filled.PartOfSpeech, filled.Meaning, filled.ExampleJP, filled.ExampleEN, string(b)); err != nil {
+		return nil, err
+	}
+	return kd, nil
+}
+
 func apiUploadWordImage(db *sql.DB) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		id, err := strconv.ParseInt(chi.URLParam(r, "id"), 10, 64)
-		if err != nil {
-			http.Error(w, "invalid id", http.StatusBadRequest)
-			return
-		}
+		handleWordImageUpdate(db, w, r, func(r *http.Request, info *wordImageInfo) (string, int, error) {
+			file, header, err := r.FormFile("image")
+			if err != nil {
+				return "", http.StatusBadRequest, errors.New("missing image")
+			}
+			defer file.Close()
 
-		info, err := getWordImageInfo(db, id)
-		if err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
-			return
-		}
-		if info == nil {
-			http.Error(w, "word not found", http.StatusNotFound)
-			return
-		}
-
-		file, header, err := r.FormFile("image")
-		if err != nil {
-			http.Error(w, "missing image", http.StatusBadRequest)
-			return
-		}
-		defer file.Close()
-
-		imagePath, err := saveUploadedWordImage(info.Word, header.Header.Get("Content-Type"), header.Filename, file)
-		if err != nil {
-			http.Error(w, err.Error(), http.StatusBadRequest)
-			return
-		}
-		if err := updateWordImagePath(db, id, imagePath); err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
-			return
-		}
-
-		if info.ImagePath != nil && *info.ImagePath != "" && *info.ImagePath != imagePath {
-			_ = os.Remove(filepath.Join("static", filepath.FromSlash(*info.ImagePath)))
-		}
-
-		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(map[string]string{"image_path": imagePath})
+			imagePath, err := saveUploadedWordImage(info.Word, header.Header.Get("Content-Type"), header.Filename, file)
+			if err != nil {
+				return "", http.StatusBadRequest, err
+			}
+			return imagePath, 0, nil
+		})
 	}
 }
 
 func apiDownloadWordImage(db *sql.DB) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		id, err := strconv.ParseInt(chi.URLParam(r, "id"), 10, 64)
-		if err != nil {
-			http.Error(w, "invalid id", http.StatusBadRequest)
-			return
-		}
-		var body struct {
-			URL string `json:"url"`
-		}
-		if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
-			http.Error(w, "bad request", http.StatusBadRequest)
-			return
-		}
-		body.URL = strings.TrimSpace(body.URL)
-		if body.URL == "" {
-			http.Error(w, "missing url", http.StatusBadRequest)
-			return
-		}
+		handleWordImageUpdate(db, w, r, func(r *http.Request, info *wordImageInfo) (string, int, error) {
+			var body struct {
+				URL string `json:"url"`
+			}
+			if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+				return "", http.StatusBadRequest, errors.New("bad request")
+			}
+			body.URL = strings.TrimSpace(body.URL)
+			if body.URL == "" {
+				return "", http.StatusBadRequest, errors.New("missing url")
+			}
 
-		info, err := getWordImageInfo(db, id)
-		if err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
-			return
-		}
-		if info == nil {
-			http.Error(w, "word not found", http.StatusNotFound)
-			return
-		}
-
-		imagePath, err := downloadWordImage(r, info.Word, body.URL)
-		if err != nil {
-			http.Error(w, err.Error(), http.StatusBadGateway)
-			return
-		}
-		if err := updateWordImagePath(db, id, imagePath); err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
-			return
-		}
-
-		if info.ImagePath != nil && *info.ImagePath != "" && *info.ImagePath != imagePath {
-			_ = os.Remove(filepath.Join("static", filepath.FromSlash(*info.ImagePath)))
-		}
-
-		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(map[string]string{"image_path": imagePath})
+			imagePath, err := downloadWordImage(r, info.Word, body.URL)
+			if err != nil {
+				return "", http.StatusBadGateway, err
+			}
+			return imagePath, 0, nil
+		})
 	}
 }
 
 func apiFindWordImage(db *sql.DB) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		id, err := strconv.ParseInt(chi.URLParam(r, "id"), 10, 64)
-		if err != nil {
-			http.Error(w, "invalid id", http.StatusBadRequest)
-			return
-		}
-		var body struct {
-			Word        string `json:"word"`
-			Meaning     string `json:"meaning"`
-			AIModel     string `json:"ai_model"`
-			ImageSource string `json:"image_source"` // "wikimedia" | "unsplash" | "pexels" | "pixabay"
-		}
-		if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
-			http.Error(w, "bad request", http.StatusBadRequest)
-			return
-		}
-
-		info, err := getWordImageInfo(db, id)
-		if err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
-			return
-		}
-		if info == nil {
-			http.Error(w, "word not found", http.StatusNotFound)
-			return
-		}
-
-		var imageURL string
-		switch body.ImageSource {
-		case "unsplash", "pexels", "pixabay", "bing":
-			query, qErr := suggestImageSearchQuery(db, body.Word, body.Meaning, body.AIModel)
-			if qErr != nil {
-				http.Error(w, qErr.Error(), http.StatusInternalServerError)
-				return
+		handleWordImageUpdate(db, w, r, func(r *http.Request, info *wordImageInfo) (string, int, error) {
+			var body struct {
+				Word        string `json:"word"`
+				Meaning     string `json:"meaning"`
+				AIModel     string `json:"ai_model"`
+				ImageSource string `json:"image_source"` // "wikimedia" | "unsplash" | "pexels" | "pixabay"
 			}
+			if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+				return "", http.StatusBadRequest, errors.New("bad request")
+			}
+
+			var (
+				imageURL string
+				err      error
+			)
 			switch body.ImageSource {
-			case "unsplash":
-				imageURL, err = searchUnsplash(r.Context(), query)
-			case "pexels":
-				imageURL, err = searchPexels(r.Context(), query)
-			case "pixabay":
-				imageURL, err = searchPixabay(r.Context(), query)
-			case "bing":
-				imageURL, err = searchBing(r.Context(), query)
+			case "unsplash", "pexels", "pixabay", "bing":
+				query, qErr := suggestImageSearchQuery(db, body.Word, body.Meaning, body.AIModel)
+				if qErr != nil {
+					return "", http.StatusInternalServerError, qErr
+				}
+				switch body.ImageSource {
+				case "unsplash":
+					imageURL, err = searchUnsplash(r.Context(), query)
+				case "pexels":
+					imageURL, err = searchPexels(r.Context(), query)
+				case "pixabay":
+					imageURL, err = searchPixabay(r.Context(), query)
+				case "bing":
+					imageURL, err = searchBing(r.Context(), query)
+				}
+				if err != nil {
+					return "", http.StatusBadGateway, err
+				}
+			default: // "wikimedia"
+				imageURL, err = suggestImageURL(db, body.Word, body.Meaning, body.AIModel)
+				if err != nil {
+					return "", http.StatusInternalServerError, err
+				}
 			}
+
+			imagePath, err := downloadWordImage(r, info.Word, imageURL)
 			if err != nil {
-				http.Error(w, err.Error(), http.StatusBadGateway)
-				return
+				return "", http.StatusBadGateway, err
 			}
-		default: // "wikimedia"
-			imageURL, err = suggestImageURL(db, body.Word, body.Meaning, body.AIModel)
-			if err != nil {
-				http.Error(w, err.Error(), http.StatusInternalServerError)
-				return
-			}
-		}
-
-		imagePath, err := downloadWordImage(r, info.Word, imageURL)
-		if err != nil {
-			http.Error(w, err.Error(), http.StatusBadGateway)
-			return
-		}
-		if err := updateWordImagePath(db, id, imagePath); err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
-			return
-		}
-
-		if info.ImagePath != nil && *info.ImagePath != "" && *info.ImagePath != imagePath {
-			_ = os.Remove(filepath.Join("static", filepath.FromSlash(*info.ImagePath)))
-		}
-
-		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(map[string]string{"image_path": imagePath})
+			return imagePath, 0, nil
+		})
 	}
 }
 
@@ -312,20 +288,8 @@ func apiAutofillWord(db *sql.DB) http.HandlerFunc {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
-		type kdEntry struct {
-			ID      int64  `json:"id"`
-			Reading string `json:"reading"`
-		}
-		kd := make([]kdEntry, 0, len(filled.Kanji))
-		for _, k := range filled.Kanji {
-			kID, kErr := upsertKanji(db, k.Character, k.Meanings)
-			if kErr != nil {
-				continue
-			}
-			kd = append(kd, kdEntry{ID: kID, Reading: k.Reading})
-		}
-		b, _ := json.Marshal(kd)
-		if err := updateWordFill(db, id, filled.Reading, filled.PitchAccent, filled.PartOfSpeech, filled.Meaning, filled.ExampleJP, filled.ExampleEN, string(b)); err != nil {
+		kd, err := persistWordAutoFill(db, id, filled)
+		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
@@ -372,21 +336,17 @@ func apiAutofillWordsBatch(db *sql.DB) http.HandlerFunc {
 			return
 		}
 
-		type kdEntry struct {
-			ID      int64  `json:"id"`
-			Reading string `json:"reading"`
-		}
 		type wordResult struct {
-			WordID       int64     `json:"word_id"`
-			Word         string    `json:"word"`
-			Reading      string    `json:"reading,omitempty"`
-			PitchAccent  *int      `json:"pitch_accent,omitempty"`
-			PartOfSpeech string    `json:"part_of_speech,omitempty"`
-			Meaning      string    `json:"meaning,omitempty"`
-			ExampleJP    string    `json:"example_jp,omitempty"`
-			ExampleEN    string    `json:"example_en,omitempty"`
-			KanjiData    []kdEntry `json:"kanji_data,omitempty"`
-			Error        string    `json:"error,omitempty"`
+			WordID       int64            `json:"word_id"`
+			Word         string           `json:"word"`
+			Reading      string           `json:"reading,omitempty"`
+			PitchAccent  *int             `json:"pitch_accent,omitempty"`
+			PartOfSpeech string           `json:"part_of_speech,omitempty"`
+			Meaning      string           `json:"meaning,omitempty"`
+			ExampleJP    string           `json:"example_jp,omitempty"`
+			ExampleEN    string           `json:"example_en,omitempty"`
+			KanjiData    []kanjiDataEntry `json:"kanji_data,omitempty"`
+			Error        string           `json:"error,omitempty"`
 		}
 
 		results := make([]wordResult, len(body.Words))
@@ -396,16 +356,8 @@ func apiAutofillWordsBatch(db *sql.DB) http.HandlerFunc {
 				results[i] = wordResult{WordID: entry.ID, Word: entry.Word, Error: "AI did not return a result for this word"}
 				continue
 			}
-			kd := make([]kdEntry, 0, len(filled.Kanji))
-			for _, k := range filled.Kanji {
-				kID, kErr := upsertKanji(db, k.Character, k.Meanings)
-				if kErr != nil {
-					continue
-				}
-				kd = append(kd, kdEntry{ID: kID, Reading: k.Reading})
-			}
-			b, _ := json.Marshal(kd)
-			if err := updateWordFill(db, entry.ID, filled.Reading, filled.PitchAccent, filled.PartOfSpeech, filled.Meaning, filled.ExampleJP, filled.ExampleEN, string(b)); err != nil {
+			kd, err := persistWordAutoFill(db, entry.ID, filled)
+			if err != nil {
 				results[i] = wordResult{WordID: entry.ID, Word: entry.Word, Error: err.Error()}
 				continue
 			}

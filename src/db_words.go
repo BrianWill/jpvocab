@@ -251,6 +251,7 @@ func listWords(db *sql.DB) ([]wordJSON, error) {
 		       drill_count, incorrect_count, drill_target, created_at, last_drilled_at,
 		       image_path, kanji_data, has_word_audio, has_sentence_audio, in_lexicon
 		FROM words
+		WHERE in_lexicon = 1
 		ORDER BY created_at DESC
 	`)
 	if err != nil {

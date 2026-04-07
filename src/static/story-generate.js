@@ -164,24 +164,6 @@ export function initGenerateModals(els, state, { storyId, onAudioDone, onTransla
     _state.translationController = new AbortController();
     setTranslationModalGenerating(true);
 
-    let elapsedSecs = 0;
-    let elapsedTimer = null;
-    let baseStatusText = '';
-
-    const startElapsedTimer = (text) => {
-      baseStatusText = text;
-      elapsedSecs = 0;
-      if (elapsedTimer !== null) clearInterval(elapsedTimer);
-      _els.genTranslationStatusText.textContent = text;
-      elapsedTimer = setInterval(() => {
-        elapsedSecs++;
-        _els.genTranslationStatusText.textContent = `${baseStatusText} (${elapsedSecs}s)`;
-      }, 1000);
-    };
-    const stopElapsedTimer = () => {
-      if (elapsedTimer !== null) { clearInterval(elapsedTimer); elapsedTimer = null; }
-    };
-
     // Helper: consume an NDJSON stream; calls onMsg for each parsed message.
     // Returns true if the stream ended with {allDone: true}.
     const readNDJSON = async (res, onMsg) => {
@@ -211,47 +193,27 @@ export function initGenerateModals(els, state, { storyId, onAudioDone, onTransla
     let phase1Done = false;
     let phase2Done = false;
 
-    try {
-      // Phase 1: translate sentences.
-      _els.genTranslationStatusText.textContent = 'Translating…';
-      const res1 = await fetch(`/api/stories/${_storyId}/generate-translation`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ai_model: aiModel }),
-        signal: _state.translationController.signal,
-      });
-      phase1Done = await readNDJSON(res1, msg => {
-        if (msg.status === 'translating') {
-          startElapsedTimer(
-            `Translating ${msg.sentenceCount} sentence${msg.sentenceCount !== 1 ? 's' : ''}…`
-          );
-        }
-      });
-      stopElapsedTimer();
+    _els.genTranslationStatusText.textContent = 'Generating…';
 
-      // Phase 2: autofill word info (only if phase 1 succeeded and not aborted).
-      if (phase1Done) {
-        _els.genTranslationStatusText.textContent = 'Looking up word info…';
-        const res2 = await fetch(`/api/stories/${_storyId}/generate-word-info`, {
+    const runPhase = async (url, onMsg) => {
+      try {
+        const res = await fetch(url, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ ai_model: aiModel }),
           signal: _state.translationController.signal,
         });
-        phase2Done = await readNDJSON(res2, msg => {
-          if (msg.status === 'autofilling') {
-            startElapsedTimer(
-              `Looking up ${msg.wordCount} word${msg.wordCount !== 1 ? 's' : ''}…`
-            );
-          }
-        });
-        stopElapsedTimer();
+        return await readNDJSON(res, onMsg);
+      } catch (_) {
+        return false;
       }
-    } catch (_) {
-      // Aborted or network error.
-    }
+    };
 
-    stopElapsedTimer();
+    [phase1Done, phase2Done] = await Promise.all([
+      runPhase(`/api/stories/${_storyId}/generate-translation`, () => {}),
+      runPhase(`/api/stories/${_storyId}/generate-word-info`, () => {}),
+    ]);
+
     _state.translationController = null;
 
     if (phase1Done && phase2Done) {

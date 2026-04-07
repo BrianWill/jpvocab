@@ -93,6 +93,9 @@ func migrate(db *sql.DB) {
 			is_paragraph_start INTEGER NOT NULL DEFAULT 0 CHECK (is_paragraph_start IN (0, 1)),
 			UNIQUE(story_id, position)
 		)`,
+		`ALTER TABLE words ADD COLUMN in_lexicon INTEGER NOT NULL DEFAULT 1`,
+		`ALTER TABLE stories DROP COLUMN word_glosses`,
+		`ALTER TABLE stories ADD COLUMN story_words_json TEXT NOT NULL DEFAULT '[]'`,
 		`CREATE TABLE IF NOT EXISTS token_usage (
 			id            INTEGER  PRIMARY KEY AUTOINCREMENT,
 			provider      TEXT     NOT NULL,

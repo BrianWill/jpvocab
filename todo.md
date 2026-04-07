@@ -2,6 +2,10 @@
 
 This file is random notes of possible features and bug fixes.
 
+- the word field 'word' should be 'base_word'
+
+- add more common Japanese words to the word insertion blacklist
+
 - tutor:
     - tutor's Japanese is spoken by TTS
     - tutor's Japanese is spoken by voicevox
@@ -11,6 +15,12 @@ This file is random notes of possible features and bug fixes.
         - modes where the user only expected to answer in English
 
     - option to rewind chat? undo last prompt and response?
+
+- story translation
+    - separately send sentences and unique word list
+    - reading should include pitch info and separated by kanji (like on lexicon or in drill)
+    - also display kanji info? per kanji info would allow for consistent display 
+        - make it match the word info tooltip of the drill page? (even include image?)
 
 - wails
     - double scrollbar appears on start of wails
@@ -55,10 +65,7 @@ This file is random notes of possible features and bug fixes.
         - add these instructions or link them on the welcome page
     - explain drilling theory / workflow
 
-- story translation tooltip
-    - reading should include pitch info and separated by kanji (like on lexicon or in drill)
-    - also display kanji info? per kanji info would allow for consistent display 
-        - make it match the word info tooltip of the drill page? (even include image?)
+
         
 - proper error messages for failed API requests
     - what if user runs out of tokens? or other API failures

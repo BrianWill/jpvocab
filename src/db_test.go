@@ -366,6 +366,25 @@ func TestGetActivityStats_Buckets(t *testing.T) {
 	}
 }
 
+func TestGetActivityStats_ExcludesNotInLexicon(t *testing.T) {
+	db := testDB(t)
+	// One manually-added word (in_lexicon=1, the default).
+	db.Exec(`INSERT INTO words (word, drill_count, drill_target) VALUES ('空', 0, 3)`)
+	// One story-sourced word (in_lexicon=0) — must be invisible to stats.
+	db.Exec(`INSERT INTO words (word, drill_count, drill_target, in_lexicon) VALUES ('海', 0, 3, 0)`)
+
+	stats, err := getActivityStats(db)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if stats.LexiconSize != 1 {
+		t.Errorf("LexiconSize: got %d, want 1 (in_lexicon=0 word must be excluded)", stats.LexiconSize)
+	}
+	if stats.ActiveWords != 1 {
+		t.Errorf("ActiveWords: got %d, want 1", stats.ActiveWords)
+	}
+}
+
 // --- recordDrillAnswer ---
 
 // insertTestWord is a helper that inserts a word and returns its DB id.
@@ -618,10 +637,11 @@ func TestResetDB_ClearsData(t *testing.T) {
 		t.Fatal("resetDB:", err)
 	}
 
-	// After reset the DB is re-migrated (and possibly re-seeded from seed.json),
-	// but our two test words must no longer be present.
+	// After reset the DB is re-migrated (and possibly re-seeded from seed.json).
+	// Our manually-added words (in_lexicon=1) must no longer be present; seed
+	// story tokenisation may re-add some base words with in_lexicon=0, which is fine.
 	var count int
-	db.QueryRow(`SELECT COUNT(*) FROM words WHERE word IN ('山', '川')`).Scan(&count)
+	db.QueryRow(`SELECT COUNT(*) FROM words WHERE word IN ('山', '川') AND in_lexicon = 1`).Scan(&count)
 	if count != 0 {
 		t.Errorf("test words still present after reset: got %d, want 0", count)
 	}
@@ -1191,8 +1211,9 @@ func TestStoryNotedWords_PersistOnStory(t *testing.T) {
 	}
 }
 
-func TestGetStoryByID_PopulatesWordReadingFromStructuredGlosses(t *testing.T) {
+func TestGetStoryByID_PopulatesWordInfoFromWordsTable(t *testing.T) {
 	db := testDB(t)
+	// insertStory auto-adds 猫 to words with in_lexicon=0 and empty meaning/reading.
 	id, err := insertStory(db, "Reading Story", nil, []storySentenceInput{
 		{
 			Words: []storyWordInput{
@@ -1206,10 +1227,9 @@ func TestGetStoryByID_PopulatesWordReadingFromStructuredGlosses(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if err := mergeStoryWordGlosses(db, id, map[string]storyWordGlossJSON{
-		"猫": {English: "cat", Reading: "ねこ"},
-	}); err != nil {
-		t.Fatalf("mergeStoryWordGlosses: %v", err)
+	// Populate meaning and reading directly on the words row.
+	if _, err := db.Exec(`UPDATE words SET meaning = 'cat', reading = 'ねこ' WHERE word = '猫'`); err != nil {
+		t.Fatalf("update word: %v", err)
 	}
 
 	story, err := getStoryByID(db, id)
@@ -1224,39 +1244,6 @@ func TestGetStoryByID_PopulatesWordReadingFromStructuredGlosses(t *testing.T) {
 	}
 	if story.Sentences[0].Words[0].Reading != "ねこ" {
 		t.Errorf("reading: got %q, want %q", story.Sentences[0].Words[0].Reading, "ねこ")
-	}
-}
-
-func TestGetStoryByID_PreservesLegacyStringGlosses(t *testing.T) {
-	db := testDB(t)
-	id, err := insertStory(db, "Legacy Gloss Story", nil, []storySentenceInput{
-		{
-			Words: []storyWordInput{
-				{DisplayWord: "窓", BaseWord: "窓"},
-			},
-			IsParagraphStart: true,
-		},
-	})
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	if _, err := db.Exec(`UPDATE stories SET word_glosses = ? WHERE id = ?`, `{"窓":"window"}`, id); err != nil {
-		t.Fatalf("set legacy word_glosses: %v", err)
-	}
-
-	story, err := getStoryByID(db, id)
-	if err != nil {
-		t.Fatalf("getStoryByID: %v", err)
-	}
-	if story == nil || len(story.Sentences) == 0 || len(story.Sentences[0].Words) == 0 {
-		t.Fatalf("unexpected story payload: %+v", story)
-	}
-	if story.Sentences[0].Words[0].English != "window" {
-		t.Errorf("english: got %q, want %q", story.Sentences[0].Words[0].English, "window")
-	}
-	if story.Sentences[0].Words[0].Reading != "" {
-		t.Errorf("reading: got %q, want empty", story.Sentences[0].Words[0].Reading)
 	}
 }
 
@@ -1543,6 +1530,29 @@ func TestGetActivityCalendar_HistoryStartIsContainingSunday(t *testing.T) {
 	}
 	if cal.HistoryStart != "2024-01-14" {
 		t.Errorf("HistoryStart: got %q, want 2024-01-14 (Sunday of week containing 2024-01-17)", cal.HistoryStart)
+	}
+}
+
+func TestGetActivityCalendar_ExcludesNotInLexicon(t *testing.T) {
+	db := testDB(t)
+	// One manually-added word on 2024-05-01.
+	db.Exec(`INSERT INTO words (word, created_at) VALUES ('星', '2024-05-01 00:00:00')`)
+	// One story-sourced word on the same date — must not appear in Added.
+	db.Exec(`INSERT INTO words (word, created_at, in_lexicon) VALUES ('月', '2024-05-01 00:00:00', 0)`)
+
+	cal, err := getActivityCalendar(db)
+	if err != nil {
+		t.Fatal(err)
+	}
+	day, ok := cal.Days["2024-05-01"]
+	if !ok {
+		t.Fatal("expected calendar entry for 2024-05-01")
+	}
+	if len(day.Added) != 1 {
+		t.Errorf("Added: got %d entries, want 1 (in_lexicon=0 word must be excluded)", len(day.Added))
+	}
+	if day.Added[0].Word != "星" {
+		t.Errorf("Added[0].Word: got %q, want 星", day.Added[0].Word)
 	}
 }
 

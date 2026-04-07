@@ -53,6 +53,7 @@ type wordJSON struct {
 	KanjiData        []kanjiDataEntry `json:"kanjiData"`
 	HasWordAudio     bool             `json:"hasWordAudio"`
 	HasSentenceAudio bool             `json:"hasSentenceAudio"`
+	InLexicon        int              `json:"inLexicon"`
 }
 
 // insertWord adds a single word to the lexicon. Only the word itself is
@@ -248,7 +249,7 @@ func listWords(db *sql.DB) ([]wordJSON, error) {
 		SELECT id, word, COALESCE(reading,''), pitch_accent, COALESCE(part_of_speech,''), COALESCE(meaning,''),
 		       COALESCE(example_jp,''), COALESCE(example_en,''),
 		       drill_count, incorrect_count, drill_target, created_at, last_drilled_at,
-		       image_path, kanji_data, has_word_audio, has_sentence_audio
+		       image_path, kanji_data, has_word_audio, has_sentence_audio, in_lexicon
 		FROM words
 		ORDER BY created_at DESC
 	`)
@@ -265,7 +266,7 @@ func listWords(db *sql.DB) ([]wordJSON, error) {
 		if err := rows.Scan(
 			&w.ID, &w.Word, &w.Reading, &w.PitchAccent, &w.Type, &w.Meaning, &w.ExampleJp, &w.ExampleEn,
 			&w.Correct, &w.Incorrect, &w.Target, &w.CreatedAt, &w.LastDrilled,
-			&w.ImagePath, &kanjiDataStr, &hasWordAudio, &hasSentenceAudio,
+			&w.ImagePath, &kanjiDataStr, &hasWordAudio, &hasSentenceAudio, &w.InLexicon,
 		); err != nil {
 			return nil, err
 		}
@@ -349,4 +350,95 @@ func containsKatakana(s string) bool {
 		}
 	}
 	return false
+}
+
+// wordInsertBlacklist is the combined set of Japanese particles and conjunctions
+// that should never be added to the lexicon as standalone vocabulary words.
+var wordInsertBlacklist = func() map[string]struct{} {
+	particles := []string{
+		// case / postpositional particles
+		"が", "を", "に", "で", "へ", "と", "から", "より", "まで", "や", "か", "の",
+		// binding / focus particles
+		"は", "も", "こそ", "さえ", "しか", "だけ", "ばかり", "など", "ほど",
+		"くらい", "ぐらい", "ずつ", "なんか", "なんて", "って",
+		// conjunctive / subordinating particles
+		"て", "で", "ながら", "たり", "ば", "し", "けど", "けれど", "けれども",
+		"のに", "ので", "から", "たら", "なら", "ても", "でも",
+		// sentence-ending particles
+		"ね", "よ", "な", "わ", "ぞ", "ぜ", "さ",
+	}
+	conjunctions := []string{
+		"そして", "しかし", "でも", "だから", "それで", "また", "あるいは",
+		"または", "それとも", "ところが", "ところで", "さらに", "そのうえ",
+		"それに", "しかも", "そのため", "そこで", "なぜなら", "つまり",
+		"すなわち", "たとえば", "ようするに", "そもそも", "ただし",
+		"もっとも", "なお", "ちなみに", "もしくは", "および", "ならびに",
+		"かつ", "だが", "けれども", "ゆえに", "したがって", "さて", "では",
+		"それでも", "なのに", "ともかく", "ともあれ",
+	}
+	all := append(particles, conjunctions...)
+	set := make(map[string]struct{}, len(all))
+	for _, w := range all {
+		set[w] = struct{}{}
+	}
+	return set
+}()
+
+// containsJapaneseLetter reports whether s contains at least one hiragana,
+// katakana, or CJK unified ideograph. Used to exclude pure punctuation tokens
+// (。、「」 etc.) from the lexicon during story import.
+func containsJapaneseLetter(s string) bool {
+	for _, r := range s {
+		if (r >= 0x3040 && r <= 0x309F) || // hiragana
+			(r >= 0x30A0 && r <= 0x30FF) || // katakana
+			(r >= 0x4E00 && r <= 0x9FFF) { // CJK unified ideographs
+			return true
+		}
+	}
+	return false
+}
+
+// updateWordInfoIfEmpty sets meaning and/or reading on the words row for the
+// given word text only where the current value is NULL or empty, preserving
+// any data the user has already entered.
+func updateWordInfoIfEmpty(db *sql.DB, word, meaning, reading string) error {
+	_, err := db.Exec(`
+		UPDATE words
+		SET meaning = CASE WHEN COALESCE(meaning,'') = '' THEN ? ELSE meaning END,
+		    reading = CASE WHEN COALESCE(reading,'') = '' THEN ? ELSE reading END
+		WHERE word = ?
+	`, meaning, reading, word)
+	return err
+}
+
+// insertWordsIfAbsent adds each word in baseWords to the lexicon with
+// in_lexicon=0 if that word is not already present. Existing rows, regardless
+// of their in_lexicon value, are left untouched. Pure punctuation/symbol tokens
+// (no kana or kanji) are silently skipped.
+// Returns the subset of baseWords that passed the gate (inserted or pre-existing).
+func insertWordsIfAbsent(tx *sql.Tx, baseWords []string) ([]string, error) {
+	var accepted []string
+	for _, word := range baseWords {
+		if word = strings.TrimSpace(word); word == "" {
+			continue
+		}
+		if !containsJapaneseLetter(word) {
+			continue
+		}
+		if _, blacklisted := wordInsertBlacklist[word]; blacklisted {
+			continue
+		}
+		kat := 0
+		if containsKatakana(word) {
+			kat = 1
+		}
+		if _, err := tx.Exec(`
+			INSERT OR IGNORE INTO words (word, is_katakana, in_lexicon)
+			VALUES (?, ?, 0)
+		`, word, kat); err != nil {
+			return nil, err
+		}
+		accepted = append(accepted, word)
+	}
+	return accepted, nil
 }

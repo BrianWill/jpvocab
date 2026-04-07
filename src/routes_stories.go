@@ -555,22 +555,14 @@ func apiGenerateStoryTranslation(db *sql.DB) http.HandlerFunc {
 			}
 		}
 
-		// Save word glosses (merge into existing map).
-		if len(result.Words) > 0 {
-			newGlosses := make(map[string]storyWordGlossJSON, len(result.Words))
-			for _, wg := range result.Words {
-				if wg.Word != "" && (wg.Gloss != "" || wg.Reading != "") {
-					newGlosses[wg.Word] = storyWordGlossJSON{
-						English: wg.Gloss,
-						Reading: wg.Reading,
-					}
-				}
+		// Write word info into the words table for any word that doesn't yet have it.
+		for _, wg := range result.Words {
+			if wg.Word == "" {
+				continue
 			}
-			if len(newGlosses) > 0 {
-				if err := mergeStoryWordGlosses(db, id, newGlosses); err != nil {
-					streamEvent(map[string]string{"error": "db error: " + err.Error()})
-					return
-				}
+			if err := updateWordInfoIfEmpty(db, wg.Word, wg.Gloss, wg.Reading); err != nil {
+				streamEvent(map[string]string{"error": "db error: " + err.Error()})
+				return
 			}
 		}
 

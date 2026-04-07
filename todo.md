@@ -2,12 +2,13 @@
 
 This file is random notes of possible features and bug fixes.
 
+- tutor:
+    - should warn users somehow about conversation getting too long (context collapse)
+
 - wails
     - double scrollbar appears on start of wails
     - on mac, cmd+-/+ does weird zoom behavior
         (but ctrl+scroll and ctrl+-/+ is fine)
-
-- track token usage
 
 - chat tutor
     - save and track chats?
@@ -27,8 +28,12 @@ This file is random notes of possible features and bug fixes.
     - add a date last viewed to optionally sort by?
 
 - video stories
+    - play local files
+        sync with subtitles
+    - embed youtube player?
 
 - story page
+    - text when zoomed in hugs the collapsed noted words tab too much
     - scan text to auto suggest noted words from the frequently occuring unique words in the story
         - maybe just auto add high-frequency words to noted words, 
             e.g. add all words in story tha occur more than N times

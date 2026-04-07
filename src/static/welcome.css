@@ -155,9 +155,12 @@
   min-width: 0;
 }
 .feature-card:hover { border-color: #45475a; }
+.feature-card--filler { pointer-events: none; }
+.feature-card--filler:hover { border-color: #313244; }
 
-/* Remove double borders between adjacent cards */
+/* Remove double borders between adjacent cards; restore for first card of each new row */
 .feature-card + .feature-card { border-left: none; }
+.magazine .feature-card:nth-child(4n+1) { border-left: 1px solid #313244; }
 .feature-card--wide { grid-column: span 2; }
 
 .feature-card-kanji {
@@ -195,6 +198,7 @@
 .tag-green  { background: rgba(166,227,161,0.10); color: #a6e3a1; border: 1px solid rgba(166,227,161,0.25); }
 .tag-yellow { background: rgba(249,226,175,0.10); color: #f9e2af; border: 1px solid rgba(249,226,175,0.25); }
 .tag-mauve  { background: rgba(203,166,247,0.10); color: #cba6f7; border: 1px solid rgba(203,166,247,0.25); }
+.tag-red    { background: rgba(243,139,168,0.10); color: #f38ba8; border: 1px solid rgba(243,139,168,0.25); }
 
 .feature-card-title {
   font-size: 1.2rem;
@@ -223,6 +227,7 @@
 .feature-card-link--green  { color: #a6e3a1; }
 .feature-card-link--yellow { color: #f9e2af; }
 .feature-card-link--mauve  { color: #cba6f7; }
+.feature-card-link--red    { color: #f38ba8; }
 .feature-card-link:hover { opacity: 0.75; }
 
 /* Wide card layout: two-column content */

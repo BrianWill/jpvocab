@@ -31,6 +31,7 @@ func serverInit(db *sql.DB) {
 	r.Get("/activity", appPage("activity.html", "activity"))
 	r.Get("/lexicon", appPage("lexicon.html", "lexicon"))
 	r.Get("/drill", appPage("drill.html", "drill"))
+	r.Get("/tutor", appPage("tutor.html", "tutor"))
 	r.Get("/stories", appPage("stories.html", "stories"))
 	r.Get("/stories/{id}", appPage("story.html", "story-detail"))
 	r.Get("/token-usage", appPage("token-usage.html", "token-usage"))

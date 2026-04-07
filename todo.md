@@ -3,8 +3,6 @@
 This file is random notes of possible features and bug fixes.
 
 
-- lexicon page should only list words where in_lexicon is 1
-
 - the word field 'word' should be 'base_word'
 
 - add more common Japanese words to the word insertion blacklist

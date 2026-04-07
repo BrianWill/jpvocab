@@ -3,6 +3,7 @@ package main
 import (
 	"database/sql"
 	"encoding/json"
+	"fmt"
 	"strings"
 )
 
@@ -77,7 +78,10 @@ func insertWord(db *sql.DB, word, reading, partOfSpeech, meaning, exampleJP, exa
 	return err
 }
 
-// insertWordReturningID inserts a new word and returns its database ID.
+// insertWordReturningID inserts a new word into the lexicon and returns its ID.
+// If the word already exists with in_lexicon=0 (auto-inserted via a story), it is
+// promoted: in_lexicon is set to 1 and all provided fields are applied.
+// Returns an error if the word already exists with in_lexicon=1.
 func insertWordReturningID(db *sql.DB, word, reading, partOfSpeech, meaning, exampleJP, exampleEN, kanjiData string, drillTarget int) (int64, error) {
 	if drillTarget < 1 {
 		drillTarget = 1
@@ -92,9 +96,26 @@ func insertWordReturningID(db *sql.DB, word, reading, partOfSpeech, meaning, exa
 	res, err := db.Exec(`
 		INSERT INTO words (word, reading, part_of_speech, meaning, example_jp, example_en, drill_target, is_katakana, kanji_data)
 		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+		ON CONFLICT(word) DO UPDATE SET
+			in_lexicon     = 1,
+			reading        = CASE WHEN COALESCE(reading, '')        = '' THEN excluded.reading        ELSE reading        END,
+			part_of_speech = CASE WHEN COALESCE(part_of_speech, '') = '' THEN excluded.part_of_speech ELSE part_of_speech END,
+			meaning        = CASE WHEN COALESCE(meaning, '')        = '' THEN excluded.meaning        ELSE meaning        END,
+			example_jp     = CASE WHEN COALESCE(example_jp, '')     = '' THEN excluded.example_jp     ELSE example_jp     END,
+			example_en     = CASE WHEN COALESCE(example_en, '')     = '' THEN excluded.example_en     ELSE example_en     END,
+			drill_target   = excluded.drill_target,
+			kanji_data     = CASE WHEN COALESCE(kanji_data, '[]')   = '[]' THEN excluded.kanji_data  ELSE kanji_data     END
+		WHERE in_lexicon = 0
 	`, word, reading, partOfSpeech, meaning, exampleJP, exampleEN, drillTarget, kat, kanjiData)
 	if err != nil {
 		return 0, err
+	}
+	n, err := res.RowsAffected()
+	if err != nil {
+		return 0, err
+	}
+	if n == 0 {
+		return 0, fmt.Errorf("already in lexicon")
 	}
 	return res.LastInsertId()
 }
@@ -152,7 +173,7 @@ func wordsInfoInDB(db *sql.DB, words []string) (map[string]existingWordInfo, err
 		args[i] = w
 	}
 	rows, err := db.Query(
-		"SELECT id, word, reading, part_of_speech, meaning, example_jp, example_en, image_path, drill_count, incorrect_count, drill_target FROM words WHERE word IN ("+placeholders+")",
+		"SELECT id, word, reading, part_of_speech, meaning, example_jp, example_en, image_path, drill_count, incorrect_count, drill_target FROM words WHERE in_lexicon = 1 AND word IN ("+placeholders+")",
 		args...,
 	)
 	if err != nil {

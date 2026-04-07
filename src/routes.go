@@ -446,21 +446,29 @@ func adminAddWordsBatch(db *sql.DB) http.HandlerFunc {
 			wordID, err := insertWordReturningID(db, e.norm, listEntry.Reading, listEntry.PartOfSpeech, listEntry.Meaning, listEntry.ExampleJP, listEntry.ExampleEN, "", newWordTarget)
 			if err != nil {
 				reason := err.Error()
-				if strings.Contains(reason, "UNIQUE constraint failed") {
+				if strings.Contains(reason, "UNIQUE constraint failed") || reason == "already in lexicon" {
 					reason = "already in lexicon"
 				}
 				send(batchWordResult{Input: e.input, Word: e.norm, Added: false, Reason: reason})
 				continue
 			}
+			// Read back from DB so we reflect any info already present on the row
+			// (e.g. autofilled by generate-word-info while in_lexicon=0).
+			var actualReading, actualPOS, actualMeaning, actualExJP, actualExEN string
+			db.QueryRowContext(r.Context(),
+				`SELECT COALESCE(reading,''), COALESCE(part_of_speech,''), COALESCE(meaning,''),
+				        COALESCE(example_jp,''), COALESCE(example_en,'') FROM words WHERE id = ?`, wordID,
+			).Scan(&actualReading, &actualPOS, &actualMeaning, &actualExJP, &actualExEN)
+
 			result := batchWordResult{
 				Input:        e.input,
 				Word:         e.norm,
 				Added:        true,
-				Reading:      listEntry.Reading,
-				PartOfSpeech: listEntry.PartOfSpeech,
-				Meaning:      listEntry.Meaning,
-				ExampleJP:    listEntry.ExampleJP,
-				ExampleEN:    listEntry.ExampleEN,
+				Reading:      actualReading,
+				PartOfSpeech: actualPOS,
+				Meaning:      actualMeaning,
+				ExampleJP:    actualExJP,
+				ExampleEN:    actualExEN,
 				WordID:       wordID,
 				DrillTarget:  newWordTarget,
 			}

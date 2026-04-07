@@ -590,7 +590,7 @@ func TestRenderAppPage_RendersHTMLAndSharedNav(t *testing.T) {
 	if !strings.Contains(body, `href="/stories">Stories</a>`) {
 		t.Error("expected shared stories nav link in rendered page")
 	}
-	if !strings.Contains(body, `page-nav-link page-nav-link--current" href="/activity"`) {
+	if !strings.Contains(body, `nav-dropdown-item nav-dropdown-item--current" href="/activity"`) {
 		t.Error("expected current-page nav styling for activity page")
 	}
 }

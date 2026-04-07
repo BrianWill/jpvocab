@@ -4,6 +4,8 @@ This file is random notes of possible features and bug fixes.
 
 - wails
     - double scrollbar appears on start of wails
+    - on mac, cmd+-/+ does weird zoom behavior
+        (but ctrl+scroll and ctrl+-/+ is fine)
 
 - track token usage
 
@@ -18,6 +20,7 @@ This file is random notes of possible features and bug fixes.
     - expand existing lists
 
 - lexicon
+    - align the sentences in a different way?
     - should we worry about load time once the lexicon has thousands of words?
         - also what about sort times?
 
@@ -34,8 +37,7 @@ This file is random notes of possible features and bug fixes.
     - words in lexicon cannot be added to noted words list (so they should be removed once they're added)
     - for words in lexicon, the hover tooltip displays their current remaining target drill count
         - + (=) while hovering to decrease increase the remaining target drill count
-    
-    
+        
 
 - increase the base size of fonts i.e. effective base zoom level
 

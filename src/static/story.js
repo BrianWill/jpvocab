@@ -141,9 +141,14 @@ function buildWordTooltipHtml(word, sentenceEnglish, isNoted = isWordNoted(word.
   }
   if (!ispunct) {
     if (html) html += '<br><br>';
-    html += '<span class="tooltip-word-note">' +
-      esc(isNoted ? 'Click to remove from noted words' : 'Click to add this word to noted words') +
-      '</span>';
+    if (word.inLexicon) {
+      const remaining = Math.max(0, (word.drillTarget || 0) - (word.drillCount || 0));
+      html += '<span class="tooltip-word-note">Word in lexicon: <span class="tooltip-drill-remaining">' + esc(String(remaining)) + '</span> drill' + (remaining === 1 ? '' : 's') + ' remaining</span>';
+    } else {
+      html += '<span class="tooltip-word-note">' +
+        esc(isNoted ? 'Click to remove from noted words' : 'Click to add this word to noted words') +
+        '</span>';
+    }
   }
   return html;
 }
@@ -152,7 +157,8 @@ function updateWordTokenUI() {
   for (const meta of state.wordTokenMetas) {
     meta.el.dataset.tooltipHtml = buildWordTooltipHtml(meta.word, meta.sentenceEnglishText);
     meta.el.dataset.tooltipClass = 'tooltip-translation';
-    meta.el.classList.toggle('story-word--noted', isWordNoted(meta.word.baseWord));
+    meta.el.classList.toggle('story-word--noted', isWordNoted(meta.word.baseWord) && !meta.word.inLexicon);
+    meta.el.classList.toggle('story-word--in-lexicon', !!meta.word.inLexicon);
   }
 }
 
@@ -222,6 +228,29 @@ async function removeNotedWord(baseWord) {
   }
 }
 
+document.addEventListener('keydown', e => {
+  if (e.target.closest('input, textarea, select, [contenteditable]')) return;
+  const word = state.hoveredWord;
+  if (!word?.inLexicon || !word.wordId) return;
+  const delta = (e.key === '-') ? -1 : (e.key === '+' || e.key === '=') ? 1 : 0;
+  if (delta === 0) return;
+  e.preventDefault();
+  const newTarget = Math.min(999, Math.max(0, (word.drillTarget || 0) + delta));
+  if (newTarget === word.drillTarget) return;
+  word.drillTarget = newTarget;
+  // Refresh tooltip on the hovered span.
+  const meta = state.wordTokenMetas.find(m => m.word === word);
+  if (meta) {
+    meta.el.dataset.tooltipHtml = buildWordTooltipHtml(word, meta.sentenceEnglishText);
+    refreshTooltip(meta.el);
+  }
+  fetch('/api/words/' + word.wordId + '/target', {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ target: newTarget }),
+  }).catch(() => {});
+});
+
 els.storyNotedTab.addEventListener('click', () => {
   setNotedWordsOpen(true);
 });
@@ -245,6 +274,20 @@ els.storyNotedAddAll.addEventListener('click', async () => {
     els.storyNotedAddAll.disabled = false;
     return;
   }
+  // Re-fetch story to get updated inLexicon flags and remove newly-lexiconed noted words.
+  try {
+    const updated = await loadStory(STORY_ID);
+    state.notedWords = Array.isArray(updated.notedWords) ? updated.notedWords : [];
+    const lexiconSet = new Set();
+    for (const sentence of (updated.sentences || [])) {
+      for (const word of (sentence.words || [])) {
+        if (word.inLexicon) lexiconSet.add(word.baseWord);
+      }
+    }
+    for (const meta of state.wordTokenMetas) {
+      meta.word.inLexicon = lexiconSet.has(meta.word.baseWord);
+    }
+  } catch (_) {}
   renderNotedWords();
 });
 
@@ -308,6 +351,7 @@ function renderStory(story) {
         wordSpan.dataset.tooltipClass = 'tooltip-translation';
       }
       if (!ispunct && word.english) wordSpan.classList.add('story-word--translated');
+      if (!ispunct && word.inLexicon) wordSpan.classList.add('story-word--in-lexicon');
       if (!ispunct) {
         wordSpan.addEventListener('mouseenter', () => {
           state.hoveredWord = word;
@@ -317,6 +361,7 @@ function renderStory(story) {
         });
         wordSpan.addEventListener('click', () => {
           state.hoveredWord = word;
+          if (word.inLexicon) return;
           const currentlyNoted = isWordNoted(word.baseWord);
           wordSpan.dataset.tooltipHtml = buildWordTooltipHtml(word, sentence.englishText, !currentlyNoted);
           refreshTooltip(wordSpan);

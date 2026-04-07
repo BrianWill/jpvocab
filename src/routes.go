@@ -200,6 +200,33 @@ func apiGetStory(db *sql.DB) http.HandlerFunc {
 			http.Error(w, "story not found", http.StatusNotFound)
 			return
 		}
+
+		// Remove any noted words whose base word is now in the lexicon.
+		lexiconSet := map[string]bool{}
+		for _, sentence := range story.Sentences {
+			for _, word := range sentence.Words {
+				if word.InLexicon {
+					lexiconSet[word.BaseWord] = true
+				}
+			}
+		}
+		var cleanedNoted []storyNotedWordJSON
+		changed := false
+		for _, nw := range story.NotedWords {
+			if lexiconSet[nw.BaseWord] {
+				changed = true
+			} else {
+				cleanedNoted = append(cleanedNoted, nw)
+			}
+		}
+		if changed {
+			if cleanedNoted == nil {
+				cleanedNoted = []storyNotedWordJSON{}
+			}
+			story.NotedWords = cleanedNoted
+			setStoryNotedWords(db, id, cleanedNoted) //nolint:errcheck
+		}
+
 		w.Header().Set("Content-Type", "application/json")
 		json.NewEncoder(w).Encode(story)
 	}

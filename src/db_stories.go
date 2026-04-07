@@ -21,8 +21,12 @@ type storyWordInput struct {
 type storyWordJSON struct {
 	DisplayWord      string `json:"displayWord"`
 	BaseWord         string `json:"baseWord"`
-	English          string `json:"english,omitempty"` // populated from word_glosses at query time; not stored per-token
-	Reading          string `json:"reading,omitempty"` // populated from story gloss metadata at query time; not stored per-token
+	English          string `json:"english,omitempty"`    // populated from word_glosses at query time; not stored per-token
+	Reading          string `json:"reading,omitempty"`    // populated from story gloss metadata at query time; not stored per-token
+	InLexicon        bool   `json:"inLexicon,omitempty"`   // true if the base word is currently in the lexicon
+	WordID           int64  `json:"wordId,omitempty"`      // DB id of the lexicon entry (only set when InLexicon)
+	DrillCount       int    `json:"drillCount,omitempty"`  // correct drill answers so far
+	DrillTarget      int    `json:"drillTarget,omitempty"` // target correct answers to retire the word
 	AudioTimestampMs *int64 `json:"audioTimestampMs"`
 }
 
@@ -433,10 +437,73 @@ func queryStories(db *sql.DB, whereClause string, args ...any) ([]storyJSON, err
 			current.Sentences = append(current.Sentences, sentence)
 		}
 	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
 	if stories == nil {
 		stories = []storyJSON{}
 	}
-	return stories, rows.Err()
+
+	// Mark words that are currently in the lexicon.
+	baseWordSet := map[string]struct{}{}
+	for i := range stories {
+		for j := range stories[i].Sentences {
+			for k := range stories[i].Sentences[j].Words {
+				if bw := stories[i].Sentences[j].Words[k].BaseWord; bw != "" {
+					baseWordSet[bw] = struct{}{}
+				}
+			}
+		}
+	}
+	if len(baseWordSet) > 0 {
+		placeholders := make([]string, 0, len(baseWordSet))
+		lexArgs := make([]any, 0, len(baseWordSet))
+		for bw := range baseWordSet {
+			placeholders = append(placeholders, "?")
+			lexArgs = append(lexArgs, bw)
+		}
+		type lexiconInfo struct {
+			id          int64
+			drillCount  int
+			drillTarget int
+		}
+		lexRows, err := db.Query(
+			`SELECT id, word, drill_count, drill_target FROM words WHERE word IN (`+strings.Join(placeholders, ",")+`)`,
+			lexArgs...,
+		)
+		if err != nil {
+			return nil, err
+		}
+		inLexicon := map[string]lexiconInfo{}
+		for lexRows.Next() {
+			var w string
+			var info lexiconInfo
+			if err := lexRows.Scan(&info.id, &w, &info.drillCount, &info.drillTarget); err != nil {
+				lexRows.Close()
+				return nil, err
+			}
+			inLexicon[w] = info
+		}
+		lexRows.Close()
+		if err := lexRows.Err(); err != nil {
+			return nil, err
+		}
+		for i := range stories {
+			for j := range stories[i].Sentences {
+				for k := range stories[i].Sentences[j].Words {
+					bw := stories[i].Sentences[j].Words[k].BaseWord
+					if info, ok := inLexicon[bw]; ok {
+						stories[i].Sentences[j].Words[k].InLexicon = true
+						stories[i].Sentences[j].Words[k].WordID = info.id
+						stories[i].Sentences[j].Words[k].DrillCount = info.drillCount
+						stories[i].Sentences[j].Words[k].DrillTarget = info.drillTarget
+					}
+				}
+			}
+		}
+	}
+
+	return stories, nil
 }
 
 func setSentenceEnglishText(db *sql.DB, sentenceID int64, text string) error {

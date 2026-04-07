@@ -346,6 +346,14 @@
   color: #89b4fa;
 }
 
+.story-word--in-lexicon {
+  color: #89b4fa;
+}
+
+.tooltip-drill-remaining {
+  color: #f9e2af;
+}
+
 .story-word--noted {
   color: #e7e79e;
 }

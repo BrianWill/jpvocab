@@ -587,7 +587,7 @@ func TestRenderAppPage_RendersHTMLAndSharedNav(t *testing.T) {
 	if !strings.Contains(body, `href="/welcome">語</a>`) {
 		t.Error("expected shared app logo link in rendered page")
 	}
-	if !strings.Contains(body, `href="/stories">Stories →</a>`) {
+	if !strings.Contains(body, `href="/stories">Stories</a>`) {
 		t.Error("expected shared stories nav link in rendered page")
 	}
 	if !strings.Contains(body, `page-nav-link page-nav-link--current" href="/activity"`) {
@@ -688,5 +688,38 @@ func TestAPIPutDrillSettings_RoundTrips(t *testing.T) {
 	}
 	if settings.MaxWords != 12 || settings.RoundSize != 5 {
 		t.Errorf("settings: got %+v", settings)
+	}
+}
+
+func TestAPIGetTokenUsage_EmptyReturnsStructure(t *testing.T) {
+	db := testDB(t)
+	req := httptest.NewRequest(http.MethodGet, "/api/token-usage", nil)
+	rec := httptest.NewRecorder()
+
+	apiGetTokenUsage(db).ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status: got %d, want %d", rec.Code, http.StatusOK)
+	}
+	var resp struct {
+		Totals struct {
+			Calls         int `json:"calls"`
+			InputTokens   int `json:"input_tokens"`
+			OutputTokens  int `json:"output_tokens"`
+		} `json:"totals"`
+		Summary []tokenUsageSummaryRow `json:"summary"`
+		Log     []tokenUsageEntry      `json:"log"`
+	}
+	if err := json.NewDecoder(rec.Body).Decode(&resp); err != nil {
+		t.Fatal(err)
+	}
+	if resp.Summary == nil {
+		t.Error("summary should be [] not null for empty table")
+	}
+	if resp.Log == nil {
+		t.Error("log should be [] not null for empty table")
+	}
+	if resp.Totals.Calls != 0 || resp.Totals.InputTokens != 0 || resp.Totals.OutputTokens != 0 {
+		t.Errorf("expected all-zero totals for empty DB, got %+v", resp.Totals)
 	}
 }

@@ -154,6 +154,7 @@ function injectSettingsModal() {
         </div>
       </div>
       <div class="modal-footer">
+        <a href="/token-usage" class="settings-token-usage-link">Token usage</a>
         <button class="btn-cancel" id="settings-cancel-btn">Cancel</button>
         <button class="btn-save" id="settings-save-btn">Save</button>
       </div>

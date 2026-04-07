@@ -55,7 +55,7 @@ var invalidProviderModels = []string{"badformat", "", "noslash"}
 
 func TestAutoFillWord_InvalidProviderModelFormat(t *testing.T) {
 	for _, pm := range invalidProviderModels {
-		_, err := autoFillWord("食べる", pm)
+		_, err := autoFillWord(nil, "食べる", pm)
 		if err == nil {
 			t.Errorf("autoFillWord(%q): expected error, got nil", pm)
 		}
@@ -69,7 +69,7 @@ func TestAutoFillWord_InvalidProviderModelFormat(t *testing.T) {
 
 func TestRerollMeaning_InvalidProviderModelFormat(t *testing.T) {
 	for _, pm := range invalidProviderModels {
-		_, err := rerollMeaning("食べる", "to eat", pm)
+		_, err := rerollMeaning(nil, "食べる", "to eat", pm)
 		if err == nil {
 			t.Errorf("rerollMeaning(%q): expected error, got nil", pm)
 		}
@@ -83,7 +83,7 @@ func TestRerollMeaning_InvalidProviderModelFormat(t *testing.T) {
 
 func TestRerollExamples_InvalidProviderModelFormat(t *testing.T) {
 	for _, pm := range invalidProviderModels {
-		_, err := rerollExamples("食べる", pm)
+		_, err := rerollExamples(nil, "食べる", pm)
 		if err == nil {
 			t.Errorf("rerollExamples(%q): expected error, got nil", pm)
 		}

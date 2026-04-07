@@ -9,12 +9,12 @@ import (
 )
 
 // callGoogle sends a request to the Google Generative Language API and returns the text of the first
-// candidate's first part. The API key is read from GOOGLE_API_KEY.
+// candidate's first part plus token usage. The API key is read from GOOGLE_API_KEY.
 // Messages with role "assistant" are converted to "model" (Google's convention).
-func callGoogle(model, system string, messages []message) (string, error) {
+func callGoogle(model, system string, messages []message) (string, tokenUsage, error) {
 	apiKey := os.Getenv("GOOGLE_API_KEY")
 	if apiKey == "" {
-		return "", fmt.Errorf("GOOGLE_API_KEY environment variable is not set")
+		return "", tokenUsage{}, fmt.Errorf("GOOGLE_API_KEY environment variable is not set")
 	}
 
 	type part struct {
@@ -55,19 +55,19 @@ func callGoogle(model, system string, messages []message) (string, error) {
 		Contents: contents,
 	})
 	if err != nil {
-		return "", err
+		return "", tokenUsage{}, err
 	}
 
 	url := fmt.Sprintf("https://generativelanguage.googleapis.com/v1beta/models/%s:generateContent?key=%s", model, apiKey)
 	req, err := http.NewRequest("POST", url, bytes.NewReader(payload))
 	if err != nil {
-		return "", err
+		return "", tokenUsage{}, err
 	}
 	req.Header.Set("Content-Type", "application/json")
 
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
-		return "", err
+		return "", tokenUsage{}, err
 	}
 	defer resp.Body.Close()
 
@@ -79,23 +79,31 @@ func callGoogle(model, system string, messages []message) (string, error) {
 				} `json:"parts"`
 			} `json:"content"`
 		} `json:"candidates"`
+		UsageMetadata struct {
+			PromptTokenCount     int `json:"promptTokenCount"`
+			CandidatesTokenCount int `json:"candidatesTokenCount"`
+		} `json:"usageMetadata"`
 		Error *struct {
 			Message string `json:"message"`
 		} `json:"error"`
 	}
 	if err := json.NewDecoder(resp.Body).Decode(&apiResp); err != nil {
-		return "", fmt.Errorf("decode API response: %w", err)
+		return "", tokenUsage{}, fmt.Errorf("decode API response: %w", err)
 	}
 	if apiResp.Error != nil {
-		return "", fmt.Errorf("API error: %s", apiResp.Error.Message)
+		return "", tokenUsage{}, fmt.Errorf("API error: %s", apiResp.Error.Message)
 	}
 	if len(apiResp.Candidates) == 0 || len(apiResp.Candidates[0].Content.Parts) == 0 || apiResp.Candidates[0].Content.Parts[0].Text == "" {
-		return "", fmt.Errorf("empty response from API")
+		return "", tokenUsage{}, fmt.Errorf("empty response from API")
 	}
-	return apiResp.Candidates[0].Content.Parts[0].Text, nil
+	usage := tokenUsage{
+		InputTokens:  apiResp.UsageMetadata.PromptTokenCount,
+		OutputTokens: apiResp.UsageMetadata.CandidatesTokenCount,
+	}
+	return apiResp.Candidates[0].Content.Parts[0].Text, usage, nil
 }
 
-func autoFillWordGoogle(word, model string) (*wordAutoFill, error) {
+func autoFillWordGoogle(word, model string) (*wordAutoFill, tokenUsage, error) {
 	messages := make([]message, 0, len(autoFillExamples)*2+2)
 	messages = append(messages, message{Role: "system", Content: autoFillSystemPrompt})
 	for _, ex := range autoFillExamples {
@@ -104,18 +112,18 @@ func autoFillWordGoogle(word, model string) (*wordAutoFill, error) {
 	}
 	messages = append(messages, message{Role: "user", Content: word})
 
-	text, err := callGoogle(model, "", messages)
+	text, usage, err := callGoogle(model, "", messages)
 	if err != nil {
-		return nil, err
+		return nil, tokenUsage{}, err
 	}
 	var e wordAutoFill
 	if err := json.Unmarshal([]byte(text), &e); err != nil {
-		return nil, fmt.Errorf("parse auto-fill JSON: %w", err)
+		return nil, tokenUsage{}, fmt.Errorf("parse auto-fill JSON: %w", err)
 	}
-	return &e, nil
+	return &e, usage, nil
 }
 
-func autoFillWordsBatchGoogle(words []string, model string) ([]*wordAutoFill, error) {
+func autoFillWordsBatchGoogle(words []string, model string) ([]*wordAutoFill, tokenUsage, error) {
 	exInput, _ := json.Marshal([]string{autoFillExamples[0].word, autoFillExamples[1].word})
 	exOutput := "[" + autoFillExamples[0].result + "," + autoFillExamples[1].result + "]"
 	input, _ := json.Marshal(words)
@@ -124,45 +132,45 @@ func autoFillWordsBatchGoogle(words []string, model string) ([]*wordAutoFill, er
 		{Role: "assistant", Content: exOutput},
 		{Role: "user", Content: string(input)},
 	}
-	text, err := callGoogle(model, autoFillBatchSystemPrompt, messages)
+	text, usage, err := callGoogle(model, autoFillBatchSystemPrompt, messages)
 	if err != nil {
-		return nil, err
+		return nil, tokenUsage{}, err
 	}
 	var fills []*wordAutoFill
 	if err := json.Unmarshal([]byte(text), &fills); err != nil {
-		return nil, fmt.Errorf("parse batch auto-fill JSON: %w", err)
+		return nil, tokenUsage{}, fmt.Errorf("parse batch auto-fill JSON: %w", err)
 	}
-	return fills, nil
+	return fills, usage, nil
 }
 
-func rerollMeaningGoogle(word, currentMeaning, model string) ([]string, error) {
+func rerollMeaningGoogle(word, currentMeaning, model string) ([]string, tokenUsage, error) {
 	messages := []message{
 		{Role: "system", Content: rerollMeaningSystemPrompt},
 		{Role: "user", Content: marshalUserMsg(map[string]string{"word": word, "current_meaning": currentMeaning})},
 	}
-	text, err := callGoogle(model, "", messages)
+	text, usage, err := callGoogle(model, "", messages)
 	if err != nil {
-		return nil, err
+		return nil, tokenUsage{}, err
 	}
 	var result []string
 	if err := json.Unmarshal([]byte(text), &result); err != nil {
-		return nil, fmt.Errorf("parse reroll-meaning JSON: %w", err)
+		return nil, tokenUsage{}, fmt.Errorf("parse reroll-meaning JSON: %w", err)
 	}
-	return result, nil
+	return result, usage, nil
 }
 
-func rerollExamplesGoogle(word, model string) ([]examplePair, error) {
+func rerollExamplesGoogle(word, model string) ([]examplePair, tokenUsage, error) {
 	messages := []message{
 		{Role: "system", Content: rerollExamplesSystemPrompt},
 		{Role: "user", Content: word},
 	}
-	text, err := callGoogle(model, "", messages)
+	text, usage, err := callGoogle(model, "", messages)
 	if err != nil {
-		return nil, err
+		return nil, tokenUsage{}, err
 	}
 	var result []examplePair
 	if err := json.Unmarshal([]byte(text), &result); err != nil {
-		return nil, fmt.Errorf("parse reroll-examples JSON: %w", err)
+		return nil, tokenUsage{}, fmt.Errorf("parse reroll-examples JSON: %w", err)
 	}
-	return result, nil
+	return result, usage, nil
 }

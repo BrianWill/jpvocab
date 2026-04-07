@@ -33,6 +33,7 @@ func serverInit(db *sql.DB) {
 	r.Get("/drill", appPage("drill.html", "drill"))
 	r.Get("/stories", appPage("stories.html", "stories"))
 	r.Get("/stories/{id}", appPage("story.html", "story-detail"))
+	r.Get("/token-usage", appPage("token-usage.html", "token-usage"))
 
 	r.Handle("/static/*", http.StripPrefix("/static/", http.FileServer(http.Dir("static"))))
 
@@ -83,8 +84,8 @@ func serverInit(db *sql.DB) {
 	r.Post("/api/words/{id}/upload-image", apiUploadWordImage(db))
 	r.Post("/api/words/{id}/download-image", apiDownloadWordImage(db))
 	r.Post("/api/words/{id}/find-image", apiFindWordImage(db))
-	r.Post("/api/words/{id}/reroll-meaning", apiRerollMeaning())
-	r.Post("/api/words/{id}/reroll-examples", apiRerollExamples())
+	r.Post("/api/words/{id}/reroll-meaning", apiRerollMeaning(db))
+	r.Post("/api/words/{id}/reroll-examples", apiRerollExamples(db))
 	r.Post("/api/words/autofill-batch", apiAutofillWordsBatch(db))
 	r.Post("/api/words/{id}/autofill", apiAutofillWord(db))
 	r.Post("/api/words/{id}/generate-audio", apiGenerateWordAudio(db))
@@ -100,6 +101,8 @@ func serverInit(db *sql.DB) {
 
 	r.Get("/api/settings/drill", apiGetDrillSettings(db))
 	r.Put("/api/settings/drill", apiPutDrillSettings(db))
+
+	r.Get("/api/token-usage", apiGetTokenUsage(db))
 
 	r.Route("/admin", func(r chi.Router) {
 		r.Get("/", adminIndex(db))
@@ -143,6 +146,42 @@ type indexData struct {
 	Error     string
 	Success   string
 	Providers aiProviders
+}
+
+func apiGetTokenUsage(db *sql.DB) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		summary, err := getTokenUsageSummary(db)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		log, err := getTokenUsageLog(db, 500)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		totalCalls, totalInput, totalOutput, err := getTokenUsageTotals(db)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		if summary == nil {
+			summary = []tokenUsageSummaryRow{}
+		}
+		if log == nil {
+			log = []tokenUsageEntry{}
+		}
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(map[string]any{
+			"totals": map[string]int{
+				"calls":         totalCalls,
+				"input_tokens":  totalInput,
+				"output_tokens": totalOutput,
+			},
+			"summary": summary,
+			"log":     log,
+		})
+	}
 }
 
 func apiGetActivityStats(db *sql.DB) http.HandlerFunc {
@@ -493,7 +532,7 @@ func adminAddWordsBatch(db *sql.DB) http.HandlerFunc {
 			default:
 			}
 
-			filled, fillErr := autoFillWord(ins.norm, aiModel)
+			filled, fillErr := autoFillWord(db, ins.norm, aiModel)
 			if fillErr != nil {
 				continue
 			}

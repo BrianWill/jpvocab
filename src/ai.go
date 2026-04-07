@@ -1,12 +1,19 @@
 package main
 
 import (
+	"database/sql"
 	"encoding/json"
 	"fmt"
 	"os"
 	"strings"
 	"sync"
 )
+
+// tokenUsage holds the input/output token counts from a single AI API call.
+type tokenUsage struct {
+	InputTokens  int
+	OutputTokens int
+}
 
 // message is a single chat turn shared by all AI provider helpers.
 type message struct {
@@ -115,7 +122,7 @@ Return only a valid JSON array with no markdown, no code fences, and no extra co
 // autoFillWordsBatch sends words to the AI in chunks of autoFillBatchSize, processing
 // chunks concurrently. The returned slice has exactly len(words) entries; entries are nil
 // for any chunk that fails or returns fewer results than expected.
-func autoFillWordsBatch(words []string, providerModel string) ([]*wordAutoFill, error) {
+func autoFillWordsBatch(db *sql.DB, words []string, providerModel string) ([]*wordAutoFill, error) {
 	parts := strings.SplitN(providerModel, "/", 2)
 	if len(parts) != 2 {
 		return nil, fmt.Errorf("invalid ai_model value %q", providerModel)
@@ -136,36 +143,44 @@ func autoFillWordsBatch(words []string, providerModel string) ([]*wordAutoFill, 
 	}
 
 	results := make([]*wordAutoFill, len(words))
+	var mu sync.Mutex
+	var totalUsage tokenUsage
 	var wg sync.WaitGroup
 	for _, c := range chunks {
 		wg.Add(1)
 		go func(ch chunk) {
 			defer wg.Done()
 			var fills []*wordAutoFill
+			var usage tokenUsage
 			var err error
 			switch provider {
 			case "openai":
-				fills, err = autoFillWordsBatchOpenAI(ch.words, model)
+				fills, usage, err = autoFillWordsBatchOpenAI(ch.words, model)
 			case "google":
-				fills, err = autoFillWordsBatchGoogle(ch.words, model)
+				fills, usage, err = autoFillWordsBatchGoogle(ch.words, model)
 			case "mistral":
-				fills, err = autoFillWordsBatchMistral(ch.words, model)
+				fills, usage, err = autoFillWordsBatchMistral(ch.words, model)
 			case "glm":
-				fills, err = autoFillWordsBatchGLM(ch.words, model)
+				fills, usage, err = autoFillWordsBatchGLM(ch.words, model)
 			default:
-				fills, err = autoFillWordsBatchAnthropic(ch.words, model)
+				fills, usage, err = autoFillWordsBatchAnthropic(ch.words, model)
 			}
 			if err != nil {
 				return // entries for this chunk remain nil
 			}
+			mu.Lock()
+			totalUsage.InputTokens += usage.InputTokens
+			totalUsage.OutputTokens += usage.OutputTokens
 			for i, f := range fills {
 				if ch.start+i < len(results) {
 					results[ch.start+i] = f
 				}
 			}
+			mu.Unlock()
 		}(c)
 	}
 	wg.Wait()
+	insertTokenUsage(db, provider, model, "autofill-batch", totalUsage.InputTokens, totalUsage.OutputTokens)
 	return results, nil
 }
 
@@ -178,7 +193,7 @@ const suggestImageSearchQuerySystemPrompt = `You are a helpful assistant. Given 
 const suggestImageSystemPrompt = `You are a helpful assistant. Given a Japanese word and its English meaning, return a JSON object with a single field "url" containing a URL to a freely licensed image on Wikimedia Commons using the Special:FilePath format: https://commons.wikimedia.org/wiki/Special:FilePath/<filename>. Choose a well-known, unambiguous photo that directly represents the concept. Return only a valid JSON object with no markdown, no code fences, and no extra commentary.`
 
 // suggestImageSearchQuery asks the AI for a short English search query for the given word.
-func suggestImageSearchQuery(word, meaning, providerModel string) (string, error) {
+func suggestImageSearchQuery(db *sql.DB, word, meaning, providerModel string) (string, error) {
 	parts := strings.SplitN(providerModel, "/", 2)
 	if len(parts) != 2 {
 		return "", fmt.Errorf("invalid ai_model value %q", providerModel)
@@ -187,13 +202,14 @@ func suggestImageSearchQuery(word, meaning, providerModel string) (string, error
 	userMsg := marshalUserMsg(map[string]string{"word": word, "meaning": meaning})
 
 	var text, jsonPrefix string
+	var usage tokenUsage
 	var err error
 	if provider == "anthropic" {
 		messages := []message{
 			{Role: "user", Content: userMsg},
 			{Role: "assistant", Content: "{"},
 		}
-		text, err = callAnthropic(model, suggestImageSearchQuerySystemPrompt, messages, 64)
+		text, usage, err = callAnthropic(model, suggestImageSearchQuerySystemPrompt, messages, 64)
 		jsonPrefix = "{"
 	} else {
 		messages := []message{
@@ -202,18 +218,19 @@ func suggestImageSearchQuery(word, meaning, providerModel string) (string, error
 		}
 		switch provider {
 		case "openai":
-			text, err = callOpenAI(model, messages)
+			text, usage, err = callOpenAI(model, messages)
 		case "google":
-			text, err = callGoogle(model, "", messages)
+			text, usage, err = callGoogle(model, "", messages)
 		case "mistral":
-			text, err = callMistral(model, messages)
+			text, usage, err = callMistral(model, messages)
 		default: // glm
-			text, err = callGLM(model, messages)
+			text, usage, err = callGLM(model, messages)
 		}
 	}
 	if err != nil {
 		return "", err
 	}
+	insertTokenUsage(db, provider, model, "suggest-image-query", usage.InputTokens, usage.OutputTokens)
 	var result struct {
 		Query string `json:"query"`
 	}
@@ -227,7 +244,7 @@ func suggestImageSearchQuery(word, meaning, providerModel string) (string, error
 }
 
 // suggestImageURL asks the AI to suggest a Wikimedia Commons image URL for the given word.
-func suggestImageURL(word, meaning, providerModel string) (string, error) {
+func suggestImageURL(db *sql.DB, word, meaning, providerModel string) (string, error) {
 	parts := strings.SplitN(providerModel, "/", 2)
 	if len(parts) != 2 {
 		return "", fmt.Errorf("invalid ai_model value %q", providerModel)
@@ -236,13 +253,14 @@ func suggestImageURL(word, meaning, providerModel string) (string, error) {
 	userMsg := marshalUserMsg(map[string]string{"word": word, "meaning": meaning})
 
 	var text, jsonPrefix string
+	var usage tokenUsage
 	var err error
 	if provider == "anthropic" {
 		messages := []message{
 			{Role: "user", Content: userMsg},
 			{Role: "assistant", Content: "{"},
 		}
-		text, err = callAnthropic(model, suggestImageSystemPrompt, messages, 256)
+		text, usage, err = callAnthropic(model, suggestImageSystemPrompt, messages, 256)
 		jsonPrefix = "{"
 	} else {
 		messages := []message{
@@ -251,18 +269,19 @@ func suggestImageURL(word, meaning, providerModel string) (string, error) {
 		}
 		switch provider {
 		case "openai":
-			text, err = callOpenAI(model, messages)
+			text, usage, err = callOpenAI(model, messages)
 		case "google":
-			text, err = callGoogle(model, "", messages)
+			text, usage, err = callGoogle(model, "", messages)
 		case "mistral":
-			text, err = callMistral(model, messages)
+			text, usage, err = callMistral(model, messages)
 		default: // glm
-			text, err = callGLM(model, messages)
+			text, usage, err = callGLM(model, messages)
 		}
 	}
 	if err != nil {
 		return "", err
 	}
+	insertTokenUsage(db, provider, model, "suggest-image", usage.InputTokens, usage.OutputTokens)
 	var result struct {
 		URL string `json:"url"`
 	}
@@ -295,65 +314,92 @@ func checkAIProviders() aiProviders {
 	}
 }
 
-// autoFillWord dispatches to the appropriate AI provider.
+// autoFillWord dispatches to the appropriate AI provider and records token usage.
 // providerModel must be in "provider/model" format, e.g. "anthropic/claude-haiku-4-5-20251001".
-func autoFillWord(word, providerModel string) (*wordAutoFill, error) {
+func autoFillWord(db *sql.DB, word, providerModel string) (*wordAutoFill, error) {
 	parts := strings.SplitN(providerModel, "/", 2)
 	if len(parts) != 2 {
 		return nil, fmt.Errorf("invalid ai_model value %q: expected provider/model", providerModel)
 	}
-	switch parts[0] {
+	provider, model := parts[0], parts[1]
+	var result *wordAutoFill
+	var usage tokenUsage
+	var err error
+	switch provider {
 	case "openai":
-		return autoFillWordOpenAI(word, parts[1])
+		result, usage, err = autoFillWordOpenAI(word, model)
 	case "google":
-		return autoFillWordGoogle(word, parts[1])
+		result, usage, err = autoFillWordGoogle(word, model)
 	case "mistral":
-		return autoFillWordMistral(word, parts[1])
+		result, usage, err = autoFillWordMistral(word, model)
 	case "glm":
-		return autoFillWordGLM(word, parts[1])
+		result, usage, err = autoFillWordGLM(word, model)
 	default:
-		return autoFillWordAnthropic(word, parts[1])
+		result, usage, err = autoFillWordAnthropic(word, model)
 	}
+	if err != nil {
+		return nil, err
+	}
+	insertTokenUsage(db, provider, model, "autofill", usage.InputTokens, usage.OutputTokens)
+	return result, nil
 }
 
 // rerollMeaning asks the AI for 3 alternative English meanings for a word.
-func rerollMeaning(word, currentMeaning, providerModel string) ([]string, error) {
+func rerollMeaning(db *sql.DB, word, currentMeaning, providerModel string) ([]string, error) {
 	parts := strings.SplitN(providerModel, "/", 2)
 	if len(parts) != 2 {
 		return nil, fmt.Errorf("invalid ai_model value %q", providerModel)
 	}
-	switch parts[0] {
+	provider, model := parts[0], parts[1]
+	var result []string
+	var usage tokenUsage
+	var err error
+	switch provider {
 	case "openai":
-		return rerollMeaningOpenAI(word, currentMeaning, parts[1])
+		result, usage, err = rerollMeaningOpenAI(word, currentMeaning, model)
 	case "google":
-		return rerollMeaningGoogle(word, currentMeaning, parts[1])
+		result, usage, err = rerollMeaningGoogle(word, currentMeaning, model)
 	case "mistral":
-		return rerollMeaningMistral(word, currentMeaning, parts[1])
+		result, usage, err = rerollMeaningMistral(word, currentMeaning, model)
 	case "glm":
-		return rerollMeaningGLM(word, currentMeaning, parts[1])
+		result, usage, err = rerollMeaningGLM(word, currentMeaning, model)
 	default:
-		return rerollMeaningAnthropic(word, currentMeaning, parts[1])
+		result, usage, err = rerollMeaningAnthropic(word, currentMeaning, model)
 	}
+	if err != nil {
+		return nil, err
+	}
+	insertTokenUsage(db, provider, model, "reroll-meaning", usage.InputTokens, usage.OutputTokens)
+	return result, nil
 }
 
 // rerollExamples asks the AI for 3 alternative example sentence pairs.
-func rerollExamples(word, providerModel string) ([]examplePair, error) {
+func rerollExamples(db *sql.DB, word, providerModel string) ([]examplePair, error) {
 	parts := strings.SplitN(providerModel, "/", 2)
 	if len(parts) != 2 {
 		return nil, fmt.Errorf("invalid ai_model value %q", providerModel)
 	}
-	switch parts[0] {
+	provider, model := parts[0], parts[1]
+	var result []examplePair
+	var usage tokenUsage
+	var err error
+	switch provider {
 	case "openai":
-		return rerollExamplesOpenAI(word, parts[1])
+		result, usage, err = rerollExamplesOpenAI(word, model)
 	case "google":
-		return rerollExamplesGoogle(word, parts[1])
+		result, usage, err = rerollExamplesGoogle(word, model)
 	case "mistral":
-		return rerollExamplesMistral(word, parts[1])
+		result, usage, err = rerollExamplesMistral(word, model)
 	case "glm":
-		return rerollExamplesGLM(word, parts[1])
+		result, usage, err = rerollExamplesGLM(word, model)
 	default:
-		return rerollExamplesAnthropic(word, parts[1])
+		result, usage, err = rerollExamplesAnthropic(word, model)
 	}
+	if err != nil {
+		return nil, err
+	}
+	insertTokenUsage(db, provider, model, "reroll-examples", usage.InputTokens, usage.OutputTokens)
+	return result, nil
 }
 
 // marshalUserMsg marshals a map to JSON, returning the string form.
@@ -377,25 +423,11 @@ type storyTranslatedWord struct {
 	Reading string `json:"reading"`
 }
 
-const translateStorySystemPrompt = `You are a Japanese language teacher helping English-speaking students read Japanese stories. Given a JSON object with sentences to translate and words to gloss, return translations and glosses.
-
-Instructions:
-- Sentences: the input is an ordered array of Japanese sentence strings; return an equally ordered array of English translations, one per input sentence. Translate each sentence in isolation — do not use surrounding sentences for context. Favor literal, morpheme-by-morpheme accuracy over natural English fluency — the goal is to help learners understand Japanese grammatical structure, not to produce polished prose.
-- Words: return an array of {"word":"...","gloss":"..."} objects in the same order as the input words array. Each gloss should be 2–5 words capturing the core meaning.
-
-Example input:
-{"sentences":["猫が窓の外を見ている。","彼女はゆっくりと立ち上がった。"],"words":["猫","窓","立ち上がる","ゆっくり"]}
-
-Example output:
-{"sentences":["The cat is looking at the outside of the window.","She slowly stood up."],"words":[{"word":"猫","gloss":"cat"},{"word":"窓","gloss":"window"},{"word":"立ち上がる","gloss":"to stand up"},{"word":"ゆっくり","gloss":"slowly, at a leisurely pace"}]}
-
-Return only valid JSON with no markdown, no code fences, and no extra commentary.`
-
 // translateStory sends all sentences and words to the AI in a single call and returns
 // sentence translations and word glosses. providerModel must be "provider/model" format.
 // sentences is an ordered slice of plain Japanese sentence strings; the returned
 // Sentences slice has the same length and order.
-func translateStory(sentences []string, words []string, providerModel string) (*storyTranslationResult, error) {
+func translateStory(db *sql.DB, sentences []string, words []string, providerModel string) (*storyTranslationResult, error) {
 	parts := strings.SplitN(providerModel, "/", 2)
 	if len(parts) != 2 {
 		return nil, fmt.Errorf("invalid ai_model value %q", providerModel)
@@ -426,13 +458,14 @@ Return only valid JSON with no markdown, no code fences, and no extra commentary
 
 	const maxTokens = 8192
 	var text, jsonPrefix string
+	var usage tokenUsage
 
 	if provider == "anthropic" {
 		msgs := []message{
 			{Role: "user", Content: string(userMsg)},
 			{Role: "assistant", Content: "{"},
 		}
-		text, err = callAnthropic(model, prompt, msgs, maxTokens)
+		text, usage, err = callAnthropic(model, prompt, msgs, maxTokens)
 		jsonPrefix = "{"
 	} else {
 		msgs := []message{
@@ -441,18 +474,19 @@ Return only valid JSON with no markdown, no code fences, and no extra commentary
 		}
 		switch provider {
 		case "openai":
-			text, err = callOpenAI(model, msgs)
+			text, usage, err = callOpenAI(model, msgs)
 		case "google":
-			text, err = callGoogle(model, "", msgs)
+			text, usage, err = callGoogle(model, "", msgs)
 		case "mistral":
-			text, err = callMistral(model, msgs)
+			text, usage, err = callMistral(model, msgs)
 		default: // glm
-			text, err = callGLM(model, msgs)
+			text, usage, err = callGLM(model, msgs)
 		}
 	}
 	if err != nil {
 		return nil, err
 	}
+	insertTokenUsage(db, provider, model, "translate-story", usage.InputTokens, usage.OutputTokens)
 
 	var result storyTranslationResult
 	if err := json.Unmarshal([]byte(jsonPrefix+text), &result); err != nil {

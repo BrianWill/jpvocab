@@ -246,7 +246,7 @@ func apiFindWordImage(db *sql.DB) http.HandlerFunc {
 		var imageURL string
 		switch body.ImageSource {
 		case "unsplash", "pexels", "pixabay", "bing":
-			query, qErr := suggestImageSearchQuery(body.Word, body.Meaning, body.AIModel)
+			query, qErr := suggestImageSearchQuery(db, body.Word, body.Meaning, body.AIModel)
 			if qErr != nil {
 				http.Error(w, qErr.Error(), http.StatusInternalServerError)
 				return
@@ -266,7 +266,7 @@ func apiFindWordImage(db *sql.DB) http.HandlerFunc {
 				return
 			}
 		default: // "wikimedia"
-			imageURL, err = suggestImageURL(body.Word, body.Meaning, body.AIModel)
+			imageURL, err = suggestImageURL(db, body.Word, body.Meaning, body.AIModel)
 			if err != nil {
 				http.Error(w, err.Error(), http.StatusInternalServerError)
 				return
@@ -292,7 +292,7 @@ func apiFindWordImage(db *sql.DB) http.HandlerFunc {
 	}
 }
 
-func apiRerollMeaning() http.HandlerFunc {
+func apiRerollMeaning(db *sql.DB) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		var body struct {
 			Word    string `json:"word"`
@@ -303,7 +303,7 @@ func apiRerollMeaning() http.HandlerFunc {
 			http.Error(w, "bad request", http.StatusBadRequest)
 			return
 		}
-		alternatives, err := rerollMeaning(body.Word, body.Current, body.AIModel)
+		alternatives, err := rerollMeaning(db, body.Word, body.Current, body.AIModel)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
@@ -313,7 +313,7 @@ func apiRerollMeaning() http.HandlerFunc {
 	}
 }
 
-func apiRerollExamples() http.HandlerFunc {
+func apiRerollExamples(db *sql.DB) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		var body struct {
 			Word    string `json:"word"`
@@ -323,7 +323,7 @@ func apiRerollExamples() http.HandlerFunc {
 			http.Error(w, "bad request", http.StatusBadRequest)
 			return
 		}
-		alternatives, err := rerollExamples(body.Word, body.AIModel)
+		alternatives, err := rerollExamples(db, body.Word, body.AIModel)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
@@ -348,7 +348,7 @@ func apiAutofillWord(db *sql.DB) http.HandlerFunc {
 			http.Error(w, "bad request", http.StatusBadRequest)
 			return
 		}
-		filled, err := autoFillWord(body.Word, body.AIModel)
+		filled, err := autoFillWord(db, body.Word, body.AIModel)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
@@ -407,7 +407,7 @@ func apiAutofillWordsBatch(db *sql.DB) http.HandlerFunc {
 		for i, entry := range body.Words {
 			wordStrings[i] = entry.Word
 		}
-		fills, err := autoFillWordsBatch(wordStrings, body.AIModel)
+		fills, err := autoFillWordsBatch(db, wordStrings, body.AIModel)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return

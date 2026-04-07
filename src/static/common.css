@@ -335,6 +335,14 @@ body {
   font-size: 0.8rem;
   color: #f38ba8;
 }
+.settings-token-usage-link {
+  margin-right: auto;
+  font-size: 0.8rem;
+  color: #89b4fa;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+.settings-token-usage-link:hover { color: #b4cffe; }
 .modal-error.hidden { display: none; }
 .delete-confirm-text {
   font-size: 0.9rem;

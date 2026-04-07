@@ -20,12 +20,13 @@ This file is random notes of possible features and bug fixes.
     - expand existing lists
 
 - lexicon
-    - align the sentences in a different way?
     - should we worry about load time once the lexicon has thousands of words?
         - also what about sort times?
 
 - story list
     - add a date last viewed to optionally sort by?
+
+- video stories
 
 - story page
     - scan text to auto suggest noted words from the frequently occuring unique words in the story
@@ -33,10 +34,6 @@ This file is random notes of possible features and bug fixes.
             e.g. add all words in story tha occur more than N times
             - filter out proper names, particles, conjunctions, etc.
     - option to filter out presenting translations/info of particles and other very common words
-    - words in lexicon should be colored differently (both in story text and in the noted words list)
-    - words in lexicon cannot be added to noted words list (so they should be removed once they're added)
-    - for words in lexicon, the hover tooltip displays their current remaining target drill count
-        - + (=) while hovering to decrease increase the remaining target drill count
         
 
 - increase the base size of fonts i.e. effective base zoom level

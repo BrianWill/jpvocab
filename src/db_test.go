@@ -51,6 +51,7 @@ func TestMigrate_CreatesAllTables(t *testing.T) {
 		"user_settings":   true,
 		"stories":         true,
 		"story_sentences": true,
+		"token_usage":     true,
 	}
 	for _, table := range tables {
 		delete(want, table)
@@ -69,8 +70,8 @@ func TestMigrate_Idempotent(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(tables) != 7 {
-		t.Errorf("expected 7 tables, got %d: %v", len(tables), tables)
+	if len(tables) != 8 {
+		t.Errorf("expected 8 tables, got %d: %v", len(tables), tables)
 	}
 }
 
@@ -1542,5 +1543,99 @@ func TestGetActivityCalendar_HistoryStartIsContainingSunday(t *testing.T) {
 	}
 	if cal.HistoryStart != "2024-01-14" {
 		t.Errorf("HistoryStart: got %q, want 2024-01-14 (Sunday of week containing 2024-01-17)", cal.HistoryStart)
+	}
+}
+
+// --- token usage ---
+
+func TestInsertTokenUsage_WritesRow(t *testing.T) {
+	db := testDB(t)
+	insertTokenUsage(db, "openai", "gpt-4o", "autofill", 100, 200)
+
+	var count int
+	db.QueryRow(`SELECT COUNT(*) FROM token_usage`).Scan(&count)
+	if count != 1 {
+		t.Fatalf("expected 1 token_usage row, got %d", count)
+	}
+}
+
+func TestGetTokenUsageSummary_AggregatesByProviderModel(t *testing.T) {
+	db := testDB(t)
+	insertTokenUsage(db, "openai", "gpt-4o", "autofill", 100, 200)
+	insertTokenUsage(db, "openai", "gpt-4o", "autofill", 50, 80)
+	insertTokenUsage(db, "anthropic", "claude-3", "translate", 30, 40)
+
+	rows, err := getTokenUsageSummary(db)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(rows) != 2 {
+		t.Fatalf("expected 2 summary rows (one per provider+model), got %d", len(rows))
+	}
+	// Most-used first: openai/gpt-4o has 2 calls.
+	if rows[0].Provider != "openai" || rows[0].Model != "gpt-4o" {
+		t.Errorf("first row: got %+v, want openai/gpt-4o", rows[0])
+	}
+	if rows[0].TotalCalls != 2 {
+		t.Errorf("TotalCalls: got %d, want 2", rows[0].TotalCalls)
+	}
+	if rows[0].InputTokens != 150 {
+		t.Errorf("InputTokens: got %d, want 150", rows[0].InputTokens)
+	}
+	if rows[0].OutputTokens != 280 {
+		t.Errorf("OutputTokens: got %d, want 280", rows[0].OutputTokens)
+	}
+}
+
+func TestGetTokenUsageLog_OrdersNewestFirstAndRespectsLimit(t *testing.T) {
+	db := testDB(t)
+	insertTokenUsage(db, "openai", "gpt-4o", "autofill", 10, 20)
+	insertTokenUsage(db, "anthropic", "claude-3", "translate", 30, 40)
+	insertTokenUsage(db, "google", "gemini", "batch", 50, 60)
+
+	entries, err := getTokenUsageLog(db, 2)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(entries) != 2 {
+		t.Fatalf("expected 2 entries (limit=2), got %d", len(entries))
+	}
+	// Newest first: google/gemini was inserted last.
+	if entries[0].Provider != "google" {
+		t.Errorf("first entry provider: got %q, want google", entries[0].Provider)
+	}
+	if entries[1].Provider != "anthropic" {
+		t.Errorf("second entry provider: got %q, want anthropic", entries[1].Provider)
+	}
+}
+
+func TestGetTokenUsageTotals_SumsAllRows(t *testing.T) {
+	db := testDB(t)
+	insertTokenUsage(db, "openai", "gpt-4o", "autofill", 100, 200)
+	insertTokenUsage(db, "anthropic", "claude-3", "translate", 50, 75)
+
+	calls, input, output, err := getTokenUsageTotals(db)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if calls != 2 {
+		t.Errorf("calls: got %d, want 2", calls)
+	}
+	if input != 150 {
+		t.Errorf("input tokens: got %d, want 150", input)
+	}
+	if output != 275 {
+		t.Errorf("output tokens: got %d, want 275", output)
+	}
+}
+
+func TestGetTokenUsageTotals_EmptyReturnsZeros(t *testing.T) {
+	db := testDB(t)
+	calls, input, output, err := getTokenUsageTotals(db)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if calls != 0 || input != 0 || output != 0 {
+		t.Errorf("expected all zeros for empty table, got calls=%d input=%d output=%d", calls, input, output)
 	}
 }

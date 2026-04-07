@@ -498,7 +498,7 @@ func apiGenerateStoryTranslation(db *sql.DB) http.HandlerFunc {
 			}
 		}()
 
-		result, err := translateStory(sentenceTexts, wordsToGloss, body.AIModel)
+		result, err := translateStory(db, sentenceTexts, wordsToGloss, body.AIModel)
 		close(done)
 		if err != nil {
 			streamEvent(map[string]string{"error": err.Error()})

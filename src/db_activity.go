@@ -182,6 +182,7 @@ func recordDrillAnswer(db *sql.DB, sessionID, wordID int64, correct bool, state 
 			UPDATE words SET
 				drill_count     = drill_count + 1,
 				last_drilled_at = datetime('now'),
+				drill_target    = MAX(drill_target, drill_count + 1),
 				target_reached_at = CASE
 					WHEN target_reached_at IS NULL AND (drill_count + 1) >= drill_target
 					THEN datetime('now')

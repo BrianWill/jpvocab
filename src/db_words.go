@@ -172,7 +172,7 @@ func wordsInfoInDB(db *sql.DB, words []string) (map[string]existingWordInfo, err
 
 // updateWordTarget updates only the drill_target for a word by ID.
 func updateWordTarget(db *sql.DB, id int64, target int) error {
-	_, err := db.Exec("UPDATE words SET drill_target=? WHERE id=?", target, id)
+	_, err := db.Exec("UPDATE words SET drill_target=MAX(drill_count,?) WHERE id=?", target, id)
 	return err
 }
 

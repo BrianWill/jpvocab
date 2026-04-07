@@ -143,7 +143,7 @@ function buildWordTooltipHtml(word, sentenceEnglish, isNoted = isWordNoted(word.
     if (html) html += '<br><br>';
     if (word.inLexicon) {
       const remaining = Math.max(0, (word.drillTarget || 0) - (word.drillCount || 0));
-      html += '<span class="tooltip-word-note">Word in lexicon: <span class="tooltip-drill-remaining">' + esc(String(remaining)) + '</span> drill' + (remaining === 1 ? '' : 's') + ' remaining</span>';
+      html += '<span class="tooltip-word-note"><span>Word in lexicon: <span class="tooltip-drill-remaining">' + esc(String(remaining)) + '</span> drill' + (remaining === 1 ? '' : 's') + ' remaining</span><span class="tooltip-hotkey-hint">(- / + to adjust)</span></span>';
     } else {
       html += '<span class="tooltip-word-note">' +
         esc(isNoted ? 'Click to remove from noted words' : 'Click to add this word to noted words') +
@@ -235,7 +235,7 @@ document.addEventListener('keydown', e => {
   const delta = (e.key === '-') ? -1 : (e.key === '+' || e.key === '=') ? 1 : 0;
   if (delta === 0) return;
   e.preventDefault();
-  const newTarget = Math.min(999, Math.max(0, (word.drillTarget || 0) + delta));
+  const newTarget = Math.min(999, Math.max(word.drillCount || 0, (word.drillTarget || 0) + delta));
   if (newTarget === word.drillTarget) return;
   word.drillTarget = newTarget;
   // Refresh tooltip on the hovered span.

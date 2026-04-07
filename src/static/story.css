@@ -472,12 +472,20 @@
 }
 
 .tooltip-word-note {
-  display: block;
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 0.75rem;
   margin-top: 0.55rem;
   padding-top: 0.45rem;
   border-top: 1px solid rgba(137, 180, 250, 0.18);
   color: #6c7086;
   font-size: 0.82em;
+}
+
+.tooltip-hotkey-hint {
+  margin-left: auto;
+  white-space: nowrap;
 }
 
 /* ── Generate translation modal ──────────────────────────────────────────── */

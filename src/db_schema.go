@@ -93,6 +93,15 @@ func migrate(db *sql.DB) {
 			is_paragraph_start INTEGER NOT NULL DEFAULT 0 CHECK (is_paragraph_start IN (0, 1)),
 			UNIQUE(story_id, position)
 		)`,
+		`CREATE TABLE IF NOT EXISTS token_usage (
+			id            INTEGER  PRIMARY KEY AUTOINCREMENT,
+			provider      TEXT     NOT NULL,
+			model         TEXT     NOT NULL,
+			operation     TEXT     NOT NULL,
+			input_tokens  INTEGER  NOT NULL DEFAULT 0,
+			output_tokens INTEGER  NOT NULL DEFAULT 0,
+			called_at     DATETIME NOT NULL DEFAULT (datetime('now'))
+		)`,
 	}
 
 	var version int

@@ -1,0 +1,248 @@
+/* ── Tutor header controls ─────────────────────────────────────────────────── */
+.tutor-header-controls {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.tutor-select-label {
+  font-size: 0.78rem;
+  color: #585b70;
+  white-space: nowrap;
+}
+
+.tutor-select {
+  background: #11111b;
+  border: 1px solid #313244;
+  border-radius: 4px;
+  color: #cdd6f4;
+  font-family: inherit;
+  font-size: 0.82rem;
+  padding: 0.3rem 0.5rem;
+  cursor: pointer;
+}
+.tutor-select:disabled { opacity: 0.4; cursor: default; }
+.tutor-select:focus { outline: 1px solid #89b4fa; }
+
+/* ── Tutor page body ─────────────────────────────────────────────────────────*/
+.tutor-body {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  max-width: 860px;
+  width: 100%;
+  margin: 0 auto;
+  padding: 1.25rem 1.5rem 0;
+}
+
+/* ── Message list ────────────────────────────────────────────────────────────*/
+.tutor-messages {
+  flex: 1;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+  padding-bottom: 0.75rem;
+}
+
+.tutor-message {
+  display: flex;
+}
+
+.tutor-message--user {
+  justify-content: flex-end;
+}
+
+.tutor-message--assistant {
+  justify-content: flex-start;
+}
+
+.tutor-bubble {
+  max-width: 78%;
+  padding: 0.65rem 0.9rem;
+  border-radius: 12px;
+  line-height: 1.55;
+  font-size: 0.93rem;
+  word-break: break-word;
+}
+
+/* ── Message segments ────────────────────────────────────────────────────────*/
+.tutor-seg {
+  white-space: pre-wrap;
+}
+.tutor-seg + .tutor-seg {
+  margin-top: 0.4rem;
+}
+
+/* Japanese segment with hidden English tooltip */
+.tutor-seg--jp {
+  cursor: help;
+  border-bottom: 1px dotted #45475a;
+  display: inline-block;
+}
+.tutor-seg--jp:hover {
+  color: #b4befe;
+  border-bottom-color: #89b4fa;
+}
+
+/* English-only segment: direct translation when jp is absent */
+.tutor-seg--en {
+  color: #a6adc8;
+  font-size: 0.88em;
+}
+
+/* Note: standalone commentary/explanation, always visible */
+.tutor-seg--note {
+  color: #a6adc8;
+  font-size: 0.88em;
+  font-style: italic;
+}
+
+/* Correction segment */
+.tutor-seg--correction {
+  color: #a6e3a1;
+  cursor: help;
+}
+.tutor-seg--correction:hover { color: #cbf0c4; }
+
+/* Generic extra-field segment */
+.tutor-seg--extra {
+  color: #a6adc8;
+  font-size: 0.88em;
+}
+.tutor-seg-key {
+  display: inline-block;
+  font-size: 0.75em;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: #6c7086;
+  margin-right: 0.4em;
+}
+
+.tutor-message--user .tutor-bubble {
+  background: #313244;
+  color: #cdd6f4;
+  border-bottom-right-radius: 4px;
+}
+
+.tutor-message--assistant .tutor-bubble {
+  background: #181825;
+  border: 1px solid #313244;
+  color: #cdd6f4;
+  border-bottom-left-radius: 4px;
+}
+
+/* Loading indicator dots */
+.tutor-bubble--loading {
+  color: #585b70;
+  min-width: 2.5rem;
+}
+
+.tutor-dots span {
+  animation: tutor-blink 1.4s infinite both;
+  font-size: 1.1rem;
+  letter-spacing: 2px;
+}
+.tutor-dots span:nth-child(2) { animation-delay: 0.2s; }
+.tutor-dots span:nth-child(3) { animation-delay: 0.4s; }
+
+@keyframes tutor-blink {
+  0%, 80%, 100% { opacity: 0.2; }
+  40%           { opacity: 1; }
+}
+
+/* ── Input row ───────────────────────────────────────────────────────────────*/
+.tutor-input-row {
+  display: flex;
+  gap: 0.5rem;
+  padding: 0.65rem 0 1rem;
+  border-top: 1px solid #313244;
+  align-items: flex-end;
+  flex-shrink: 0;
+}
+
+.tutor-input {
+  flex: 1;
+  background: #11111b;
+  border: 1px solid #313244;
+  border-radius: 8px;
+  color: #7d818d;
+  font-family: inherit;
+  font-size: 0.93rem;
+  padding: 0.55rem 0.8rem;
+  resize: none;
+  line-height: 1.45;
+  min-height: 2.4rem;
+  overflow-y: hidden;
+}
+.tutor-input:focus  { outline: none; border-color: #89b4fa; }
+.tutor-input:disabled { opacity: 0.45; }
+
+.btn-tutor-send {
+  background: #89b4fa;
+  border: none;
+  border-radius: 8px;
+  color: #1e1e2e;
+  font-family: inherit;
+  font-size: 0.88rem;
+  font-weight: 600;
+  padding: 0.55rem 1.1rem;
+  cursor: pointer;
+  white-space: nowrap;
+  align-self: flex-end;
+  line-height: 1.45;
+}
+.btn-tutor-send:hover    { background: #b4befe; }
+.btn-tutor-send:disabled { opacity: 0.35; cursor: default; }
+.btn-hotkey {
+  font-size: 0.75em;
+  opacity: 0.65;
+  margin-left: 0.25em;
+}
+
+/* Active state for toggle buttons in the header (e.g. debug mode) */
+.btn-header--active {
+  background: rgba(137,180,250,0.25);
+  border-color: rgba(137,180,250,0.6);
+  color: #89b4fa;
+}
+
+/* ── Debug view ──────────────────────────────────────────────────────────────*/
+.tutor-debug-block {
+  border-radius: 6px;
+  border: 1px solid #313244;
+  overflow: hidden;
+  font-family: 'Cascadia Code', 'Fira Code', 'Consolas', monospace;
+  font-size: 0.8rem;
+  flex-shrink: 0;
+}
+.tutor-debug-block + .tutor-debug-block { margin-top: 0.6rem; }
+
+.tutor-debug-label {
+  padding: 0.2rem 0.6rem;
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+}
+.tutor-debug-content {
+  padding: 0.5rem 0.75rem;
+  white-space: pre-wrap;
+  word-break: break-word;
+  background: #11111b;
+  color: #cdd6f4;
+  margin: 0;
+  line-height: 1.5;
+}
+
+.tutor-debug-block--system .tutor-debug-label  { background: #2d1b69; color: #cba6f7; }
+.tutor-debug-block--user .tutor-debug-label    { background: #1a2744; color: #89b4fa; }
+.tutor-debug-block--assistant .tutor-debug-label { background: #1a3020; color: #a6e3a1; }
+
+/* JSON syntax highlighting tokens */
+.json-key   { color: #89b4fa; } /* blue   — property names */
+.json-str   { color: #a6e3a1; } /* green  — string values  */
+.json-num   { color: #fab387; } /* peach  — numbers        */
+.json-kw    { color: #cba6f7; } /* mauve  — true/false/null */
+.json-punct { color: #6c7086; } /* muted  — braces, commas  */

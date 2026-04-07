@@ -117,6 +117,7 @@ The HTML/CSS/JS frontend files live in `src/static/` and are served by the backe
 - **activity.html** � the activity/stats view
 - **stories.html** - stories index page with the shared app header/nav; currently lists story titles and dates
 - **story.html** - story detail page for `/stories/{id}`; renders the title and reconstructed story text from sentence word tokens
+- **tutor.html** - AI tutor chat page at `/tutor`. Header has a mode select (Free Conversation, Grammar Tutor, Vocabulary Quiz, Translation Practice, Reading Practice) and an AI provider/model select (same PROVIDER_MODELS pattern as other pages). Chat UI shows assistant messages on the left and user messages on the right; Enter sends, Shift+Enter inserts a newline. Uses `tutor.js` and `tutor.css`. Backend endpoint: `POST /api/tutor/chat`.
 - **tts-demo.html** � sandbox page for testing VoiceVox TTS audio generation (not a production view)
 
 ### Backend
@@ -132,6 +133,7 @@ The HTML/CSS/JS frontend files live in `src/static/` and are served by the backe
 - **`db_stories.go`** also contains `deleteStory`, which removes a story, its sentence rows, and any generated `static/audio/story_{id}` directory.
 - **`db_stories.go`** also contains `buildStorySentencesFromText`, which splits pasted story content into paragraph-aware sentence rows for new story creation.
 - **`routes.go`** � `serverInit` (router setup), activity/drill/admin HTTP handlers, and template render helpers. No direct DB access; handlers call functions from the `db_*.go` files.
+- **`routes_tutor.go`** — tutor API handler: `POST /api/tutor/chat`. Parses `{ai_model, tutor_mode, messages}`, looks up the system prompt for the mode via `tutorSystemPrompt` in `ai.go`, calls `tutorChat`, and returns `{reply}`.
 - **`routes_stories.go`** — story API handlers: `GET /api/stories`, `GET /api/stories/{id}`, `POST /api/stories/{id}/noted-words`, `DELETE /api/stories/{id}/noted-words`, `POST /api/stories/{id}/generate-audio` (VoiceVox, NDJSON streaming), `POST /api/stories/{id}/generate-translation` (AI translation, NDJSON streaming).
 - **`routes_words.go`** — word and kanji API handlers: GET/PATCH/DELETE words, single and batch autofill, reroll meaning/examples, GET kanji.
 - **`routes_handlers_test.go`** � HTTP handler tests for backend JSON endpoints, focused on request validation, status codes, and basic success-path responses for word, drill-session, and drill-settings APIs.
@@ -152,6 +154,7 @@ Key API endpoints (beyond CRUD on `/api/words` and `/api/kanji`):
 
 | Method | Path | Purpose |
 |--------|------|---------|
+| `POST` | `/api/tutor/chat` | AI tutor chat turn; body: `{ai_model, tutor_mode, messages:[{role,content}]}`; returns `{reply}` |
 | `GET` | `/api/providers` | Check which AI providers are configured/available |
 | `GET` | `/api/wordlists` | List all word lists (slug, name, total count, in-lexicon count) |
 | `GET` | `/api/wordlists/{slug}/words` | Words in the named list not yet in the lexicon |

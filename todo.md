@@ -4,6 +4,11 @@ This file is random notes of possible features and bug fixes.
 
 - tutor:
     - should warn users somehow about conversation getting too long (context collapse)
+    - games:
+        - describe what is in the picture
+        - modes where the user only expected to answer in English
+
+    - option to rewind chat? undo last prompt and response?
 
 - wails
     - double scrollbar appears on start of wails

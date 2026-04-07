@@ -103,6 +103,11 @@ func serverInit(db *sql.DB) {
 	r.Get("/api/settings/drill", apiGetDrillSettings(db))
 	r.Put("/api/settings/drill", apiPutDrillSettings(db))
 
+	r.Get("/api/tutor/system-prompt", apiGetTutorSystemPrompt())
+	r.Get("/api/tutor/session", apiGetTutorSession())
+	r.Delete("/api/tutor/session", apiClearTutorSession())
+	r.Post("/api/tutor/chat", apiTutorChat(db))
+
 	r.Get("/api/token-usage", apiGetTokenUsage(db))
 
 	r.Route("/admin", func(r chi.Router) {

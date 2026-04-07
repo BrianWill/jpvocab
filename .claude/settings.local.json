@@ -32,7 +32,8 @@
       "Bash(xxd)",
       "Bash(go get:*)",
       "Bash(powershell:*)",
-      "Bash(wails3 generate:*)"
+      "Bash(wails3 generate:*)",
+      "Bash(go vet:*)"
     ]
   },
   "outputStyle": "Explanatory"

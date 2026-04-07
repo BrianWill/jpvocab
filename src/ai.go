@@ -409,18 +409,9 @@ func marshalUserMsg(v map[string]string) string {
 	return string(b)
 }
 
-// storyTranslateSentence is one sentence in the translation request payload.
-// storyTranslationResult holds AI-generated translations for a story batch.
+// storyTranslationResult holds the AI-generated sentence translations for a story.
 type storyTranslationResult struct {
-	Sentences []string              `json:"sentences"`
-	Words     []storyTranslatedWord `json:"words"`
-}
-
-// storyTranslatedWord is one word gloss in the AI response.
-type storyTranslatedWord struct {
-	Word    string `json:"word"`
-	Gloss   string `json:"gloss"`
-	Reading string `json:"reading"`
+	Sentences []string `json:"sentences"`
 }
 
 // translateStory sends all sentences and words to the AI in a single call and returns

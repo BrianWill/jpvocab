@@ -58,6 +58,7 @@ type storyJSON struct {
 	AudioPath  *string              `json:"audioPath"`
 	HasAudio   bool                 `json:"hasAudio"`
 	CreatedAt  string               `json:"createdAt"`
+	StoryWords []string             `json:"storyWords"`
 	NotedWords []storyNotedWordJSON `json:"notedWords"`
 	Sentences  []storySentenceJSON  `json:"sentences"`
 }
@@ -315,9 +316,6 @@ func queryStories(db *sql.DB, whereClause string, args ...any) ([]storyJSON, err
 	var stories []storyJSON
 	var current *storyJSON
 	var currentID int64 = -1
-	// storyWordsByID holds the pre-computed unique word list per story for the
-	// batch word-info lookup after all rows are scanned.
-	storyWordsByID := map[int64][]string{}
 
 	for rows.Next() {
 		var storyID int64
@@ -347,6 +345,7 @@ func queryStories(db *sql.DB, whereClause string, args ...any) ([]storyJSON, err
 				Title:      title,
 				HasAudio:   hasAudio == 1,
 				CreatedAt:  createdAt,
+				StoryWords: []string{},
 				NotedWords: []storyNotedWordJSON{},
 				Sentences:  []storySentenceJSON{},
 			}
@@ -361,9 +360,9 @@ func queryStories(db *sql.DB, whereClause string, args ...any) ([]storyJSON, err
 				}
 			}
 			if storyWordsJSON.Valid && storyWordsJSON.String != "" {
-				var words []string
-				if err := json.Unmarshal([]byte(storyWordsJSON.String), &words); err == nil {
-					storyWordsByID[storyID] = words
+				json.Unmarshal([]byte(storyWordsJSON.String), &story.StoryWords) //nolint:errcheck
+				if story.StoryWords == nil {
+					story.StoryWords = []string{}
 				}
 			}
 			stories = append(stories, story)
@@ -404,11 +403,11 @@ func queryStories(db *sql.DB, whereClause string, args ...any) ([]storyJSON, err
 		stories = []storyJSON{}
 	}
 
-	// Build the word lookup set from the pre-computed story_words_json lists plus
+	// Build the word lookup set from the pre-computed StoryWords lists plus
 	// any noted words (which may reference words not in the sentence token list).
 	baseWordSet := map[string]struct{}{}
 	for i := range stories {
-		for _, bw := range storyWordsByID[stories[i].ID] {
+		for _, bw := range stories[i].StoryWords {
 			if bw != "" {
 				baseWordSet[bw] = struct{}{}
 			}

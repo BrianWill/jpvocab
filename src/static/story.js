@@ -94,11 +94,6 @@ const state = {
 };
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
-// Returns true if the token is punctuation/whitespace with no meaningful word content.
-function isPunctuation(w) {
-  return !/[\u3040-\u30FF\u4E00-\u9FFFa-zA-Z0-9]/.test(w);
-}
-
 function pluralize(count, singular, plural = singular + 's') {
   return `${count} ${count === 1 ? singular : plural}`;
 }
@@ -119,18 +114,18 @@ function isWordNoted(baseWord) {
   return state.notedWords.some(word => word.baseWord === baseWord);
 }
 
-function buildWordTooltipHtml(word, sentenceEnglish, isNoted = isWordNoted(word.baseWord)) {
-  const ispunct = isPunctuation(word.displayWord);
-  const wordTranslation = ispunct ? '' : (word.english || '');
-  const wordReading = ispunct ? '' : (word.reading || '');
+function buildWordTooltipHtml(word, sentenceEnglish, isStoryWord, isNoted = isWordNoted(word.baseWord)) {
+  if (!isStoryWord) return sentenceEnglish ? escapeTooltipText(sentenceEnglish) : '';
+  const wordTranslation = word.english || '';
+  const wordReading = word.reading || '';
   const tooltipWordLabel = word.baseWord || word.displayWord;
   let html = '';
   if (sentenceEnglish) html += escapeTooltipText(sentenceEnglish);
-  if (!ispunct && wordTranslation) {
+  if (wordTranslation) {
     if (sentenceEnglish) html += '<br><br>';
     html += '<strong><span class="tooltip-word-label">' + esc(tooltipWordLabel) + ':</span></strong> ' + escapeTooltipText(wordTranslation);
   }
-  if (!ispunct && wordReading) {
+  if (wordReading) {
     if (wordTranslation) {
       html += '<br>';
     } else {
@@ -139,26 +134,24 @@ function buildWordTooltipHtml(word, sentenceEnglish, isNoted = isWordNoted(word.
     }
     html += '<span class="tooltip-word-reading">' + esc(wordReading) + '</span>';
   }
-  if (!ispunct) {
-    if (html) html += '<br><br>';
-    if (word.inLexicon) {
-      const remaining = Math.max(0, (word.drillTarget || 0) - (word.drillCount || 0));
-      html += '<span class="tooltip-word-note"><span>Word in lexicon: <span class="tooltip-drill-remaining">' + esc(String(remaining)) + '</span> drill' + (remaining === 1 ? '' : 's') + ' remaining</span><span class="tooltip-hotkey-hint">(- / + to adjust)</span></span>';
-    } else {
-      html += '<span class="tooltip-word-note">' +
-        esc(isNoted ? 'Click to remove from noted words' : 'Click to add this word to noted words') +
-        '</span>';
-    }
+  if (html) html += '<br><br>';
+  if (word.inLexicon) {
+    const remaining = Math.max(0, (word.drillTarget || 0) - (word.drillCount || 0));
+    html += '<span class="tooltip-word-note"><span>Word in lexicon: <span class="tooltip-drill-remaining">' + esc(String(remaining)) + '</span> drill' + (remaining === 1 ? '' : 's') + ' remaining</span><span class="tooltip-hotkey-hint">(- / + to adjust)</span></span>';
+  } else {
+    html += '<span class="tooltip-word-note">' +
+      esc(isNoted ? 'Click to remove from noted words' : 'Click to add this word to noted words') +
+      '</span>';
   }
   return html;
 }
 
 function updateWordTokenUI() {
   for (const meta of state.wordTokenMetas) {
-    meta.el.dataset.tooltipHtml = buildWordTooltipHtml(meta.word, meta.sentenceEnglishText);
+    meta.el.dataset.tooltipHtml = buildWordTooltipHtml(meta.word, meta.sentenceEnglishText, meta.isStoryWord);
     meta.el.dataset.tooltipClass = 'tooltip-translation';
-    meta.el.classList.toggle('story-word--noted', isWordNoted(meta.word.baseWord) && !meta.word.inLexicon);
-    meta.el.classList.toggle('story-word--in-lexicon', !!meta.word.inLexicon);
+    meta.el.classList.toggle('story-word--noted', meta.isStoryWord && isWordNoted(meta.word.baseWord) && !meta.word.inLexicon);
+    meta.el.classList.toggle('story-word--in-lexicon', meta.isStoryWord && !!meta.word.inLexicon);
   }
 }
 
@@ -324,6 +317,8 @@ function renderStory(story) {
   state.speechText = textParts.join(SEPARATOR);
   els.playbackBtn.disabled = false;
 
+  const storyWordSet = new Set(Array.isArray(story.storyWords) ? story.storyWords : []);
+
   els.storyContent.innerHTML = '';
   state.wordTokenMetas = [];
   let currentParagraph = null;
@@ -345,14 +340,14 @@ function renderStory(story) {
       const wordSpan = document.createElement('span');
       wordSpan.className = 'story-word';
       wordSpan.textContent = word.displayWord;
-      const ispunct = isPunctuation(word.displayWord);
-      if (!ispunct || sentence.englishText) {
-        wordSpan.dataset.tooltipHtml = buildWordTooltipHtml(word, sentence.englishText);
+      const isStoryWord = storyWordSet.has(word.baseWord);
+      if (isStoryWord || sentence.englishText) {
+        wordSpan.dataset.tooltipHtml = buildWordTooltipHtml(word, sentence.englishText, isStoryWord);
         wordSpan.dataset.tooltipClass = 'tooltip-translation';
       }
-      if (!ispunct && word.english) wordSpan.classList.add('story-word--translated');
-      if (!ispunct && word.inLexicon) wordSpan.classList.add('story-word--in-lexicon');
-      if (!ispunct) {
+      if (isStoryWord && word.english) wordSpan.classList.add('story-word--translated');
+      if (isStoryWord && word.inLexicon) wordSpan.classList.add('story-word--in-lexicon');
+      if (isStoryWord) {
         wordSpan.addEventListener('mouseenter', () => {
           state.hoveredWord = word;
         });
@@ -363,7 +358,7 @@ function renderStory(story) {
           state.hoveredWord = word;
           if (word.inLexicon) return;
           const currentlyNoted = isWordNoted(word.baseWord);
-          wordSpan.dataset.tooltipHtml = buildWordTooltipHtml(word, sentence.englishText, !currentlyNoted);
+          wordSpan.dataset.tooltipHtml = buildWordTooltipHtml(word, sentence.englishText, true, !currentlyNoted);
           refreshTooltip(wordSpan);
           if (currentlyNoted) {
             removeNotedWord(word.baseWord).catch(() => {});
@@ -376,6 +371,7 @@ function renderStory(story) {
         el: wordSpan,
         sentenceEnglishText: sentence.englishText || '',
         word,
+        isStoryWord,
       });
       sentenceSpan.appendChild(wordSpan);
     }

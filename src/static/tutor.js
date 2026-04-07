@@ -5,8 +5,13 @@ import { PROVIDER_MODELS } from './common.js';
 const TUTOR_MODES = [
   {
     value:    'free',
-    label:    'Free Conversation',
+    label:    'Conversation (Speaking)',
     greeting: JSON.stringify({ jp: 'こんにちは！今日は何を話しましょうか？', en: 'Hello! What shall we talk about today?' }),
+  },
+  {
+    value:    'free-en',
+    label:    'Conversation (Comprehension)',
+    greeting: JSON.stringify({ jp: 'こんにちは！今日は何を話しましょうか？', en: 'Hello! What shall we talk about today?', note: 'Read the Japanese above and reply in English to show you understood.' }),
   },
   {
     value:    'grammar',
@@ -19,9 +24,14 @@ const TUTOR_MODES = [
     greeting: JSON.stringify({ jp: '「食べる」とは英語で何ですか？', en: 'What does 「食べる」 mean in English?', note: "Welcome to Vocabulary Quiz mode! I'll test you one word at a time." }),
   },
   {
-    value:    'translation',
-    label:    'Translation Practice',
+    value:    'translation-en-jp',
+    label:    'Translation: English → Japanese',
     greeting: JSON.stringify({ note: "Welcome to Translation Practice! I'll give you English sentences to translate into Japanese.", question: 'First sentence: "I drink water every day."' }),
+  },
+  {
+    value:    'translation-jp-en',
+    label:    'Translation: Japanese → English',
+    greeting: JSON.stringify({ note: "Welcome to Translation Practice! I'll give you Japanese sentences to translate into English.", jp: '毎日、水を飲みます。', question: 'How would you translate this sentence into English?' }),
   },
   {
     value:    'reading',

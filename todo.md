@@ -3,6 +3,8 @@
 This file is random notes of possible features and bug fixes.
 
 - tutor:
+    - tutor's Japanese is spoken by TTS
+    - tutor's Japanese is spoken by voicevox
     - should warn users somehow about conversation getting too long (context collapse)
     - games:
         - describe what is in the picture

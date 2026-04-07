@@ -1,11 +1,18 @@
 {{define "app_nav"}}
-<!-- Shared top-nav cluster: app page links plus the app logo/home link. -->
+<!-- Shared top-nav cluster: pulldown nav plus the app logo/home link. -->
 <div class="page-nav-links">
-  <a class="page-nav-link{{if eq .CurrentPage "drill"}} page-nav-link--current{{end}}" href="/drill">Drill</a>
-  <a class="page-nav-link{{if eq .CurrentPage "activity"}} page-nav-link--current{{end}}" href="/activity">Activity</a>
-  <a class="page-nav-link{{if eq .CurrentPage "stories"}} page-nav-link--current{{end}}" href="/stories">Stories</a>
-  <a class="page-nav-link{{if eq .CurrentPage "tutor"}} page-nav-link--current{{end}}" href="/tutor">Tutor</a>
-  <a class="page-nav-link{{if eq .CurrentPage "lexicon"}} page-nav-link--current{{end}}" href="/lexicon">Lexicon</a>
+  <div class="nav-dropdown" id="nav-dropdown">
+    <button class="nav-dropdown-btn" id="nav-dropdown-btn">
+      {{if eq .CurrentPage "drill"}}Drill{{else if eq .CurrentPage "activity"}}Activity{{else if eq .CurrentPage "stories"}}Stories{{else if eq .CurrentPage "tutor"}}Tutor{{else if eq .CurrentPage "lexicon"}}Lexicon{{else}}Pages{{end}}&thinsp;▾
+    </button>
+    <div class="nav-dropdown-menu" id="nav-dropdown-menu">
+      <a class="nav-dropdown-item{{if eq .CurrentPage "drill"}} nav-dropdown-item--current{{end}}" href="/drill">Drill</a>
+      <a class="nav-dropdown-item{{if eq .CurrentPage "activity"}} nav-dropdown-item--current{{end}}" href="/activity">Activity</a>
+      <a class="nav-dropdown-item{{if eq .CurrentPage "stories"}} nav-dropdown-item--current{{end}}" href="/stories">Stories</a>
+      <a class="nav-dropdown-item{{if eq .CurrentPage "tutor"}} nav-dropdown-item--current{{end}}" href="/tutor">Tutor</a>
+      <a class="nav-dropdown-item{{if eq .CurrentPage "lexicon"}} nav-dropdown-item--current{{end}}" href="/lexicon">Lexicon</a>
+    </div>
+  </div>
   <a class="app-logo" href="/welcome">語</a>
 </div>
 <script>
@@ -48,6 +55,21 @@
     else if (e.key === '-')             { e.preventDefault(); applyZoom(z - STEP); }
     else if (e.key === '0')             { e.preventDefault(); applyZoom(1.0); }
   });
+
+  // Nav dropdown toggle
+  var navBtn = document.getElementById('nav-dropdown-btn');
+  var navMenu = document.getElementById('nav-dropdown-menu');
+  if (navBtn && navMenu) {
+    navBtn.addEventListener('click', function(e) {
+      e.stopPropagation();
+      var isOpen = navMenu.classList.toggle('open');
+      navBtn.classList.toggle('open', isOpen);
+    });
+    document.addEventListener('click', function() {
+      navMenu.classList.remove('open');
+      navBtn.classList.remove('open');
+    });
+  }
 })();
 </script>
 {{end}}

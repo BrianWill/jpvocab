@@ -41,6 +41,54 @@ body {
 .page-nav-link--current { color: #89b4fa; font-weight: 700; background: #1e1e2e; cursor: default; }
 .page-nav-link--current:hover { color: #89b4fa; background: #1e1e2e; }
 
+/* Nav dropdown (replaces flat nav links) */
+.nav-dropdown {
+  position: relative;
+  align-self: stretch;
+  display: flex;
+}
+.nav-dropdown-btn {
+  align-self: stretch;
+  display: flex;
+  align-items: center;
+  padding: 0 0.85rem;
+  border-top: none;
+  border-right: none;
+  border-bottom: none;
+  border-left: 1px solid #313244;
+  background: #181825;
+  font-size: 0.8rem;
+  font-family: inherit;
+  color: #585b70;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.nav-dropdown-btn:hover,
+.nav-dropdown-btn.open { color: #89b4fa; background: #1e1e2e; }
+.nav-dropdown-menu {
+  display: none;
+  position: absolute;
+  top: 100%;
+  right: 0;
+  min-width: 100%;
+  background: #181825;
+  border: 1px solid #313244;
+  border-top: none;
+  z-index: 200;
+  flex-direction: column;
+}
+.nav-dropdown-menu.open { display: flex; }
+.nav-dropdown-item {
+  padding: 0.55rem 1rem;
+  font-size: 0.8rem;
+  color: #585b70;
+  text-decoration: none;
+  border-top: 1px solid #313244;
+}
+.nav-dropdown-item:hover { color: #89b4fa; background: #1e1e2e; }
+.nav-dropdown-item--current { color: #89b4fa; font-weight: 700; background: #1e1e2e; cursor: default; }
+.nav-dropdown-item--current:hover { color: #89b4fa; background: #1e1e2e; }
+
 /* App logo — 語 character in the top-right corner, links to /welcome */
 .app-logo {
   align-self: stretch;

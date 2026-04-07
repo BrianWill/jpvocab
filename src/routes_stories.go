@@ -64,7 +64,7 @@ func apiAddStoryNotedWord(db *sql.DB) http.HandlerFunc {
 		}
 
 		if err := addStoryNotedWord(db, id, storyNotedWordJSON{
-			DisplayWord: word.BaseWord,
+			DisplayWord: word.DisplayWord,
 			BaseWord:    word.BaseWord,
 			English:     word.English,
 		}); err != nil {

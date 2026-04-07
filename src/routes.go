@@ -85,8 +85,6 @@ func serverInit(db *sql.DB) {
 	r.Post("/api/words/{id}/upload-image", apiUploadWordImage(db))
 	r.Post("/api/words/{id}/download-image", apiDownloadWordImage(db))
 	r.Post("/api/words/{id}/find-image", apiFindWordImage(db))
-	r.Post("/api/words/{id}/reroll-meaning", apiRerollMeaning(db))
-	r.Post("/api/words/{id}/reroll-examples", apiRerollExamples(db))
 	r.Post("/api/words/autofill-batch", apiAutofillWordsBatch(db))
 	r.Post("/api/words/{id}/autofill", apiAutofillWord(db))
 	r.Post("/api/words/{id}/generate-audio", apiGenerateWordAudio(db))
@@ -590,22 +588,6 @@ func adminDeleteWords(db *sql.DB) http.HandlerFunc {
 
 // parseWordList splits a raw string on commas and whitespace, deduplicates,
 // and returns non-empty tokens preserving first-seen order.
-func parseWordList(raw string) []string {
-	tokens := strings.FieldsFunc(raw, func(r rune) bool {
-		return r == ',' || r == ' ' || r == '\n' || r == '\r' || r == '\t'
-	})
-	seen := make(map[string]bool, len(tokens))
-	words := make([]string, 0, len(tokens))
-	for _, t := range tokens {
-		t = strings.TrimSpace(t)
-		if t != "" && !seen[t] {
-			seen[t] = true
-			words = append(words, t)
-		}
-	}
-	return words
-}
-
 func adminResetDB(db *sql.DB) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if err := resetDB(db); err != nil {

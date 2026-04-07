@@ -292,47 +292,6 @@ func apiFindWordImage(db *sql.DB) http.HandlerFunc {
 	}
 }
 
-func apiRerollMeaning(db *sql.DB) http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		var body struct {
-			Word    string `json:"word"`
-			Current string `json:"current"`
-			AIModel string `json:"ai_model"`
-		}
-		if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
-			http.Error(w, "bad request", http.StatusBadRequest)
-			return
-		}
-		alternatives, err := rerollMeaning(db, body.Word, body.Current, body.AIModel)
-		if err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
-			return
-		}
-		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(map[string]any{"alternatives": alternatives})
-	}
-}
-
-func apiRerollExamples(db *sql.DB) http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		var body struct {
-			Word    string `json:"word"`
-			AIModel string `json:"ai_model"`
-		}
-		if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
-			http.Error(w, "bad request", http.StatusBadRequest)
-			return
-		}
-		alternatives, err := rerollExamples(db, body.Word, body.AIModel)
-		if err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
-			return
-		}
-		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(map[string]any{"alternatives": alternatives})
-	}
-}
-
 func apiAutofillWord(db *sql.DB) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		id, err := strconv.ParseInt(chi.URLParam(r, "id"), 10, 64)

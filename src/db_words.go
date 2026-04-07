@@ -72,7 +72,7 @@ func insertWord(db *sql.DB, word, reading, partOfSpeech, meaning, exampleJP, exa
 		kanjiData = "[]"
 	}
 	_, err := db.Exec(`
-		INSERT INTO words (word, reading, part_of_speech, meaning, example_jp, example_en, drill_target, is_katakana, kanji_data)
+		INSERT INTO words (base_word, reading, part_of_speech, meaning, example_jp, example_en, drill_target, is_katakana, kanji_data)
 		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
 	`, word, reading, partOfSpeech, meaning, exampleJP, exampleEN, drillTarget, kat, kanjiData)
 	return err
@@ -94,9 +94,9 @@ func insertWordReturningID(db *sql.DB, word, reading, partOfSpeech, meaning, exa
 		kanjiData = "[]"
 	}
 	res, err := db.Exec(`
-		INSERT INTO words (word, reading, part_of_speech, meaning, example_jp, example_en, drill_target, is_katakana, kanji_data)
+		INSERT INTO words (base_word, reading, part_of_speech, meaning, example_jp, example_en, drill_target, is_katakana, kanji_data)
 		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-		ON CONFLICT(word) DO UPDATE SET
+		ON CONFLICT(base_word) DO UPDATE SET
 			in_lexicon     = 1,
 			reading        = CASE WHEN COALESCE(reading, '')        = '' THEN excluded.reading        ELSE reading        END,
 			part_of_speech = CASE WHEN COALESCE(part_of_speech, '') = '' THEN excluded.part_of_speech ELSE part_of_speech END,
@@ -144,7 +144,7 @@ func wordsExistInDB(db *sql.DB, words []string) (map[string]bool, error) {
 	for i, w := range words {
 		args[i] = w
 	}
-	rows, err := db.Query("SELECT word FROM words WHERE word IN ("+placeholders+")", args...)
+	rows, err := db.Query("SELECT base_word FROM words WHERE base_word IN ("+placeholders+")", args...)
 	if err != nil {
 		return nil, err
 	}
@@ -173,7 +173,7 @@ func wordsInfoInDB(db *sql.DB, words []string) (map[string]existingWordInfo, err
 		args[i] = w
 	}
 	rows, err := db.Query(
-		"SELECT id, word, reading, part_of_speech, meaning, example_jp, example_en, image_path, drill_count, incorrect_count, drill_target FROM words WHERE in_lexicon = 1 AND word IN ("+placeholders+")",
+		"SELECT id, base_word, reading, part_of_speech, meaning, example_jp, example_en, image_path, drill_count, incorrect_count, drill_target FROM words WHERE in_lexicon = 1 AND base_word IN ("+placeholders+")",
 		args...,
 	)
 	if err != nil {
@@ -205,7 +205,7 @@ type wordImageInfo struct {
 
 func getWordImageInfo(db *sql.DB, id int64) (*wordImageInfo, error) {
 	var info wordImageInfo
-	err := db.QueryRow("SELECT word, image_path FROM words WHERE id = ?", id).Scan(&info.Word, &info.ImagePath)
+	err := db.QueryRow("SELECT base_word, image_path FROM words WHERE id = ?", id).Scan(&info.Word, &info.ImagePath)
 	if err == sql.ErrNoRows {
 		return nil, nil
 	}
@@ -267,7 +267,7 @@ func listKanji(db *sql.DB) ([]kanjiJSON, error) {
 // listWords returns all words from the lexicon ordered by creation date descending.
 func listWords(db *sql.DB) ([]wordJSON, error) {
 	rows, err := db.Query(`
-		SELECT id, word, COALESCE(reading,''), pitch_accent, COALESCE(part_of_speech,''), COALESCE(meaning,''),
+		SELECT id, base_word, COALESCE(reading,''), pitch_accent, COALESCE(part_of_speech,''), COALESCE(meaning,''),
 		       COALESCE(example_jp,''), COALESCE(example_en,''),
 		       drill_count, incorrect_count, drill_target, created_at, last_drilled_at,
 		       image_path, kanji_data, has_word_audio, has_sentence_audio, in_lexicon
@@ -335,7 +335,7 @@ func deleteWordsByName(db *sql.DB, words []string) error {
 	for i, w := range words {
 		args[i] = w
 	}
-	_, err := db.Exec("DELETE FROM words WHERE word IN ("+placeholders+")", args...)
+	_, err := db.Exec("DELETE FROM words WHERE base_word IN ("+placeholders+")", args...)
 	return err
 }
 
@@ -355,7 +355,7 @@ func updateWordAudioFlags(db *sql.DB, id int64, hasWord, hasSentence bool) error
 func getWordAudioInfo(db *sql.DB, id int64) (string, string, error) {
 	var word string
 	var exampleJP string
-	err := db.QueryRow("SELECT word, COALESCE(example_jp,'') FROM words WHERE id = ?", id).
+	err := db.QueryRow("SELECT base_word, COALESCE(example_jp,'') FROM words WHERE id = ?", id).
 		Scan(&word, &exampleJP)
 	if err == sql.ErrNoRows {
 		return "", "", nil
@@ -428,7 +428,7 @@ func updateWordInfoIfEmpty(db *sql.DB, word, meaning, reading string) error {
 		UPDATE words
 		SET meaning = CASE WHEN COALESCE(meaning,'') = '' THEN ? ELSE meaning END,
 		    reading = CASE WHEN COALESCE(reading,'') = '' THEN ? ELSE reading END
-		WHERE word = ?
+		WHERE base_word = ?
 	`, meaning, reading, word)
 	return err
 }
@@ -455,7 +455,7 @@ func insertWordsIfAbsent(tx *sql.Tx, baseWords []string) ([]string, error) {
 			kat = 1
 		}
 		if _, err := tx.Exec(`
-			INSERT OR IGNORE INTO words (word, is_katakana, in_lexicon)
+			INSERT OR IGNORE INTO words (base_word, is_katakana, in_lexicon)
 			VALUES (?, ?, 0)
 		`, word, kat); err != nil {
 			return nil, err

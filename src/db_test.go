@@ -86,7 +86,7 @@ func TestInsertWord_Basic(t *testing.T) {
 
 	var reading, meaning string
 	var target int
-	err = db.QueryRow(`SELECT reading, meaning, drill_target FROM words WHERE word = ?`, "食べる").
+	err = db.QueryRow(`SELECT reading, meaning, drill_target FROM words WHERE base_word = ?`, "食べる").
 		Scan(&reading, &meaning, &target)
 	if err != nil {
 		t.Fatal(err)
@@ -108,7 +108,7 @@ func TestInsertWord_DrillTargetClampsToOne(t *testing.T) {
 		t.Fatal(err)
 	}
 	var target int
-	db.QueryRow(`SELECT drill_target FROM words WHERE word = ?`, "猫").Scan(&target)
+	db.QueryRow(`SELECT drill_target FROM words WHERE base_word = ?`, "猫").Scan(&target)
 	if target != 1 {
 		t.Errorf("drill_target: got %d, want 1 (clamped from 0)", target)
 	}
@@ -169,10 +169,10 @@ func TestQueryTable_ReturnsInsertedRow(t *testing.T) {
 		t.Fatalf("expected 1 row, got %d", len(rows))
 	}
 
-	// Find the "word" column index and check its value.
+	// Find the "base_word" column index and check its value.
 	wordIdx := -1
 	for i, c := range cols {
-		if c == "word" {
+		if c == "base_word" {
 			wordIdx = i
 			break
 		}
@@ -200,7 +200,7 @@ func TestQueryTable_NewestFirst(t *testing.T) {
 		t.Fatalf("expected 3 rows, got %d", len(rows))
 	}
 	// Rows are ordered newest (highest rowid) first.
-	// The "word" column is index 1 (after id).
+	// The "base_word" column is index 1 (after id).
 	if rows[0][1] != "三" {
 		t.Errorf("first row (newest): got %q, want 三", rows[0][1])
 	}
@@ -234,11 +234,11 @@ func TestListTableInfos_WordsColumnFlags(t *testing.T) {
 	if id := colByName["id"]; !id.PK {
 		t.Error("id column should be PK")
 	}
-	if word := colByName["word"]; !word.Unique {
-		t.Error("word column should be UNIQUE")
+	if word := colByName["base_word"]; !word.Unique {
+		t.Error("base_word column should be UNIQUE")
 	}
-	if word := colByName["word"]; !word.NotNull {
-		t.Error("word column should be NOT NULL")
+	if word := colByName["base_word"]; !word.NotNull {
+		t.Error("base_word column should be NOT NULL")
 	}
 	if dc := colByName["drill_count"]; !dc.NotNull {
 		t.Error("drill_count column should be NOT NULL")
@@ -331,13 +331,13 @@ func TestGetActivityStats_Buckets(t *testing.T) {
 	db := testDB(t)
 	// Insert words via raw SQL to control drill_count, which insertWord always sets to 0.
 	// Word 1: already cleared (drill_count >= drill_target, target_reached_at set).
-	db.Exec(`INSERT INTO words (word, drill_count, drill_target, target_reached_at) VALUES ('清', 5, 3, datetime('now'))`)
+	db.Exec(`INSERT INTO words (base_word, drill_count, drill_target, target_reached_at) VALUES ('清', 5, 3, datetime('now'))`)
 	// Word 2: close to target (drill_target - drill_count = 2, within the <= 4 bucket).
-	db.Exec(`INSERT INTO words (word, drill_count, drill_target) VALUES ('近', 2, 4)`)
+	db.Exec(`INSERT INTO words (base_word, drill_count, drill_target) VALUES ('近', 2, 4)`)
 	// Word 3: mid range (drill_target - drill_count = 6, within the 4 < x <= 8 bucket).
-	db.Exec(`INSERT INTO words (word, drill_count, drill_target) VALUES ('中', 1, 7)`)
+	db.Exec(`INSERT INTO words (base_word, drill_count, drill_target) VALUES ('中', 1, 7)`)
 	// Word 4: far from target (drill_target - drill_count = 10, > 8 bucket).
-	db.Exec(`INSERT INTO words (word, drill_count, drill_target) VALUES ('遠', 0, 10)`)
+	db.Exec(`INSERT INTO words (base_word, drill_count, drill_target) VALUES ('遠', 0, 10)`)
 
 	stats, err := getActivityStats(db)
 	if err != nil {
@@ -369,9 +369,9 @@ func TestGetActivityStats_Buckets(t *testing.T) {
 func TestGetActivityStats_ExcludesNotInLexicon(t *testing.T) {
 	db := testDB(t)
 	// One manually-added word (in_lexicon=1, the default).
-	db.Exec(`INSERT INTO words (word, drill_count, drill_target) VALUES ('空', 0, 3)`)
+	db.Exec(`INSERT INTO words (base_word, drill_count, drill_target) VALUES ('空', 0, 3)`)
 	// One story-sourced word (in_lexicon=0) — must be invisible to stats.
-	db.Exec(`INSERT INTO words (word, drill_count, drill_target, in_lexicon) VALUES ('海', 0, 3, 0)`)
+	db.Exec(`INSERT INTO words (base_word, drill_count, drill_target, in_lexicon) VALUES ('海', 0, 3, 0)`)
 
 	stats, err := getActivityStats(db)
 	if err != nil {
@@ -394,7 +394,7 @@ func insertTestWord(t *testing.T, db *sql.DB, word string, target int) int64 {
 		t.Fatal("insertTestWord:", err)
 	}
 	var id int64
-	db.QueryRow(`SELECT id FROM words WHERE word = ?`, word).Scan(&id)
+	db.QueryRow(`SELECT id FROM words WHERE base_word = ?`, word).Scan(&id)
 	return id
 }
 
@@ -641,7 +641,7 @@ func TestResetDB_ClearsData(t *testing.T) {
 	// Our manually-added words (in_lexicon=1) must no longer be present; seed
 	// story tokenisation may re-add some base words with in_lexicon=0, which is fine.
 	var count int
-	db.QueryRow(`SELECT COUNT(*) FROM words WHERE word IN ('山', '川') AND in_lexicon = 1`).Scan(&count)
+	db.QueryRow(`SELECT COUNT(*) FROM words WHERE base_word IN ('山', '川') AND in_lexicon = 1`).Scan(&count)
 	if count != 0 {
 		t.Errorf("test words still present after reset: got %d, want 0", count)
 	}
@@ -659,7 +659,7 @@ func TestInsertWordReturningID(t *testing.T) {
 		t.Error("expected non-zero ID")
 	}
 	var word string
-	db.QueryRow(`SELECT word FROM words WHERE id = ?`, id).Scan(&word)
+	db.QueryRow(`SELECT base_word FROM words WHERE id = ?`, id).Scan(&word)
 	if word != "鳥" {
 		t.Errorf("word: got %q, want 鳥", word)
 	}
@@ -915,7 +915,7 @@ func TestListWords_KanjiDataDefaultsToEmptySlice(t *testing.T) {
 func TestListWords_NullableColumnsDefaultToEmpty(t *testing.T) {
 	db := testDB(t)
 	// Insert with only word + created_at so all nullable TEXT columns are NULL.
-	db.Exec(`INSERT INTO words (word, created_at) VALUES ('無', datetime('now'))`)
+	db.Exec(`INSERT INTO words (base_word, created_at) VALUES ('無', datetime('now'))`)
 
 	words, err := listWords(db)
 	if err != nil {
@@ -934,7 +934,7 @@ func TestListWords_OrderNewestFirst(t *testing.T) {
 	db := testDB(t)
 	insertWord(db, "古", "", "", "", "", "", "", 1)
 	insertWord(db, "新", "", "", "", "", "", "", 1)
-	db.Exec(`UPDATE words SET created_at = datetime('now', '-1 day') WHERE word = '古'`)
+	db.Exec(`UPDATE words SET created_at = datetime('now', '-1 day') WHERE base_word = '古'`)
 
 	words, err := listWords(db)
 	if err != nil {
@@ -1011,7 +1011,7 @@ func TestDeleteWordsByName(t *testing.T) {
 		t.Errorf("expected 1 word remaining, got %d", count)
 	}
 	var remaining string
-	db.QueryRow(`SELECT word FROM words`).Scan(&remaining)
+	db.QueryRow(`SELECT base_word FROM words`).Scan(&remaining)
 	if remaining != "秋" {
 		t.Errorf("remaining word: got %q, want 秋", remaining)
 	}
@@ -1228,7 +1228,7 @@ func TestGetStoryByID_PopulatesWordInfoFromWordsTable(t *testing.T) {
 	}
 
 	// Populate meaning and reading directly on the words row.
-	if _, err := db.Exec(`UPDATE words SET meaning = 'cat', reading = 'ねこ' WHERE word = '猫'`); err != nil {
+	if _, err := db.Exec(`UPDATE words SET meaning = 'cat', reading = 'ねこ' WHERE base_word = '猫'`); err != nil {
 		t.Fatalf("update word: %v", err)
 	}
 
@@ -1312,10 +1312,10 @@ func TestGetActivityCalendar_DrilledAddedCleared(t *testing.T) {
 	db := testDB(t)
 
 	// Word added on the 15th, drilled on the 18th, cleared on the 20th.
-	db.Exec(`INSERT INTO words (word, reading, meaning, drill_count, drill_target, created_at, target_reached_at)
+	db.Exec(`INSERT INTO words (base_word, reading, meaning, drill_count, drill_target, created_at, target_reached_at)
 		VALUES ('星', 'ほし', 'star', 3, 3, '2024-01-15 10:00:00', '2024-01-20 10:00:00')`)
 	var wordID int64
-	db.QueryRow(`SELECT id FROM words WHERE word = '星'`).Scan(&wordID)
+	db.QueryRow(`SELECT id FROM words WHERE base_word = '星'`).Scan(&wordID)
 
 	db.Exec(`INSERT INTO drill_sessions (started_at) VALUES ('2024-01-18 10:00:00')`)
 	var sessionID int64
@@ -1348,9 +1348,9 @@ func TestGetActivityCalendar_DrilledAddedCleared(t *testing.T) {
 
 func TestGetActivityCalendar_KnewFalseWhenAnyIncorrect(t *testing.T) {
 	db := testDB(t)
-	db.Exec(`INSERT INTO words (word, created_at) VALUES ('風', datetime('now'))`)
+	db.Exec(`INSERT INTO words (base_word, created_at) VALUES ('風', datetime('now'))`)
 	var wordID int64
-	db.QueryRow(`SELECT id FROM words WHERE word = '風'`).Scan(&wordID)
+	db.QueryRow(`SELECT id FROM words WHERE base_word = '風'`).Scan(&wordID)
 
 	db.Exec(`INSERT INTO drill_sessions DEFAULT VALUES`)
 	var sessionID int64
@@ -1375,7 +1375,7 @@ func TestGetActivityCalendar_KnewFalseWhenAnyIncorrect(t *testing.T) {
 func TestGetActivityCalendar_NonNilSlices(t *testing.T) {
 	db := testDB(t)
 	// Only an Added entry on this date — Drilled and Cleared must still be [].
-	db.Exec(`INSERT INTO words (word, created_at) VALUES ('雲', '2024-03-01 00:00:00')`)
+	db.Exec(`INSERT INTO words (base_word, created_at) VALUES ('雲', '2024-03-01 00:00:00')`)
 
 	cal, err := getActivityCalendar(db)
 	if err != nil {
@@ -1492,7 +1492,7 @@ func TestGetWordAudioInfo_ReturnsWordAndExample(t *testing.T) {
 	db := testDB(t)
 	insertWord(db, "猫", "ねこ", "noun", "cat", "猫がいる。", "There is a cat.", "", 1)
 	var id int64
-	db.QueryRow(`SELECT id FROM words WHERE word = '猫'`).Scan(&id)
+	db.QueryRow(`SELECT id FROM words WHERE base_word = '猫'`).Scan(&id)
 
 	word, exJp, err := getWordAudioInfo(db, id)
 	if err != nil {
@@ -1522,7 +1522,7 @@ func TestGetWordAudioInfo_NullExampleDefaultsToEmpty(t *testing.T) {
 func TestGetActivityCalendar_HistoryStartIsContainingSunday(t *testing.T) {
 	db := testDB(t)
 	// 2024-01-17 is a Wednesday; the containing Sunday is 2024-01-14.
-	db.Exec(`INSERT INTO words (word, created_at) VALUES ('川', '2024-01-17 00:00:00')`)
+	db.Exec(`INSERT INTO words (base_word, created_at) VALUES ('川', '2024-01-17 00:00:00')`)
 
 	cal, err := getActivityCalendar(db)
 	if err != nil {
@@ -1536,7 +1536,7 @@ func TestGetActivityCalendar_HistoryStartIsContainingSunday(t *testing.T) {
 func TestGetActivityCalendar_ExcludesNotInLexicon(t *testing.T) {
 	db := testDB(t)
 	// One manually-added word on 2024-05-01.
-	db.Exec(`INSERT INTO words (word, created_at) VALUES ('星', '2024-05-01 00:00:00')`)
+	db.Exec(`INSERT INTO words (base_word, created_at) VALUES ('星', '2024-05-01 00:00:00')`)
 	// One story-sourced word on the same date — must not appear in Added.
 	db.Exec(`INSERT INTO words (word, created_at, in_lexicon) VALUES ('月', '2024-05-01 00:00:00', 0)`)
 

@@ -554,8 +554,8 @@ func apiGenerateStoryWordInfo(db *sql.DB) http.HandlerFunc {
 			args[i] = bw
 		}
 		rows, err := db.QueryContext(r.Context(),
-			`SELECT id, word FROM words
-			 WHERE word IN (`+strings.Join(placeholders, ",")+`)
+			`SELECT id, base_word FROM words
+			 WHERE base_word IN (`+strings.Join(placeholders, ",")+`)
 			 AND COALESCE(reading,'') = ''
 			 AND COALESCE(part_of_speech,'') = ''
 			 AND COALESCE(meaning,'') = ''

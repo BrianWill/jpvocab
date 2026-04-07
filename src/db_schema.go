@@ -33,7 +33,8 @@ func migrate(db *sql.DB) {
 	migrations := []string{
 		`CREATE TABLE IF NOT EXISTS words (
 			id                INTEGER  PRIMARY KEY AUTOINCREMENT,
-			word              TEXT     NOT NULL UNIQUE,
+			base_word         TEXT     NOT NULL UNIQUE,
+			in_lexicon        INTEGER NOT NULL DEFAULT 1,
 			reading           TEXT,
 			pitch_accent      INTEGER,
 			part_of_speech    TEXT,
@@ -78,8 +79,8 @@ func migrate(db *sql.DB) {
 			id         INTEGER  PRIMARY KEY AUTOINCREMENT,
 			title      TEXT     NOT NULL,
 			audio_path TEXT,
-			word_glosses TEXT,
 			has_audio INTEGER NOT NULL DEFAULT 0,
+			story_words_json TEXT NOT NULL DEFAULT '[]',
 			noted_words_json TEXT NOT NULL DEFAULT '[]',
 			created_at DATETIME NOT NULL DEFAULT (datetime('now'))
 		)`,
@@ -93,9 +94,6 @@ func migrate(db *sql.DB) {
 			is_paragraph_start INTEGER NOT NULL DEFAULT 0 CHECK (is_paragraph_start IN (0, 1)),
 			UNIQUE(story_id, position)
 		)`,
-		`ALTER TABLE words ADD COLUMN in_lexicon INTEGER NOT NULL DEFAULT 1`,
-		`ALTER TABLE stories DROP COLUMN word_glosses`,
-		`ALTER TABLE stories ADD COLUMN story_words_json TEXT NOT NULL DEFAULT '[]'`,
 		`CREATE TABLE IF NOT EXISTS token_usage (
 			id            INTEGER  PRIMARY KEY AUTOINCREMENT,
 			provider      TEXT     NOT NULL,
@@ -431,7 +429,7 @@ func seedDB(db *sql.DB) {
 	// Insert words, collecting word text → id for answer lookup.
 	wordStmt, err := tx.Prepare(`
 		INSERT INTO words
-			(word, reading, pitch_accent, part_of_speech, meaning, example_jp, example_en,
+			(base_word, reading, pitch_accent, part_of_speech, meaning, example_jp, example_en,
 			 drill_count, drill_target, incorrect_count,
 			 created_at, last_drilled_at, target_reached_at, is_katakana, kanji_data, image_path)
 		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)

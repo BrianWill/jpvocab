@@ -253,7 +253,7 @@ func getActivityCalendar(db *sql.DB) (activityCalendar, error) {
 	// Drilled entries — one entry per (word, date), marked wrong if any answer
 	// that day was wrong (MIN(correct) = 0 if any incorrect answer exists).
 	rows, err := db.Query(`
-		SELECT w.word, COALESCE(w.reading,''), COALESCE(w.meaning,''),
+		SELECT w.base_word, COALESCE(w.reading,''), COALESCE(w.meaning,''),
 		       MIN(da.correct), DATE(da.answered_at)
 		FROM drill_answers da
 		JOIN words w ON w.id = da.word_id
@@ -281,7 +281,7 @@ func getActivityCalendar(db *sql.DB) (activityCalendar, error) {
 
 	// Added entries — one entry per word on its creation date.
 	rows2, err := db.Query(`
-		SELECT word, COALESCE(reading,''), COALESCE(meaning,''), DATE(created_at)
+		SELECT base_word, COALESCE(reading,''), COALESCE(meaning,''), DATE(created_at)
 		FROM words
 		WHERE in_lexicon = 1
 		ORDER BY created_at
@@ -305,7 +305,7 @@ func getActivityCalendar(db *sql.DB) (activityCalendar, error) {
 
 	// Cleared entries — words that first reached their drill target on a given date.
 	rows3, err := db.Query(`
-		SELECT word, COALESCE(reading,''), COALESCE(meaning,''), DATE(target_reached_at)
+		SELECT base_word, COALESCE(reading,''), COALESCE(meaning,''), DATE(target_reached_at)
 		FROM words
 		WHERE in_lexicon = 1 AND target_reached_at IS NOT NULL
 		ORDER BY target_reached_at

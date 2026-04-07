@@ -436,8 +436,8 @@ func queryStories(db *sql.DB, whereClause string, args ...any) ([]storyJSON, err
 			inLexicon   int
 		}
 		lexRows, err := db.Query(
-			`SELECT id, word, drill_count, drill_target, COALESCE(meaning,''), COALESCE(reading,''), in_lexicon
-			 FROM words WHERE word IN (`+strings.Join(placeholders, ",")+`)`,
+			`SELECT id, base_word, drill_count, drill_target, COALESCE(meaning,''), COALESCE(reading,''), in_lexicon
+			 FROM words WHERE base_word IN (`+strings.Join(placeholders, ",")+`)`,
 			lexArgs...,
 		)
 		if err != nil {

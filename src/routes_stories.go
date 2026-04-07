@@ -30,6 +30,69 @@ func findStoryWord(story *storyJSON, baseWord, displayWord string) *storyWordJSO
 	return nil
 }
 
+func apiGetStories(db *sql.DB) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		stories, err := listStories(db)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		if stories == nil {
+			stories = []storyJSON{}
+		}
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(stories)
+	}
+}
+
+func apiGetStory(db *sql.DB) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		id, err := strconv.ParseInt(chi.URLParam(r, "id"), 10, 64)
+		if err != nil {
+			http.Error(w, "invalid story id", http.StatusBadRequest)
+			return
+		}
+		story, err := getStoryByID(db, id)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		if story == nil {
+			http.Error(w, "story not found", http.StatusNotFound)
+			return
+		}
+
+		// Remove any noted words whose base word is now in the lexicon.
+		lexiconSet := map[string]bool{}
+		for _, sentence := range story.Sentences {
+			for _, word := range sentence.Words {
+				if word.InLexicon {
+					lexiconSet[word.BaseWord] = true
+				}
+			}
+		}
+		var cleanedNoted []storyNotedWordJSON
+		changed := false
+		for _, nw := range story.NotedWords {
+			if lexiconSet[nw.BaseWord] {
+				changed = true
+			} else {
+				cleanedNoted = append(cleanedNoted, nw)
+			}
+		}
+		if changed {
+			if cleanedNoted == nil {
+				cleanedNoted = []storyNotedWordJSON{}
+			}
+			story.NotedWords = cleanedNoted
+			setStoryNotedWords(db, id, cleanedNoted) //nolint:errcheck
+		}
+
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(story)
+	}
+}
+
 func apiAddStoryNotedWord(db *sql.DB) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		id, err := strconv.ParseInt(chi.URLParam(r, "id"), 10, 64)

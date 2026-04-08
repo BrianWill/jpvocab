@@ -1,17 +1,51 @@
-import { PROVIDER_MODELS } from './common.js';
+import { PROVIDER_MODELS, playTts, WORD_TTS_RATE } from './common.js';
+
+// Topics suitable for N5–N3 learners. Each entry has a Japanese topic phrase and
+// an English label used to build the opening greeting.
+const FREE_TOPICS = [
+  { jp: '食べ物',         en: 'food'            },
+  { jp: '天気',           en: 'the weather'     },
+  { jp: '家族',           en: 'family'          },
+  { jp: '趣味',           en: 'hobbies'         },
+  { jp: '旅行',           en: 'travel'          },
+  { jp: '学校',           en: 'school'          },
+  { jp: '仕事',           en: 'work'            },
+  { jp: '音楽',           en: 'music'           },
+  { jp: '映画',           en: 'movies'          },
+  { jp: 'スポーツ',       en: 'sports'          },
+  { jp: '動物',           en: 'animals'         },
+  { jp: '季節',           en: 'the seasons'     },
+  { jp: '週末の予定',     en: 'weekend plans'   },
+  { jp: '好きな食べ物',   en: 'favorite foods'  },
+  { jp: '町',             en: 'your town'       },
+  { jp: '買い物',         en: 'shopping'        },
+  { jp: '健康',           en: 'health'          },
+  { jp: '色',             en: 'colors'          },
+];
+
+function randomFreeGreeting(note) {
+  const t = FREE_TOPICS[Math.floor(Math.random() * FREE_TOPICS.length)];
+  const obj = {
+    jp: `こんにちは！今日は${t.jp}について話しましょう！`,
+    en: `Hello! Let's talk about ${t.en} today!`,
+  };
+  if (note) obj.note = note;
+  return JSON.stringify(obj);
+}
 
 // Greetings are stored as JSON objects (same format as AI responses) so they
 // go through the same rendering pipeline and appear in history consistently.
+// greeting may be a string or a zero-arg function returning a string.
 const TUTOR_MODES = [
   {
     value:    'free',
     label:    'Conversation (Speaking)',
-    greeting: JSON.stringify({ jp: 'こんにちは！今日は何を話しましょうか？', en: 'Hello! What shall we talk about today?' }),
+    greeting: () => randomFreeGreeting(null),
   },
   {
     value:    'free-en',
     label:    'Conversation (Comprehension)',
-    greeting: JSON.stringify({ jp: 'こんにちは！今日は何を話しましょうか？', en: 'Hello! What shall we talk about today?', note: 'Read the Japanese above and reply in English to show you understood.' }),
+    greeting: () => randomFreeGreeting('Read the Japanese above and reply in English to show you understood.'),
   },
   {
     value:    'grammar',
@@ -127,14 +161,10 @@ function parseResponse(content) {
 const KNOWN_RESP_FIELDS = new Set(['jp', 'en', 'note', 'correction']);
 
 // Build the inner HTML for an assistant message bubble from a response object.
-// Renders in a fixed semantic order: correction → jp/en → note → other fields.
+// Renders in a fixed semantic order: jp/en → note → other fields.
+// Correction is rendered separately outside the bubble (see appendMessage).
 function responseToHTML(resp) {
   const parts = [];
-
-  if (resp.correction) {
-    const tip = resp.en ? ' data-tooltip="' + escHtml(resp.en) + '"' : '';
-    parts.push('<div class="tutor-seg tutor-seg--correction"' + tip + '>✓ ' + escHtml(resp.correction) + '</div>');
-  }
 
   if (resp.jp && resp.en) {
     parts.push('<div class="tutor-seg tutor-seg--jp" data-tooltip="' + escHtml(resp.en) + '">' + escHtml(resp.jp) + '</div>');
@@ -171,7 +201,30 @@ function appendMessage(role, content) {
   const bubble = document.createElement('div');
   bubble.className = 'tutor-bubble';
   if (role === 'assistant') {
-    bubble.innerHTML = responseToHTML(parseResponse(content));
+    const resp = parseResponse(content);
+    bubble.innerHTML = responseToHTML(resp);
+    if (resp.jp) {
+      const btn = document.createElement('button');
+      btn.className = 'tutor-play-btn';
+      btn.setAttribute('aria-label', 'Play Japanese');
+      btn.textContent = '▶';
+      btn.addEventListener('click', () => playTts(resp.jp, 'ja-JP', WORD_TTS_RATE));
+      row.appendChild(btn);
+      playTts(resp.jp, 'ja-JP', WORD_TTS_RATE);
+    }
+    if (resp.correction) {
+      // Fade the preceding user message
+      const userRows = els.messages.querySelectorAll('.tutor-message--user');
+      if (userRows.length > 0) userRows[userRows.length - 1].classList.add('tutor-message--faded');
+      // Insert correction row (right-aligned, styled differently from user bubble)
+      const corrRow = document.createElement('div');
+      corrRow.className = 'tutor-message tutor-message--user';
+      const corrBubble = document.createElement('div');
+      corrBubble.className = 'tutor-bubble tutor-bubble--correction';
+      corrBubble.textContent = resp.correction;
+      corrRow.appendChild(corrBubble);
+      els.messages.appendChild(corrRow);
+    }
   } else {
     bubble.textContent = content;
   }
@@ -259,7 +312,8 @@ function startNewChat() {
   state.history = [];
   state.systemPrompt = null; // invalidate cache; mode may have changed
   const mode = currentMode();
-  state.history.push({ role: 'assistant', content: mode.greeting });
+  const greeting = typeof mode.greeting === 'function' ? mode.greeting() : mode.greeting;
+  state.history.push({ role: 'assistant', content: greeting });
   renderAllMessages();
   // Tell the server to forget the old session so navigation restores this fresh chat.
   fetch('/api/tutor/session', { method: 'DELETE' });

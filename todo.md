@@ -5,14 +5,30 @@ This file is random notes of possible features and bug fixes.
 - add more common Japanese words to the word insertion blacklist
 
 - tutor:
-    - tutor's Japanese is spoken by TTS
     - tutor's Japanese is spoken by voicevox
+    - maybe your own prompts are spoken by voicevox? or just use TTS for own?
+        - use a different voice
+        - play the AI's correction?
+    - if AI provides a correction, your last message is faded and teh correction placed below it with new color
     - should warn users somehow about conversation getting too long (context collapse)
+    - button to suggest topics, sentences? 
+        maybe a separate AI request? 
+        pull from news? 
+        pull from stock set of topics?
+            try to fit topics with your vocabulary?
+    - button to have the AI write a message for the user
     - games:
         - describe what is in the picture
         - modes where the user only expected to answer in English
+    - how to integrate lexicon? 
+        generate topics / questions from a random set of recently drilled words? or from active words?
 
     - option to rewind chat? undo last prompt and response?
+    - menu to customize prompts
+        - add custome prompts?
+        - button to revert to default for a canned prompt
+    
+- typing trainer
 
 - story translation
     - separately send sentences and unique word list
@@ -25,12 +41,7 @@ This file is random notes of possible features and bug fixes.
     - on mac, cmd+-/+ does weird zoom behavior
         (but ctrl+scroll and ctrl+-/+ is fine)
 
-- chat tutor
-    - save and track chats?
-    - different skill prompts for the bot for different exercises
-    - responses are fed into voicevox
-    - maybe your own prompts are spoken by voicevox? or just use TTS for own?
-        - use a different voice
+
 
 - create more word lists
     - expand existing lists

@@ -1,4 +1,33 @@
-import { PROVIDER_MODELS, playTts, WORD_TTS_RATE } from './common.js';
+import { PROVIDER_MODELS, playTts, WORD_TTS_RATE, checkVoicevoxAvailable, getVoicevoxSettings } from './common.js';
+
+// ── VoiceVox / TTS playback ────────────────────────────────────────────────
+
+let _tutorAudio = null;
+
+// Plays Japanese text via VoiceVox if available, otherwise falls back to Web Speech TTS.
+async function playJp(text) {
+  const vvAvailable = await checkVoicevoxAvailable();
+  if (vvAvailable) {
+    const vv = getVoicevoxSettings();
+    try {
+      const resp = await fetch('/api/voicevox/preview', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text, speaker: vv.speaker, speedScale: vv.speedScale, intonationScale: vv.intonationScale }),
+      });
+      if (!resp.ok) throw new Error('voicevox unavailable');
+      const blob = await resp.blob();
+      const url = URL.createObjectURL(blob);
+      if (_tutorAudio) { _tutorAudio.pause(); URL.revokeObjectURL(_tutorAudio.src); }
+      speechSynthesis.cancel();
+      _tutorAudio = new Audio(url);
+      _tutorAudio.addEventListener('ended', () => { URL.revokeObjectURL(url); _tutorAudio = null; });
+      _tutorAudio.play();
+      return;
+    } catch (_) { /* fall through to Web Speech */ }
+  }
+  playTts(text, 'ja-JP', WORD_TTS_RATE);
+}
 
 // Topics suitable for N5–N3 learners. Each entry has a Japanese topic phrase and
 // an English label used to build the opening greeting.
@@ -208,9 +237,9 @@ function appendMessage(role, content) {
       btn.className = 'tutor-play-btn';
       btn.setAttribute('aria-label', 'Play Japanese');
       btn.textContent = '▶';
-      btn.addEventListener('click', () => playTts(resp.jp, 'ja-JP', WORD_TTS_RATE));
+      btn.addEventListener('click', () => playJp(resp.jp));
       row.appendChild(btn);
-      playTts(resp.jp, 'ja-JP', WORD_TTS_RATE);
+      playJp(resp.jp);
     }
     if (resp.correction) {
       // Fade the preceding user message
@@ -409,11 +438,12 @@ async function init() {
     '<option value="' + m.value + '">' + m.label + '</option>'
   ).join('');
 
-  // Fetch providers and saved session in parallel
+  // Fetch providers, saved session, and VoiceVox availability in parallel
   const [providersResp, sessionResp] = await Promise.allSettled([
     fetch('/api/providers').then(r => r.json()),
     fetch('/api/tutor/session').then(r => r.json()),
   ]);
+  checkVoicevoxAvailable(); // warm cache; no need to await
 
   state.providers = providersResp.status === 'fulfilled' ? (providersResp.value.ai || {}) : {};
   const session   = sessionResp.status === 'fulfilled'   ? sessionResp.value : {};

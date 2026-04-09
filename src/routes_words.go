@@ -582,6 +582,57 @@ func synthesizeVoicevoxToFile(ctx context.Context, text string, p voicevoxParams
 	return os.WriteFile(destPath, ogg, 0o644)
 }
 
+// apiSynthesizeSentence synthesizes a single sentence via VoiceVox and returns OGG audio.
+// The full sentence text is submitted as-is (no clause splitting at this stage).
+func apiSynthesizeSentence() http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		var body struct {
+			Text            string   `json:"text"`
+			Speaker         *int     `json:"speaker"`
+			SpeedScale      *float64 `json:"speedScale"`
+			IntonationScale *float64 `json:"intonationScale"`
+		}
+		if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+			http.Error(w, "bad request", http.StatusBadRequest)
+			return
+		}
+		text := strings.TrimSpace(body.Text)
+		if text == "" {
+			http.Error(w, "text is required", http.StatusBadRequest)
+			return
+		}
+		p := defaultVoicevoxParams()
+		if body.Speaker != nil {
+			p.Speaker = *body.Speaker
+		}
+		if body.SpeedScale != nil {
+			p.SpeedScale = *body.SpeedScale
+		}
+		if body.IntonationScale != nil {
+			p.IntonationScale = *body.IntonationScale
+		}
+		wav, err := synthesizeVoicevox(r.Context(), text, p)
+		if err != nil {
+			if r.Context().Err() != nil {
+				return
+			}
+			http.Error(w, "voicevox error: "+err.Error(), http.StatusBadGateway)
+			return
+		}
+		ogg, err := wavToOgg(r.Context(), wav)
+		if err != nil {
+			if r.Context().Err() != nil {
+				return
+			}
+			http.Error(w, "ffmpeg error: "+err.Error(), http.StatusInternalServerError)
+			return
+		}
+		w.Header().Set("Content-Type", "audio/ogg")
+		w.Header().Set("Cache-Control", "no-store")
+		w.Write(ogg) //nolint:errcheck
+	}
+}
+
 func apiFfmpegAvailable() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		_, err := exec.LookPath("ffmpeg")

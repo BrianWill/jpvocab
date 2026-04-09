@@ -111,6 +111,7 @@ func serverInit(db *sql.DB) {
 
 	r.Get("/api/voicevox/speakers", apiVoicevoxSpeakers())
 	r.Post("/api/voicevox/preview", apiVoicevoxPreview())
+	r.Post("/api/voicevox/synthesize", apiSynthesizeSentence())
 	r.Get("/api/ffmpeg/available", apiFfmpegAvailable())
 
 	r.Get("/api/kanji", apiGetKanji(db))

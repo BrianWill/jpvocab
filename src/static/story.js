@@ -2,7 +2,7 @@ import { getTtsVoice, getVoicevoxSettings, checkVoicevoxAvailable, playDing, PRO
 import { esc } from './lexicon-utils.js';
 import { initGenerateModals, populateTranslationModelSelect } from './story-generate.js';
 import { initStoryAddToLexicon, addWordsToLexicon } from './story-add-to-lexicon.js';
-import { initPlayback, applyAudioState, showSentencePlayBtn, scheduleSentencePlayHide, hideSentencePlayBtn, cancelSentencePlayHide, stopPlayback } from './story-playback.js';
+import { initPlayback, initSynthPlayback, applyAudioState, showSentencePlayBtn, scheduleSentencePlayHide, hideSentencePlayBtn, cancelSentencePlayHide, stopPlayback } from './story-playback.js';
 
 // ── DOM refs ──────────────────────────────────────────────────────────────────
 const els = {
@@ -66,6 +66,7 @@ const state = {
   activeIdx: -1,
   audioEl: null,
   audioMode: false,
+  synthMode: false,
   audioSentenceIdx: 0,
   currentUtterance: null,
   generateController: null,
@@ -388,9 +389,10 @@ function renderStory(story) {
   els.storyContent.appendChild(endMark);
   renderNotedWords();
 
-  // Enable generate audio button if VoiceVox is available.
+  // Enable generate audio button if VoiceVox is available; also enable synth-mode playback.
   checkVoicevoxAvailable().then(available => {
     els.genBtn.disabled = !available;
+    if (available) initSynthPlayback();
   });
 
   // Enable generate translation button if AI providers are available.

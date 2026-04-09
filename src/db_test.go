@@ -1063,6 +1063,12 @@ func TestInsertStory_AndListStories(t *testing.T) {
 	if len(story.Sentences) != 2 {
 		t.Fatalf("expected 2 sentences, got %d", len(story.Sentences))
 	}
+	if len(story.Chunks) != 1 {
+		t.Fatalf("expected 1 chunk, got %d", len(story.Chunks))
+	}
+	if len(story.Chunks[0].Sentences) != 2 {
+		t.Fatalf("expected chunk to contain 2 sentences, got %d", len(story.Chunks[0].Sentences))
+	}
 	if story.Sentences[0].Position != 1 || story.Sentences[1].Position != 2 {
 		t.Errorf("positions: got %+v", story.Sentences)
 	}
@@ -1250,6 +1256,26 @@ func TestBuildStorySentenceWords_TokenizesDisplayAndBaseForms(t *testing.T) {
 	}
 	if !foundPeriod {
 		t.Error("expected punctuation token in story words")
+	}
+}
+
+func TestBuildStoryChunks_SplitsAfterMinimumChars(t *testing.T) {
+	longWord := strings.Repeat("あ", 260)
+	sentences := []storySentenceInput{
+		{Words: []storyWordInput{{DisplayWord: longWord + "。", BaseWord: longWord + "。"}}, IsParagraphStart: true},
+		{Words: []storyWordInput{{DisplayWord: longWord + "。", BaseWord: longWord + "。"}}},
+		{Words: []storyWordInput{{DisplayWord: "短いです。", BaseWord: "短いです。"}}},
+	}
+
+	chunks := buildStoryChunks(sentences)
+	if len(chunks) != 2 {
+		t.Fatalf("expected 2 chunks, got %d", len(chunks))
+	}
+	if len(chunks[0].Sentences) != 2 {
+		t.Fatalf("expected first chunk to hold 2 sentences, got %d", len(chunks[0].Sentences))
+	}
+	if len(chunks[1].Sentences) != 1 {
+		t.Fatalf("expected second chunk to hold 1 sentence, got %d", len(chunks[1].Sentences))
 	}
 }
 

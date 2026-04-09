@@ -9,11 +9,15 @@ This file is random notes of possible features and bug fixes.
     - English prompt modes should 
 
 - drill
+    - pre-cache voicevox audio for next several words
     - modal to edit current word
         - sidebar, edit button appears when hovered
 
 - stories:
-    support English stories that get translated into Japanese (sentence by sentence)
+    - display story stats for whole story: sentence count, total word count, unique word count
+        - compute total word counta and unique word count when story is added
+    - load chunks progressively as you scroll
+    - support English stories that get translated into Japanese (sentence by sentence)
         in this setup, going for decent natural translations by chunk rather than by sentence?
             if so, need to also translate back to English sentence-by-sentence to get gloss of each Japanese sentence
     - long story support

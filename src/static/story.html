@@ -38,7 +38,7 @@
     </div>
     <div class="modal-body" style="padding:1.25rem 1.5rem">
       <div id="gen-translation-confirm-body">
-        <p style="color:#cdd6f4;line-height:1.6">Generate English sentence translations for this story using AI?<br>
+        <p id="gen-translation-copy" style="color:#cdd6f4;line-height:1.6">Generate English sentence translations for this chunk using AI?<br>
         Any existing translations will be replaced.</p>
         <div class="gen-translation-model-row">
           <label class="gen-translation-model-label">AI provider</label>
@@ -98,9 +98,7 @@
             <div class="story-top-bar-left">
               <a class="story-back-link" href="/stories">← Back to stories</a>
             </div>
-            <div class="story-top-bar-actions">
-              <button class="btn-save story-gen-btn" id="story-gen-translation-btn" disabled>Generate translation</button>
-            </div>
+            <div class="story-top-bar-actions"></div>
           </div>
           <div id="story-content" class="story-content"></div>
           <p id="story-error" class="story-error" hidden>Could not load this story.</p>

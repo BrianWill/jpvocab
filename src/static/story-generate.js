@@ -48,7 +48,13 @@ function setTranslationModalGenerating(generating) {
   _els.genTranslationModalClose.disabled = generating;
 }
 
-function openTranslationModal() {
+export function openTranslationModal(chunkId = null, chunkLabel = '') {
+  _state.translationChunkId = chunkId || null;
+  _state.translationChunkLabel = chunkLabel || '';
+  if (_els.genTranslationCopy) {
+    const target = _state.translationChunkLabel || 'this chunk';
+    _els.genTranslationCopy.innerHTML = `Generate English sentence translations for ${target} using AI?<br>Any existing translations will be replaced.`;
+  }
   setTranslationModalGenerating(false);
   _els.genTranslationModalBackdrop.classList.remove('hidden');
 }
@@ -66,7 +72,9 @@ export function initGenerateModals(els, state, { storyId, onTranslationDone, sto
   _onTranslationDone = onTranslationDone;
   _stopPlayback = stopPlayback;
 
-  els.genTranslationBtn.addEventListener('click', openTranslationModal);
+  if (els.genTranslationBtn) {
+    els.genTranslationBtn.addEventListener('click', () => openTranslationModal(null, 'this story'));
+  }
   els.genTranslationModalClose.addEventListener('click', closeTranslationModal);
   els.genTranslationModalCancel.addEventListener('click', closeTranslationModal);
   els.genTranslationModalCancelGen.addEventListener('click', () => {
@@ -111,14 +119,14 @@ export function initGenerateModals(els, state, { storyId, onTranslationDone, sto
       return done;
     };
 
-    _els.genTranslationStatusText.textContent = 'Generating…';
+    _els.genTranslationStatusText.textContent = _state.translationChunkLabel ? `Generating ${_state.translationChunkLabel}…` : 'Generating…';
 
     const runPhase = async (url, onMsg) => {
       try {
         const res = await fetch(url, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ ai_model: aiModel }),
+          body: JSON.stringify({ ai_model: aiModel, chunk_id: _state.translationChunkId }),
           signal: _state.translationController.signal,
         });
         return await readNDJSON(res, onMsg);

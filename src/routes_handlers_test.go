@@ -410,6 +410,9 @@ func TestAPICreateStory_Success(t *testing.T) {
 	if len(story.Sentences) != 3 {
 		t.Fatalf("sentences: got %d, want 3", len(story.Sentences))
 	}
+	if len(story.Chunks) != 1 {
+		t.Fatalf("chunks: got %d, want 1", len(story.Chunks))
+	}
 	if !story.Sentences[0].IsParagraphStart {
 		t.Fatal("sentence 1 should start a paragraph")
 	}
@@ -449,6 +452,38 @@ func TestAPIGetStory_ReturnsStoryByID(t *testing.T) {
 	}
 	if story.Title != title {
 		t.Errorf("title: got %q, want %q", story.Title, title)
+	}
+	if len(story.Chunks) != 1 {
+		t.Errorf("chunks: got %d, want 1", len(story.Chunks))
+	}
+}
+
+func TestAPICreateStory_SplitsLongStoryIntoChunks(t *testing.T) {
+	db := testDB(t)
+	longSentenceA := strings.Repeat("あ", 260) + "。"
+	longSentenceB := strings.Repeat("い", 260) + "。"
+	longSentenceC := strings.Repeat("う", 260) + "。"
+	body := "{\"title\":\"Long Story\",\"content\":\"" + longSentenceA + longSentenceB + longSentenceC + "\"}"
+	req := httptest.NewRequest(http.MethodPost, "/api/stories", bytes.NewBufferString(body))
+	rec := httptest.NewRecorder()
+
+	apiCreateStory(db).ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusCreated {
+		t.Fatalf("status: got %d, want %d", rec.Code, http.StatusCreated)
+	}
+	var story storyJSON
+	if err := json.NewDecoder(rec.Body).Decode(&story); err != nil {
+		t.Fatal(err)
+	}
+	if len(story.Chunks) != 2 {
+		t.Fatalf("chunks: got %d, want 2", len(story.Chunks))
+	}
+	if len(story.Chunks[0].Sentences) != 2 {
+		t.Fatalf("chunk 1 sentences: got %d, want 2", len(story.Chunks[0].Sentences))
+	}
+	if len(story.Chunks[1].Sentences) != 1 {
+		t.Fatalf("chunk 2 sentences: got %d, want 1", len(story.Chunks[1].Sentences))
 	}
 }
 

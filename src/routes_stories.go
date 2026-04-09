@@ -270,6 +270,14 @@ func storySentenceText(s storySentenceJSON) string {
 	return strings.Join(parts, "")
 }
 
+func findStoryChunk(story *storyJSON, chunkID int64) *storyChunkJSON {
+	for i := range story.Chunks {
+		if story.Chunks[i].ID == chunkID {
+			return &story.Chunks[i]
+		}
+	}
+	return nil
+}
 
 // apiGenerateStoryTranslation calls an AI provider to translate all sentences in the
 // story. Streams NDJSON:
@@ -286,6 +294,7 @@ func apiGenerateStoryTranslation(db *sql.DB) http.HandlerFunc {
 
 		var body struct {
 			AIModel string `json:"ai_model"`
+			ChunkID int64  `json:"chunk_id"`
 		}
 		if err := json.NewDecoder(r.Body).Decode(&body); err != nil || body.AIModel == "" {
 			http.Error(w, "ai_model is required", http.StatusBadRequest)
@@ -302,9 +311,19 @@ func apiGenerateStoryTranslation(db *sql.DB) http.HandlerFunc {
 			return
 		}
 
+		targetSentences := story.Sentences
+		if body.ChunkID > 0 {
+			chunk := findStoryChunk(story, body.ChunkID)
+			if chunk == nil {
+				http.Error(w, "story chunk not found", http.StatusBadRequest)
+				return
+			}
+			targetSentences = chunk.Sentences
+		}
+
 		var sentenceTexts []string
 		var sentenceIDs []int64
-		for _, s := range story.Sentences {
+		for _, s := range targetSentences {
 			text := storySentenceText(s)
 			if strings.TrimSpace(text) == "" {
 				continue
@@ -317,6 +336,7 @@ func apiGenerateStoryTranslation(db *sql.DB) http.HandlerFunc {
 		streamEvent(map[string]any{
 			"status":        "translating",
 			"sentenceCount": len(sentenceTexts),
+			"chunkId":       body.ChunkID,
 		})
 
 		done := make(chan struct{})
@@ -369,6 +389,7 @@ func apiGenerateStoryWordInfo(db *sql.DB) http.HandlerFunc {
 
 		var body struct {
 			AIModel string `json:"ai_model"`
+			ChunkID int64  `json:"chunk_id"`
 		}
 		if err := json.NewDecoder(r.Body).Decode(&body); err != nil || body.AIModel == "" {
 			http.Error(w, "ai_model is required", http.StatusBadRequest)
@@ -387,15 +408,25 @@ func apiGenerateStoryWordInfo(db *sql.DB) http.HandlerFunc {
 
 		streamEvent := newNDJSONStreamer(w)
 
-		if len(story.StoryWords) == 0 {
+		targetStoryWords := story.StoryWords
+		if body.ChunkID > 0 {
+			chunk := findStoryChunk(story, body.ChunkID)
+			if chunk == nil {
+				http.Error(w, "story chunk not found", http.StatusBadRequest)
+				return
+			}
+			targetStoryWords = chunk.StoryWords
+		}
+
+		if len(targetStoryWords) == 0 {
 			streamEvent(map[string]bool{"allDone": true})
 			return
 		}
 
 		// Find story words that have no word info at all yet.
-		placeholders := make([]string, len(story.StoryWords))
-		args := make([]any, len(story.StoryWords))
-		for i, bw := range story.StoryWords {
+		placeholders := make([]string, len(targetStoryWords))
+		args := make([]any, len(targetStoryWords))
+		for i, bw := range targetStoryWords {
 			placeholders[i] = "?"
 			args[i] = bw
 		}
@@ -437,6 +468,7 @@ func apiGenerateStoryWordInfo(db *sql.DB) http.HandlerFunc {
 		streamEvent(map[string]any{
 			"status":    "autofilling",
 			"wordCount": len(wordsToFill),
+			"chunkId":   body.ChunkID,
 		})
 
 		done := make(chan struct{})

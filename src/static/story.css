@@ -378,6 +378,20 @@
   background: #89b4fa;
 }
 
+.sentence-play-btn--loading {
+  background: rgba(137, 180, 250, 0.5);
+  cursor: wait;
+}
+
+@keyframes synth-spin {
+  to { transform: rotate(360deg); }
+}
+
+.synth-spinner {
+  animation: synth-spin 0.7s linear infinite;
+  transform-origin: center;
+}
+
 .story-end-mark {
   margin-top: 3rem;
   text-align: center;

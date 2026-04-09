@@ -2,20 +2,10 @@ import { getTtsVoice, getVoicevoxSettings, checkVoicevoxAvailable, playDing, PRO
 import { esc } from './lexicon-utils.js';
 import { initGenerateModals, populateTranslationModelSelect } from './story-generate.js';
 import { initStoryAddToLexicon, addWordsToLexicon } from './story-add-to-lexicon.js';
-import { initPlayback, initSynthPlayback, applyAudioState, showSentencePlayBtn, scheduleSentencePlayHide, hideSentencePlayBtn, cancelSentencePlayHide, stopPlayback } from './story-playback.js';
+import { initPlayback, initSynthPlayback, showSentencePlayBtn, scheduleSentencePlayHide, hideSentencePlayBtn, cancelSentencePlayHide, stopPlayback } from './story-playback.js';
 
 // ── DOM refs ──────────────────────────────────────────────────────────────────
 const els = {
-  genBtn: document.getElementById('story-gen-btn'),
-  genCancelGenerationBtn: document.getElementById('story-gen-cancel-generation-btn'),
-  genConfirmBody: document.getElementById('gen-confirm-body'),
-  genModalBackdrop: document.getElementById('story-gen-modal-backdrop'),
-  genModalCancel: document.getElementById('story-gen-modal-cancel'),
-  genModalConfirm: document.getElementById('story-gen-modal-confirm'),
-  genModalDone: document.getElementById('story-gen-modal-done'),
-  genProgressBody: document.getElementById('gen-progress-body'),
-  genProgressCount: document.getElementById('gen-progress-count'),
-  genSentenceList: document.getElementById('gen-sentence-list'),
   genTranslationBtn: document.getElementById('story-gen-translation-btn'),
   genTranslationConfirmBody: document.getElementById('gen-translation-confirm-body'),
   genTranslationModalBackdrop: document.getElementById('story-gen-translation-modal-backdrop'),
@@ -47,7 +37,6 @@ const els = {
   playbackBtn: document.getElementById('story-playback-btn'),
   playbackIcon: document.getElementById('story-playback-icon'),
 };
-els.genModalClose = els.genModalBackdrop.querySelector('.modal-close');
 els.genTranslationModalClose = els.genTranslationModalBackdrop.querySelector('.modal-close');
 
 // Floating sentence-play button (created dynamically; positioned via JS)
@@ -65,12 +54,11 @@ els.genTranslationModalClose = els.genTranslationModalBackdrop.querySelector('.m
 const state = {
   activeIdx: -1,
   audioEl: null,
-  audioMode: false,
   synthMode: false,
+  synthLoadingIdx: -1,
+  synthGeneration: 0,
   audioSentenceIdx: 0,
   currentUtterance: null,
-  generateController: null,
-  generating: false,
   hoveredWord: null,
   notedWords: [],
   notedWordsOpen: false,
@@ -80,13 +68,9 @@ const state = {
   updatingNotedWords: false,
   lastWordAbsPos: 0,
   resumeOffset: 0,
-  seekbarDragging: false,
-  sentenceCumulative: [],
-  sentenceDurations: [],
   sentenceOffsets: [],
   sentenceSpans: [],
   story: null,
-  totalDurationMs: 0,
   wordTokenMetas: [],
   playbackRate: 1.0,
   speechText: '',
@@ -389,9 +373,8 @@ function renderStory(story) {
   els.storyContent.appendChild(endMark);
   renderNotedWords();
 
-  // Enable generate audio button if VoiceVox is available; also enable synth-mode playback.
+  // Enable synth-mode playback if VoiceVox is available.
   checkVoicevoxAvailable().then(available => {
-    els.genBtn.disabled = !available;
     if (available) initSynthPlayback();
   });
 
@@ -402,7 +385,6 @@ function renderStory(story) {
     els.genTranslationBtn.disabled = !hasAny;
   }
 
-  applyAudioState(story);
 }
 
 function renderError() {
@@ -415,7 +397,6 @@ initStoryAddToLexicon().catch(() => {});
 
 initGenerateModals(els, state, {
   storyId: STORY_ID,
-  onAudioDone: applyAudioState,
   onTranslationDone: renderStory,
   stopPlayback,
 });

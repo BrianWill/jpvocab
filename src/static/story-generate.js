@@ -1,84 +1,6 @@
-import { PROVIDER_MODELS, getVoicevoxSettings, playDing } from './common.js';
+import { PROVIDER_MODELS, playDing } from './common.js';
 
-let _els, _state, _storyId, _onAudioDone, _onTranslationDone, _stopPlayback;
-
-// ── Generate audio modal ──────────────────────────────────────────────────────
-function openGenModal() {
-  _stopPlayback();
-  // Always reset to confirmation state when opening.
-  setModalGenerating(false);
-  _els.genModalBackdrop.classList.remove('hidden');
-}
-
-function closeGenModal() {
-  if (_state.generating) return;
-  _els.genModalBackdrop.classList.add('hidden');
-}
-
-function setModalGenerating(generating) {
-  _state.generating = generating;
-  _els.genConfirmBody.classList.toggle('hidden', generating);
-  _els.genProgressBody.classList.toggle('hidden', !generating);
-  _els.genModalCancel.classList.toggle('hidden', generating);
-  _els.genModalConfirm.classList.toggle('hidden', generating);
-  _els.genCancelGenerationBtn.classList.toggle('hidden', !generating);
-  _els.genModalDone.classList.add('hidden');
-  _els.genModalClose.disabled = generating;
-}
-
-function buildSentenceList() {
-  _els.genSentenceList.innerHTML = '';
-  for (const sentence of _state.story.sentences) {
-    const text = sentence.words.map(w => w.displayWord).join('');
-    const preview = text.length > 35 ? text.slice(0, 35) + '…' : text;
-
-    const row = document.createElement('div');
-    row.className = 'gen-sentence-row';
-    row.id = `gen-row-${sentence.position}`;
-
-    const icon = document.createElement('span');
-    icon.className = 'gen-sentence-icon';
-    const dot = document.createElement('span');
-    dot.className = 'gen-pending-dot';
-    icon.appendChild(dot);
-
-    const previewEl = document.createElement('span');
-    previewEl.className = 'gen-sentence-preview';
-    previewEl.textContent = preview;
-
-    row.appendChild(icon);
-    row.appendChild(previewEl);
-    _els.genSentenceList.appendChild(row);
-  }
-}
-
-function setRowActive(position) {
-  const row = document.getElementById(`gen-row-${position}`);
-  if (!row) return;
-  row.classList.add('gen-sentence-row--active');
-  const icon = row.querySelector('.gen-sentence-icon');
-  icon.innerHTML = '<span class="spinner"></span>';
-  row.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
-}
-
-function setRowDone(position) {
-  const row = document.getElementById(`gen-row-${position}`);
-  if (!row) return;
-  row.classList.remove('gen-sentence-row--active');
-  row.classList.add('gen-sentence-row--done');
-  const icon = row.querySelector('.gen-sentence-icon');
-  icon.innerHTML = '<span class="gen-checkmark">✓</span>';
-}
-
-function markNextRowActive(donePosition) {
-  const positions = _state.story.sentences.map(s => s.position);
-  const idx = positions.indexOf(donePosition);
-  if (idx < 0 || idx + 1 >= positions.length) return;
-  const nextRow = document.getElementById(`gen-row-${positions[idx + 1]}`);
-  if (nextRow && !nextRow.classList.contains('gen-sentence-row--done')) {
-    setRowActive(positions[idx + 1]);
-  }
-}
+let _els, _state, _storyId, _onTranslationDone, _stopPlayback;
 
 // ── Generate translation modal ────────────────────────────────────────────────
 export function populateTranslationModelSelect(providers) {
@@ -137,11 +59,10 @@ function closeTranslationModal() {
 }
 
 // ── Init ──────────────────────────────────────────────────────────────────────
-export function initGenerateModals(els, state, { storyId, onAudioDone, onTranslationDone, stopPlayback }) {
+export function initGenerateModals(els, state, { storyId, onTranslationDone, stopPlayback }) {
   _els = els;
   _state = state;
   _storyId = storyId;
-  _onAudioDone = onAudioDone;
   _onTranslationDone = onTranslationDone;
   _stopPlayback = stopPlayback;
 
@@ -190,9 +111,6 @@ export function initGenerateModals(els, state, { storyId, onAudioDone, onTransla
       return done;
     };
 
-    let phase1Done = false;
-    let phase2Done = false;
-
     _els.genTranslationStatusText.textContent = 'Generating…';
 
     const runPhase = async (url, onMsg) => {
@@ -209,7 +127,7 @@ export function initGenerateModals(els, state, { storyId, onAudioDone, onTransla
       }
     };
 
-    [phase1Done, phase2Done] = await Promise.all([
+    const [phase1Done, phase2Done] = await Promise.all([
       runPhase(`/api/stories/${_storyId}/generate-translation`, () => {}),
       runPhase(`/api/stories/${_storyId}/generate-word-info`, () => {}),
     ]);
@@ -234,93 +152,4 @@ export function initGenerateModals(els, state, { storyId, onAudioDone, onTransla
   });
 
   els.genTranslationModalDone.addEventListener('click', closeTranslationModal);
-
-  els.genBtn.addEventListener('click', openGenModal);
-  els.genModalClose.addEventListener('click', closeGenModal);
-  els.genModalCancel.addEventListener('click', closeGenModal);
-  els.genModalBackdrop.addEventListener('click', e => { if (e.target === els.genModalBackdrop) closeGenModal(); });
-
-  els.genModalConfirm.addEventListener('click', async () => {
-    if (_state.generateController) return;
-
-    const vv = getVoicevoxSettings();
-    _state.generateController = new AbortController();
-
-    const total = _state.story?.sentences.length ?? 0;
-    let completed = 0;
-
-    function updateProgressCount() {
-      _els.genProgressCount.textContent = `${completed} / ${total} sentences`;
-    }
-
-    buildSentenceList();
-    setModalGenerating(true);
-    updateProgressCount();
-    if (total > 0) {
-      setRowActive(_state.story.sentences[0].position);
-    }
-
-    let allDone = false;
-    try {
-      const res = await fetch(`/api/stories/${_storyId}/generate-audio`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ speaker: vv.speaker, speedScale: vv.speedScale, intonationScale: vv.intonationScale }),
-        signal: _state.generateController.signal,
-      });
-
-      if (res.ok) {
-        const reader = res.body.getReader();
-        const decoder = new TextDecoder();
-        let buf = '';
-        outer: while (true) {
-          let value, done;
-          try { ({ value, done } = await reader.read()); } catch (_) { break; }
-          if (done) break;
-          buf += decoder.decode(value, { stream: true });
-          const lines = buf.split('\n');
-          buf = lines.pop();
-          for (const line of lines) {
-            if (!line.trim()) continue;
-            let msg;
-            try { msg = JSON.parse(line); } catch (_) { continue; }
-            if (msg.sentencePosition !== undefined) {
-              completed++;
-              updateProgressCount();
-              setRowDone(msg.sentencePosition);
-              markNextRowActive(msg.sentencePosition);
-            } else if (msg.allDone) {
-              allDone = true;
-              break outer;
-            }
-          }
-        }
-      }
-    } catch (_) {
-      // Aborted or network error.
-    }
-
-    _state.generateController = null;
-
-    if (allDone) {
-      playDing();
-      // Unlock the modal so the user can close it manually; keep the progress view visible.
-      _state.generating = false;
-      _els.genCancelGenerationBtn.classList.add('hidden');
-      _els.genModalDone.classList.remove('hidden');
-      _els.genModalClose.disabled = false;
-      const updated = await fetch(`/api/stories/${_storyId}`).then(r => r.json());
-      _onAudioDone(updated);
-    } else {
-      // Cancelled or error — close and reset immediately.
-      setModalGenerating(false);
-      closeGenModal();
-    }
-  });
-
-  els.genCancelGenerationBtn.addEventListener('click', () => {
-    _state.generateController?.abort();
-  });
-
-  els.genModalDone.addEventListener('click', closeGenModal);
 }

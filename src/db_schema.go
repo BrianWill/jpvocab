@@ -29,9 +29,34 @@ func initDB(path string) *sql.DB {
 	return db
 }
 
+// dropColumnIfExists drops a column only when it is present, working around
+// SQLite's lack of "ALTER TABLE … DROP COLUMN IF EXISTS".
+func dropColumnIfExists(db *sql.DB, table, column string) error {
+	rows, err := db.Query(fmt.Sprintf("PRAGMA table_info(%q)", table))
+	if err != nil {
+		return err
+	}
+	defer rows.Close()
+	for rows.Next() {
+		var cid int
+		var name, typ string
+		var notNull, pk int
+		var dflt any
+		if err := rows.Scan(&cid, &name, &typ, &notNull, &dflt, &pk); err != nil {
+			return err
+		}
+		if name == column {
+			_, err = db.Exec(fmt.Sprintf("ALTER TABLE %q DROP COLUMN %q", table, column))
+			return err
+		}
+	}
+	return rows.Err() // column absent — nothing to do
+}
+
 func migrate(db *sql.DB) {
 	// Each entry runs exactly once; user_version tracks how many have been applied.
-	migrations := []string{
+	// Each element is either a SQL string or a func(*sql.DB) error.
+	migrations := []any{
 		`CREATE TABLE IF NOT EXISTS words (
 			id                INTEGER  PRIMARY KEY AUTOINCREMENT,
 			base_word         TEXT     NOT NULL UNIQUE,
@@ -77,13 +102,11 @@ func migrate(db *sql.DB) {
 			value TEXT NOT NULL
 		)`,
 		`CREATE TABLE IF NOT EXISTS stories (
-			id         INTEGER  PRIMARY KEY AUTOINCREMENT,
-			title      TEXT     NOT NULL,
-			audio_path TEXT,
-			has_audio INTEGER NOT NULL DEFAULT 0,
-			story_words_json TEXT NOT NULL DEFAULT '[]',
-			noted_words_json TEXT NOT NULL DEFAULT '[]',
-			created_at DATETIME NOT NULL DEFAULT (datetime('now'))
+			id               INTEGER  PRIMARY KEY AUTOINCREMENT,
+			title            TEXT     NOT NULL,
+			story_words_json TEXT     NOT NULL DEFAULT '[]',
+			noted_words_json TEXT     NOT NULL DEFAULT '[]',
+			created_at       DATETIME NOT NULL DEFAULT (datetime('now'))
 		)`,
 		`CREATE TABLE IF NOT EXISTS story_sentences (
 			id                 INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -91,7 +114,6 @@ func migrate(db *sql.DB) {
 			position           INTEGER NOT NULL,
 			words_json         TEXT    NOT NULL,
 			english_text       TEXT,
-			audio_duration_ms INTEGER,
 			is_paragraph_start INTEGER NOT NULL DEFAULT 0 CHECK (is_paragraph_start IN (0, 1)),
 			UNIQUE(story_id, position)
 		)`,
@@ -122,7 +144,14 @@ func migrate(db *sql.DB) {
 		if i < version {
 			continue
 		}
-		if _, err := db.Exec(m); err != nil {
+		var err error
+		switch fn := m.(type) {
+		case string:
+			_, err = db.Exec(fn)
+		case func(*sql.DB) error:
+			err = fn(db)
+		}
+		if err != nil {
 			log.Fatalf("migrate %d: %v", i+1, err)
 		}
 		db.Exec(fmt.Sprintf("PRAGMA user_version = %d", i+1))
@@ -379,7 +408,6 @@ type seedStorySentence struct {
 
 type seedStory struct {
 	Title     string              `json:"title"`
-	AudioPath *string             `json:"audio_path"`
 	Sentences []seedStorySentence `json:"sentences"`
 }
 
@@ -557,7 +585,7 @@ func seedDB(db *sql.DB) {
 				IsParagraphStart: sentence.IsParagraphStart,
 			})
 		}
-		if _, err := insertStoryTx(tx, story.Title, story.AudioPath, sentences); err != nil {
+		if _, err := insertStoryTx(tx, story.Title, sentences); err != nil {
 			tx.Rollback()
 			log.Fatal("seed: insert story:", err)
 		}

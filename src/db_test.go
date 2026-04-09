@@ -1013,14 +1013,13 @@ func TestDeleteWordsByName(t *testing.T) {
 func TestInsertStory_AndListStories(t *testing.T) {
 	db := testDB(t)
 	title := "足立美術館の庭園"
-	audioPath := "audio/stories/morning.ogg"
 	en1 := "Good morning."
 	en2 := "Let's do our best today too."
 	ts1 := int64(0)
 	ts2 := int64(700)
 	ts3 := int64(2450)
 
-	id, err := insertStory(db, title, &audioPath, []storySentenceInput{
+	id, err := insertStory(db, title, []storySentenceInput{
 		{
 			Words: []storyWordInput{
 				{DisplayWord: "おはよう", BaseWord: "おはよう", AudioTimestampMs: &ts1},
@@ -1057,9 +1056,6 @@ func TestInsertStory_AndListStories(t *testing.T) {
 	if story.Title != title {
 		t.Errorf("title: got %q, want %q", story.Title, title)
 	}
-	if story.AudioPath == nil || *story.AudioPath != audioPath {
-		t.Errorf("audio_path: got %+v", story.AudioPath)
-	}
 	if story.CreatedAt == "" {
 		t.Fatal("expected created_at timestamp")
 	}
@@ -1093,7 +1089,7 @@ func TestInsertStory_AndListStories(t *testing.T) {
 func TestInsertStory_RequiresAtLeastOneSentence(t *testing.T) {
 	db := testDB(t)
 
-	_, err := insertStory(db, "No sentences", nil, nil)
+	_, err := insertStory(db, "No sentences", nil)
 	if err == nil {
 		t.Fatal("expected error for missing sentences")
 	}
@@ -1106,7 +1102,7 @@ func TestInsertStory_RejectsNegativeAudioTimestamp(t *testing.T) {
 	db := testDB(t)
 	badTs := int64(-1)
 
-	_, err := insertStory(db, "Bad timestamps", nil, []storySentenceInput{
+	_, err := insertStory(db, "Bad timestamps", []storySentenceInput{
 		{
 			Words: []storyWordInput{
 				{DisplayWord: "文", BaseWord: "文", AudioTimestampMs: &badTs},
@@ -1124,7 +1120,7 @@ func TestInsertStory_RejectsNegativeAudioTimestamp(t *testing.T) {
 func TestInsertStory_RequiresAtLeastOneWordPerSentence(t *testing.T) {
 	db := testDB(t)
 
-	_, err := insertStory(db, "Missing words", nil, []storySentenceInput{{}})
+	_, err := insertStory(db, "Missing words", []storySentenceInput{{}})
 	if err == nil {
 		t.Fatal("expected error for missing words")
 	}
@@ -1136,7 +1132,7 @@ func TestInsertStory_RequiresAtLeastOneWordPerSentence(t *testing.T) {
 func TestInsertStory_RequiresTitle(t *testing.T) {
 	db := testDB(t)
 
-	_, err := insertStory(db, "", nil, []storySentenceInput{
+	_, err := insertStory(db, "", []storySentenceInput{
 		{Words: []storyWordInput{{DisplayWord: "庭園", BaseWord: "庭園"}}},
 	})
 	if err == nil {
@@ -1149,7 +1145,7 @@ func TestInsertStory_RequiresTitle(t *testing.T) {
 
 func TestStoryNotedWords_PersistOnStory(t *testing.T) {
 	db := testDB(t)
-	id, err := insertStory(db, "Garden Story", nil, []storySentenceInput{
+	id, err := insertStory(db, "Garden Story", []storySentenceInput{
 		{
 			Words: []storyWordInput{
 				{DisplayWord: "庭園", BaseWord: "庭園"},
@@ -1205,7 +1201,7 @@ func TestStoryNotedWords_PersistOnStory(t *testing.T) {
 func TestGetStoryByID_PopulatesWordInfoFromWordsTable(t *testing.T) {
 	db := testDB(t)
 	// insertStory auto-adds 猫 to words with tracked=0 and empty meaning/reading.
-	id, err := insertStory(db, "Reading Story", nil, []storySentenceInput{
+	id, err := insertStory(db, "Reading Story", []storySentenceInput{
 		{
 			Words: []storyWordInput{
 				{DisplayWord: "猫", BaseWord: "猫"},

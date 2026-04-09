@@ -64,33 +64,6 @@
   </div>
 </div>
 
-<!-- Generate audio modal (confirmation + progress) -->
-<div class="modal-backdrop hidden" id="story-gen-modal-backdrop">
-  <div class="modal">
-    <div class="modal-header">
-      <span class="modal-title">Generate audio</span>
-      <button class="modal-close" aria-label="Close">✕</button>
-    </div>
-    <div class="modal-body" style="padding:1.25rem 1.5rem">
-      <div id="gen-confirm-body">
-        <p style="color:#cdd6f4;line-height:1.6">Generate VoiceVox narration for this story?<br>
-        Any existing audio will be replaced.</p>
-      </div>
-      <div id="gen-progress-body" class="hidden">
-        <p id="gen-progress-count" class="gen-progress-count"></p>
-        <div id="gen-sentence-list" class="gen-sentence-list"></div>
-      </div>
-    </div>
-    <div class="modal-footer">
-      <button class="btn-cancel" id="story-gen-modal-cancel">Cancel</button>
-      <button class="btn-save" id="story-gen-modal-confirm">Generate</button>
-      <button class="btn-danger hidden" id="story-gen-cancel-generation-btn">
-        <span class="spinner"></span>&nbsp;Cancel generation
-      </button>
-      <button class="btn-save hidden" id="story-gen-modal-done">Done</button>
-    </div>
-  </div>
-</div>
 
 <div class="story-title-bar">
   <div class="story-shell">
@@ -127,7 +100,6 @@
             </div>
             <div class="story-top-bar-actions">
               <button class="btn-save story-gen-btn" id="story-gen-translation-btn" disabled>Generate translation</button>
-              <button class="btn-save story-gen-btn" id="story-gen-btn" disabled>Generate audio</button>
             </div>
           </div>
           <div id="story-content" class="story-content"></div>

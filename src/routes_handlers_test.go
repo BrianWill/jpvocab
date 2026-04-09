@@ -345,7 +345,7 @@ func TestAPIGetStories_ReturnsTitle(t *testing.T) {
 	req := httptest.NewRequest(http.MethodGet, "/api/stories", nil)
 
 	title := "Garden Story"
-	_, err := insertStory(db, title, nil, []storySentenceInput{
+	_, err := insertStory(db, title, []storySentenceInput{
 		{
 			Words: []storyWordInput{
 				{DisplayWord: "庭園", BaseWord: "庭園"},
@@ -424,7 +424,7 @@ func TestAPICreateStory_Success(t *testing.T) {
 func TestAPIGetStory_ReturnsStoryByID(t *testing.T) {
 	db := testDB(t)
 	title := "Garden Story"
-	id, err := insertStory(db, title, nil, []storySentenceInput{
+	id, err := insertStory(db, title, []storySentenceInput{
 		{Words: []storyWordInput{{DisplayWord: "庭園", BaseWord: "庭園"}}, IsParagraphStart: true},
 	})
 	if err != nil {
@@ -467,7 +467,7 @@ func TestAPIDeleteStory_InvalidID(t *testing.T) {
 
 func TestAPIDeleteStory_Success(t *testing.T) {
 	db := testDB(t)
-	id, err := insertStory(db, "Garden Story", nil, []storySentenceInput{
+	id, err := insertStory(db, "Garden Story", []storySentenceInput{
 		{Words: []storyWordInput{{DisplayWord: "庭園", BaseWord: "庭園"}}, IsParagraphStart: true},
 		{Words: []storyWordInput{{DisplayWord: "歩く", BaseWord: "歩く"}}, IsParagraphStart: false},
 	})
@@ -504,7 +504,7 @@ func TestAPIDeleteStory_Success(t *testing.T) {
 
 func TestAPIStoryNotedWords_AddAndRemove(t *testing.T) {
 	db := testDB(t)
-	id, err := insertStory(db, "Garden Story", nil, []storySentenceInput{
+	id, err := insertStory(db, "Garden Story", []storySentenceInput{
 		{
 			Words: []storyWordInput{
 				{DisplayWord: "庭園", BaseWord: "庭園"},

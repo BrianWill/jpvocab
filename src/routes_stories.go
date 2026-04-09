@@ -3,10 +3,7 @@ package main
 import (
 	"database/sql"
 	"encoding/json"
-	"fmt"
 	"net/http"
-	"os"
-	"path/filepath"
 	"strings"
 	"time"
 )
@@ -244,7 +241,7 @@ func apiCreateStory(db *sql.DB) http.HandlerFunc {
 			return
 		}
 
-		id, err := insertStory(db, title, nil, sentences)
+		id, err := insertStory(db, title, sentences)
 		if err != nil {
 			if strings.Contains(err.Error(), "required") || strings.Contains(err.Error(), "at least one sentence") {
 				http.Error(w, err.Error(), http.StatusBadRequest)
@@ -273,157 +270,6 @@ func storySentenceText(s storySentenceJSON) string {
 	return strings.Join(parts, "")
 }
 
-// apiGenerateStoryAudio synthesizes per-sentence OGG audio for a story using VoiceVox.
-// Files are written to static/audio/story_{id}/sentence_{position}.ogg.
-// The request body may supply VoiceVox settings; defaults are used otherwise.
-// Cancellation is handled via the request context (frontend AbortController).
-//
-// The response is streamed as NDJSON. Each completed sentence emits:
-//
-//	{"sentencePosition": N}
-//
-// On success all sentences emit {"allDone": true}. On error {"error": "..."} is emitted.
-// Audio is first written to *.ogg.temp files; originals are only replaced (via os.Rename)
-// once all sentences complete. On cancellation the temp files are deleted.
-func apiGenerateStoryAudio(db *sql.DB) http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		id, ok := parseRouteInt64(w, r, "id", "invalid story id")
-		if !ok {
-			return
-		}
-
-		p := defaultVoicevoxParams()
-		var body struct {
-			Speaker         *int     `json:"speaker"`
-			SpeedScale      *float64 `json:"speedScale"`
-			IntonationScale *float64 `json:"intonationScale"`
-		}
-		if err := json.NewDecoder(r.Body).Decode(&body); err == nil {
-			if body.Speaker != nil {
-				p.Speaker = *body.Speaker
-			}
-			if body.SpeedScale != nil {
-				p.SpeedScale = *body.SpeedScale
-			}
-			if body.IntonationScale != nil {
-				p.IntonationScale = *body.IntonationScale
-			}
-		}
-
-		story, err := getStoryByID(db, id)
-		if err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
-			return
-		}
-		if story == nil {
-			http.Error(w, "story not found", http.StatusNotFound)
-			return
-		}
-
-		audioDir := filepath.Join("static", "audio", fmt.Sprintf("story_%d", id))
-		if err := os.MkdirAll(audioDir, 0o755); err != nil {
-			http.Error(w, "could not create audio dir: "+err.Error(), http.StatusInternalServerError)
-			return
-		}
-
-		streamEvent := newNDJSONStreamer(w)
-
-		type sentenceDuration struct {
-			id         int64
-			durationMs int64
-		}
-
-		var tempFiles []string
-		var durations []sentenceDuration
-		cancelled := false
-
-		for _, sentence := range story.Sentences {
-			if r.Context().Err() != nil {
-				cancelled = true
-				break
-			}
-
-			text := storySentenceText(sentence)
-			if strings.TrimSpace(text) == "" {
-				// Empty sentence: report done immediately (no audio file needed).
-				streamEvent(map[string]int{"sentencePosition": sentence.Position})
-				continue
-			}
-
-			wav, err := synthesizeVoicevox(r.Context(), text, p)
-			if err != nil {
-				if r.Context().Err() != nil {
-					cancelled = true
-					break
-				}
-				streamEvent(map[string]string{"error": "voicevox error: " + err.Error()})
-				for _, f := range tempFiles {
-					os.Remove(f)
-				}
-				return
-			}
-
-			durationMs := wavDurationMs(wav)
-
-			ogg, err := wavToOgg(r.Context(), wav)
-			if err != nil {
-				if r.Context().Err() != nil {
-					cancelled = true
-					break
-				}
-				streamEvent(map[string]string{"error": "ffmpeg error: " + err.Error()})
-				for _, f := range tempFiles {
-					os.Remove(f)
-				}
-				return
-			}
-
-			dest := filepath.Join(audioDir, fmt.Sprintf("sentence_%d.ogg", sentence.Position))
-			tempDest := dest + ".temp"
-			if err := os.WriteFile(tempDest, ogg, 0o644); err != nil {
-				streamEvent(map[string]string{"error": "write error: " + err.Error()})
-				for _, f := range tempFiles {
-					os.Remove(f)
-				}
-				return
-			}
-			tempFiles = append(tempFiles, tempDest)
-			durations = append(durations, sentenceDuration{sentence.ID, durationMs})
-
-			streamEvent(map[string]int{"sentencePosition": sentence.Position})
-		}
-
-		if cancelled {
-			for _, f := range tempFiles {
-				os.Remove(f)
-			}
-			return
-		}
-
-		// Atomically replace originals with temp files.
-		for _, tempPath := range tempFiles {
-			finalPath := strings.TrimSuffix(tempPath, ".temp")
-			if err := os.Rename(tempPath, finalPath); err != nil {
-				streamEvent(map[string]string{"error": "rename error: " + err.Error()})
-				return
-			}
-		}
-
-		// Commit durations and hasAudio to the DB only after all files are in place.
-		for _, d := range durations {
-			if err := setSentenceAudioDuration(db, d.id, d.durationMs); err != nil {
-				streamEvent(map[string]string{"error": "db error: " + err.Error()})
-				return
-			}
-		}
-		if err := setStoryHasAudio(db, id, true); err != nil {
-			streamEvent(map[string]string{"error": "db error: " + err.Error()})
-			return
-		}
-
-		streamEvent(map[string]bool{"allDone": true})
-	}
-}
 
 // apiGenerateStoryTranslation calls an AI provider to translate all sentences in the
 // story. Streams NDJSON:

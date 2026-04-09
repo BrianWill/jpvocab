@@ -1,14 +1,7 @@
 import { getTtsVoice, getVoicevoxSettings } from './common.js';
+import { getSynthAudio } from './synth-cache.js';
 
 let _els, _state, _storyId;
-
-// ── Helpers ───────────────────────────────────────────────────────────────────
-function formatDuration(ms) {
-  const totalSeconds = Math.max(0, Math.round(ms / 1000));
-  const minutes = Math.floor(totalSeconds / 60);
-  const seconds = totalSeconds % 60;
-  return `${minutes}:${String(seconds).padStart(2, '0')}`;
-}
 
 // ── Speed stepper ─────────────────────────────────────────────────────────────
 const SPEED_STEPPER_INTERVAL = 230;
@@ -18,7 +11,7 @@ function clampPlaybackRate(rate) {
 }
 
 async function restartPlaybackForRateChange() {
-  if (_state.audioMode) {
+  if (_state.synthMode) {
     if (_state.audioEl) _state.audioEl.playbackRate = _state.playbackRate;
     return;
   }
@@ -80,15 +73,23 @@ const ICON_PLAY = '<path d="M8 5v14l11-7z"/>';
 const ICON_STOP = '<rect x="6" y="6" width="12" height="12"/>';
 const ICON_PLAY_SM = '<svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M8 5v14l11-7z"/></svg>';
 const ICON_STOP_SM = '<svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><rect x="6" y="6" width="12" height="12"/></svg>';
+const ICON_LOADING_SM = '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true" class="synth-spinner"><circle cx="12" cy="12" r="9" stroke-opacity="0.25"/><path stroke-linecap="round" d="M12 3a9 9 0 0 1 9 9"/></svg>';
 
 function isSentencePlaying(idx) {
-  if (_state.synthMode || _state.audioMode) return _state.audioSentenceIdx === idx && !!_state.audioEl && !_state.audioEl.paused;
+  if (_state.synthMode) return _state.audioSentenceIdx === idx && !!_state.audioEl && !_state.audioEl.paused;
   return _state.activeIdx === idx && window.speechSynthesis.speaking;
 }
 
 function updateSentencePlayBtnIcon() {
   const idx = _state.sentencePlayBtnTargetIdx;
   if (idx < 0) return;
+  if (_state.synthLoadingIdx === idx) {
+    _els.sentencePlayBtn.innerHTML = ICON_LOADING_SM;
+    _els.sentencePlayBtn.classList.add('sentence-play-btn--loading');
+    _els.sentencePlayBtn.setAttribute('aria-label', 'Generating audio…');
+    return;
+  }
+  _els.sentencePlayBtn.classList.remove('sentence-play-btn--loading');
   const playing = isSentencePlaying(idx);
   _els.sentencePlayBtn.innerHTML = playing ? ICON_STOP_SM : ICON_PLAY_SM;
   _els.sentencePlayBtn.setAttribute('aria-label', playing ? 'Stop' : 'Play from this sentence');
@@ -196,52 +197,23 @@ async function startSpeechPlayback() {
 }
 
 // ── On-demand synthesis ───────────────────────────────────────────────────────
-async function synthSentenceAudio(sentence) {
+function synthSentenceAudio(sentence) {
   const vv = getVoicevoxSettings();
   const text = sentence.words.map(w => w.displayWord).join('');
-  const res = await fetch('/api/voicevox/synthesize', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      text,
-      speaker: vv.speaker,
-      speedScale: vv.speedScale,
-      intonationScale: vv.intonationScale,
-    }),
-  });
-  if (!res.ok) throw new Error(`synthesis failed: ${res.status}`);
-  const blob = await res.blob();
-  return URL.createObjectURL(blob);
+  return getSynthAudio(text, vv);
+}
+
+function prefetchSentence(idx) {
+  if (!_state.story || idx >= _state.story.sentences.length) return;
+  synthSentenceAudio(_state.story.sentences[idx]).catch(() => {});
 }
 
 function createAudioElement() {
   const el = new Audio();
   el.addEventListener('ended', () => { loadSentenceAudio(_state.audioSentenceIdx + 1, 0); });
-  el.addEventListener('timeupdate', () => { updateSeekbar(); });
   el.addEventListener('pause', () => setPlaybackPlaying(false));
   el.addEventListener('play', () => setPlaybackPlaying(true));
   return el;
-}
-
-// ── Audio-file mode ───────────────────────────────────────────────────────────
-function audioFileUrl(sentencePosition) {
-  return `/static/audio/story_${_storyId}/sentence_${sentencePosition}.ogg`;
-}
-
-function seekbarPositionMs() {
-  if (!_state.audioEl) return 0;
-  return _state.sentenceCumulative[_state.audioSentenceIdx] + _state.audioEl.currentTime * 1000;
-}
-
-function setCurrentTimeLabel(positionMs) {
-  _els.currentTime.textContent = formatDuration(positionMs);
-}
-
-function updateSeekbar() {
-  if (_state.seekbarDragging || _state.totalDurationMs === 0) return;
-  const positionMs = seekbarPositionMs();
-  _els.seekbar.value = Math.round(positionMs / _state.totalDurationMs * 1000);
-  setCurrentTimeLabel(positionMs);
 }
 
 async function loadSentenceAudio(idx, startSec = 0) {
@@ -249,10 +221,6 @@ async function loadSentenceAudio(idx, startSec = 0) {
     // Reached end of story.
     clearHighlight();
     setPlaybackPlaying(false);
-    if (!_state.synthMode) {
-      _els.seekbar.value = 1000;
-      setCurrentTimeLabel(_state.totalDurationMs);
-    }
     return;
   }
   _state.audioSentenceIdx = idx;
@@ -261,30 +229,32 @@ async function loadSentenceAudio(idx, startSec = 0) {
   const sentence = _state.story.sentences[idx];
 
   if (_state.synthMode) {
-    const oldSrc = _state.audioEl.src;
+    const gen = ++_state.synthGeneration;
     let blobUrl;
     try {
       blobUrl = await synthSentenceAudio(sentence);
     } catch (_) {
-      clearHighlight();
-      setPlaybackPlaying(false);
+      if (_state.synthGeneration === gen) {
+        _state.synthLoadingIdx = -1;
+        clearHighlight();
+        setPlaybackPlaying(false);
+      }
       return;
     }
+    if (_state.synthGeneration !== gen) return; // Superseded by a newer request or stop.
+    _state.synthLoadingIdx = -1;
     _state.audioEl.src = blobUrl;
-    if (oldSrc.startsWith('blob:')) URL.revokeObjectURL(oldSrc);
     _state.audioEl.playbackRate = _state.playbackRate;
     _state.audioEl.play().catch(() => {});
-  } else {
-    _state.audioEl.src = audioFileUrl(sentence.position);
-    _state.audioEl.playbackRate = _state.playbackRate;
-    _state.audioEl.currentTime = startSec;
-    setCurrentTimeLabel(_state.sentenceCumulative[idx] + startSec * 1000);
-    _state.audioEl.play().catch(() => {});
+    // Prefetch next sentence while this one plays.
+    prefetchSentence(idx + 1);
   }
 }
 
 function stopAudio() {
   _state.audioEl.pause();
+  _state.synthGeneration++;    // Invalidate any in-progress synthesis so it won't auto-play.
+  _state.synthLoadingIdx = -1;
   setPlaybackPlaying(false);
   // Keep highlight and position for resume.
 }
@@ -294,53 +264,10 @@ function startAudio(idx = _state.audioSentenceIdx, startSec = 0) {
   setPlaybackPlaying(true);
 }
 
-function seekToAudioPosition(positionMs) {
-  let idx = 0;
-  for (let i = _state.sentenceCumulative.length - 1; i >= 0; i--) {
-    if (_state.sentenceCumulative[i] <= positionMs) { idx = i; break; }
-  }
-  const offsetMs = positionMs - _state.sentenceCumulative[idx];
-  startAudio(idx, offsetMs / 1000);
-}
-
 // ── Exported stop (used by generate modals as stopPlayback callback) ──────────
 export function stopPlayback() {
-  if (_state.synthMode || _state.audioMode) { if (_state.audioEl && !_state.audioEl.paused) stopAudio(); }
+  if (_state.synthMode) { if (_state.audioEl && !_state.audioEl.paused) stopAudio(); }
   else if (window.speechSynthesis.speaking) stopSpeechPlayback();
-}
-
-// ── Apply hasAudio state ──────────────────────────────────────────────────────
-export function applyAudioState(story) {
-  _state.story = story;
-  if (!story.hasAudio) {
-    _els.seekbar.hidden = true;
-    _els.currentTime.hidden = true;
-    _els.duration.hidden = true;
-    _state.audioMode = false;
-    return;
-  }
-
-  _state.sentenceDurations = story.sentences.map(s => s.audioDurationMs ?? 0);
-  _state.sentenceCumulative = [];
-  let cum = 0;
-  for (const d of _state.sentenceDurations) {
-    _state.sentenceCumulative.push(cum);
-    cum += d;
-  }
-  _state.totalDurationMs = cum;
-
-  if (!_state.audioEl) {
-    _state.audioEl = createAudioElement();
-  }
-
-  _state.audioMode = true;
-  _state.audioSentenceIdx = 0;
-  _els.currentTime.hidden = false;
-  _els.seekbar.hidden = false;
-  _els.seekbar.value = 0;
-  _els.currentTime.textContent = '0:00';
-  _els.duration.hidden = false;
-  _els.duration.textContent = formatDuration(_state.totalDurationMs);
 }
 
 // ── Synth-mode init ───────────────────────────────────────────────────────────
@@ -372,15 +299,20 @@ export function initPlayback(els, state, storyId) {
     if (idx < 0) return;
 
     if (isSentencePlaying(idx)) {
-      if (state.synthMode || state.audioMode) stopAudio();
+      if (state.synthMode) stopAudio();
       else stopSpeechPlayback();
       els.sentencePlayBtn.innerHTML = ICON_PLAY_SM;
       els.sentencePlayBtn.setAttribute('aria-label', 'Play from this sentence');
       return;
     }
 
-    if (state.synthMode || state.audioMode) {
-      startAudio(idx, 0);
+    if (state.synthMode) {
+      // Stop whatever is playing immediately, then synthesize the new sentence.
+      if (state.audioEl && !state.audioEl.paused) stopAudio();
+      state.synthLoadingIdx = idx;
+      updateSentencePlayBtnIcon();
+      setPlaybackPlaying(true);
+      loadSentenceAudio(idx, 0);
     } else {
       if (state.currentUtterance) {
         state.currentUtterance.onboundary = null;
@@ -404,14 +336,6 @@ export function initPlayback(els, state, storyId) {
       }
       return;
     }
-    if (state.audioMode) {
-      if (!state.audioEl.paused) {
-        stopAudio();
-      } else {
-        startAudio(state.audioSentenceIdx, state.audioEl.currentTime);
-      }
-      return;
-    }
     if (window.speechSynthesis.speaking) {
       stopSpeechPlayback();
     } else {
@@ -419,23 +343,8 @@ export function initPlayback(els, state, storyId) {
     }
   });
 
-  els.seekbar.addEventListener('mousedown', () => { state.seekbarDragging = true; });
-  els.seekbar.addEventListener('mouseup', () => {
-    state.seekbarDragging = false;
-    if (!state.audioMode) return;
-    const posMs = els.seekbar.value / 1000 * state.totalDurationMs;
-    const wasPlaying = !state.audioEl.paused;
-    seekToAudioPosition(posMs);
-    if (!wasPlaying) { state.audioEl.pause(); setPlaybackPlaying(false); }
-  });
-  els.seekbar.addEventListener('input', () => {
-    if (!state.audioMode) return;
-    const posMs = els.seekbar.value / 1000 * state.totalDurationMs;
-    setCurrentTimeLabel(posMs);
-  });
-
   window.addEventListener('beforeunload', () => {
-    if (state.synthMode || state.audioMode) state.audioEl?.pause();
+    if (state.synthMode) state.audioEl?.pause();
     else stopSpeechPlayback();
   });
 

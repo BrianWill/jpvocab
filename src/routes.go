@@ -66,7 +66,6 @@ func serverInit(db *sql.DB) {
 	r.Delete("/api/stories/{id}", apiDeleteStory(db))
 	r.Post("/api/stories/{id}/noted-words", apiAddStoryNotedWord(db))
 	r.Delete("/api/stories/{id}/noted-words", apiDeleteStoryNotedWord(db))
-	r.Post("/api/stories/{id}/generate-audio", apiGenerateStoryAudio(db))
 	r.Post("/api/stories/{id}/generate-translation", apiGenerateStoryTranslation(db))
 	r.Post("/api/stories/{id}/generate-word-info", apiGenerateStoryWordInfo(db))
 

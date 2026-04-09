@@ -144,7 +144,6 @@ function bindEvents() {
     if (text) {
       playSentenceAudio({
         word: row?._resolvedWord ?? '',
-        hasSentenceAudio: row?._hasSentenceAudio ?? false,
         exampleJp: text,
       }, 1, STORY_LEXICON_AUDIO_OPTIONS);
     }
@@ -289,10 +288,8 @@ function appendWordRow(data) {
     '<div class="word-result-main"><span class="result-word">' + esc(data.word) + '</span>' + badge + inlineExtra + '</div>' +
     '<div class="word-result-body">' + details + buildWordResultImage(data.image_path, '') + '</div>';
 
-  row._hasWordAudio = data.has_word_audio ?? false;
-  row._hasSentenceAudio = data.has_sentence_audio ?? false;
   row.querySelector('.result-word')?.addEventListener('click', () =>
-    playWordAudio({ word: data.word, hasWordAudio: row._hasWordAudio }, 1, STORY_LEXICON_AUDIO_OPTIONS)
+    playWordAudio({ word: data.word }, 1, STORY_LEXICON_AUDIO_OPTIONS)
   );
   row.querySelector('.btn-word-remove')?.addEventListener('mousedown', e => removeWordRow(e, row.querySelector('.btn-word-remove')));
 

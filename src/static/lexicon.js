@@ -142,13 +142,6 @@ export function updateWordImagePath(wordId, imagePath) {
   renderTable(getSortedWords(activeBtn.dataset.sort, activeBtn.dataset.dir || 'desc'));
 }
 
-export function updateWordAudioFlags(wordId, hasWordAudio, hasSentenceAudio) {
-  const word = state.words.find(w => w.id === wordId);
-  if (!word) return;
-  word.hasWordAudio = hasWordAudio;
-  word.hasSentenceAudio = hasSentenceAudio;
-}
-
 async function init() {
   const [wordsData, providers] = await Promise.all([
     fetch('/api/words').then(r => r.json()),

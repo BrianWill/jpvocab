@@ -86,8 +86,6 @@ export function openEditModal(event) {
     drill_target: w.target,
     kanji_data: w.kanjiData,
     image_path: w.imagePath,
-    has_word_audio: w.hasWordAudio,
-    has_sentence_audio: w.hasSentenceAudio,
   });
 
   els.addResultModalBackdrop.classList.remove('hidden');
@@ -114,7 +112,6 @@ els.addResultBody.addEventListener('click', e => {
   const text = jpInput?.textContent.trim();
   if (text) playSentenceAudio({
     word: row?._resolvedWord ?? '',
-    hasSentenceAudio: row?._hasSentenceAudio ?? false,
     exampleJp: text,
   }, 1, LEXICON_AUDIO_OPTIONS);
 });
@@ -332,11 +329,9 @@ function appendWordRow(data) {
     '<div class="word-result-main"><span class="result-word">' + esc(data.word) + '</span>' + badge + inlineExtra + '</div>' +
     '<div class="word-result-body">' + details + imageHtml + '</div>';
 
-  row._hasWordAudio = data.has_word_audio ?? false;
-  row._hasSentenceAudio = data.has_sentence_audio ?? false;
   const resultWordEl = row.querySelector('.result-word');
   if (resultWordEl) resultWordEl.addEventListener('click', () =>
-    playWordAudio({ word: data.word, hasWordAudio: row._hasWordAudio }, 1, LEXICON_AUDIO_OPTIONS)
+    playWordAudio({ word: data.word }, 1, LEXICON_AUDIO_OPTIONS)
   );
 
   const removeBtnEl = row.querySelector('.btn-word-remove');

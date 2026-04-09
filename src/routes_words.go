@@ -741,13 +741,12 @@ func apiGenerateWordAudio(db *sql.DB) http.HandlerFunc {
 			}
 		}
 
-		if err := updateWordAudioFlags(db, id, true, hasSentence); err != nil {
+		if err := updateWordSentenceAudioFlag(db, id, hasSentence); err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
 
 		writeJSON(w, map[string]any{
-			"hasWordAudio":     true,
 			"hasSentenceAudio": hasSentence,
 		})
 	}

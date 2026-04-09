@@ -29,30 +29,6 @@ func initDB(path string) *sql.DB {
 	return db
 }
 
-// dropColumnIfExists drops a column only when it is present, working around
-// SQLite's lack of "ALTER TABLE … DROP COLUMN IF EXISTS".
-func dropColumnIfExists(db *sql.DB, table, column string) error {
-	rows, err := db.Query(fmt.Sprintf("PRAGMA table_info(%q)", table))
-	if err != nil {
-		return err
-	}
-	defer rows.Close()
-	for rows.Next() {
-		var cid int
-		var name, typ string
-		var notNull, pk int
-		var dflt any
-		if err := rows.Scan(&cid, &name, &typ, &notNull, &dflt, &pk); err != nil {
-			return err
-		}
-		if name == column {
-			_, err = db.Exec(fmt.Sprintf("ALTER TABLE %q DROP COLUMN %q", table, column))
-			return err
-		}
-	}
-	return rows.Err() // column absent — nothing to do
-}
-
 func migrate(db *sql.DB) {
 	// Each entry runs exactly once; user_version tracks how many have been applied.
 	// Each element is either a SQL string or a func(*sql.DB) error.
@@ -67,7 +43,6 @@ func migrate(db *sql.DB) {
 			meaning           TEXT,
 			example_jp        TEXT,
 			example_en        TEXT,
-			has_word_audio INTEGER NOT NULL DEFAULT 0,
 			has_sentence_audio INTEGER NOT NULL DEFAULT 0,
 			drill_count       INTEGER  NOT NULL DEFAULT 0,
 			drill_target      INTEGER  NOT NULL DEFAULT 1,

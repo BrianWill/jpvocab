@@ -1428,39 +1428,35 @@ func TestUpdateWordImagePath_RoundTrip(t *testing.T) {
 	}
 }
 
-// --- updateWordAudioFlags / getWordAudioInfo ---
+// --- updateWordSentenceAudioFlag / getWordAudioInfo ---
 
-func TestUpdateWordAudioFlags_BothFlags(t *testing.T) {
+func TestUpdateWordSentenceAudioFlag_SetsFlag(t *testing.T) {
 	db := testDB(t)
 	id := insertTestWord(t, db, "雨", 1)
 
-	if err := updateWordAudioFlags(db, id, true, true); err != nil {
+	if err := updateWordSentenceAudioFlag(db, id, true); err != nil {
 		t.Fatal(err)
 	}
-	var hasWord, hasSentence int
-	db.QueryRow(`SELECT has_word_audio, has_sentence_audio FROM words WHERE id = ?`, id).
-		Scan(&hasWord, &hasSentence)
-	if hasWord != 1 {
-		t.Errorf("has_word_audio: got %d, want 1", hasWord)
-	}
+	var hasSentence int
+	db.QueryRow(`SELECT has_sentence_audio FROM words WHERE id = ?`, id).
+		Scan(&hasSentence)
 	if hasSentence != 1 {
 		t.Errorf("has_sentence_audio: got %d, want 1", hasSentence)
 	}
 }
 
-func TestUpdateWordAudioFlags_ClearsFlags(t *testing.T) {
+func TestUpdateWordSentenceAudioFlag_ClearsFlag(t *testing.T) {
 	db := testDB(t)
 	id := insertTestWord(t, db, "風", 1)
-	// Set both flags then clear them.
-	updateWordAudioFlags(db, id, true, true)
-	if err := updateWordAudioFlags(db, id, false, false); err != nil {
+	updateWordSentenceAudioFlag(db, id, true)
+	if err := updateWordSentenceAudioFlag(db, id, false); err != nil {
 		t.Fatal(err)
 	}
-	var hasWord, hasSentence int
-	db.QueryRow(`SELECT has_word_audio, has_sentence_audio FROM words WHERE id = ?`, id).
-		Scan(&hasWord, &hasSentence)
-	if hasWord != 0 || hasSentence != 0 {
-		t.Errorf("flags should be 0 after clearing, got word=%d sentence=%d", hasWord, hasSentence)
+	var hasSentence int
+	db.QueryRow(`SELECT has_sentence_audio FROM words WHERE id = ?`, id).
+		Scan(&hasSentence)
+	if hasSentence != 0 {
+		t.Errorf("flag should be 0 after clearing, got sentence=%d", hasSentence)
 	}
 }
 

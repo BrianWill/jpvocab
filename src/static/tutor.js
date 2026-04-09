@@ -62,62 +62,43 @@ function randomFreeGreeting(note) {
   return JSON.stringify(obj);
 }
 
-// Greetings are stored as JSON objects (same format as AI responses) so they
-// go through the same rendering pipeline and appear in history consistently.
-// greeting may be a string or a zero-arg function returning a string.
-const TUTOR_MODES = [
-  {
-    value:    'free',
-    label:    'Conversation (Speaking)',
-    greeting: () => randomFreeGreeting(null),
-  },
-  {
-    value:    'free-en',
-    label:    'Conversation (Comprehension)',
-    greeting: () => randomFreeGreeting('Read the Japanese above and reply in English to show you understood.'),
-  },
-  {
-    value:    'grammar',
-    label:    'Grammar Tutor',
-    greeting: JSON.stringify({ note: "Welcome to Grammar Tutor mode! Write anything in Japanese and I'll analyze it for grammar errors, explain each mistake, and show you the correct form." }),
-  },
-  {
-    value:    'vocab',
-    label:    'Vocabulary Quiz',
-    greeting: JSON.stringify({ jp: '「食べる」とは英語で何ですか？', en: 'What does 「食べる」 mean in English?', note: "Welcome to Vocabulary Quiz mode! I'll test you one word at a time." }),
-  },
-  {
-    value:    'translation-en-jp',
-    label:    'Translation: English → Japanese',
-    greeting: JSON.stringify({ note: "Welcome to Translation Practice! I'll give you English sentences to translate into Japanese.", question: 'First sentence: "I drink water every day."' }),
-  },
-  {
-    value:    'translation-jp-en',
-    label:    'Translation: Japanese → English',
-    greeting: JSON.stringify({ note: "Welcome to Translation Practice! I'll give you Japanese sentences to translate into English.", jp: '毎日、水を飲みます。', question: 'How would you translate this sentence into English?' }),
-  },
-  {
-    value:    'reading',
-    label:    'Reading Practice',
-    greeting: JSON.stringify({ jp: '今日は晴れです。空は青くてきれいです。', en: 'It is sunny today. The sky is blue and beautiful.', note: 'Welcome to Reading Practice! Here is your first passage:', question: 'What is the weather like today?' }),
-  },
-];
+// Greetings are stored as JSON strings (same format as AI responses).
+// Two special sentinel values trigger dynamic random greetings:
+//   __random_free__    → randomFreeGreeting(null)
+//   __random_free_en__ → randomFreeGreeting with comprehension note
+function greetingForPrompt(prompt) {
+  if (prompt.greeting === '__random_free__') return randomFreeGreeting(null);
+  if (prompt.greeting === '__random_free_en__') return randomFreeGreeting('Read the Japanese above and reply in English to show you understood.');
+  return prompt.greeting || '{}';
+}
 
 const els = {
-  modeSelect:   document.getElementById('tutor-mode-select'),
-  modelSelect:  document.getElementById('tutor-model-select'),
-  providerInfo: document.getElementById('tutor-provider-info'),
-  btnNewChat:   document.getElementById('btn-new-chat'),
-  btnDebug:     document.getElementById('btn-debug-toggle'),
-  messages:     document.getElementById('tutor-messages'),
-  form:         document.getElementById('tutor-form'),
-  input:        document.getElementById('tutor-input'),
-  btnMic:       document.getElementById('btn-tutor-mic'),
-  btnSend:      document.getElementById('btn-tutor-send'),
+  modeSelect:       document.getElementById('tutor-mode-select'),
+  modelSelect:      document.getElementById('tutor-model-select'),
+  providerInfo:     document.getElementById('tutor-provider-info'),
+  btnNewChat:       document.getElementById('btn-new-chat'),
+  btnDebug:         document.getElementById('btn-debug-toggle'),
+  btnAddPrompt:     document.getElementById('btn-add-prompt'),
+  btnDeletePrompt:  document.getElementById('btn-delete-prompt'),
+  messages:         document.getElementById('tutor-messages'),
+  form:             document.getElementById('tutor-form'),
+  input:            document.getElementById('tutor-input'),
+  btnMic:           document.getElementById('btn-tutor-mic'),
+  btnSend:          document.getElementById('btn-tutor-send'),
+  promptModal:      document.getElementById('prompt-modal'),
+  promptForm:       document.getElementById('prompt-form'),
+  promptLabelInput: document.getElementById('prompt-label-input'),
+  promptSystemInput:document.getElementById('prompt-system-input'),
+  promptGreetInput: document.getElementById('prompt-greeting-input'),
+  promptLangInput:  document.getElementById('prompt-lang-input'),
+  promptModalError: document.getElementById('prompt-modal-error'),
+  btnCancelPrompt:  document.getElementById('btn-cancel-prompt'),
+  btnSavePrompt:    document.getElementById('btn-save-prompt'),
 };
 
 const state = {
   providers:    null,
+  prompts:      [],   // tutorPromptJSON[] loaded from /api/tutor/prompts
   history:      [],   // { role: 'user'|'assistant', content: string }[]
   sending:      false,
   debugMode:    false,
@@ -335,15 +316,22 @@ async function renderAllMessages() {
 
 // ── Chat state ─────────────────────────────────────────────────────────────
 
-function currentMode() {
-  return TUTOR_MODES.find(m => m.value === els.modeSelect.value) || TUTOR_MODES[0];
+function currentPrompt() {
+  const id = parseInt(els.modeSelect.value, 10);
+  return state.prompts.find(p => p.id === id) || state.prompts[0] || null;
+}
+
+function updateDeleteBtnVisibility() {
+  const p = currentPrompt();
+  els.btnDeletePrompt.style.display = (p && p.can_remove) ? '' : 'none';
 }
 
 function startNewChat() {
   state.history = [];
   state.systemPrompt = null; // invalidate cache; mode may have changed
-  const mode = currentMode();
-  const greeting = typeof mode.greeting === 'function' ? mode.greeting() : mode.greeting;
+  const prompt = currentPrompt();
+  if (!prompt) return;
+  const greeting = greetingForPrompt(prompt);
   state.history.push({ role: 'assistant', content: greeting });
   renderAllMessages();
   // Tell the server to forget the old session so navigation restores this fresh chat.
@@ -413,8 +401,12 @@ async function sendMessage(text) {
 
 // ── Voice input ────────────────────────────────────────────────────────────
 
-// Modes where the user is expected to speak Japanese; all others default to English.
-const JP_INPUT_MODES = new Set(['free', 'grammar', 'translation-en-jp', 'vocab']);
+// Returns the STT recognition language for the current prompt's lang_input value.
+// "ja" and "mix" use Japanese; "en" uses English.
+function sttLangForCurrentPrompt() {
+  const lang = currentPrompt()?.lang_input;
+  return (lang === 'en') ? 'en-US' : 'ja-JP';
+}
 
 function initMic() {
   const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
@@ -432,7 +424,7 @@ function initMic() {
   function startListening() {
     baseText = els.input.value;
     recognition = new SR();
-    recognition.lang = JP_INPUT_MODES.has(els.modeSelect.value) ? 'ja-JP' : 'en-US';
+    recognition.lang = sttLangForCurrentPrompt();
     recognition.interimResults = true;
     recognition.maxAlternatives = 1;
 
@@ -496,29 +488,128 @@ function restoreSession(session) {
   renderAllMessages();
 }
 
-async function init() {
-  // Populate mode select
-  els.modeSelect.innerHTML = TUTOR_MODES.map(m =>
-    '<option value="' + m.value + '">' + m.label + '</option>'
+function populateModeSelect() {
+  const saved = els.modeSelect.value;
+  els.modeSelect.innerHTML = state.prompts.map(p =>
+    '<option value="' + p.id + '">' + escHtml(p.label) + '</option>'
   ).join('');
+  // Restore previously selected value if it still exists
+  if (saved && state.prompts.some(p => String(p.id) === saved)) {
+    els.modeSelect.value = saved;
+  }
+  updateDeleteBtnVisibility();
+}
 
-  // Fetch providers, saved session, and VoiceVox availability in parallel
-  const [providersResp, sessionResp] = await Promise.allSettled([
+async function loadPrompts() {
+  try {
+    const resp = await fetch('/api/tutor/prompts');
+    if (resp.ok) state.prompts = await resp.json();
+  } catch (_) {}
+  populateModeSelect();
+}
+
+function openAddPromptModal() {
+  els.promptLabelInput.value = '';
+  els.promptSystemInput.value = '';
+  els.promptGreetInput.value = '';
+  els.promptLangInput.value = 'ja';
+  els.promptModalError.style.display = 'none';
+  els.btnSavePrompt.disabled = false;
+  els.promptModal.showModal();
+}
+
+async function saveCustomPrompt() {
+  const label = els.promptLabelInput.value.trim();
+  const systemPrompt = els.promptSystemInput.value.trim();
+  const greeting = els.promptGreetInput.value.trim() || '{}';
+  const langInput = els.promptLangInput.value;
+
+  if (!label || !systemPrompt) {
+    els.promptModalError.textContent = 'Name and Instructions are required.';
+    els.promptModalError.style.display = '';
+    return;
+  }
+
+  els.btnSavePrompt.disabled = true;
+  els.promptModalError.style.display = 'none';
+
+  try {
+    const resp = await fetch('/api/tutor/prompts', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ label, system_prompt: systemPrompt, greeting, lang_input: langInput }),
+    });
+    if (!resp.ok) {
+      const msg = await resp.text();
+      throw new Error(msg || resp.statusText);
+    }
+    const newPrompt = await resp.json();
+    els.promptModal.close();
+    state.prompts.push(newPrompt);
+    populateModeSelect();
+    // Switch to the newly created prompt and start a fresh chat
+    els.modeSelect.value = String(newPrompt.id);
+    updateDeleteBtnVisibility();
+    startNewChat();
+  } catch (err) {
+    els.promptModalError.textContent = 'Error: ' + err.message;
+    els.promptModalError.style.display = '';
+    els.btnSavePrompt.disabled = false;
+  }
+}
+
+async function deleteCurrentPrompt() {
+  const prompt = currentPrompt();
+  if (!prompt || !prompt.can_remove) return;
+
+  // Two-click confirmation: first click arms, second click (within 3s) deletes.
+  if (els.btnDeletePrompt.dataset.armed !== 'true') {
+    els.btnDeletePrompt.dataset.armed = 'true';
+    els.btnDeletePrompt.textContent = 'Remove?';
+    setTimeout(() => {
+      els.btnDeletePrompt.dataset.armed = '';
+      els.btnDeletePrompt.textContent = '✕';
+    }, 3000);
+    return;
+  }
+
+  els.btnDeletePrompt.dataset.armed = '';
+  els.btnDeletePrompt.textContent = '✕';
+
+  try {
+    const resp = await fetch('/api/tutor/prompts/' + prompt.id, { method: 'DELETE' });
+    if (!resp.ok) return;
+    state.prompts = state.prompts.filter(p => p.id !== prompt.id);
+    populateModeSelect();
+    startNewChat();
+  } catch (_) {}
+}
+
+async function init() {
+  // Fetch prompts, providers, saved session, and VoiceVox availability in parallel
+  const [promptsResp, providersResp, sessionResp] = await Promise.allSettled([
+    fetch('/api/tutor/prompts').then(r => r.json()),
     fetch('/api/providers').then(r => r.json()),
     fetch('/api/tutor/session').then(r => r.json()),
   ]);
   checkVoicevoxAvailable(); // warm cache; no need to await
 
+  state.prompts   = promptsResp.status === 'fulfilled'   ? (promptsResp.value || [])    : [];
   state.providers = providersResp.status === 'fulfilled' ? (providersResp.value.ai || {}) : {};
   const session   = sessionResp.status === 'fulfilled'   ? sessionResp.value : {};
 
+  populateModeSelect();
   populateModelSelect();
 
   // Restore saved session, or start a fresh greeting
   restoreSession(session);
 
-  els.modeSelect.addEventListener('change', startNewChat);
+  els.modeSelect.addEventListener('change', () => { updateDeleteBtnVisibility(); startNewChat(); });
   els.btnNewChat.addEventListener('click', startNewChat);
+  els.btnAddPrompt.addEventListener('click', openAddPromptModal);
+  els.btnDeletePrompt.addEventListener('click', deleteCurrentPrompt);
+  els.btnCancelPrompt.addEventListener('click', () => els.promptModal.close());
+  els.btnSavePrompt.addEventListener('click', saveCustomPrompt);
 
   els.btnDebug.addEventListener('click', () => {
     state.debugMode = !state.debugMode;

@@ -251,6 +251,16 @@
   margin-left: 0.25em;
 }
 
+/* Danger variant for header buttons (e.g. delete prompt) */
+.btn-header--danger {
+  color: #f38ba8;
+  border-color: #f38ba8;
+}
+.btn-header--danger:hover {
+  background: rgba(243,139,168,0.15);
+  color: #f38ba8;
+}
+
 /* Active state for toggle buttons in the header (e.g. debug mode) */
 .btn-header--active {
   background: rgba(137,180,250,0.25);
@@ -288,6 +298,106 @@
 .tutor-debug-block--system .tutor-debug-label  { background: #2d1b69; color: #cba6f7; }
 .tutor-debug-block--user .tutor-debug-label    { background: #1a2744; color: #89b4fa; }
 .tutor-debug-block--assistant .tutor-debug-label { background: #1a3020; color: #a6e3a1; }
+
+/* ── Prompt create modal ─────────────────────────────────────────────────────*/
+.prompt-modal {
+  background: #1e1e2e;
+  border: 1px solid #313244;
+  border-radius: 10px;
+  color: #cdd6f4;
+  font-family: inherit;
+  font-size: 0.9rem;
+  padding: 1.5rem;
+  width: min(480px, 90vw);
+  max-height: 90vh;
+  overflow-y: auto;
+}
+.prompt-modal::backdrop {
+  background: rgba(0,0,0,0.6);
+}
+
+.prompt-modal-title {
+  margin: 0 0 1.1rem;
+  font-size: 1rem;
+  font-weight: 600;
+  color: #cdd6f4;
+}
+
+.prompt-modal-label {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  margin-bottom: 0.85rem;
+  font-size: 0.82rem;
+  color: #a6adc8;
+}
+
+.prompt-modal-hint {
+  color: #585b70;
+  font-size: 0.78rem;
+}
+
+.prompt-modal-input,
+.prompt-modal-textarea {
+  background: #11111b;
+  border: 1px solid #313244;
+  border-radius: 5px;
+  color: #cdd6f4;
+  font-family: inherit;
+  font-size: 0.88rem;
+  padding: 0.45rem 0.6rem;
+  resize: vertical;
+}
+.prompt-modal-input:focus,
+.prompt-modal-textarea:focus { outline: 1px solid #89b4fa; }
+
+.prompt-modal-textarea {
+  min-height: 7rem;
+  line-height: 1.5;
+}
+.prompt-modal-textarea--sm {
+  min-height: 3.5rem;
+}
+
+
+.prompt-modal-error {
+  color: #f38ba8;
+  font-size: 0.82rem;
+  margin: 0 0 0.75rem;
+}
+
+.prompt-modal-actions {
+  display: flex;
+  gap: 0.6rem;
+  justify-content: flex-end;
+  margin-top: 0.5rem;
+}
+
+.btn-modal-cancel {
+  background: none;
+  border: 1px solid #313244;
+  border-radius: 5px;
+  color: #a6adc8;
+  cursor: pointer;
+  font-family: inherit;
+  font-size: 0.85rem;
+  padding: 0.4rem 0.9rem;
+}
+.btn-modal-cancel:hover { border-color: #585b70; color: #cdd6f4; }
+
+.btn-modal-save {
+  background: #89b4fa;
+  border: none;
+  border-radius: 5px;
+  color: #1e1e2e;
+  cursor: pointer;
+  font-family: inherit;
+  font-size: 0.85rem;
+  font-weight: 600;
+  padding: 0.4rem 1rem;
+}
+.btn-modal-save:hover { background: #b4befe; }
+.btn-modal-save:disabled { opacity: 0.4; cursor: default; }
 
 /* JSON syntax highlighting tokens */
 .json-key   { color: #89b4fa; } /* blue   — property names */

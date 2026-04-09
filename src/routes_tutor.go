@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"encoding/json"
 	"net/http"
+	"strconv"
 )
 
 // tutorSegment is a flexible map so the AI can include any string-valued fields
@@ -18,11 +19,84 @@ var tutorSession struct {
 	Messages  []message `json:"messages"`
 }
 
-func apiGetTutorSystemPrompt() http.HandlerFunc {
+func apiGetTutorPrompts(db *sql.DB) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		mode := r.URL.Query().Get("mode")
+		prompts, err := listTutorPrompts(db)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		writeJSON(w, prompts)
+	}
+}
+
+func apiCreateTutorPrompt(db *sql.DB) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		var body struct {
+			Label        string `json:"label"`
+			SystemPrompt string `json:"system_prompt"`
+			Greeting     string `json:"greeting"`
+			LangInput    string `json:"lang_input"`
+		}
+		if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+			http.Error(w, "invalid request body", http.StatusBadRequest)
+			return
+		}
+		if body.Label == "" || body.SystemPrompt == "" {
+			http.Error(w, "label and system_prompt are required", http.StatusBadRequest)
+			return
+		}
+		if body.Greeting == "" {
+			body.Greeting = "{}"
+		}
+		id, err := insertTutorPrompt(db, body.Label, body.SystemPrompt, body.Greeting, body.LangInput)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		prompts, err := listTutorPrompts(db)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		for _, p := range prompts {
+			if p.ID == id {
+				w.Header().Set("Content-Type", "application/json")
+				w.WriteHeader(http.StatusCreated)
+				json.NewEncoder(w).Encode(p)
+				return
+			}
+		}
+		w.WriteHeader(http.StatusCreated)
+	}
+}
+
+func apiDeleteTutorPrompt(db *sql.DB) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		id, ok := parseRouteInt64(w, r, "id", "invalid id")
+		if !ok {
+			return
+		}
+		if err := deleteTutorPrompt(db, id); err != nil {
+			if err.Error() == "cannot delete built-in prompt" {
+				http.Error(w, err.Error(), http.StatusForbidden)
+			} else if err.Error() == "prompt not found" {
+				http.Error(w, err.Error(), http.StatusNotFound)
+			} else {
+				http.Error(w, err.Error(), http.StatusInternalServerError)
+			}
+			return
+		}
+		w.WriteHeader(http.StatusNoContent)
+	}
+}
+
+func apiGetTutorSystemPrompt(db *sql.DB) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		idStr := r.URL.Query().Get("mode")
+		id, _ := strconv.ParseInt(idStr, 10, 64)
 		w.Header().Set("Content-Type", "text/plain; charset=utf-8")
-		w.Write([]byte(tutorSystemPrompt(mode)))
+		w.Write([]byte(tutorSystemPromptByID(db, id)))
 	}
 }
 
@@ -61,7 +135,8 @@ func apiTutorChat(db *sql.DB) http.HandlerFunc {
 			return
 		}
 
-		system := tutorSystemPrompt(req.TutorMode)
+		modeID, _ := strconv.ParseInt(req.TutorMode, 10, 64)
+		system := tutorSystemPromptByID(db, modeID)
 		reply, err := tutorChat(db, req.Messages, system, req.AIModel)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)

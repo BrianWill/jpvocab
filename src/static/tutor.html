@@ -13,6 +13,8 @@
 <div class="page-header">
   <div class="tutor-header-controls">
     <select id="tutor-mode-select" class="tutor-select"></select>
+    <button id="btn-add-prompt" class="btn-header" data-tooltip="Add custom prompt">＋</button>
+    <button id="btn-delete-prompt" class="btn-header btn-header--danger" data-tooltip="Delete this prompt" style="display:none">✕</button>
     <select id="tutor-model-select" class="tutor-select"></select>
     <span id="tutor-provider-info" class="provider-info-icon" style="display:none">?</span>
     <button id="btn-new-chat" class="btn-header" data-tooltip="New chat">↺</button>
@@ -32,6 +34,33 @@
     <button type="submit" id="btn-tutor-send" class="btn-tutor-send">Send <span class="btn-hotkey">⇧↵</span></button>
   </form>
 </main>
+
+<dialog id="prompt-modal" class="prompt-modal">
+  <form id="prompt-form" method="dialog">
+    <h3 class="prompt-modal-title">Add Custom Prompt</h3>
+    <label class="prompt-modal-label">Name
+      <input id="prompt-label-input" class="prompt-modal-input" type="text" required maxlength="80" placeholder="e.g. Business Japanese">
+    </label>
+    <label class="prompt-modal-label">Instructions
+      <textarea id="prompt-system-input" class="prompt-modal-textarea" required placeholder="You are a Japanese tutor specialized in…"></textarea>
+    </label>
+    <label class="prompt-modal-label">Opening message <span class="prompt-modal-hint">(JSON, optional)</span>
+      <textarea id="prompt-greeting-input" class="prompt-modal-textarea prompt-modal-textarea--sm" placeholder='{"note":"Welcome!"}'></textarea>
+    </label>
+    <label class="prompt-modal-label">Expected user input language
+      <select id="prompt-lang-input" class="prompt-modal-input">
+        <option value="ja">Japanese</option>
+        <option value="en">English</option>
+        <option value="mix">Japanese + English</option>
+      </select>
+    </label>
+    <p id="prompt-modal-error" class="prompt-modal-error" style="display:none"></p>
+    <div class="prompt-modal-actions">
+      <button type="button" id="btn-cancel-prompt" class="btn-modal-cancel">Cancel</button>
+      <button type="button" id="btn-save-prompt" class="btn-modal-save">Save</button>
+    </div>
+  </form>
+</dialog>
 
 <script type="module" src="/static/common.js"></script>
 <script type="module" src="/static/tutor.js"></script>

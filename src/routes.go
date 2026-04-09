@@ -121,7 +121,10 @@ func serverInit(db *sql.DB) {
 	r.Get("/api/settings/drill", apiGetDrillSettings(db))
 	r.Put("/api/settings/drill", apiPutDrillSettings(db))
 
-	r.Get("/api/tutor/system-prompt", apiGetTutorSystemPrompt())
+	r.Get("/api/tutor/prompts", apiGetTutorPrompts(db))
+	r.Post("/api/tutor/prompts", apiCreateTutorPrompt(db))
+	r.Delete("/api/tutor/prompts/{id}", apiDeleteTutorPrompt(db))
+	r.Get("/api/tutor/system-prompt", apiGetTutorSystemPrompt(db))
 	r.Get("/api/tutor/session", apiGetTutorSession())
 	r.Delete("/api/tutor/session", apiClearTutorSession())
 	r.Post("/api/tutor/chat", apiTutorChat(db))

@@ -135,10 +135,7 @@ func autoFillWordsBatch(db *sql.DB, words []string, providerModel string) ([]*wo
 	}
 	var chunks []chunk
 	for i := 0; i < len(words); i += autoFillBatchSize {
-		end := i + autoFillBatchSize
-		if end > len(words) {
-			end = len(words)
-		}
+		end := min(i+autoFillBatchSize, len(words))
 		chunks = append(chunks, chunk{start: i, words: words[i:end]})
 	}
 
@@ -478,52 +475,6 @@ Return only valid JSON with no markdown, no code fences, and no extra commentary
 		return nil, fmt.Errorf("parse translation JSON: %w", err)
 	}
 	return &result, nil
-}
-
-// tutorJSONPrefix is prepended to every tutor system prompt so the output format
-// instruction appears first, where LLMs weight it most heavily.
-var tutorJSONPrefix = `RESPONSE FORMAT — follow this in every reply without exception:
-Respond only as a single raw JSON object whose values are all strings. Available fields:
-- "jp": Japanese text of your response.
-- "en": English translation of the "jp" field. Include whenever "jp" is present.
-- "note": Standalone English commentary, explanation, or instruction not tied to a specific translation.
-- "correction": Corrected Japanese form when the student made an error.
-
-You may introduce other clearly named string fields when the content warrants it (e.g. "hint", "question").
-Include only the fields relevant to this particular response.
-
-Rules:
-- "en" is specifically the translation of "jp" — do not use it for standalone commentary; use "note" instead.
-- Never mix Japanese and English inside the same field value.
-- Never wrap the object in an array.
-- Never include markdown, code fences, or any text outside the JSON object.
-
-Example — conversational reply with a grammar note:
-{"jp":"昨日、東京に行ったんですか？楽しかったですか？","en":"You went to Tokyo yesterday? Was it fun?","note":"「んですか」adds a sense of seeking explanation or showing interest."}
-
-Example — grammar correction:
-{"correction":"私は東京に行きました。","note":"「ました」is already polite past tense; adding 「です」after it is incorrect."}
-
-`
-
-// tutorSystemPrompts maps tutor mode keys to their AI system prompts.
-var tutorSystemPrompts = map[string]string{
-	"free":        tutorJSONPrefix + `You are a friendly Japanese language tutor having a casual conversation with a student. The student is practicing speaking Japanese, so they will write in Japanese. The opening message introduces a random everyday topic — continue the conversation naturally on that topic. Keep vocabulary and grammar appropriate for JLPT N5–N3 learners: use common everyday words, avoid rare kanji or advanced grammar without explanation. Respond naturally in Japanese (field "jp") with an English translation (field "en"). When the student makes a notable grammatical mistake or uses unnatural Japanese, use field "correction" to provide the corrected form and field "note" to briefly explain the mistake. If you include a correction, you must still reply to the content of the student's message in the "jp"/"en" fields — do not only correct without also responding.`,
-	"free-en":     tutorJSONPrefix + `You are a friendly Japanese language tutor having a casual conversation with a student who is practicing reading comprehension. The opening message introduces a random everyday topic — continue the conversation naturally on that topic. Keep vocabulary and grammar appropriate for JLPT N5–N3 learners: use common everyday words, avoid rare kanji or advanced grammar without explanation. You always speak in Japanese (field "jp") with an English translation (field "en"). The student will respond in English to show they understood — this is comprehension practice, not speaking practice, so do not correct their English or ask them to write in Japanese. If the student's reply suggests they misunderstood something, gently clarify in your next Japanese response.`,
-	"grammar":     tutorJSONPrefix + `You are a thorough Japanese grammar teacher. When the student writes Japanese, carefully analyze it for grammar errors. Explain each mistake with the corrected form and the underlying grammatical rule. After corrections, continue the conversation naturally. If the student writes in English, invite them to try expressing it in Japanese first.`,
-	"vocab":       tutorJSONPrefix + `You are a Japanese vocabulary quiz master. Quiz the student one word at a time, alternating between: (a) giving an English definition and asking for the Japanese word or kanji, and (b) giving a Japanese word and asking for the English meaning. After each answer, give clear feedback and immediately present the next quiz item. Focus on common everyday vocabulary appropriate to the student's apparent level.`,
-	"translation-en-jp": tutorJSONPrefix + `You are a Japanese translation coach. Give the student English sentences to translate into Japanese, starting simple and gradually increasing in difficulty. After each translation attempt, evaluate it: praise what was correct, explain any errors, and provide the ideal translation with notes on key grammar points used. Use the "question" field to present the next English sentence to translate.`,
-	"translation-jp-en": tutorJSONPrefix + `You are a Japanese translation coach. Give the student Japanese sentences to translate into English, starting simple and gradually increasing in difficulty. Use the "jp" and "en" fields to present the Japanese sentence and its ideal English translation, and the "note" field to explain key vocabulary or grammar points. Use the "question" field to prompt the student for their translation attempt. After the student responds, evaluate their translation, then present the next sentence.`,
-	"reading":     tutorJSONPrefix + `You are a Japanese reading comprehension tutor. Provide short Japanese passages (1 to 4 sentences) appropriate to the student's level. After each passage, ask one comprehension question in English. Evaluate the student's answer and provide vocabulary notes for any difficult words from the passage.`,
-}
-
-// tutorSystemPrompt returns the system prompt for the given tutor mode key,
-// defaulting to the "free" conversation prompt for unrecognized modes.
-func tutorSystemPrompt(mode string) string {
-	if p, ok := tutorSystemPrompts[mode]; ok {
-		return p
-	}
-	return tutorSystemPrompts["free"]
 }
 
 // tutorChat sends the conversation history to the AI and returns its reply.

@@ -25,6 +25,7 @@ func initDB(path string) *sql.DB {
 
 	migrate(db)
 	seedDB(db)
+	seedTutorPrompts(db)
 	return db
 }
 
@@ -102,6 +103,15 @@ func migrate(db *sql.DB) {
 			input_tokens  INTEGER  NOT NULL DEFAULT 0,
 			output_tokens INTEGER  NOT NULL DEFAULT 0,
 			called_at     DATETIME NOT NULL DEFAULT (datetime('now'))
+		)`,
+		`CREATE TABLE IF NOT EXISTS tutor_prompts (
+			id            INTEGER  PRIMARY KEY AUTOINCREMENT,
+			label         TEXT     NOT NULL,
+			system_prompt TEXT     NOT NULL,
+			greeting      TEXT     NOT NULL DEFAULT '{}',
+			lang_input    TEXT     NOT NULL DEFAULT 'en',
+			can_remove    INTEGER  NOT NULL DEFAULT 1,
+			created_at    DATETIME NOT NULL DEFAULT (datetime('now'))
 		)`,
 	}
 
@@ -372,12 +382,22 @@ type seedStory struct {
 	Sentences []seedStorySentence `json:"sentences"`
 }
 
+// seedTutorPrompt is one entry in the "tutor_prompts" array in seed.json.
+type seedTutorPrompt struct {
+	Label        string `json:"label"`
+	SystemPrompt string `json:"system_prompt"`
+	Greeting     string `json:"greeting"`
+	LangInput    string `json:"lang_input"`
+}
+
 // seedData is the top-level shape of seed.json.
 type seedData struct {
-	Kanji    []seedKanjiDef `json:"kanji"`
-	Words    []seedWord     `json:"words"`
-	Sessions []seedSession  `json:"sessions"`
-	Stories  []seedStory    `json:"stories"`
+	Kanji             []seedKanjiDef    `json:"kanji"`
+	Words             []seedWord        `json:"words"`
+	Sessions          []seedSession     `json:"sessions"`
+	Stories           []seedStory       `json:"stories"`
+	TutorPromptPrefix string            `json:"tutor_prompt_prefix"`
+	TutorPrompts      []seedTutorPrompt `json:"tutor_prompts"`
 }
 
 // seedDB loads seed.json and inserts words and drill history if the words table is empty.
@@ -546,4 +566,48 @@ func seedDB(db *sql.DB) {
 		log.Fatal("seed: commit:", err)
 	}
 	log.Printf("DB seeded: %d words, %d sessions, %d stories", len(seed.Words), len(seed.Sessions), len(seed.Stories))
+}
+
+// seedTutorPrompts loads seed.json, sets the tutorJSONPrefix package var, and
+// inserts the built-in prompts (can_remove=0) if the table is empty. Called
+// after every migration so it runs on both fresh installs and DB upgrades.
+func seedTutorPrompts(db *sql.DB) {
+	data, err := os.ReadFile("seed.json")
+	if err != nil {
+		log.Println("seedTutorPrompts: seed.json not found, skipping")
+		return
+	}
+	var seed seedData
+	if err := json.Unmarshal(data, &seed); err != nil {
+		log.Fatal("seedTutorPrompts: invalid seed.json:", err)
+	}
+
+	var count int
+	if err := db.QueryRow("SELECT COUNT(*) FROM tutor_prompts").Scan(&count); err != nil {
+		log.Println("seedTutorPrompts: count error:", err)
+		return
+	}
+	if count > 0 || len(seed.TutorPrompts) == 0 {
+		return
+	}
+
+	stmt, err := db.Prepare(`
+		INSERT INTO tutor_prompts (label, system_prompt, greeting, lang_input, can_remove)
+		VALUES (?, ?, ?, ?, 0)
+	`)
+	if err != nil {
+		log.Fatal("seedTutorPrompts: prepare:", err)
+	}
+	defer stmt.Close()
+
+	for _, p := range seed.TutorPrompts {
+		langInput := p.LangInput
+		if langInput == "" {
+			langInput = "en"
+		}
+		if _, err := stmt.Exec(p.Label, seed.TutorPromptPrefix+p.SystemPrompt, p.Greeting, langInput); err != nil {
+			log.Fatal("seedTutorPrompts: insert:", err)
+		}
+	}
+	log.Printf("DB seeded: %d tutor prompts", len(seed.TutorPrompts))
 }

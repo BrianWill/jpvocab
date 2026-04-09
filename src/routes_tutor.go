@@ -46,9 +46,6 @@ func apiCreateTutorPrompt(db *sql.DB) http.HandlerFunc {
 			http.Error(w, "label and system_prompt are required", http.StatusBadRequest)
 			return
 		}
-		if body.Greeting == "" {
-			body.Greeting = "{}"
-		}
 		id, err := insertTutorPrompt(db, body.Label, body.SystemPrompt, body.Greeting, body.LangInput)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -68,6 +65,45 @@ func apiCreateTutorPrompt(db *sql.DB) http.HandlerFunc {
 			}
 		}
 		w.WriteHeader(http.StatusCreated)
+	}
+}
+
+func apiUpdateTutorPrompt(db *sql.DB) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		id, ok := parseRouteInt64(w, r, "id", "invalid id")
+		if !ok {
+			return
+		}
+		var body struct {
+			Label        string `json:"label"`
+			SystemPrompt string `json:"system_prompt"`
+			Greeting     string `json:"greeting"`
+			LangInput    string `json:"lang_input"`
+		}
+		if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+			http.Error(w, "invalid request body", http.StatusBadRequest)
+			return
+		}
+		if body.Label == "" || body.SystemPrompt == "" {
+			http.Error(w, "label and system_prompt are required", http.StatusBadRequest)
+			return
+		}
+		if err := updateTutorPrompt(db, id, body.Label, body.SystemPrompt, body.Greeting, body.LangInput); err != nil {
+			http.Error(w, err.Error(), http.StatusBadRequest)
+			return
+		}
+		prompts, err := listTutorPrompts(db)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		for _, p := range prompts {
+			if p.ID == id {
+				writeJSON(w, p)
+				return
+			}
+		}
+		w.WriteHeader(http.StatusOK)
 	}
 }
 

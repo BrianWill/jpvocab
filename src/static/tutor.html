@@ -12,13 +12,14 @@
 
 <div class="page-header">
   <div class="tutor-header-controls">
-    <select id="tutor-mode-select" class="tutor-select"></select>
-    <button id="btn-add-prompt" class="btn-header" data-tooltip="Add custom prompt">＋</button>
-    <button id="btn-delete-prompt" class="btn-header btn-header--danger" data-tooltip="Delete this prompt" style="display:none">✕</button>
     <select id="tutor-model-select" class="tutor-select"></select>
     <span id="tutor-provider-info" class="provider-info-icon" style="display:none">?</span>
     <button id="btn-new-chat" class="btn-header" data-tooltip="New chat">↺</button>
     <button id="btn-debug-toggle" class="btn-header" data-tooltip="Toggle debug view">{}</button>
+    <select id="tutor-mode-select" class="tutor-select"></select>
+    <button id="btn-add-prompt" class="btn-header" data-tooltip="Add new prompt based on current">＋</button>
+    <button id="btn-edit-prompt" class="btn-header" data-tooltip="Edit this prompt" style="display:none">✎</button>
+    
   </div>
   <div class="nav-and-settings">
     <button class="btn-settings" id="settings-btn" aria-label="Settings"><svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M19.14 12.94c.04-.3.06-.61.06-.94 0-.32-.02-.64-.07-.94l2.03-1.58c.18-.14.23-.41.12-.61l-1.92-3.32c-.12-.22-.37-.29-.59-.22l-2.39.96c-.5-.38-1.03-.7-1.62-.94l-.36-2.54c-.04-.24-.24-.41-.48-.41h-3.84c-.24 0-.43.17-.47.41l-.36 2.54c-.59.24-1.13.57-1.62.94l-2.39-.96c-.22-.08-.47 0-.59.22L2.74 8.87c-.12.21-.08.47.12.61l2.03 1.58c-.05.3-.09.63-.09.94s.02.64.07.94l-2.01 1.58c-.18.14-.23.41-.12.61l1.92 3.32c.12.22.37.29.59.22l2.39-.96c.5.38 1.03.7 1.62.94l.36 2.54c.05.24.24.41.48.41h3.84c.24 0 .44-.17.47-.41l.36-2.54c.59-.24 1.13-.56 1.62-.94l2.39.96c.22.08.47 0 .59-.22l1.92-3.32c.12-.22.07-.47-.12-.61l-2.01-1.58zM12 15.6c-1.98 0-3.6-1.62-3.6-3.6s1.62-3.6 3.6-3.6 3.6 1.62 3.6 3.6-1.62 3.6-3.6 3.6z"/></svg></button>
@@ -37,15 +38,15 @@
 
 <dialog id="prompt-modal" class="prompt-modal">
   <form id="prompt-form" method="dialog">
-    <h3 class="prompt-modal-title">Add Custom Prompt</h3>
+    <h3 id="prompt-modal-title" class="prompt-modal-title">Add Custom Prompt</h3>
     <label class="prompt-modal-label">Name
       <input id="prompt-label-input" class="prompt-modal-input" type="text" required maxlength="80" placeholder="e.g. Business Japanese">
     </label>
     <label class="prompt-modal-label">Instructions
       <textarea id="prompt-system-input" class="prompt-modal-textarea" required placeholder="You are a Japanese tutor specialized in…"></textarea>
     </label>
-    <label class="prompt-modal-label">Opening message <span class="prompt-modal-hint">(JSON, optional)</span>
-      <textarea id="prompt-greeting-input" class="prompt-modal-textarea prompt-modal-textarea--sm" placeholder='{"note":"Welcome!"}'></textarea>
+    <label class="prompt-modal-label">Opening message <span class="prompt-modal-hint">(optional)</span>
+      <textarea id="prompt-greeting-input" class="prompt-modal-textarea prompt-modal-textarea--sm" placeholder="Welcome! Let's practice Japanese."></textarea>
     </label>
     <label class="prompt-modal-label">Expected user input language
       <select id="prompt-lang-input" class="prompt-modal-input">
@@ -56,6 +57,8 @@
     </label>
     <p id="prompt-modal-error" class="prompt-modal-error" style="display:none"></p>
     <div class="prompt-modal-actions">
+      <button type="button" id="btn-delete-prompt" class="btn-modal-delete" style="display:none">Delete</button>
+      <div style="flex:1"></div>
       <button type="button" id="btn-cancel-prompt" class="btn-modal-cancel">Cancel</button>
       <button type="button" id="btn-save-prompt" class="btn-modal-save">Save</button>
     </div>

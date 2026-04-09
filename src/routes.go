@@ -123,6 +123,7 @@ func serverInit(db *sql.DB) {
 
 	r.Get("/api/tutor/prompts", apiGetTutorPrompts(db))
 	r.Post("/api/tutor/prompts", apiCreateTutorPrompt(db))
+	r.Patch("/api/tutor/prompts/{id}", apiUpdateTutorPrompt(db))
 	r.Delete("/api/tutor/prompts/{id}", apiDeleteTutorPrompt(db))
 	r.Get("/api/tutor/system-prompt", apiGetTutorSystemPrompt(db))
 	r.Get("/api/tutor/session", apiGetTutorSession())

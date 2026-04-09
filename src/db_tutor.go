@@ -50,6 +50,25 @@ func insertTutorPrompt(db *sql.DB, label, systemPrompt, greeting, langInput stri
 	return res.LastInsertId()
 }
 
+func updateTutorPrompt(db *sql.DB, id int64, label, systemPrompt, greeting, langInput string) error {
+	if langInput == "" {
+		langInput = "en"
+	}
+	res, err := db.Exec(`
+		UPDATE tutor_prompts
+		SET label = ?, system_prompt = ?, greeting = ?, lang_input = ?
+		WHERE id = ? AND can_remove = 1
+	`, label, systemPrompt, greeting, langInput, id)
+	if err != nil {
+		return err
+	}
+	n, _ := res.RowsAffected()
+	if n == 0 {
+		return fmt.Errorf("prompt not found or cannot be edited")
+	}
+	return nil
+}
+
 func deleteTutorPrompt(db *sql.DB, id int64) error {
 	var canRemove int
 	err := db.QueryRow(`SELECT can_remove FROM tutor_prompts WHERE id = ?`, id).Scan(&canRemove)

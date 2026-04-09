@@ -11,6 +11,10 @@
   white-space: nowrap;
 }
 
+#tutor-mode-select {
+  min-width: 18rem;
+}
+
 .tutor-select {
   background: #11111b;
   border: 1px solid #313244;
@@ -301,6 +305,10 @@
 
 /* ── Prompt create modal ─────────────────────────────────────────────────────*/
 .prompt-modal {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
   background: #1e1e2e;
   border: 1px solid #313244;
   border-radius: 10px;
@@ -371,6 +379,26 @@
   gap: 0.6rem;
   justify-content: flex-end;
   margin-top: 0.5rem;
+}
+
+.btn-modal-delete {
+  background: none;
+  border: 1px solid #f38ba8;
+  border-radius: 5px;
+  color: #f38ba8;
+  cursor: pointer;
+  font-family: inherit;
+  font-size: 0.85rem;
+  padding: 0.4rem 0.9rem;
+}
+.btn-modal-delete:hover { background: rgba(243,139,168,0.15); }
+
+@keyframes btn-modal-flash {
+  0%, 100% { background: none;                          color: #a6adc8; border-color: #313244; }
+  40%       { background: rgba(137,180,250,0.2); color: #cdd6f4; border-color: #89b4fa; }
+}
+.btn-modal-cancel--flash {
+  animation: btn-modal-flash 0.45s ease;
 }
 
 .btn-modal-cancel {

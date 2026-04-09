@@ -42,39 +42,42 @@ async function playJp(text) {
 // an English label used to build the opening greeting.
 
 const els = {
-  modeSelect:       document.getElementById('tutor-mode-select'),
-  modelSelect:      document.getElementById('tutor-model-select'),
-  providerInfo:     document.getElementById('tutor-provider-info'),
-  btnNewChat:       document.getElementById('btn-new-chat'),
-  btnDebug:         document.getElementById('btn-debug-toggle'),
-  btnAddPrompt:     document.getElementById('btn-add-prompt'),
-  btnDeletePrompt:  document.getElementById('btn-delete-prompt'),
-  messages:         document.getElementById('tutor-messages'),
-  form:             document.getElementById('tutor-form'),
-  input:            document.getElementById('tutor-input'),
-  btnMic:           document.getElementById('btn-tutor-mic'),
-  btnSend:          document.getElementById('btn-tutor-send'),
-  promptModal:      document.getElementById('prompt-modal'),
-  promptForm:       document.getElementById('prompt-form'),
-  promptLabelInput: document.getElementById('prompt-label-input'),
-  promptSystemInput:document.getElementById('prompt-system-input'),
-  promptGreetInput: document.getElementById('prompt-greeting-input'),
-  promptLangInput:  document.getElementById('prompt-lang-input'),
-  promptModalError: document.getElementById('prompt-modal-error'),
-  btnCancelPrompt:  document.getElementById('btn-cancel-prompt'),
-  btnSavePrompt:    document.getElementById('btn-save-prompt'),
+  modeSelect:        document.getElementById('tutor-mode-select'),
+  modelSelect:       document.getElementById('tutor-model-select'),
+  providerInfo:      document.getElementById('tutor-provider-info'),
+  btnNewChat:        document.getElementById('btn-new-chat'),
+  btnDebug:          document.getElementById('btn-debug-toggle'),
+  btnAddPrompt:      document.getElementById('btn-add-prompt'),
+  btnEditPrompt:     document.getElementById('btn-edit-prompt'),
+  btnDeletePrompt:   document.getElementById('btn-delete-prompt'),
+  messages:          document.getElementById('tutor-messages'),
+  form:              document.getElementById('tutor-form'),
+  input:             document.getElementById('tutor-input'),
+  btnMic:            document.getElementById('btn-tutor-mic'),
+  btnSend:           document.getElementById('btn-tutor-send'),
+  promptModal:       document.getElementById('prompt-modal'),
+  promptModalTitle:  document.getElementById('prompt-modal-title'),
+  promptForm:        document.getElementById('prompt-form'),
+  promptLabelInput:  document.getElementById('prompt-label-input'),
+  promptSystemInput: document.getElementById('prompt-system-input'),
+  promptGreetInput:  document.getElementById('prompt-greeting-input'),
+  promptLangInput:   document.getElementById('prompt-lang-input'),
+  promptModalError:  document.getElementById('prompt-modal-error'),
+  btnCancelPrompt:   document.getElementById('btn-cancel-prompt'),
+  btnSavePrompt:     document.getElementById('btn-save-prompt'),
 };
 
 const state = {
-  providers:       null,
-  prompts:         [],     // tutorPromptJSON[] loaded from /api/tutor/prompts
-  history:         [],     // { role: 'user'|'assistant', content: string }[]
-  sending:         false,
-  debugMode:       false,
-  systemPrompt:    null,   // cached for the current mode
-  listening:       false,
-  waitingForStart: false,  // true after startNewChat; cleared once the bot sends its first real message
-  pendingGreeting: null,   // greeting string shown while waitingForStart, never sent to AI
+  providers:        null,
+  prompts:          [],     // tutorPromptJSON[] loaded from /api/tutor/prompts
+  history:          [],     // { role: 'user'|'assistant', content: string }[]
+  sending:          false,
+  debugMode:        false,
+  systemPrompt:     null,   // cached for the current mode
+  listening:        false,
+  waitingForStart:  false,  // true after startNewChat; cleared once the bot sends its first real message
+  pendingGreeting:  null,   // greeting string shown while waitingForStart, never sent to AI
+  editingPromptId:  null,   // id of the prompt being edited; null when creating a new one
 };
 
 // ── Provider / model select ────────────────────────────────────────────────
@@ -287,8 +290,8 @@ async function renderAllMessages() {
   els.messages.innerHTML = '';
 
   if (state.waitingForStart) {
-    if (state.pendingGreeting) appendMessage('assistant', state.pendingGreeting);
-    els.input.placeholder = 'Press Shift+Enter to begin';
+    if (state.pendingGreeting) appendMessage('assistant', JSON.stringify({ note: state.pendingGreeting }));
+    els.input.placeholder = 'Press Send (Shift+Enter) to begin';
     return;
   }
   els.input.placeholder = 'Type a message…';
@@ -314,9 +317,9 @@ function currentPrompt() {
   return state.prompts.find(p => p.id === id) || state.prompts[0] || null;
 }
 
-function updateDeleteBtnVisibility() {
+function updatePromptButtons() {
   const p = currentPrompt();
-  els.btnDeletePrompt.style.display = (p && p.can_remove) ? '' : 'none';
+  els.btnEditPrompt.style.display = (p && p.can_remove) ? '' : 'none';
 }
 
 function startNewChat() {
@@ -528,14 +531,20 @@ function restoreSession(session) {
 
 function populateModeSelect() {
   const saved = els.modeSelect.value;
-  els.modeSelect.innerHTML = state.prompts.map(p =>
-    '<option value="' + p.id + '">' + escHtml(p.label) + '</option>'
-  ).join('');
-  // Restore previously selected value if it still exists
+
+  const builtIn = state.prompts.filter(p => !p.can_remove).sort((a, b) => a.label.localeCompare(b.label));
+  const custom  = state.prompts.filter(p =>  p.can_remove).sort((a, b) => a.label.localeCompare(b.label));
+  const opt     = p => '<option value="' + p.id + '">' + escHtml(p.label) + '</option>';
+
+  els.modeSelect.innerHTML = (builtIn.length && custom.length)
+    ? '<optgroup label="Built-in">' + builtIn.map(opt).join('') + '</optgroup>' +
+      '<optgroup label="Custom">'   + custom.map(opt).join('')   + '</optgroup>'
+    : [...builtIn, ...custom].map(opt).join('');
+
   if (saved && state.prompts.some(p => String(p.id) === saved)) {
     els.modeSelect.value = saved;
   }
-  updateDeleteBtnVisibility();
+  updatePromptButtons();
 }
 
 async function loadPrompts() {
@@ -547,20 +556,41 @@ async function loadPrompts() {
 }
 
 function openAddPromptModal() {
-  els.promptLabelInput.value = '';
-  els.promptSystemInput.value = '';
-  els.promptGreetInput.value = '';
-  els.promptLangInput.value = 'ja';
+  state.editingPromptId = null;
+  els.promptModalTitle.textContent = 'Add Custom Prompt';
+  const base = currentPrompt();
+  els.promptLabelInput.value  = base ? base.label + ' (custom)' : '';
+  els.promptSystemInput.value = base ? base.system_prompt : '';
+  els.promptGreetInput.value  = base ? base.greeting : '';
+  els.promptLangInput.value   = base?.lang_input || 'ja';
   els.promptModalError.style.display = 'none';
   els.btnSavePrompt.disabled = false;
+  els.btnDeletePrompt.style.display = 'none';
+  els.promptModal.showModal();
+}
+
+function openEditPromptModal() {
+  const prompt = currentPrompt();
+  if (!prompt || !prompt.can_remove) return;
+  state.editingPromptId = prompt.id;
+  els.promptModalTitle.textContent = 'Edit Prompt';
+  els.promptLabelInput.value  = prompt.label;
+  els.promptSystemInput.value = prompt.system_prompt;
+  els.promptGreetInput.value  = prompt.greeting;
+  els.promptLangInput.value   = prompt.lang_input || 'ja';
+  els.promptModalError.style.display = 'none';
+  els.btnSavePrompt.disabled = false;
+  els.btnDeletePrompt.style.display = '';
+  els.btnDeletePrompt.dataset.armed = '';
+  els.btnDeletePrompt.textContent = 'Delete';
   els.promptModal.showModal();
 }
 
 async function saveCustomPrompt() {
-  const label = els.promptLabelInput.value.trim();
+  const label      = els.promptLabelInput.value.trim();
   const systemPrompt = els.promptSystemInput.value.trim();
-  const greeting = els.promptGreetInput.value.trim() || '{}';
-  const langInput = els.promptLangInput.value;
+  const greeting   = els.promptGreetInput.value.trim();
+  const langInput  = els.promptLangInput.value;
 
   if (!label || !systemPrompt) {
     els.promptModalError.textContent = 'Name and Instructions are required.';
@@ -571,9 +601,13 @@ async function saveCustomPrompt() {
   els.btnSavePrompt.disabled = true;
   els.promptModalError.style.display = 'none';
 
+  const isEdit = state.editingPromptId !== null;
+  const url    = isEdit ? '/api/tutor/prompts/' + state.editingPromptId : '/api/tutor/prompts';
+  const method = isEdit ? 'PATCH' : 'POST';
+
   try {
-    const resp = await fetch('/api/tutor/prompts', {
-      method: 'POST',
+    const resp = await fetch(url, {
+      method,
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ label, system_prompt: systemPrompt, greeting, lang_input: langInput }),
     });
@@ -581,13 +615,17 @@ async function saveCustomPrompt() {
       const msg = await resp.text();
       throw new Error(msg || resp.statusText);
     }
-    const newPrompt = await resp.json();
+    const saved = await resp.json();
     els.promptModal.close();
-    state.prompts.push(newPrompt);
+
+    if (isEdit) {
+      state.prompts = state.prompts.map(p => p.id === saved.id ? saved : p);
+    } else {
+      state.prompts.push(saved);
+    }
     populateModeSelect();
-    // Switch to the newly created prompt and start a fresh chat
-    els.modeSelect.value = String(newPrompt.id);
-    updateDeleteBtnVisibility();
+    els.modeSelect.value = String(saved.id);
+    updatePromptButtons();
     startNewChat();
   } catch (err) {
     els.promptModalError.textContent = 'Error: ' + err.message;
@@ -603,20 +641,21 @@ async function deleteCurrentPrompt() {
   // Two-click confirmation: first click arms, second click (within 3s) deletes.
   if (els.btnDeletePrompt.dataset.armed !== 'true') {
     els.btnDeletePrompt.dataset.armed = 'true';
-    els.btnDeletePrompt.textContent = 'Remove?';
+    els.btnDeletePrompt.textContent = 'Confirm delete?';
     setTimeout(() => {
       els.btnDeletePrompt.dataset.armed = '';
-      els.btnDeletePrompt.textContent = '✕';
+      els.btnDeletePrompt.textContent = 'Delete';
     }, 3000);
     return;
   }
 
   els.btnDeletePrompt.dataset.armed = '';
-  els.btnDeletePrompt.textContent = '✕';
+  els.btnDeletePrompt.textContent = 'Delete';
 
   try {
     const resp = await fetch('/api/tutor/prompts/' + prompt.id, { method: 'DELETE' });
     if (!resp.ok) return;
+    els.promptModal.close();
     state.prompts = state.prompts.filter(p => p.id !== prompt.id);
     populateModeSelect();
     startNewChat();
@@ -642,11 +681,23 @@ async function init() {
   // Restore saved session, or start a fresh greeting
   restoreSession(session);
 
-  els.modeSelect.addEventListener('change', () => { updateDeleteBtnVisibility(); startNewChat(); });
+  els.modeSelect.addEventListener('change', () => { updatePromptButtons(); startNewChat(); });
   els.btnNewChat.addEventListener('click', startNewChat);
   els.btnAddPrompt.addEventListener('click', openAddPromptModal);
+  els.btnEditPrompt.addEventListener('click', openEditPromptModal);
   els.btnDeletePrompt.addEventListener('click', deleteCurrentPrompt);
   els.btnCancelPrompt.addEventListener('click', () => els.promptModal.close());
+
+  // Backdrop click: flash the Cancel button instead of closing.
+  els.promptModal.addEventListener('click', e => {
+    const rect = els.promptModal.getBoundingClientRect();
+    if (e.clientX < rect.left || e.clientX > rect.right ||
+        e.clientY < rect.top  || e.clientY > rect.bottom) {
+      els.btnCancelPrompt.classList.remove('btn-modal-cancel--flash');
+      void els.btnCancelPrompt.offsetWidth; // force reflow to restart animation
+      els.btnCancelPrompt.classList.add('btn-modal-cancel--flash');
+    }
+  });
   els.btnSavePrompt.addEventListener('click', saveCustomPrompt);
 
   els.btnDebug.addEventListener('click', () => {

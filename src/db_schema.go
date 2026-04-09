@@ -108,7 +108,7 @@ func migrate(db *sql.DB) {
 			id            INTEGER  PRIMARY KEY AUTOINCREMENT,
 			label         TEXT     NOT NULL,
 			system_prompt TEXT     NOT NULL,
-			greeting      TEXT     NOT NULL DEFAULT '{}',
+			greeting      TEXT     NOT NULL DEFAULT '',
 			lang_input    TEXT     NOT NULL DEFAULT 'en',
 			can_remove    INTEGER  NOT NULL DEFAULT 1,
 			created_at    DATETIME NOT NULL DEFAULT (datetime('now'))

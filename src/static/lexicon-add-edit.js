@@ -13,6 +13,8 @@ import {
   sortAddResultRows,
 } from './add-to-lexicon.js';
 
+const LEXICON_AUDIO_OPTIONS = { preferSynthesis: true, fallbackToBrowserTts: true };
+
 const els = {
   addModalSaveBtn: document.querySelector('#add-modal-backdrop .btn-save'),
   addResultBody: document.getElementById('add-result-modal-body'),
@@ -114,7 +116,7 @@ els.addResultBody.addEventListener('click', e => {
     word: row?._resolvedWord ?? '',
     hasSentenceAudio: row?._hasSentenceAudio ?? false,
     exampleJp: text,
-  }, 1, { preferSynthesis: true });
+  }, 1, LEXICON_AUDIO_OPTIONS);
 });
 
 // --- Remove-confirm mini-modal ---
@@ -334,7 +336,7 @@ function appendWordRow(data) {
   row._hasSentenceAudio = data.has_sentence_audio ?? false;
   const resultWordEl = row.querySelector('.result-word');
   if (resultWordEl) resultWordEl.addEventListener('click', () =>
-    playWordAudio({ word: data.word, hasWordAudio: row._hasWordAudio }, 1, { preferSynthesis: true })
+    playWordAudio({ word: data.word, hasWordAudio: row._hasWordAudio }, 1, LEXICON_AUDIO_OPTIONS)
   );
 
   const removeBtnEl = row.querySelector('.btn-word-remove');

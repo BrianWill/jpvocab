@@ -2,6 +2,8 @@ import { isTtsAutoplayEnabled, playWordAudio, positionAnchoredWordTooltip, rende
 import { renderReading } from './lexicon-utils.js';
 import { isSessionComplete } from './drill-state.js';
 
+const DRILL_AUDIO_OPTIONS = { preferSynthesis: true, fallbackToBrowserTts: true };
+
 export function createDrillElements() {
   const els = {
     actionPrompt: document.getElementById('action-prompt'),
@@ -150,7 +152,7 @@ function renderPrompt(els, state) {
   els.promptExampleJp.textContent = state.currentWord.exampleJp;
   if (isTtsAutoplayEnabled() && state.currentWord.id !== state.lastAutoPlayedId) {
     state.lastAutoPlayedId = state.currentWord.id;
-    playWordAudio(state.currentWord);
+    playWordAudio(state.currentWord, 1, DRILL_AUDIO_OPTIONS);
   }
   const item = els.sidebarList.querySelector('[data-id="' + state.currentWord.word + '"]');
   if (item) item.classList.add('current');

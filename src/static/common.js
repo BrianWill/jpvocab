@@ -373,7 +373,16 @@ async function playVoicevoxText(text, rate = 1) {
     const audio = new Audio(audioUrl);
     audio.playbackRate = rate;
     _currentAudio = audio;
-    await audio.play();
+    try {
+      await audio.play();
+    } catch (err) {
+      // Treat playback-start failures differently from synthesis failures so
+      // callers don't incorrectly downgrade to browser TTS when VoiceVox audio
+      // was actually generated successfully.
+      if (requestId !== _playbackRequestId) return true;
+      console.warn('VoiceVox playback start failed', err);
+      return true;
+    }
     return true;
   } catch (_) {
     if (requestId !== _playbackRequestId) return true;
@@ -381,9 +390,34 @@ async function playVoicevoxText(text, rate = 1) {
   }
 }
 
-// playWordAudio plays a word with modal-only support for on-demand VoiceVox synthesis.
+async function playFallbackTts(text, lang, rate) {
+  _playbackRequestId++;
+  await playTts(text, lang, rate);
+}
+
+export async function playJapaneseText(text, rate = 1, options = {}) {
+  if (!text) return;
+  if (options.preferSynthesis) {
+    const played = await playVoicevoxText(text, rate);
+    if (played) return;
+    if (options.fallbackToBrowserTts) {
+      await playFallbackTts(text, 'ja-JP', rate);
+      return;
+    }
+  }
+  await playTts(text, 'ja-JP', rate);
+}
+
+// playWordAudio plays a word with optional on-demand VoiceVox synthesis.
 export async function playWordAudio(word, rate = 1, options = {}) {
-  if (options.preferSynthesis && await playVoicevoxText(word.word, rate)) return;
+  if (options.preferSynthesis) {
+    const played = await playVoicevoxText(word.word, rate);
+    if (played) return;
+    if (options.fallbackToBrowserTts) {
+      await playFallbackTts(word.word, 'ja-JP', WORD_TTS_RATE * rate);
+      return;
+    }
+  }
   _playbackRequestId++;
   stopCurrentPlayback();
   const audio = new Audio(`/static/audio/${encodeURIComponent(word.word)}.ogg`);
@@ -393,9 +427,16 @@ export async function playWordAudio(word, rate = 1, options = {}) {
   audio.play().catch(() => {});
 }
 
-// playSentenceAudio plays a sentence with modal-only support for on-demand VoiceVox synthesis.
+// playSentenceAudio plays a sentence with optional on-demand VoiceVox synthesis.
 export async function playSentenceAudio(word, rate = 1, options = {}) {
-  if (options.preferSynthesis && word.exampleJp && await playVoicevoxText(word.exampleJp, rate)) return;
+  if (options.preferSynthesis && word.exampleJp) {
+    const played = await playVoicevoxText(word.exampleJp, rate);
+    if (played) return;
+    if (options.fallbackToBrowserTts) {
+      await playFallbackTts(word.exampleJp, 'ja-JP', 0.75 * rate);
+      return;
+    }
+  }
   _playbackRequestId++;
   stopCurrentPlayback();
   const audio = new Audio(`/static/audio/${encodeURIComponent(word.word)}_sentence.ogg`);

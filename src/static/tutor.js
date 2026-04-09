@@ -1,41 +1,10 @@
-import { PROVIDER_MODELS, playTts, WORD_TTS_RATE, checkVoicevoxAvailable, getVoicevoxSettings } from './common.js';
+import { PROVIDER_MODELS, playJapaneseText, WORD_TTS_RATE } from './common.js';
 
 // ── VoiceVox / TTS playback ────────────────────────────────────────────────
 
-let _tutorAudio = null;
-
-// Stops any currently playing tutor audio (VoiceVox or Web Speech).
-function stopAudio() {
-  if (_tutorAudio) {
-    _tutorAudio.pause();
-    URL.revokeObjectURL(_tutorAudio.src);
-    _tutorAudio = null;
-  }
-  speechSynthesis.cancel();
-}
-
 // Plays Japanese text via VoiceVox if available, otherwise falls back to Web Speech TTS.
 async function playJp(text) {
-  const vvAvailable = await checkVoicevoxAvailable();
-  if (vvAvailable) {
-    const vv = getVoicevoxSettings();
-    try {
-      const resp = await fetch('/api/voicevox/preview', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ text, speaker: vv.speaker, speedScale: vv.speedScale, intonationScale: vv.intonationScale }),
-      });
-      if (!resp.ok) throw new Error('voicevox unavailable');
-      const blob = await resp.blob();
-      const url = URL.createObjectURL(blob);
-      stopAudio();
-      _tutorAudio = new Audio(url);
-      _tutorAudio.addEventListener('ended', () => { URL.revokeObjectURL(url); _tutorAudio = null; });
-      _tutorAudio.play();
-      return;
-    } catch (_) { /* fall through to Web Speech */ }
-  }
-  playTts(text, 'ja-JP', WORD_TTS_RATE);
+  await playJapaneseText(text, WORD_TTS_RATE, { preferSynthesis: true, fallbackToBrowserTts: true });
 }
 
 // Topics suitable for N5–N3 learners. Each entry has a Japanese topic phrase and

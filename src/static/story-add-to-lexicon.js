@@ -12,6 +12,8 @@ import {
   sortAddResultRows,
 } from './add-to-lexicon.js';
 
+const STORY_LEXICON_AUDIO_OPTIONS = { preferSynthesis: true, fallbackToBrowserTts: true };
+
 const els = {};
 
 const state = {
@@ -144,7 +146,7 @@ function bindEvents() {
         word: row?._resolvedWord ?? '',
         hasSentenceAudio: row?._hasSentenceAudio ?? false,
         exampleJp: text,
-      }, 1, { preferSynthesis: true });
+      }, 1, STORY_LEXICON_AUDIO_OPTIONS);
     }
   });
 
@@ -289,7 +291,9 @@ function appendWordRow(data) {
 
   row._hasWordAudio = data.has_word_audio ?? false;
   row._hasSentenceAudio = data.has_sentence_audio ?? false;
-  row.querySelector('.result-word')?.addEventListener('click', () => playWordAudio({ word: data.word, hasWordAudio: row._hasWordAudio }, 1, { preferSynthesis: true }));
+  row.querySelector('.result-word')?.addEventListener('click', () =>
+    playWordAudio({ word: data.word, hasWordAudio: row._hasWordAudio }, 1, STORY_LEXICON_AUDIO_OPTIONS)
+  );
   row.querySelector('.btn-word-remove')?.addEventListener('mousedown', e => removeWordRow(e, row.querySelector('.btn-word-remove')));
 
   if (data.word_id) {

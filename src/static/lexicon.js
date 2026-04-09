@@ -2,6 +2,8 @@ import { openEditModal, closeAddResultModal, state as addEditState } from './lex
 import { timeAgo, getSortedWords as _getSortedWords, renderReading } from './lexicon-utils.js';
 import { playTts, playWordAudio, playSentenceAudio, checkVoicevoxAvailable, checkFfmpegAvailable, refreshTooltip } from './common.js';
 
+const LEXICON_AUDIO_OPTIONS = { preferSynthesis: true, fallbackToBrowserTts: true };
+
 const els = {
   addModalBackdrop: document.getElementById('add-modal-backdrop'),
   addModalSidebar: document.getElementById('add-modal-sidebar'),
@@ -80,7 +82,7 @@ function renderRow(w, trMain, trEx) {
   trMain._word = w;
   trMain._trEx  = trEx;
 
-  trMain.querySelector('.cell-word').addEventListener('click', () => playWordAudio(w, 1, { preferSynthesis: true }));
+  trMain.querySelector('.cell-word').addEventListener('click', () => playWordAudio(w, 1, LEXICON_AUDIO_OPTIONS));
   trMain.querySelector('.btn-edit').addEventListener('click', openEditModal);
   trMain.querySelector('.btn-delete').addEventListener('click', openDeleteModal);
   const [adjMinus, adjPlus] = trMain.querySelectorAll('.btn-target-adj');
@@ -102,7 +104,7 @@ function renderRow(w, trMain, trEx) {
     '<td></td>';
 
   const elJp = trEx.querySelector('.cell-ex-jp');
-  if (elJp) elJp.addEventListener('click', () => playSentenceAudio(w, 1, { preferSynthesis: true }));
+  if (elJp) elJp.addEventListener('click', () => playSentenceAudio(w, 1, LEXICON_AUDIO_OPTIONS));
   const elEn = trEx.querySelector('.cell-ex-en');
   if (elEn) elEn.addEventListener('click', () => playTts(w.exampleEn, 'en-US'));
 }

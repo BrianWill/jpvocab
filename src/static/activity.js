@@ -1,4 +1,4 @@
-import { populateWordTooltip, positionAnchoredWordTooltip, playTts, WORD_TTS_RATE } from './common.js';
+import { populateWordTooltip, positionAnchoredWordTooltip, playJapaneseText, WORD_TTS_RATE } from './common.js';
 import { renderReading } from './lexicon-utils.js';
 
 const els = {
@@ -288,7 +288,9 @@ function buildSection(title, words, type, note) {
       '<span class="day-word-jp">' + entry.word + '</span>' +
       '<span class="day-word-reading">' + entry.reading + '</span>' +
       '<span class="day-word-meaning">' + entry.meaning + '</span>';
-    item.querySelector('.day-word-jp').addEventListener('click', () => playTts(entry.word, 'ja-JP', WORD_TTS_RATE));
+    item.querySelector('.day-word-jp').addEventListener('click', () =>
+      playJapaneseText(entry.word, WORD_TTS_RATE, { preferSynthesis: true, fallbackToBrowserTts: true })
+    );
     list.appendChild(item);
   });
 

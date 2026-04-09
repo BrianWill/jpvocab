@@ -29,6 +29,15 @@ import { renderReading } from './lexicon-utils.js';
 
 const els = createDrillElements();
 const state = createDrillState(DRILL_FILTER_KEYS);
+const DRILL_AUDIO_OPTIONS = { preferSynthesis: true, fallbackToBrowserTts: true };
+
+function playDrillWordAudio(word, rate = 1) {
+  return playWordAudio(word, rate, DRILL_AUDIO_OPTIONS);
+}
+
+function playDrillSentenceAudio(word, rate = 1) {
+  return playSentenceAudio(word, rate, DRILL_AUDIO_OPTIONS);
+}
 
 function shuffle(items) {
   const shuffled = [...items];
@@ -174,7 +183,7 @@ els.sidebarList.addEventListener('click', event => {
   const item = event.target.closest('.sidebar-item');
   if (!item?.dataset.word) return;
   const word = JSON.parse(item.dataset.word);
-  playWordAudio(word);
+  playDrillWordAudio(word);
 });
 
 els.sidebarList.addEventListener('mouseover', event => {
@@ -197,11 +206,11 @@ document.addEventListener('keydown', event => {
     return;
   }
   if (event.key === 'w' || event.key === 'W') {
-    if (state.currentWord) playWordAudio(state.currentWord, 0.8);
+    if (state.currentWord) playDrillWordAudio(state.currentWord, 0.8);
     return;
   }
   if (event.key === 's' || event.key === 'S') {
-    if (state.currentWord) playSentenceAudio(state.currentWord, 0.8);
+    if (state.currentWord) playDrillSentenceAudio(state.currentWord, 0.8);
     return;
   }
   if (els.actionPrompt.style.display === 'none') return;
@@ -220,16 +229,16 @@ els.restartFilterButtons.forEach(btn => {
 });
 
 els.promptWordJp.addEventListener('click', () => {
-  if (state.currentWord) playWordAudio(state.currentWord);
+  if (state.currentWord) playDrillWordAudio(state.currentWord);
 });
 els.promptExampleJp.addEventListener('click', () => {
-  if (state.currentWord) playSentenceAudio(state.currentWord);
+  if (state.currentWord) playDrillSentenceAudio(state.currentWord);
 });
 els.lastWordJp.addEventListener('click', () => {
-  if (state.lastAnswered) playWordAudio(state.lastAnswered.word);
+  if (state.lastAnswered) playDrillWordAudio(state.lastAnswered.word);
 });
 els.lastExampleJp.addEventListener('click', () => {
-  if (state.lastAnswered) playSentenceAudio(state.lastAnswered.word);
+  if (state.lastAnswered) playDrillSentenceAudio(state.lastAnswered.word);
 });
 els.lastExampleEn.addEventListener('click', () => {
   if (state.lastAnswered?.word.exampleEn) playTts(state.lastAnswered.word.exampleEn, 'en-US');

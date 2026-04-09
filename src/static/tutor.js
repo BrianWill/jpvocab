@@ -112,6 +112,7 @@ const els = {
   messages:     document.getElementById('tutor-messages'),
   form:         document.getElementById('tutor-form'),
   input:        document.getElementById('tutor-input'),
+  btnMic:       document.getElementById('btn-tutor-mic'),
   btnSend:      document.getElementById('btn-tutor-send'),
 };
 
@@ -121,6 +122,7 @@ const state = {
   sending:      false,
   debugMode:    false,
   systemPrompt: null, // cached for the current mode
+  listening:    false,
 };
 
 // ── Provider / model select ────────────────────────────────────────────────
@@ -409,6 +411,68 @@ async function sendMessage(text) {
   }
 }
 
+// ── Voice input ────────────────────────────────────────────────────────────
+
+// Modes where the user is expected to speak Japanese; all others default to English.
+const JP_INPUT_MODES = new Set(['free', 'grammar', 'translation-en-jp', 'vocab']);
+
+function initMic() {
+  const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+  if (!SR) { els.btnMic.style.display = 'none'; return; }
+
+  let recognition = null;
+  // Tracks text already in the input before listening started, so interim
+  // results can be appended cleanly without doubling up committed text.
+  let baseText = '';
+
+  function stopListening() {
+    recognition?.stop();
+  }
+
+  function startListening() {
+    baseText = els.input.value;
+    recognition = new SR();
+    recognition.lang = JP_INPUT_MODES.has(els.modeSelect.value) ? 'ja-JP' : 'en-US';
+    recognition.interimResults = true;
+    recognition.maxAlternatives = 1;
+
+    recognition.addEventListener('start', () => {
+      state.listening = true;
+      els.btnMic.classList.add('btn-tutor-mic--active');
+    });
+
+    recognition.addEventListener('result', e => {
+      let interim = '';
+      let final = '';
+      for (const result of e.results) {
+        if (result.isFinal) final += result[0].transcript;
+        else interim += result[0].transcript;
+      }
+      els.input.value = baseText + final + interim;
+      // Commit finalized text into baseText so the next interim doesn't erase it.
+      if (final) baseText += final;
+      autoResize(els.input);
+    });
+
+    recognition.addEventListener('end', () => {
+      state.listening = false;
+      els.btnMic.classList.remove('btn-tutor-mic--active');
+      recognition = null;
+    });
+
+    recognition.addEventListener('error', e => {
+      if (e.error !== 'aborted') console.warn('Speech recognition error:', e.error);
+    });
+
+    recognition.start();
+  }
+
+  els.btnMic.addEventListener('click', () => {
+    if (state.listening) stopListening();
+    else startListening();
+  });
+}
+
 // ── Input auto-resize ──────────────────────────────────────────────────────
 
 function autoResize(textarea) {
@@ -480,6 +544,7 @@ async function init() {
 
   els.input.addEventListener('input', () => autoResize(els.input));
 
+  initMic();
   els.input.focus();
 }
 

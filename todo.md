@@ -4,8 +4,35 @@ This file is random notes of possible features and bug fixes.
 
 - add more common Japanese words to the word insertion blacklist
 
+
+- mic STT : why only last a few seconds? what causes it to stop?
+    - should user have to hit button to stop STT? also stop STT when user submits the message?
+    - English prompt modes should 
+
+- instead of generating and saving audio ahead of time, just generate on fly
+    - profiling program in /bin to test latency / generation time per sentence
+        variety of sentence lengths
+
+- in_lexicon should be called something else...but what? ask AI
+
+- drill
+    - the a and d hotkey indicators only revealed on hover
+        (visible hidden to avoid reveal shift)
+        - add hotkey indicators for w and s with same hover reveal
+    - modal to edit current word
+        - sidebar, edit button appears when hovered
+
 - tutor:
-    - tutor's Japanese is spoken by voicevox
+    - user can create custom prompts
+        - 'Customize' button left of the prompt pulldown, brings up modal
+            - pulldown in modal pastes text of existing prompt into the textarea
+        - first step: prompts should be stored in database
+            - put prompts in the seed db file
+            - field that marks the prompt as undeletable
+            - field that determine whether user is expected to speak English, Jp, or mix of both.
+        - start from template of the stock prompts
+            - stock prompts cannot be edited or erased
+    - words are added to lexicon (as in_lexicon=0)
     - maybe your own prompts are spoken by voicevox? or just use TTS for own?
         - use a different voice
         - play the AI's correction?
@@ -29,6 +56,15 @@ This file is random notes of possible features and bug fixes.
         - button to revert to default for a canned prompt
     
 - typing trainer
+    - this could be just another chat bot
+        seems wasteful maybe to use tokens, but the tokens should be pretty cheap
+
+- word images: 
+    - drag-and-drop support to change image
+    - option to crop image
+    - copy from clipboard support
+    
+
 
 - story translation
     - separately send sentences and unique word list

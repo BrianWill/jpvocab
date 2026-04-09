@@ -206,6 +206,29 @@
 .tutor-input:focus  { outline: none; border-color: #89b4fa; }
 .tutor-input:disabled { opacity: 0.45; }
 
+.btn-tutor-mic {
+  background: none;
+  border: 1px solid #313244;
+  border-radius: 8px;
+  color: #585b70;
+  cursor: pointer;
+  font-size: 1rem;
+  padding: 0.3rem 0.5rem;
+  line-height: 1;
+  align-self: flex-end;
+  transition: color 0.15s, border-color 0.15s;
+}
+.btn-tutor-mic:hover { color: #cdd6f4; border-color: #585b70; }
+.btn-tutor-mic--active {
+  color: #f38ba8;
+  border-color: #f38ba8;
+  animation: tutor-mic-pulse 1s ease-in-out infinite;
+}
+@keyframes tutor-mic-pulse {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0.5; }
+}
+
 .btn-tutor-send {
   background: #89b4fa;
   border: none;

@@ -131,15 +131,24 @@ function renderLastAnswered(els, state) {
   }
 }
 
+function setPromptText(el, text, keyHint) {
+  el.textContent = text;
+  if (keyHint) {
+    el.dataset.keyHint = keyHint;
+    return;
+  }
+  delete el.dataset.keyHint;
+}
+
 function renderPrompt(els, state) {
   els.sidebarList.querySelectorAll('.sidebar-item.current').forEach(el => el.classList.remove('current'));
   if (isSessionComplete(state)) {
     if (state.poolSize === 0) {
-      els.promptWordJp.textContent = 'No words to drill';
-      els.promptExampleJp.textContent = 'There are no active words available with current drill settings.';
+      setPromptText(els.promptWordJp, 'No words to drill', '');
+      setPromptText(els.promptExampleJp, 'There are no active words available with current drill settings.', '');
     } else {
-      els.promptWordJp.textContent = 'Done!';
-      els.promptExampleJp.textContent = 'All words cleared.';
+      setPromptText(els.promptWordJp, 'Done!', '');
+      setPromptText(els.promptExampleJp, 'All words cleared.', '');
     }
     els.actionPrompt.style.display = 'none';
     return;
@@ -148,8 +157,8 @@ function renderPrompt(els, state) {
   els.actionPrompt.style.display = '';
   if (!state.currentWord) return;
 
-  els.promptWordJp.textContent = state.currentWord.word;
-  els.promptExampleJp.textContent = state.currentWord.exampleJp;
+  setPromptText(els.promptWordJp, state.currentWord.word, 'W');
+  setPromptText(els.promptExampleJp, state.currentWord.exampleJp, 'S');
   if (isTtsAutoplayEnabled() && state.currentWord.id !== state.lastAutoPlayedId) {
     state.lastAutoPlayedId = state.currentWord.id;
     playWordAudio(state.currentWord, 1, DRILL_AUDIO_OPTIONS);

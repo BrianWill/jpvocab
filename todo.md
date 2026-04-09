@@ -8,30 +8,22 @@ This file is random notes of possible features and bug fixes.
     - should user have to hit button to stop STT? also stop STT when user submits the message?
     - English prompt modes should 
 
-- instead of generating and saving audio ahead of time, just generate on fly
-    - profiling program in /bin to test latency / generation time per sentence
-        variety of sentence lengths
-    - profile translation as well
-        - separate numbers for sentence and word translation
-        - determine size of text that can be translated in less than 10 minutes
+- drill
+    - modal to edit current word
+        - sidebar, edit button appears when hovered
 
 - stories:
     support English stories that get translated into Japanese (sentence by sentence)
         in this setup, going for decent natural translations by chunk rather than by sentence?
             if so, need to also translate back to English sentence-by-sentence to get gloss of each Japanese sentence
-
-- drill
-    - the a and d hotkey indicators only revealed on hover
-        (visible hidden to avoid reveal shift)
-        - add hotkey indicators for w and s with same hover reveal
-    - modal to edit current word
-        - sidebar, edit button appears when hovered
-
-- long story support
-    - broken into chunks automatically
-        - chunks have marker indicating if they have been translated
-        - find chunk size that is reasonably fast to translate (under 10 seconds?)
-    - store sentences and unique words per chunk rather than for full story
+    - long story support
+        - broken into chunks automatically
+            - chunks have marker indicating if they have been translated
+            - find chunk size that is reasonably fast to translate (under 10 seconds?)
+        - store sentences and unique words per chunk rather than for full story
+    - story unique word translation should include pitch info and separated by kanji (like on lexicon or in drill)
+    - tooltip should display reading info (also kanji info?)
+        - make word info display match the word info in drill page? (even include image?)
 
 - tutor:
     - JLPT level should be configurable with a separate pulldown
@@ -49,7 +41,7 @@ This file is random notes of possible features and bug fixes.
         pull from news? 
         pull from stock set of topics?
             try to fit topics with your vocabulary?
-    - button to have the AI write a message for the user
+    - button / hotkey to have the AI write a message for the user
     - games:
         - describe what is in the picture
         - modes where the user only expected to answer in English
@@ -57,9 +49,6 @@ This file is random notes of possible features and bug fixes.
         generate topics / questions from a random set of recently drilled words? or from active words?
 
     - option to rewind chat? undo last prompt and response?
-    - menu to customize prompts
-        - add custome prompts?
-        - button to revert to default for a canned prompt
     
 - typing trainer
     - this could be just another chat bot
@@ -70,13 +59,6 @@ This file is random notes of possible features and bug fixes.
     - option to crop image
     - copy from clipboard support
     
-
-
-- story translation
-    - separately send sentences and unique word list
-    - reading should include pitch info and separated by kanji (like on lexicon or in drill)
-    - also display kanji info? per kanji info would allow for consistent display 
-        - make it match the word info tooltip of the drill page? (even include image?)
 
 - wails
     - double scrollbar appears on start of wails

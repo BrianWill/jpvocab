@@ -141,6 +141,8 @@
   font-weight: 700;
   color: #cdd6f4;
   cursor: pointer;
+  display: inline-flex;
+  align-items: center;
 }
 .word-jp:hover { color: #b4befe; }
 
@@ -148,6 +150,8 @@
   font-size: 0.95rem;
   color: #585b70;
   cursor: pointer;
+  display: inline-flex;
+  align-items: center;
 }
 .example-jp:hover { color: #7f849c; }
 .example-jp:empty::after {
@@ -335,6 +339,34 @@
   background: #313244;
   padding: 0.1rem 0.4rem;
   border-radius: 3px;
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity 120ms ease;
+}
+
+.btn:hover .key-hint {
+  opacity: 1;
+  visibility: visible;
+}
+
+.word-jp[data-key-hint]::after,
+.example-jp[data-key-hint]::after {
+  content: attr(data-key-hint);
+  font-size: 0.65rem;
+  color: #7c7e8b;
+  background: #313244;
+  padding: 0.1rem 0.4rem;
+  border-radius: 3px;
+  margin-left: 0.45rem;
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity 120ms ease;
+}
+
+.word-jp:hover::after,
+.example-jp:hover::after {
+  opacity: 1;
+  visibility: visible;
 }
 
 .word-jp.knew { color: #a6e3a1; }

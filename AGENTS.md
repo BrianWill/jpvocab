@@ -190,7 +190,7 @@ cd src && air
 
 > **No migration compatibility required.** During development it is fine to reset the database (`/admin` ? Reset DB) whenever the schema changes. Do not spend effort on backwards-compatible migrations or backfill logic at this stage.
 
-Table definitions live in the `migrate()` function in `db_schema.go`. Schema is versioned via `PRAGMA user_version` � each entry in the migrations slice runs exactly once. Current schema version: **9**. (tutor_prompts table added as migration #9) Current tables:
+Table definitions live in the `migrate()` function in `db_schema.go`. Schema is versioned via `PRAGMA user_version` � each entry in the migrations slice runs exactly once. Current tables:
 
 - **`words`** — the lexicon; one row per word with reading, part of speech, meaning, example sentences, audio flags (`has_word_audio`, `has_sentence_audio` INTEGER booleans — paths are derived as `static/audio/{word}.wav` / `static/audio/{word}_sentence.wav`, not stored), an optional `image_path` (relative to `static/`, e.g. `images/words/食べる.jpg`), drill counts, target, timestamps, a `kanji_data` JSON column (array of `{id, reading}` linking to the `kanji` table), and `tracked INTEGER NOT NULL DEFAULT 1`. `word` column has a unique index. Because `word` is unique, image and audio files are named after the word text itself. `tracked=1` means the user has explicitly added the word; `tracked=0` means the word was auto-inserted from story content and hasn't been explicitly added yet.
 - **`kanji`** � one row per kanji character with `character` and `meanings` (JSON array of English meanings). Readings (on/kun) are stored per-word in the `kanji_data` column of `words`, not on the kanji row itself. Served via `/api/kanji`.

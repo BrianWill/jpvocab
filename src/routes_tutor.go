@@ -130,10 +130,7 @@ func apiTutorChat(db *sql.DB) http.HandlerFunc {
 			http.Error(w, "ai_model is required", http.StatusBadRequest)
 			return
 		}
-		if len(req.Messages) == 0 {
-			http.Error(w, "messages is required", http.StatusBadRequest)
-			return
-		}
+		// Empty messages is valid — used to generate the bot's opening turn.
 
 		modeID, _ := strconv.ParseInt(req.TutorMode, 10, 64)
 		system := tutorSystemPromptByID(db, modeID)

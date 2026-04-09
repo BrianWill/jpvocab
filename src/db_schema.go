@@ -144,6 +144,7 @@ func resetDB(db *sql.DB) error {
 	db.Exec("PRAGMA user_version = 0")
 	migrate(db)
 	seedDB(db)
+	seedTutorPrompts(db)
 	return nil
 }
 

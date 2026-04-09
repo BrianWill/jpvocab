@@ -30,6 +30,8 @@ This file is random notes of possible features and bug fixes.
     - store sentences and unique words per chunk rather than for full story
 
 - tutor:
+    - JLPT level should be configurable with a separate pulldown
+        - use {{level}} in prompt text to substitute JLPT level?
     - user can create custom prompts
         - 'Customize' button left of the prompt pulldown, brings up modal
             - pulldown in modal pastes text of existing prompt into the textarea

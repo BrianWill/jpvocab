@@ -63,7 +63,7 @@
   padding: 0.65rem 0.9rem;
   border-radius: 12px;
   line-height: 1.55;
-  font-size: 1.3rem;
+  font-size: 1.2rem;
   word-break: break-word;
 }
 
@@ -92,10 +92,10 @@
   font-size: 0.88em;
 }
 
-/* Note: standalone commentary/explanation, always visible */
+/* Note: standalone commentary/explanation, always visible, intentionally muted */
 .tutor-seg--note {
-  color: #a6adc8;
-  font-size: 0.88em;
+  color: #585b70;
+  font-size: 0.78em;
   font-style: italic;
 }
 

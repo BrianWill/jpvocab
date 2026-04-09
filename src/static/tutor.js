@@ -4,6 +4,16 @@ import { PROVIDER_MODELS, playTts, WORD_TTS_RATE, checkVoicevoxAvailable, getVoi
 
 let _tutorAudio = null;
 
+// Stops any currently playing tutor audio (VoiceVox or Web Speech).
+function stopAudio() {
+  if (_tutorAudio) {
+    _tutorAudio.pause();
+    URL.revokeObjectURL(_tutorAudio.src);
+    _tutorAudio = null;
+  }
+  speechSynthesis.cancel();
+}
+
 // Plays Japanese text via VoiceVox if available, otherwise falls back to Web Speech TTS.
 async function playJp(text) {
   const vvAvailable = await checkVoicevoxAvailable();
@@ -18,8 +28,7 @@ async function playJp(text) {
       if (!resp.ok) throw new Error('voicevox unavailable');
       const blob = await resp.blob();
       const url = URL.createObjectURL(blob);
-      if (_tutorAudio) { _tutorAudio.pause(); URL.revokeObjectURL(_tutorAudio.src); }
-      speechSynthesis.cancel();
+      stopAudio();
       _tutorAudio = new Audio(url);
       _tutorAudio.addEventListener('ended', () => { URL.revokeObjectURL(url); _tutorAudio = null; });
       _tutorAudio.play();
@@ -31,46 +40,6 @@ async function playJp(text) {
 
 // Topics suitable for N5–N3 learners. Each entry has a Japanese topic phrase and
 // an English label used to build the opening greeting.
-const FREE_TOPICS = [
-  { jp: '食べ物',         en: 'food'            },
-  { jp: '天気',           en: 'the weather'     },
-  { jp: '家族',           en: 'family'          },
-  { jp: '趣味',           en: 'hobbies'         },
-  { jp: '旅行',           en: 'travel'          },
-  { jp: '学校',           en: 'school'          },
-  { jp: '仕事',           en: 'work'            },
-  { jp: '音楽',           en: 'music'           },
-  { jp: '映画',           en: 'movies'          },
-  { jp: 'スポーツ',       en: 'sports'          },
-  { jp: '動物',           en: 'animals'         },
-  { jp: '季節',           en: 'the seasons'     },
-  { jp: '週末の予定',     en: 'weekend plans'   },
-  { jp: '好きな食べ物',   en: 'favorite foods'  },
-  { jp: '町',             en: 'your town'       },
-  { jp: '買い物',         en: 'shopping'        },
-  { jp: '健康',           en: 'health'          },
-  { jp: '色',             en: 'colors'          },
-];
-
-function randomFreeGreeting(note) {
-  const t = FREE_TOPICS[Math.floor(Math.random() * FREE_TOPICS.length)];
-  const obj = {
-    jp: `こんにちは！今日は${t.jp}について話しましょう！`,
-    en: `Hello! Let's talk about ${t.en} today!`,
-  };
-  if (note) obj.note = note;
-  return JSON.stringify(obj);
-}
-
-// Greetings are stored as JSON strings (same format as AI responses).
-// Two special sentinel values trigger dynamic random greetings:
-//   __random_free__    → randomFreeGreeting(null)
-//   __random_free_en__ → randomFreeGreeting with comprehension note
-function greetingForPrompt(prompt) {
-  if (prompt.greeting === '__random_free__') return randomFreeGreeting(null);
-  if (prompt.greeting === '__random_free_en__') return randomFreeGreeting('Read the Japanese above and reply in English to show you understood.');
-  return prompt.greeting || '{}';
-}
 
 const els = {
   modeSelect:       document.getElementById('tutor-mode-select'),
@@ -97,13 +66,15 @@ const els = {
 };
 
 const state = {
-  providers:    null,
-  prompts:      [],   // tutorPromptJSON[] loaded from /api/tutor/prompts
-  history:      [],   // { role: 'user'|'assistant', content: string }[]
-  sending:      false,
-  debugMode:    false,
-  systemPrompt: null, // cached for the current mode
-  listening:    false,
+  providers:       null,
+  prompts:         [],     // tutorPromptJSON[] loaded from /api/tutor/prompts
+  history:         [],     // { role: 'user'|'assistant', content: string }[]
+  sending:         false,
+  debugMode:       false,
+  systemPrompt:    null,   // cached for the current mode
+  listening:       false,
+  waitingForStart: false,  // true after startNewChat; cleared once the bot sends its first real message
+  pendingGreeting: null,   // greeting string shown while waitingForStart, never sent to AI
 };
 
 // ── Provider / model select ────────────────────────────────────────────────
@@ -170,27 +141,36 @@ function parseResponse(content) {
 }
 
 // Fields with dedicated rendering; anything else falls through to generic labeled display.
-const KNOWN_RESP_FIELDS = new Set(['jp', 'en', 'note', 'correction']);
+const KNOWN_RESP_FIELDS = new Set(['jp', 'en', 'note', 'correction', 'question']);
 
 // Build the inner HTML for an assistant message bubble from a response object.
-// Renders in a fixed semantic order: jp/en → note → other fields.
+// Renders in a fixed semantic order:
+//   1. jp (with en as hover tooltip if present; en is never a standalone segment)
+//   2. question
+//   3. all other unknown fields (generic labeled)
+//   4. note (always last)
 // Correction is rendered separately outside the bubble (see appendMessage).
 function responseToHTML(resp) {
   const parts = [];
 
-  if (resp.jp && resp.en) {
-    parts.push('<div class="tutor-seg tutor-seg--jp" data-tooltip="' + escHtml(resp.en) + '">' + escHtml(resp.jp) + '</div>');
-  } else if (resp.jp) {
-    parts.push('<div class="tutor-seg">' + escHtml(resp.jp) + '</div>');
+  // 1. jp first; en is tooltip-only
+  if (resp.jp) {
+    if (resp.en) {
+      parts.push('<div class="tutor-seg tutor-seg--jp" data-tooltip="' + escHtml(resp.en) + '">' + escHtml(resp.jp) + '</div>');
+    } else {
+      parts.push('<div class="tutor-seg">' + escHtml(resp.jp) + '</div>');
+    }
   } else if (resp.en) {
+    // en only (no jp to attach tooltip to — display standalone)
     parts.push('<div class="tutor-seg tutor-seg--en">' + escHtml(resp.en) + '</div>');
   }
 
-  if (resp.note) {
-    parts.push('<div class="tutor-seg tutor-seg--note">' + escHtml(resp.note) + '</div>');
+  // 2. question immediately after jp
+  if (resp.question) {
+    parts.push('<div class="tutor-seg">' + escHtml(resp.question) + '</div>');
   }
 
-  // Any other fields: generic labeled display.
+  // 3. any other unknown fields: generic labeled display
   for (const [key, val] of Object.entries(resp)) {
     if (!KNOWN_RESP_FIELDS.has(key) && val) {
       parts.push(
@@ -200,6 +180,11 @@ function responseToHTML(resp) {
         '</div>'
       );
     }
+  }
+
+  // 4. note last
+  if (resp.note) {
+    parts.push('<div class="tutor-seg tutor-seg--note">' + escHtml(resp.note) + '</div>');
   }
 
   return parts.join('');
@@ -300,6 +285,14 @@ function appendDebugBlock(role, content) {
 
 async function renderAllMessages() {
   els.messages.innerHTML = '';
+
+  if (state.waitingForStart) {
+    if (state.pendingGreeting) appendMessage('assistant', state.pendingGreeting);
+    els.input.placeholder = 'Press Shift+Enter to begin';
+    return;
+  }
+  els.input.placeholder = 'Type a message…';
+
   if (state.debugMode) {
     if (!state.systemPrompt) {
       try {
@@ -327,15 +320,59 @@ function updateDeleteBtnVisibility() {
 }
 
 function startNewChat() {
+  stopAudio();
   state.history = [];
   state.systemPrompt = null; // invalidate cache; mode may have changed
+  state.waitingForStart = true;
   const prompt = currentPrompt();
   if (!prompt) return;
-  const greeting = greetingForPrompt(prompt);
-  state.history.push({ role: 'assistant', content: greeting });
+  state.pendingGreeting = prompt.greeting || '{}';
   renderAllMessages();
   // Tell the server to forget the old session so navigation restores this fresh chat.
   fetch('/api/tutor/session', { method: 'DELETE' });
+}
+
+// Sends an empty message list to let the AI generate its own opening turn.
+// Called when the user hits Enter on the "waiting for start" screen.
+async function kickoffChat() {
+  stopAudio();
+  state.waitingForStart = false;
+  state.pendingGreeting = null;
+  els.input.placeholder = 'Type a message…';
+  const aiModel = els.modelSelect.value;
+  if (!aiModel) return;
+
+  els.messages.innerHTML = '';
+  state.sending = true;
+  setSendDisabled(true);
+  const loadingRow = appendLoadingDots();
+
+  try {
+    const resp = await fetch('/api/tutor/chat', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        ai_model:   aiModel,
+        tutor_mode: els.modeSelect.value,
+        messages:   [],
+      }),
+    });
+    if (!resp.ok) throw new Error((await resp.text()).trim() || resp.statusText);
+    const data    = await resp.json();
+    const response = data.response || { en: '(empty response)' };
+    const rawJson  = JSON.stringify(response);
+    loadingRow.remove();
+    state.history.push({ role: 'assistant', content: rawJson });
+    if (state.debugMode) appendDebugBlock('assistant', rawJson);
+    else appendMessage('assistant', rawJson);
+  } catch (err) {
+    loadingRow.remove();
+    appendMessage('assistant', 'Error: ' + err.message);
+  } finally {
+    state.sending = false;
+    setSendDisabled(false);
+    els.input.focus();
+  }
 }
 
 function setSendDisabled(disabled) {
@@ -380,6 +417,7 @@ async function sendMessage(text) {
     // with the raw AI output the backend stored in tutorSession.
     const rawJson = JSON.stringify(response);
 
+    stopAudio();
     loadingRow.remove();
     state.history.push({ role: 'assistant', content: rawJson });
     if (state.debugMode) appendDebugBlock('assistant', rawJson);
@@ -619,6 +657,7 @@ async function init() {
 
   els.form.addEventListener('submit', e => {
     e.preventDefault();
+    if (state.waitingForStart) { kickoffChat(); return; }
     const text = els.input.value.trim();
     if (!text || state.sending) return;
     els.input.value = '';
@@ -627,6 +666,11 @@ async function init() {
   });
 
   els.input.addEventListener('keydown', e => {
+    if (e.key === 'Enter' && !e.shiftKey && state.waitingForStart) {
+      e.preventDefault();
+      kickoffChat();
+      return;
+    }
     if (e.key === 'Enter' && e.shiftKey) {
       e.preventDefault();
       els.form.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));

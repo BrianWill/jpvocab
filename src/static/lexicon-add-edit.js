@@ -114,7 +114,7 @@ els.addResultBody.addEventListener('click', e => {
     word: row?._resolvedWord ?? '',
     hasSentenceAudio: row?._hasSentenceAudio ?? false,
     exampleJp: text,
-  });
+  }, 1, { preferSynthesis: true });
 });
 
 // --- Remove-confirm mini-modal ---
@@ -334,7 +334,7 @@ function appendWordRow(data) {
   row._hasSentenceAudio = data.has_sentence_audio ?? false;
   const resultWordEl = row.querySelector('.result-word');
   if (resultWordEl) resultWordEl.addEventListener('click', () =>
-    playWordAudio({ word: data.word, hasWordAudio: row._hasWordAudio })
+    playWordAudio({ word: data.word, hasWordAudio: row._hasWordAudio }, 1, { preferSynthesis: true })
   );
 
   const removeBtnEl = row.querySelector('.btn-word-remove');

@@ -80,7 +80,7 @@ function renderRow(w, trMain, trEx) {
   trMain._word = w;
   trMain._trEx  = trEx;
 
-  trMain.querySelector('.cell-word').addEventListener('click', () => playWordAudio(w));
+  trMain.querySelector('.cell-word').addEventListener('click', () => playWordAudio(w, 1, { preferSynthesis: true }));
   trMain.querySelector('.btn-edit').addEventListener('click', openEditModal);
   trMain.querySelector('.btn-delete').addEventListener('click', openDeleteModal);
   const [adjMinus, adjPlus] = trMain.querySelectorAll('.btn-target-adj');
@@ -102,7 +102,7 @@ function renderRow(w, trMain, trEx) {
     '<td></td>';
 
   const elJp = trEx.querySelector('.cell-ex-jp');
-  if (elJp) elJp.addEventListener('click', () => playSentenceAudio(w));
+  if (elJp) elJp.addEventListener('click', () => playSentenceAudio(w, 1, { preferSynthesis: true }));
   const elEn = trEx.querySelector('.cell-ex-en');
   if (elEn) elEn.addEventListener('click', () => playTts(w.exampleEn, 'en-US'));
 }

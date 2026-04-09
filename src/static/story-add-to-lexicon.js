@@ -144,7 +144,7 @@ function bindEvents() {
         word: row?._resolvedWord ?? '',
         hasSentenceAudio: row?._hasSentenceAudio ?? false,
         exampleJp: text,
-      });
+      }, 1, { preferSynthesis: true });
     }
   });
 
@@ -289,7 +289,7 @@ function appendWordRow(data) {
 
   row._hasWordAudio = data.has_word_audio ?? false;
   row._hasSentenceAudio = data.has_sentence_audio ?? false;
-  row.querySelector('.result-word')?.addEventListener('click', () => playWordAudio({ word: data.word, hasWordAudio: row._hasWordAudio }));
+  row.querySelector('.result-word')?.addEventListener('click', () => playWordAudio({ word: data.word, hasWordAudio: row._hasWordAudio }, 1, { preferSynthesis: true }));
   row.querySelector('.btn-word-remove')?.addEventListener('mousedown', e => removeWordRow(e, row.querySelector('.btn-word-remove')));
 
   if (data.word_id) {

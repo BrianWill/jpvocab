@@ -9,7 +9,9 @@
 //   - KagomeMs: Kagome tokenization + clause-split analysis
 //   - QueryMs:  VoiceVox audio_query call (NLP/phoneme analysis)
 //   - SynthMs:  VoiceVox synthesis call (waveform generation + transfer)
+//   - OggMs:    WAV -> OGG/Opus compression via ffmpeg
 //   - TotalMs:  KagomeMs + QueryMs + SynthMs
+//   - ReadyMs:  KagomeMs + QueryMs + SynthMs + OggMs
 //
 // Chunks shows how many clause fragments the sentence would be split into.
 // If we pipeline VoiceVox requests per chunk, the effective per-chunk latency
@@ -21,6 +23,7 @@ package main
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"flag"
 	"fmt"
@@ -28,6 +31,7 @@ import (
 	"net/http"
 	"net/url"
 	"os"
+	"os/exec"
 	"sort"
 	"strings"
 	"text/tabwriter"
@@ -172,8 +176,11 @@ type result struct {
 	chunks          []string
 	queryMs         int64 // audio_query phase
 	synthMs         int64 // synthesis phase (including transfer)
+	oggMs           int64 // WAV -> OGG/Opus compression
 	totalMs         int64 // kagomeMs + queryMs + synthMs
+	readyMs         int64 // kagomeMs + queryMs + synthMs + oggMs
 	wavSizeBytes    int
+	oggSizeBytes    int
 	audioDurationMs int64
 	err             error
 }
@@ -189,6 +196,27 @@ func wavDurationMs(wav []byte) int64 {
 		return 0
 	}
 	return dataSize * 1000 / byteRate
+}
+
+func wavToOgg(ctx context.Context, wav []byte) ([]byte, error) {
+	cmd := exec.CommandContext(ctx, "ffmpeg",
+		"-nostdin",
+		"-hide_banner",
+		"-loglevel", "error",
+		"-i", "pipe:0",
+		"-c:a", "libopus",
+		"-b:a", "96k",
+		"-f", "ogg",
+		"pipe:1",
+	)
+	cmd.Stdin = bytes.NewReader(wav)
+	var stdout, stderr bytes.Buffer
+	cmd.Stdout = &stdout
+	cmd.Stderr = &stderr
+	if err := cmd.Run(); err != nil {
+		return nil, fmt.Errorf("ffmpeg: %w: %s", err, stderr.String())
+	}
+	return stdout.Bytes(), nil
 }
 
 func profileSentence(text string, speaker int, t *tokenizer.Tokenizer) result {
@@ -264,7 +292,16 @@ func profileSentence(text string, speaker int, t *tokenizer.Tokenizer) result {
 	r.synthMs = sMs
 	r.wavSizeBytes = len(wav)
 	r.audioDurationMs = wavDurationMs(wav)
+	oggStart := time.Now()
+	ogg, err := wavToOgg(context.Background(), wav)
+	if err != nil {
+		r.err = err
+		return r
+	}
+	r.oggMs = time.Since(oggStart).Milliseconds()
+	r.oggSizeBytes = len(ogg)
 	r.totalMs = r.kagomeMs + r.queryMs + r.synthMs
+	r.readyMs = r.totalMs + r.oggMs
 	return r
 }
 
@@ -344,7 +381,9 @@ func main() {
 		kagomeMs []int64
 		queryMs  []int64
 		synthMs  []int64
+		oggMs    []int64
 		totalMs  []int64
+		readyMs  []int64
 	}
 	var results []result
 	var all agg
@@ -364,7 +403,9 @@ func main() {
 			runs.kagomeMs = append(runs.kagomeMs, r.kagomeMs)
 			runs.queryMs = append(runs.queryMs, r.queryMs)
 			runs.synthMs = append(runs.synthMs, r.synthMs)
+			runs.oggMs = append(runs.oggMs, r.oggMs)
 			runs.totalMs = append(runs.totalMs, r.totalMs)
+			runs.readyMs = append(runs.readyMs, r.readyMs)
 			last = r
 		}
 
@@ -372,11 +413,15 @@ func main() {
 			last.kagomeMs = int64(avg(runs.kagomeMs))
 			last.queryMs = int64(avg(runs.queryMs))
 			last.synthMs = int64(avg(runs.synthMs))
+			last.oggMs = int64(avg(runs.oggMs))
 			last.totalMs = int64(avg(runs.totalMs))
+			last.readyMs = int64(avg(runs.readyMs))
 			all.kagomeMs = append(all.kagomeMs, runs.kagomeMs...)
 			all.queryMs = append(all.queryMs, runs.queryMs...)
 			all.synthMs = append(all.synthMs, runs.synthMs...)
+			all.oggMs = append(all.oggMs, runs.oggMs...)
 			all.totalMs = append(all.totalMs, runs.totalMs...)
+			all.readyMs = append(all.readyMs, runs.readyMs...)
 		}
 		results = append(results, last)
 	}
@@ -384,21 +429,24 @@ func main() {
 	// Results table.
 	fmt.Println()
 	w := tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)
-	fmt.Fprintln(w, "Chars\tKagome(ms)\tQuery(ms)\tSynth(ms)\tTotal(ms)\tChunks\tWAV(KB)\tAudio(ms)\tText")
-	fmt.Fprintln(w, "-----\t----------\t---------\t---------\t---------\t------\t-------\t---------\t----")
+	fmt.Fprintln(w, "Chars\tKagome(ms)\tQuery(ms)\tSynth(ms)\tOgg(ms)\tTotal(ms)\tReady(ms)\tChunks\tWAV(KB)\tOGG(KB)\tAudio(ms)\tText")
+	fmt.Fprintln(w, "-----\t----------\t---------\t---------\t-------\t---------\t---------\t------\t-------\t-------\t---------\t----")
 	for _, r := range results {
 		if r.err != nil {
-			fmt.Fprintf(w, "%d\tERR\tERR\tERR\tERR\t-\t-\t-\t%s\n",
+			fmt.Fprintf(w, "%d\tERR\tERR\tERR\tERR\tERR\tERR\t-\t-\t-\t-\t%s\n",
 				r.charCount, truncate(r.text, 40))
 		} else {
-			fmt.Fprintf(w, "%d\t%d\t%d\t%d\t%d\t%d\t%.1f\t%d\t%s\n",
+			fmt.Fprintf(w, "%d\t%d\t%d\t%d\t%d\t%d\t%d\t%d\t%.1f\t%.1f\t%d\t%s\n",
 				r.charCount,
 				r.kagomeMs,
 				r.queryMs,
 				r.synthMs,
+				r.oggMs,
 				r.totalMs,
+				r.readyMs,
 				r.chunkCount,
 				float64(r.wavSizeBytes)/1024,
+				float64(r.oggSizeBytes)/1024,
 				r.audioDurationMs,
 				truncate(r.text, 40),
 			)
@@ -436,10 +484,14 @@ func main() {
 			avg(all.queryMs), median(all.queryMs), maxVal(all.queryMs))
 		fmt.Printf("%-12s  %8.0f  %8d  %8d\n", "Synth",
 			avg(all.synthMs), median(all.synthMs), maxVal(all.synthMs))
+		fmt.Printf("%-12s  %8.0f  %8d  %8d\n", "Ogg encode",
+			avg(all.oggMs), median(all.oggMs), maxVal(all.oggMs))
 		fmt.Printf("%-12s  %8.0f  %8d  %8d\n", "Total (chunk 1)",
 			avg(all.totalMs), median(all.totalMs), maxVal(all.totalMs))
+		fmt.Printf("%-12s  %8.0f  %8d  %8d\n", "Ready (OGG)",
+			avg(all.readyMs), median(all.readyMs), maxVal(all.readyMs))
 		fmt.Println("─────────────────────────────────────────────────────────────────")
-		fmt.Println("Note: Query+Synth times are for the FIRST chunk only.")
+		fmt.Println("Note: Query+Synth+Ogg times are for the FIRST chunk only.")
 		fmt.Println("      With pipelining, subsequent chunks overlap with playback.")
 	}
 }

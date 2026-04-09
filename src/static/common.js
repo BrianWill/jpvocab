@@ -1,3 +1,5 @@
+import { getSynthAudio } from './synth-cache.js';
+
 // ── VoiceVox bulk audio generation state ─────────────────────────────────
 let _vvGenController = null; // non-null while generation is in progress
 let _vvGenPending = 0;
@@ -339,26 +341,51 @@ function waitForVoices() {
 }
 
 let _currentAudio = null;
+let _playbackRequestId = 0;
 
-export async function playTts(text, lang, rate = 1) {
+function stopCurrentPlayback() {
+  speechSynthesis.cancel();
   if (_currentAudio) {
     _currentAudio.pause();
     _currentAudio = null;
   }
+}
+
+export async function playTts(text, lang, rate = 1) {
+  stopCurrentPlayback();
   await waitForVoices();
   const utt = new SpeechSynthesisUtterance(text);
   utt.lang = lang;
   utt.rate = rate;
   const voice = getTtsVoice(lang);
   if (voice) utt.voice = voice;
-  speechSynthesis.cancel();
   speechSynthesis.speak(utt);
 }
 
-// playWordAudio plays a word's generated audio file if available, else falls back to TTS.
-export function playWordAudio(word, rate = 1) {
-  speechSynthesis.cancel();
-  if (_currentAudio) { _currentAudio.pause(); }
+async function playVoicevoxText(text, rate = 1) {
+  const requestId = ++_playbackRequestId;
+  stopCurrentPlayback();
+  try {
+    const available = await checkVoicevoxAvailable();
+    if (!available) throw new Error('VoiceVox unavailable');
+    const audioUrl = await getSynthAudio(text, getVoicevoxSettings());
+    if (requestId !== _playbackRequestId) return false;
+    const audio = new Audio(audioUrl);
+    audio.playbackRate = rate;
+    _currentAudio = audio;
+    await audio.play();
+    return true;
+  } catch (_) {
+    if (requestId !== _playbackRequestId) return true;
+    return false;
+  }
+}
+
+// playWordAudio plays a word with modal-only support for on-demand VoiceVox synthesis.
+export async function playWordAudio(word, rate = 1, options = {}) {
+  if (options.preferSynthesis && await playVoicevoxText(word.word, rate)) return;
+  _playbackRequestId++;
+  stopCurrentPlayback();
   const audio = new Audio(`/static/audio/${encodeURIComponent(word.word)}.ogg`);
   audio.playbackRate = rate;
   audio.addEventListener('error', () => playTts(word.word, 'ja-JP', WORD_TTS_RATE * rate));
@@ -366,10 +393,11 @@ export function playWordAudio(word, rate = 1) {
   audio.play().catch(() => {});
 }
 
-// playSentenceAudio plays a word's generated sentence audio file if available, else falls back to TTS.
-export function playSentenceAudio(word, rate = 1) {
-  speechSynthesis.cancel();
-  if (_currentAudio) { _currentAudio.pause(); }
+// playSentenceAudio plays a sentence with modal-only support for on-demand VoiceVox synthesis.
+export async function playSentenceAudio(word, rate = 1, options = {}) {
+  if (options.preferSynthesis && word.exampleJp && await playVoicevoxText(word.exampleJp, rate)) return;
+  _playbackRequestId++;
+  stopCurrentPlayback();
   const audio = new Audio(`/static/audio/${encodeURIComponent(word.word)}_sentence.ogg`);
   audio.playbackRate = rate;
   audio.addEventListener('error', () => { if (word.exampleJp) playTts(word.exampleJp, 'ja-JP', 0.75 * rate); });

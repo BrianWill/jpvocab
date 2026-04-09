@@ -620,19 +620,19 @@ func TestGetCurrentDrillSession_NormalisesSparseStoredJSON(t *testing.T) {
 
 func TestResetDB_ClearsData(t *testing.T) {
 	db := testDB(t)
-	// Use sentinel words unlikely to appear in seed.json.
-	insertWord(db, "山", "", "", "", "", "", "", 1)
-	insertWord(db, "川", "", "", "", "", "", "", 1)
+	// Use sentinel words guaranteed not to appear in the seed data.
+	insertWord(db, "__test_reset_alpha__", "", "", "", "", "", "", 1)
+	insertWord(db, "__test_reset_beta__", "", "", "", "", "", "", 1)
 
 	if err := resetDB(db); err != nil {
 		t.Fatal("resetDB:", err)
 	}
 
-	// After reset the DB is re-migrated (and possibly re-seeded from seed.json).
+	// After reset the DB is re-migrated (and possibly re-seeded from seed files).
 	// Our manually-added words (tracked=1) must no longer be present; seed
 	// story tokenisation may re-add some base words with tracked=0, which is fine.
 	var count int
-	db.QueryRow(`SELECT COUNT(*) FROM words WHERE base_word IN ('山', '川') AND tracked = 1`).Scan(&count)
+	db.QueryRow(`SELECT COUNT(*) FROM words WHERE base_word IN ('__test_reset_alpha__', '__test_reset_beta__') AND tracked = 1`).Scan(&count)
 	if count != 0 {
 		t.Errorf("test words still present after reset: got %d, want 0", count)
 	}

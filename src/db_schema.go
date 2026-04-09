@@ -412,7 +412,13 @@ type seedData struct {
 	TutorPrompts      []seedTutorPrompt `json:"tutor_prompts"`
 }
 
-// seedDB loads seed.json and inserts words and drill history if the words table is empty.
+type seedWordsData struct {
+	Kanji []seedKanjiDef `json:"kanji"`
+	Words []seedWord     `json:"words"`
+}
+
+// seedDB loads words/kanji from seed-words.json and the remaining app seed data
+// from seed.json, then inserts the initial lexicon and history if the words table is empty.
 func seedDB(db *sql.DB) {
 	var count int
 	if err := db.QueryRow("SELECT COUNT(*) FROM words").Scan(&count); err != nil {
@@ -423,14 +429,23 @@ func seedDB(db *sql.DB) {
 		return
 	}
 
-	data, err := os.ReadFile("seed.json")
+	wordData, err := os.ReadFile("seed-words.json")
+	if err != nil {
+		log.Println("seed: seed-words.json not found, skipping")
+		return
+	}
+	otherData, err := os.ReadFile("seed.json")
 	if err != nil {
 		log.Println("seed: seed.json not found, skipping")
 		return
 	}
 
+	var wordSeed seedWordsData
+	if err := json.Unmarshal(wordData, &wordSeed); err != nil {
+		log.Fatal("seed: invalid seed-words.json:", err)
+	}
 	var seed seedData
-	if err := json.Unmarshal(data, &seed); err != nil {
+	if err := json.Unmarshal(otherData, &seed); err != nil {
 		log.Fatal("seed: invalid seed.json:", err)
 	}
 
@@ -446,8 +461,8 @@ func seedDB(db *sql.DB) {
 	}
 	defer kanjiStmt.Close()
 
-	kanjiCharToID := make(map[string]int64, len(seed.Kanji))
-	for _, k := range seed.Kanji {
+	kanjiCharToID := make(map[string]int64, len(wordSeed.Kanji))
+	for _, k := range wordSeed.Kanji {
 		meaningsJSON, _ := json.Marshal(k.Meanings)
 		res, err := kanjiStmt.Exec(k.Character, string(meaningsJSON))
 		if err != nil {
@@ -463,8 +478,8 @@ func seedDB(db *sql.DB) {
 		INSERT INTO words
 			(base_word, reading, pitch_accent, part_of_speech, meaning, example_jp, example_en,
 			 drill_count, drill_target, incorrect_count,
-			 created_at, last_drilled_at, target_reached_at, is_katakana, kanji_data, image_path)
-		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+			 created_at, last_drilled_at, target_reached_at, is_katakana, kanji_data, image_path, tracked)
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 	`)
 	if err != nil {
 		log.Fatal("seed: prepare words:", err)
@@ -473,7 +488,7 @@ func seedDB(db *sql.DB) {
 
 	wordIDs := make(map[string]int64)
 	wordMeanings := make(map[string]string)
-	for _, w := range seed.Words {
+	for _, w := range wordSeed.Words {
 		kat := 0
 		if containsKatakana(w.Word) {
 			kat = 1
@@ -497,7 +512,7 @@ func seedDB(db *sql.DB) {
 		res, err := wordStmt.Exec(
 			w.Word, w.Reading, w.PitchAccent, w.PartOfSpeech, w.Meaning, w.ExampleJP, w.ExampleEN,
 			w.DrillCount, w.DrillTarget, w.IncorrectCount,
-			w.CreatedAt, w.LastDrilledAt, w.TargetReachedAt, kat, string(kanjiDataJSON), w.ImagePath,
+			w.CreatedAt, w.LastDrilledAt, w.TargetReachedAt, kat, string(kanjiDataJSON), w.ImagePath, 0,
 		)
 		if err != nil {
 			tx.Rollback()

@@ -1,1144 +1,450 @@
 {
-  "kanji": [
-    {"character": "走", "meanings": ["run", "flee"]},
-    {"character": "美", "meanings": ["beautiful", "pretty"]},
-    {"character": "話", "meanings": ["speak", "story", "talk"]},
-    {"character": "静", "meanings": ["quiet", "still", "calm"]},
-    {"character": "始", "meanings": ["begin", "start"]},
-    {"character": "天", "meanings": ["heaven", "sky"]},
-    {"character": "気", "meanings": ["spirit", "mood", "air", "energy"]},
-    {"character": "忘", "meanings": ["forget"]},
-    {"character": "危", "meanings": ["dangerous", "perilous"]},
-    {"character": "選", "meanings": ["select", "choose", "elect"]},
-    {"character": "問", "meanings": ["question", "ask"]},
-    {"character": "題", "meanings": ["topic", "subject", "title"]},
-    {"character": "暖", "meanings": ["warm", "mild"]},
-    {"character": "借", "meanings": ["borrow", "rent"]},
-    {"character": "経", "meanings": ["pass through", "longitude", "sutra"]},
-    {"character": "験", "meanings": ["test", "verify", "experience"]},
-    {"character": "練", "meanings": ["practice", "knead", "train"]},
-    {"character": "習", "meanings": ["learn", "practice", "custom"]},
-    {"character": "眠", "meanings": ["sleep", "drowsy"]},
-    {"character": "約", "meanings": ["promise", "approximately", "bind"]},
-    {"character": "束", "meanings": ["bundle", "bind", "bunch"]},
-    {"character": "優", "meanings": ["gentle", "superior", "excel"]},
-    {"character": "自", "meanings": ["self", "oneself"]},
-    {"character": "由", "meanings": ["reason", "cause", "from"]},
-    {"character": "考", "meanings": ["think", "consider", "reflect"]},
-    {"character": "決", "meanings": ["decide", "determine"]},
-    {"character": "調", "meanings": ["investigate", "tune", "prepare"]},
-    {"character": "続", "meanings": ["continue", "follow"]},
-    {"character": "手", "meanings": ["hand", "arm", "skill"]},
-    {"character": "伝", "meanings": ["transmit", "convey", "legend"]},
-    {"character": "困", "meanings": ["troubled", "distressed"]},
-    {"character": "信", "meanings": ["believe", "trust", "faith"]},
-    {"character": "猫", "meanings": ["cat"]},
-    {"character": "犬", "meanings": ["dog"]},
-    {"character": "魚", "meanings": ["fish"]},
-    {"character": "鳥", "meanings": ["bird"]},
-    {"character": "馬", "meanings": ["horse"]}
-  ],
-  "words": [
-    {
-      "word": "走る",
-      "reading": "はしる",
-      "pitch_accent": 2,
-      "part_of_speech": "godan-verb",
-      "meaning": "to run",
-      "example_jp": "公園を走る。",
-      "example_en": "I run in the park.",
-      "drill_count": 3,
-      "drill_target": 3,
-      "incorrect_count": 1,
-      "created_at": "2026-01-05 09:00:00",
-      "last_drilled_at": "2026-03-22 14:30:00",
-      "target_reached_at": "2026-03-22 14:30:00",
-      "kanji_data": [{"char": "走", "reading": "はし"}]
-    },
-    {
-      "word": "美しい",
-      "reading": "うつくしい",
-      "pitch_accent": 4,
-      "part_of_speech": "i-adjective",
-      "meaning": "beautiful",
-      "example_jp": "美しい花が咲いている。",
-      "example_en": "Beautiful flowers are blooming.",
-      "drill_count": 0,
-      "drill_target": 3,
-      "incorrect_count": 0,
-      "created_at": "2026-03-18 10:00:00",
-      "last_drilled_at": null,
-      "target_reached_at": null,
-      "kanji_data": [{"char": "美", "reading": "うつく"}]
-    },
-    {
-      "word": "話す",
-      "reading": "はなす",
-      "pitch_accent": 2,
-      "part_of_speech": "godan-verb",
-      "meaning": "to speak; to talk",
-      "example_jp": "日本語を話す。",
-      "example_en": "I speak Japanese.",
-      "drill_count": 2,
-      "drill_target": 5,
-      "incorrect_count": 2,
-      "created_at": "2026-01-15 08:00:00",
-      "last_drilled_at": "2026-03-10 11:00:00",
-      "target_reached_at": null,
-      "kanji_data": [{"char": "話", "reading": "はな"}]
-    },
-    {
-      "word": "静か",
-      "reading": "しずか",
-      "pitch_accent": 0,
-      "part_of_speech": "na-adjective",
-      "meaning": "quiet",
-      "example_jp": "図書館は静かだ。",
-      "example_en": "The library is quiet.",
-      "drill_count": 5,
-      "drill_target": 5,
-      "incorrect_count": 0,
-      "created_at": "2025-12-01 09:00:00",
-      "last_drilled_at": "2026-03-20 16:00:00",
-      "target_reached_at": "2026-03-20 16:00:00",
-      "kanji_data": [{"char": "静", "reading": "しず"}]
-    },
-    {
-      "word": "始める",
-      "reading": "はじめる",
-      "pitch_accent": 0,
-      "part_of_speech": "ichidan-verb",
-      "meaning": "to begin; to start",
-      "example_jp": "仕事を始める。",
-      "example_en": "I start work.",
-      "drill_count": 1,
-      "drill_target": 3,
-      "incorrect_count": 3,
-      "created_at": "2025-11-10 09:00:00",
-      "last_drilled_at": "2026-02-28 10:00:00",
-      "target_reached_at": null,
-      "kanji_data": [{"char": "始", "reading": "はじ"}]
-    },
-    {
-      "word": "天気",
-      "reading": "てんき",
-      "pitch_accent": 1,
-      "part_of_speech": "noun",
-      "meaning": "weather",
-      "example_jp": "今日は天気がいい。",
-      "example_en": "The weather is nice today.",
-      "drill_count": 3,
-      "drill_target": 3,
-      "incorrect_count": 1,
-      "created_at": "2026-02-01 09:00:00",
-      "last_drilled_at": "2026-03-22 14:30:00",
-      "target_reached_at": "2026-03-22 14:30:00",
-      "kanji_data": [{"char": "天", "reading": "テン"}, {"char": "気", "reading": "キ"}]
-    },
-    {
-      "word": "忘れる",
-      "reading": "わすれる",
-      "pitch_accent": 3,
-      "part_of_speech": "ichidan-verb",
-      "meaning": "to forget",
-      "example_jp": "名前を忘れる。",
-      "example_en": "I forget the name.",
-      "drill_count": 2,
-      "drill_target": 3,
-      "incorrect_count": 1,
-      "created_at": "2026-03-01 09:00:00",
-      "last_drilled_at": "2026-03-23 09:15:00",
-      "target_reached_at": null,
-      "kanji_data": [{"char": "忘", "reading": "わす"}]
-    },
-    {
-      "word": "危ない",
-      "reading": "あぶない",
-      "pitch_accent": 4,
-      "part_of_speech": "i-adjective",
-      "meaning": "dangerous",
-      "example_jp": "この道は危ない。",
-      "example_en": "This road is dangerous.",
-      "drill_count": 0,
-      "drill_target": 3,
-      "incorrect_count": 0,
-      "created_at": "2026-03-10 09:00:00",
-      "last_drilled_at": null,
-      "target_reached_at": null,
-      "kanji_data": [{"char": "危", "reading": "あぶ"}]
-    },
-    {
-      "word": "選ぶ",
-      "reading": "えらぶ",
-      "pitch_accent": 0,
-      "part_of_speech": "godan-verb",
-      "meaning": "to choose; to select",
-      "example_jp": "好きな色を選ぶ。",
-      "example_en": "I choose my favorite color.",
-      "drill_count": 3,
-      "drill_target": 3,
-      "incorrect_count": 0,
-      "created_at": "2025-12-15 09:00:00",
-      "last_drilled_at": "2026-01-08 13:00:00",
-      "target_reached_at": "2026-01-08 13:00:00",
-      "kanji_data": [{"char": "選", "reading": "えら"}]
-    },
-    {
-      "word": "問題",
-      "reading": "もんだい",
-      "pitch_accent": 0,
-      "part_of_speech": "noun",
-      "meaning": "problem; question",
-      "example_jp": "問題を解く。",
-      "example_en": "I solve the problem.",
-      "drill_count": 4,
-      "drill_target": 5,
-      "incorrect_count": 2,
-      "created_at": "2025-11-20 09:00:00",
-      "last_drilled_at": "2026-03-18 15:00:00",
-      "target_reached_at": null,
-      "kanji_data": [{"char": "問", "reading": "モン"}, {"char": "題", "reading": "ダイ"}]
-    },
-    {
-      "word": "暖かい",
-      "reading": "あたたかい",
-      "pitch_accent": 4,
-      "part_of_speech": "i-adjective",
-      "meaning": "warm",
-      "example_jp": "今日は暖かい。",
-      "example_en": "It is warm today.",
-      "drill_count": 3,
-      "drill_target": 3,
-      "incorrect_count": 0,
-      "created_at": "2026-02-14 09:00:00",
-      "last_drilled_at": "2026-03-22 14:30:00",
-      "target_reached_at": "2026-03-22 14:30:00",
-      "kanji_data": [{"char": "暖", "reading": "あたた"}]
-    },
-    {
-      "word": "借りる",
-      "reading": "かりる",
-      "pitch_accent": 2,
-      "part_of_speech": "ichidan-verb",
-      "meaning": "to borrow",
-      "example_jp": "本を借りる。",
-      "example_en": "I borrow a book.",
-      "drill_count": 0,
-      "drill_target": 3,
-      "incorrect_count": 0,
-      "created_at": "2026-03-18 10:00:00",
-      "last_drilled_at": null,
-      "target_reached_at": null,
-      "kanji_data": [{"char": "借", "reading": "か"}]
-    },
-    {
-      "word": "経験",
-      "reading": "けいけん",
-      "pitch_accent": 0,
-      "part_of_speech": "noun",
-      "meaning": "experience",
-      "example_jp": "いい経験になった。",
-      "example_en": "It became a good experience.",
-      "drill_count": 1,
-      "drill_target": 3,
-      "incorrect_count": 1,
-      "created_at": "2026-01-20 09:00:00",
-      "last_drilled_at": "2026-03-10 11:00:00",
-      "target_reached_at": null,
-      "kanji_data": [{"char": "経", "reading": "ケイ"}, {"char": "験", "reading": "ケン"}]
-    },
-    {
-      "word": "練習",
-      "reading": "れんしゅう",
-      "pitch_accent": 0,
-      "part_of_speech": "noun",
-      "meaning": "practice",
-      "example_jp": "毎日練習する。",
-      "example_en": "I practice every day.",
-      "drill_count": 5,
-      "drill_target": 5,
-      "incorrect_count": 1,
-      "created_at": "2026-01-10 09:00:00",
-      "last_drilled_at": "2026-03-23 09:15:00",
-      "target_reached_at": "2026-03-23 09:15:00",
-      "kanji_data": [{"char": "練", "reading": "レン"}, {"char": "習", "reading": "シュウ"}]
-    },
-    {
-      "word": "眠い",
-      "reading": "ねむい",
-      "pitch_accent": 2,
-      "part_of_speech": "i-adjective",
-      "meaning": "sleepy",
-      "example_jp": "とても眠い。",
-      "example_en": "I am very sleepy.",
-      "drill_count": 0,
-      "drill_target": 3,
-      "incorrect_count": 0,
-      "created_at": "2026-03-05 09:00:00",
-      "last_drilled_at": null,
-      "target_reached_at": null,
-      "kanji_data": [{"char": "眠", "reading": "ねむ"}]
-    },
-    {
-      "word": "約束",
-      "reading": "やくそく",
-      "pitch_accent": 0,
-      "part_of_speech": "noun",
-      "meaning": "promise; appointment",
-      "example_jp": "約束を守る。",
-      "example_en": "I keep the promise.",
-      "drill_count": 3,
-      "drill_target": 3,
-      "incorrect_count": 0,
-      "created_at": "2026-02-10 09:00:00",
-      "last_drilled_at": "2026-03-22 14:30:00",
-      "target_reached_at": "2026-03-22 14:30:00",
-      "kanji_data": [{"char": "約", "reading": "ヤク"}, {"char": "束", "reading": "ソク"}]
-    },
-    {
-      "word": "優しい",
-      "reading": "やさしい",
-      "pitch_accent": 0,
-      "part_of_speech": "i-adjective",
-      "meaning": "kind; gentle",
-      "example_jp": "彼は優しい人だ。",
-      "example_en": "He is a kind person.",
-      "drill_count": 2,
-      "drill_target": 3,
-      "incorrect_count": 0,
-      "created_at": "2026-02-20 09:00:00",
-      "last_drilled_at": "2026-03-23 09:15:00",
-      "target_reached_at": null,
-      "kanji_data": [{"char": "優", "reading": "やさ"}]
-    },
-    {
-      "word": "自由",
-      "reading": "じゆう",
-      "pitch_accent": 0,
-      "part_of_speech": "na-adjective",
-      "meaning": "freedom; free",
-      "example_jp": "自由な時間が欲しい。",
-      "example_en": "I want free time.",
-      "drill_count": 3,
-      "drill_target": 3,
-      "incorrect_count": 2,
-      "created_at": "2025-12-20 09:00:00",
-      "last_drilled_at": "2026-01-08 13:00:00",
-      "target_reached_at": "2026-01-08 13:00:00",
-      "kanji_data": [{"char": "自", "reading": "ジ"}, {"char": "由", "reading": "ユウ"}]
-    },
-    {
-      "word": "考える",
-      "reading": "かんがえる",
-      "pitch_accent": 4,
-      "part_of_speech": "ichidan-verb",
-      "meaning": "to think; to consider",
-      "example_jp": "答えを考える。",
-      "example_en": "I think of the answer.",
-      "drill_count": 1,
-      "drill_target": 5,
-      "incorrect_count": 3,
-      "created_at": "2026-01-25 09:00:00",
-      "last_drilled_at": "2026-03-22 14:30:00",
-      "target_reached_at": null,
-      "kanji_data": [{"char": "考", "reading": "かんが"}]
-    },
-    {
-      "word": "決める",
-      "reading": "きめる",
-      "pitch_accent": 2,
-      "part_of_speech": "ichidan-verb",
-      "meaning": "to decide",
-      "example_jp": "目標を決める。",
-      "example_en": "I decide on a goal.",
-      "drill_count": 2,
-      "drill_target": 3,
-      "incorrect_count": 1,
-      "created_at": "2026-02-05 09:00:00",
-      "last_drilled_at": "2026-03-23 09:15:00",
-      "target_reached_at": null,
-      "kanji_data": [{"char": "決", "reading": "き"}]
-    },
-    {
-      "word": "調べる",
-      "reading": "しらべる",
-      "pitch_accent": 0,
-      "part_of_speech": "ichidan-verb",
-      "meaning": "to investigate; to look up",
-      "example_jp": "言葉を調べる。",
-      "example_en": "I look up the word.",
-      "drill_count": 3,
-      "drill_target": 3,
-      "incorrect_count": 0,
-      "created_at": "2026-01-30 09:00:00",
-      "last_drilled_at": "2026-03-10 11:00:00",
-      "target_reached_at": "2026-03-10 11:00:00",
-      "kanji_data": [{"char": "調", "reading": "しら"}]
-    },
-    {
-      "word": "続ける",
-      "reading": "つづける",
-      "pitch_accent": 0,
-      "part_of_speech": "ichidan-verb",
-      "meaning": "to continue",
-      "example_jp": "練習を続ける。",
-      "example_en": "I continue practicing.",
-      "drill_count": 0,
-      "drill_target": 3,
-      "incorrect_count": 0,
-      "created_at": "2026-03-20 09:00:00",
-      "last_drilled_at": null,
-      "target_reached_at": null,
-      "kanji_data": [{"char": "続", "reading": "つづ"}]
-    },
-    {
-      "word": "手伝う",
-      "reading": "てつだう",
-      "pitch_accent": 0,
-      "part_of_speech": "godan-verb",
-      "meaning": "to help; to assist",
-      "example_jp": "母を手伝う。",
-      "example_en": "I help my mother.",
-      "drill_count": 3,
-      "drill_target": 3,
-      "incorrect_count": 0,
-      "created_at": "2026-02-25 09:00:00",
-      "last_drilled_at": "2026-03-23 09:15:00",
-      "target_reached_at": "2026-03-23 09:15:00",
-      "kanji_data": [{"char": "手", "reading": "て"}, {"char": "伝", "reading": "つた"}]
-    },
-    {
-      "word": "困る",
-      "reading": "こまる",
-      "pitch_accent": 2,
-      "part_of_speech": "godan-verb",
-      "meaning": "to be troubled; to be in a fix",
-      "example_jp": "道に迷って困る。",
-      "example_en": "I am troubled after getting lost.",
-      "drill_count": 1,
-      "drill_target": 3,
-      "incorrect_count": 2,
-      "created_at": "2026-02-28 09:00:00",
-      "last_drilled_at": "2026-03-22 14:30:00",
-      "target_reached_at": null,
-      "kanji_data": [{"char": "困", "reading": "こま"}]
-    },
-    {
-      "word": "信じる",
-      "reading": "しんじる",
-      "pitch_accent": 0,
-      "part_of_speech": "ichidan-verb",
-      "meaning": "to believe",
-      "example_jp": "友達を信じる。",
-      "example_en": "I believe my friend.",
-      "drill_count": 5,
-      "drill_target": 5,
-      "incorrect_count": 0,
-      "created_at": "2025-12-10 09:00:00",
-      "last_drilled_at": "2026-03-20 16:00:00",
-      "target_reached_at": "2026-03-20 16:00:00",
-      "kanji_data": [{"char": "信", "reading": "シン"}]
-    },
-    {
-      "word": "コーヒー",
-      "reading": "こーひー",
-      "pitch_accent": 3,
-      "part_of_speech": "noun",
-      "meaning": "coffee",
-      "example_jp": "毎朝コーヒーを一杯飲む。",
-      "example_en": "I drink a cup of coffee every morning.",
-      "drill_count": 3,
-      "drill_target": 3,
-      "incorrect_count": 0,
-      "created_at": "2026-01-03 09:00:00",
-      "last_drilled_at": "2026-03-19 11:20:00",
-      "target_reached_at": "2026-03-19 11:20:00"
-    },
-    {
-      "word": "パン",
-      "reading": "ぱん",
-      "pitch_accent": 1,
-      "part_of_speech": "noun",
-      "meaning": "bread",
-      "example_jp": "朝食にパンを食べる。",
-      "example_en": "I eat bread for breakfast.",
-      "drill_count": 5,
-      "drill_target": 5,
-      "incorrect_count": 0,
-      "created_at": "2025-11-15 09:00:00",
-      "last_drilled_at": "2026-03-19 11:30:00",
-      "target_reached_at": "2026-03-19 11:30:00"
-    },
-    {
-      "word": "ケーキ",
-      "reading": "けーき",
-      "pitch_accent": 1,
-      "part_of_speech": "noun",
-      "meaning": "cake",
-      "example_jp": "誕生日にケーキを食べる。",
-      "example_en": "I eat cake on my birthday.",
-      "drill_count": 1,
-      "drill_target": 3,
-      "incorrect_count": 1,
-      "created_at": "2025-12-05 09:00:00",
-      "last_drilled_at": "2026-03-19 11:05:00",
-      "target_reached_at": null
-    },
-    {
-      "word": "ビール",
-      "reading": "びーる",
-      "pitch_accent": 1,
-      "part_of_speech": "noun",
-      "meaning": "beer",
-      "example_jp": "友達とビールを飲む。",
-      "example_en": "I drink beer with friends.",
-      "drill_count": 2,
-      "drill_target": 3,
-      "incorrect_count": 0,
-      "created_at": "2026-01-03 09:00:00",
-      "last_drilled_at": "2026-03-24 10:00:00",
-      "target_reached_at": null
-    },
-    {
-      "word": "レストラン",
-      "reading": "れすとらん",
-      "pitch_accent": 0,
-      "part_of_speech": "noun",
-      "meaning": "restaurant",
-      "example_jp": "レストランで夕食を食べる。",
-      "example_en": "I eat dinner at a restaurant.",
-      "drill_count": 2,
-      "drill_target": 3,
-      "incorrect_count": 0,
-      "created_at": "2025-11-20 09:00:00",
-      "last_drilled_at": "2026-03-19 11:10:00",
-      "target_reached_at": null
-    },
-    {
-      "word": "ホテル",
-      "reading": "ほてる",
-      "pitch_accent": 0,
-      "part_of_speech": "noun",
-      "meaning": "hotel",
-      "example_jp": "駅の近くのホテルに泊まる。",
-      "example_en": "I stay at a hotel near the station.",
-      "drill_count": 1,
-      "drill_target": 3,
-      "incorrect_count": 1,
-      "created_at": "2026-01-12 09:00:00",
-      "last_drilled_at": "2026-03-19 11:15:00",
-      "target_reached_at": null
-    },
-    {
-      "word": "タクシー",
-      "reading": "たくしー",
-      "pitch_accent": 0,
-      "part_of_speech": "noun",
-      "meaning": "taxi",
-      "example_jp": "タクシーで駅まで行く。",
-      "example_en": "I go to the station by taxi.",
-      "drill_count": 1,
-      "drill_target": 3,
-      "incorrect_count": 0,
-      "created_at": "2026-02-15 09:00:00",
-      "last_drilled_at": "2026-03-24 10:05:00",
-      "target_reached_at": null
-    },
-    {
-      "word": "バス",
-      "reading": "ばす",
-      "pitch_accent": 1,
-      "part_of_speech": "noun",
-      "meaning": "bus",
-      "example_jp": "バスで学校に通っている。",
-      "example_en": "I commute to school by bus.",
-      "drill_count": 3,
-      "drill_target": 3,
-      "incorrect_count": 0,
-      "created_at": "2025-12-20 09:00:00",
-      "last_drilled_at": "2026-01-15 10:00:00",
-      "target_reached_at": "2026-01-15 10:00:00"
-    },
-    {
-      "word": "テレビ",
-      "reading": "てれび",
-      "pitch_accent": 0,
-      "part_of_speech": "noun",
-      "meaning": "television; TV",
-      "example_jp": "毎晩テレビを見る。",
-      "example_en": "I watch TV every evening.",
-      "drill_count": 5,
-      "drill_target": 5,
-      "incorrect_count": 0,
-      "created_at": "2025-11-01 09:00:00",
-      "last_drilled_at": "2026-02-15 14:00:00",
-      "target_reached_at": "2026-02-15 14:00:00"
-    },
-    {
-      "word": "ラジオ",
-      "reading": "らじお",
-      "pitch_accent": 1,
-      "part_of_speech": "noun",
-      "meaning": "radio",
-      "example_jp": "車の中でラジオを聴く。",
-      "example_en": "I listen to the radio in the car.",
-      "drill_count": 1,
-      "drill_target": 3,
-      "incorrect_count": 1,
-      "created_at": "2026-02-20 09:00:00",
-      "last_drilled_at": "2026-03-24 10:30:00",
-      "target_reached_at": null
-    },
-    {
-      "word": "カメラ",
-      "reading": "かめら",
-      "pitch_accent": 1,
-      "part_of_speech": "noun",
-      "meaning": "camera",
-      "example_jp": "カメラで写真を撮る。",
-      "example_en": "I take photos with a camera.",
-      "drill_count": 0,
-      "drill_target": 3,
-      "incorrect_count": 0,
-      "created_at": "2026-03-01 09:00:00",
-      "last_drilled_at": null,
-      "target_reached_at": null
-    },
-    {
-      "word": "コンピューター",
-      "reading": "こんぴゅーたー",
-      "pitch_accent": 0,
-      "part_of_speech": "noun",
-      "meaning": "computer",
-      "example_jp": "コンピューターで仕事をする。",
-      "example_en": "I work on a computer.",
-      "drill_count": 3,
-      "drill_target": 5,
-      "incorrect_count": 1,
-      "created_at": "2026-01-08 09:00:00",
-      "last_drilled_at": "2026-03-19 11:25:00",
-      "target_reached_at": null
-    },
-    {
-      "word": "スマートフォン",
-      "reading": "すまーとふぉん",
-      "pitch_accent": 0,
-      "part_of_speech": "noun",
-      "meaning": "smartphone",
-      "example_jp": "スマートフォンで地図を確認する。",
-      "example_en": "I check the map on my smartphone.",
-      "drill_count": 1,
-      "drill_target": 3,
-      "incorrect_count": 0,
-      "created_at": "2026-02-01 09:00:00",
-      "last_drilled_at": "2026-03-24 10:25:00",
-      "target_reached_at": null
-    },
-    {
-      "word": "インターネット",
-      "reading": "いんたーねっと",
-      "pitch_accent": 0,
-      "part_of_speech": "noun",
-      "meaning": "internet",
-      "example_jp": "インターネットで調べる。",
-      "example_en": "I look it up on the internet.",
-      "drill_count": 2,
-      "drill_target": 3,
-      "incorrect_count": 0,
-      "created_at": "2026-01-20 09:00:00",
-      "last_drilled_at": "2026-03-19 11:35:00",
-      "target_reached_at": null
-    },
-    {
-      "word": "メール",
-      "reading": "めーる",
-      "pitch_accent": 1,
-      "part_of_speech": "noun",
-      "meaning": "email; mail",
-      "example_jp": "メールを送る。",
-      "example_en": "I send an email.",
-      "drill_count": 3,
-      "drill_target": 3,
-      "incorrect_count": 0,
-      "created_at": "2025-11-05 09:00:00",
-      "last_drilled_at": "2026-03-19 11:45:00",
-      "target_reached_at": "2026-03-19 11:45:00"
-    },
-    {
-      "word": "テーブル",
-      "reading": "てーぶる",
-      "pitch_accent": 0,
-      "part_of_speech": "noun",
-      "meaning": "table",
-      "example_jp": "テーブルの上に置く。",
-      "example_en": "I put it on the table.",
-      "drill_count": 1,
-      "drill_target": 3,
-      "incorrect_count": 0,
-      "created_at": "2026-03-05 09:00:00",
-      "last_drilled_at": "2026-03-24 10:10:00",
-      "target_reached_at": null
-    },
-    {
-      "word": "ベッド",
-      "reading": "べっど",
-      "pitch_accent": 1,
-      "part_of_speech": "noun",
-      "meaning": "bed",
-      "example_jp": "ベッドで本を読む。",
-      "example_en": "I read a book in bed.",
-      "drill_count": 2,
-      "drill_target": 3,
-      "incorrect_count": 0,
-      "created_at": "2026-01-25 09:00:00",
-      "last_drilled_at": "2026-03-24 10:15:00",
-      "target_reached_at": null
-    },
-    {
-      "word": "ソファ",
-      "reading": "そふぁ",
-      "pitch_accent": 1,
-      "part_of_speech": "noun",
-      "meaning": "sofa; couch",
-      "example_jp": "ソファに座ってくつろぐ。",
-      "example_en": "I sit on the sofa and relax.",
-      "drill_count": 0,
-      "drill_target": 3,
-      "incorrect_count": 0,
-      "created_at": "2026-03-10 09:00:00",
-      "last_drilled_at": null,
-      "target_reached_at": null
-    },
-    {
-      "word": "アパート",
-      "reading": "あぱーと",
-      "pitch_accent": 0,
-      "part_of_speech": "noun",
-      "meaning": "apartment",
-      "example_jp": "駅の近くにアパートを借りた。",
-      "example_en": "I rented an apartment near the station.",
-      "drill_count": 3,
-      "drill_target": 3,
-      "incorrect_count": 1,
-      "created_at": "2025-12-15 09:00:00",
-      "last_drilled_at": "2026-02-05 10:00:00",
-      "target_reached_at": "2026-02-05 10:00:00"
-    },
-    {
-      "word": "ビル",
-      "reading": "びる",
-      "pitch_accent": 1,
-      "part_of_speech": "noun",
-      "meaning": "building; office block",
-      "example_jp": "高いビルが立ち並んでいる。",
-      "example_en": "Tall buildings line the street.",
-      "drill_count": 2,
-      "drill_target": 3,
-      "incorrect_count": 0,
-      "created_at": "2026-02-10 09:00:00",
-      "last_drilled_at": "2026-03-24 10:35:00",
-      "target_reached_at": null
-    },
-    {
-      "word": "ニュース",
-      "reading": "にゅーす",
-      "pitch_accent": 1,
-      "part_of_speech": "noun",
-      "meaning": "news",
-      "example_jp": "毎朝ニュースを読む。",
-      "example_en": "I read the news every morning.",
-      "drill_count": 2,
-      "drill_target": 5,
-      "incorrect_count": 1,
-      "created_at": "2026-01-15 09:00:00",
-      "last_drilled_at": "2026-03-19 11:40:00",
-      "target_reached_at": null
-    },
-    {
-      "word": "サッカー",
-      "reading": "さっかー",
-      "pitch_accent": 0,
-      "part_of_speech": "noun",
-      "meaning": "soccer; football",
-      "example_jp": "週末に友達とサッカーをする。",
-      "example_en": "I play soccer with friends on weekends.",
-      "drill_count": 5,
-      "drill_target": 5,
-      "incorrect_count": 0,
-      "created_at": "2025-12-01 09:00:00",
-      "last_drilled_at": "2026-02-10 09:00:00",
-      "target_reached_at": "2026-02-10 09:00:00"
-    },
-    {
-      "word": "テニス",
-      "reading": "てにす",
-      "pitch_accent": 1,
-      "part_of_speech": "noun",
-      "meaning": "tennis",
-      "example_jp": "テニスの練習をする。",
-      "example_en": "I practice tennis.",
-      "drill_count": 0,
-      "drill_target": 3,
-      "incorrect_count": 0,
-      "created_at": "2026-02-25 09:00:00",
-      "last_drilled_at": null,
-      "target_reached_at": null
-    },
-    {
-      "word": "ゴルフ",
-      "reading": "ごるふ",
-      "pitch_accent": 1,
-      "part_of_speech": "noun",
-      "meaning": "golf",
-      "example_jp": "父はゴルフが趣味だ。",
-      "example_en": "My father's hobby is golf.",
-      "drill_count": 0,
-      "drill_target": 3,
-      "incorrect_count": 0,
-      "created_at": "2026-03-08 09:00:00",
-      "last_drilled_at": null,
-      "target_reached_at": null
-    },
-    {
-      "word": "ストレス",
-      "reading": "すとれす",
-      "pitch_accent": 0,
-      "part_of_speech": "noun",
-      "meaning": "stress",
-      "example_jp": "仕事のストレスを感じる。",
-      "example_en": "I feel stressed from work.",
-      "drill_count": 0,
-      "drill_target": 3,
-      "incorrect_count": 0,
-      "created_at": "2026-03-12 09:00:00",
-      "last_drilled_at": null,
-      "target_reached_at": null
-    },
-    {
-      "word": "チャンス",
-      "reading": "ちゃんす",
-      "pitch_accent": 1,
-      "part_of_speech": "noun",
-      "meaning": "chance; opportunity",
-      "example_jp": "このチャンスを活かす。",
-      "example_en": "I make the most of this opportunity.",
-      "drill_count": 3,
-      "drill_target": 3,
-      "incorrect_count": 0,
-      "created_at": "2026-01-05 09:00:00",
-      "last_drilled_at": "2026-03-24 10:20:00",
-      "target_reached_at": "2026-03-24 10:20:00"
-    },
-    {
-      "word": "レベル",
-      "reading": "れべる",
-      "pitch_accent": 0,
-      "part_of_speech": "noun",
-      "meaning": "level",
-      "example_jp": "日本語のレベルが上がった。",
-      "example_en": "My Japanese level has improved.",
-      "drill_count": 1,
-      "drill_target": 3,
-      "incorrect_count": 0,
-      "created_at": "2026-02-18 09:00:00",
-      "last_drilled_at": "2026-03-24 10:40:00",
-      "target_reached_at": null
-    },
-    {
-      "word": "エネルギー",
-      "reading": "えねるぎー",
-      "pitch_accent": 0,
-      "part_of_speech": "noun",
-      "meaning": "energy",
-      "example_jp": "今日はエネルギーが足りない。",
-      "example_en": "I don't have enough energy today.",
-      "drill_count": 0,
-      "drill_target": 3,
-      "incorrect_count": 0,
-      "created_at": "2026-03-15 09:00:00",
-      "last_drilled_at": null,
-      "target_reached_at": null
-    },
-    {
-      "word": "アイデア",
-      "reading": "あいであ",
-      "pitch_accent": 2,
-      "part_of_speech": "noun",
-      "meaning": "idea",
-      "example_jp": "いいアイデアが浮かんだ。",
-      "example_en": "A good idea came to me.",
-      "drill_count": 0,
-      "drill_target": 3,
-      "incorrect_count": 0,
-      "created_at": "2026-03-20 09:00:00",
-      "last_drilled_at": null,
-      "target_reached_at": null
-    },
-    {
-      "word": "ボランティア",
-      "reading": "ぼらんてぃあ",
-      "pitch_accent": 0,
-      "part_of_speech": "noun",
-      "meaning": "volunteer; volunteering",
-      "example_jp": "週末にボランティアをする。",
-      "example_en": "I do volunteer work on weekends.",
-      "drill_count": 0,
-      "drill_target": 3,
-      "incorrect_count": 0,
-      "created_at": "2026-03-22 09:00:00",
-      "last_drilled_at": null,
-      "target_reached_at": null
-    },
-    {
-      "word": "猫",
-      "reading": "ねこ",
-      "pitch_accent": 1,
-      "part_of_speech": "noun",
-      "meaning": "cat",
-      "example_jp": "猫が窓の外を見ている。",
-      "example_en": "The cat is looking out the window.",
-      "drill_count": 0,
-      "drill_target": 3,
-      "incorrect_count": 0,
-      "created_at": "2026-03-25 09:00:00",
-      "last_drilled_at": null,
-      "target_reached_at": null,
-      "kanji_data": [{"char": "猫", "reading": "ねこ"}]
-    },
-    {
-      "word": "犬",
-      "reading": "いぬ",
-      "pitch_accent": 2,
-      "part_of_speech": "noun",
-      "meaning": "dog",
-      "example_jp": "犬と一緒に公園を散歩する。",
-      "example_en": "I walk in the park with my dog.",
-      "drill_count": 0,
-      "drill_target": 3,
-      "incorrect_count": 0,
-      "created_at": "2026-03-25 09:01:00",
-      "last_drilled_at": null,
-      "target_reached_at": null,
-      "kanji_data": [{"char": "犬", "reading": "いぬ"}]
-    },
-    {
-      "word": "魚",
-      "reading": "さかな",
-      "pitch_accent": 0,
-      "part_of_speech": "noun",
-      "meaning": "fish",
-      "example_jp": "川で魚を釣る。",
-      "example_en": "I fish in the river.",
-      "drill_count": 0,
-      "drill_target": 3,
-      "incorrect_count": 0,
-      "created_at": "2026-03-25 09:02:00",
-      "last_drilled_at": null,
-      "target_reached_at": null,
-      "kanji_data": [{"char": "魚", "reading": "さかな"}]
-    },
-    {
-      "word": "鳥",
-      "reading": "とり",
-      "pitch_accent": 0,
-      "part_of_speech": "noun",
-      "meaning": "bird",
-      "example_jp": "鳥が空を飛んでいる。",
-      "example_en": "Birds are flying in the sky.",
-      "drill_count": 0,
-      "drill_target": 3,
-      "incorrect_count": 0,
-      "created_at": "2026-03-25 09:03:00",
-      "last_drilled_at": null,
-      "target_reached_at": null,
-      "kanji_data": [{"char": "鳥", "reading": "とり"}]
-    },
-    {
-      "word": "馬",
-      "reading": "うま",
-      "pitch_accent": 2,
-      "part_of_speech": "noun",
-      "meaning": "horse",
-      "example_jp": "馬に乗るのは楽しい。",
-      "example_en": "Riding a horse is fun.",
-      "drill_count": 0,
-      "drill_target": 3,
-      "incorrect_count": 0,
-      "created_at": "2026-03-25 09:04:00",
-      "last_drilled_at": null,
-      "target_reached_at": null,
-      "kanji_data": [{"char": "馬", "reading": "うま"}]
-    },
-    {
-      "word": "ゾウ",
-      "reading": "ぞう",
-      "pitch_accent": 1,
-      "part_of_speech": "noun",
-      "meaning": "elephant",
-      "example_jp": "動物園でゾウを見た。",
-      "example_en": "I saw an elephant at the zoo.",
-      "drill_count": 0,
-      "drill_target": 3,
-      "incorrect_count": 0,
-      "created_at": "2026-03-25 09:05:00",
-      "last_drilled_at": null,
-      "target_reached_at": null
-    },
-    {
-      "word": "キリン",
-      "reading": "きりん",
-      "pitch_accent": 0,
-      "part_of_speech": "noun",
-      "meaning": "giraffe",
-      "example_jp": "キリンは首が長い。",
-      "example_en": "Giraffes have long necks.",
-      "drill_count": 0,
-      "drill_target": 3,
-      "incorrect_count": 0,
-      "created_at": "2026-03-25 09:06:00",
-      "last_drilled_at": null,
-      "target_reached_at": null
-    },
-    {
-      "word": "ペンギン",
-      "reading": "ぺんぎん",
-      "pitch_accent": 0,
-      "part_of_speech": "noun",
-      "meaning": "penguin",
-      "example_jp": "ペンギンは泳ぐのが得意だ。",
-      "example_en": "Penguins are good at swimming.",
-      "drill_count": 0,
-      "drill_target": 3,
-      "incorrect_count": 0,
-      "created_at": "2026-03-25 09:07:00",
-      "last_drilled_at": null,
-      "target_reached_at": null
-    }
-  ],
+  "kanji": [],
+  "words": [],
   "sessions": [
     {
       "started_at": "2026-01-08 12:30:00",
       "answers": [
-        {"word": "静か",   "correct": true,  "answered_at": "2026-01-08 12:32:00"},
-        {"word": "問題",   "correct": false, "answered_at": "2026-01-08 12:34:00"},
-        {"word": "選ぶ",   "correct": true,  "answered_at": "2026-01-08 12:36:00"},
-        {"word": "自由",   "correct": true,  "answered_at": "2026-01-08 12:38:00"},
-        {"word": "自由",   "correct": false, "answered_at": "2026-01-08 12:45:00"},
-        {"word": "自由",   "correct": true,  "answered_at": "2026-01-08 12:47:00"},
-        {"word": "調べる", "correct": true,  "answered_at": "2026-01-08 12:49:00"},
-        {"word": "信じる", "correct": true,  "answered_at": "2026-01-08 12:51:00"},
-        {"word": "話す",   "correct": false, "answered_at": "2026-01-08 12:53:00"},
-        {"word": "経験",   "correct": false, "answered_at": "2026-01-08 12:55:00"}
+        {
+          "word": "静か",
+          "correct": true,
+          "answered_at": "2026-01-08 12:32:00"
+        },
+        {
+          "word": "問題",
+          "correct": false,
+          "answered_at": "2026-01-08 12:34:00"
+        },
+        {
+          "word": "選ぶ",
+          "correct": true,
+          "answered_at": "2026-01-08 12:36:00"
+        },
+        {
+          "word": "自由",
+          "correct": true,
+          "answered_at": "2026-01-08 12:38:00"
+        },
+        {
+          "word": "自由",
+          "correct": false,
+          "answered_at": "2026-01-08 12:45:00"
+        },
+        {
+          "word": "自由",
+          "correct": true,
+          "answered_at": "2026-01-08 12:47:00"
+        },
+        {
+          "word": "調べる",
+          "correct": true,
+          "answered_at": "2026-01-08 12:49:00"
+        },
+        {
+          "word": "信じる",
+          "correct": true,
+          "answered_at": "2026-01-08 12:51:00"
+        },
+        {
+          "word": "話す",
+          "correct": false,
+          "answered_at": "2026-01-08 12:53:00"
+        },
+        {
+          "word": "経験",
+          "correct": false,
+          "answered_at": "2026-01-08 12:55:00"
+        }
       ]
     },
     {
       "started_at": "2026-02-28 09:45:00",
       "answers": [
-        {"word": "始める", "correct": false, "answered_at": "2026-02-28 09:47:00"},
-        {"word": "天気",   "correct": true,  "answered_at": "2026-02-28 09:49:00"},
-        {"word": "約束",   "correct": true,  "answered_at": "2026-02-28 09:51:00"},
-        {"word": "優しい", "correct": true,  "answered_at": "2026-02-28 09:53:00"},
-        {"word": "考える", "correct": false, "answered_at": "2026-02-28 09:55:00"},
-        {"word": "困る",   "correct": false, "answered_at": "2026-02-28 09:57:00"},
-        {"word": "練習",   "correct": true,  "answered_at": "2026-02-28 09:59:00"},
-        {"word": "走る",   "correct": false, "answered_at": "2026-02-28 10:01:00"},
-        {"word": "始める", "correct": false, "answered_at": "2026-02-28 10:08:00"},
-        {"word": "考える", "correct": false, "answered_at": "2026-02-28 10:10:00"}
+        {
+          "word": "始める",
+          "correct": false,
+          "answered_at": "2026-02-28 09:47:00"
+        },
+        {
+          "word": "天気",
+          "correct": true,
+          "answered_at": "2026-02-28 09:49:00"
+        },
+        {
+          "word": "約束",
+          "correct": true,
+          "answered_at": "2026-02-28 09:51:00"
+        },
+        {
+          "word": "優しい",
+          "correct": true,
+          "answered_at": "2026-02-28 09:53:00"
+        },
+        {
+          "word": "考える",
+          "correct": false,
+          "answered_at": "2026-02-28 09:55:00"
+        },
+        {
+          "word": "困る",
+          "correct": false,
+          "answered_at": "2026-02-28 09:57:00"
+        },
+        {
+          "word": "練習",
+          "correct": true,
+          "answered_at": "2026-02-28 09:59:00"
+        },
+        {
+          "word": "走る",
+          "correct": false,
+          "answered_at": "2026-02-28 10:01:00"
+        },
+        {
+          "word": "始める",
+          "correct": false,
+          "answered_at": "2026-02-28 10:08:00"
+        },
+        {
+          "word": "考える",
+          "correct": false,
+          "answered_at": "2026-02-28 10:10:00"
+        }
       ]
     },
     {
       "started_at": "2026-03-10 10:30:00",
       "answers": [
-        {"word": "話す",   "correct": true,  "answered_at": "2026-03-10 10:32:00"},
-        {"word": "経験",   "correct": true,  "answered_at": "2026-03-10 10:34:00"},
-        {"word": "調べる", "correct": true,  "answered_at": "2026-03-10 10:36:00"},
-        {"word": "静か",   "correct": true,  "answered_at": "2026-03-10 10:38:00"},
-        {"word": "問題",   "correct": true,  "answered_at": "2026-03-10 10:40:00"},
-        {"word": "忘れる", "correct": true,  "answered_at": "2026-03-10 10:42:00"},
-        {"word": "選ぶ",   "correct": true,  "answered_at": "2026-03-10 10:44:00"},
-        {"word": "練習",   "correct": true,  "answered_at": "2026-03-10 10:46:00"}
+        {
+          "word": "話す",
+          "correct": true,
+          "answered_at": "2026-03-10 10:32:00"
+        },
+        {
+          "word": "経験",
+          "correct": true,
+          "answered_at": "2026-03-10 10:34:00"
+        },
+        {
+          "word": "調べる",
+          "correct": true,
+          "answered_at": "2026-03-10 10:36:00"
+        },
+        {
+          "word": "静か",
+          "correct": true,
+          "answered_at": "2026-03-10 10:38:00"
+        },
+        {
+          "word": "問題",
+          "correct": true,
+          "answered_at": "2026-03-10 10:40:00"
+        },
+        {
+          "word": "忘れる",
+          "correct": true,
+          "answered_at": "2026-03-10 10:42:00"
+        },
+        {
+          "word": "選ぶ",
+          "correct": true,
+          "answered_at": "2026-03-10 10:44:00"
+        },
+        {
+          "word": "練習",
+          "correct": true,
+          "answered_at": "2026-03-10 10:46:00"
+        }
       ]
     },
     {
       "started_at": "2026-03-18 14:00:00",
       "answers": [
-        {"word": "問題",   "correct": true,  "answered_at": "2026-03-18 14:02:00"},
-        {"word": "暖かい", "correct": true,  "answered_at": "2026-03-18 14:04:00"},
-        {"word": "練習",   "correct": true,  "answered_at": "2026-03-18 14:06:00"},
-        {"word": "天気",   "correct": true,  "answered_at": "2026-03-18 14:08:00"},
-        {"word": "優しい", "correct": true,  "answered_at": "2026-03-18 14:10:00"},
-        {"word": "考える", "correct": false, "answered_at": "2026-03-18 14:12:00"},
-        {"word": "決める", "correct": true,  "answered_at": "2026-03-18 14:14:00"},
-        {"word": "信じる", "correct": true,  "answered_at": "2026-03-18 14:16:00"},
-        {"word": "走る",   "correct": true,  "answered_at": "2026-03-18 14:18:00"},
-        {"word": "考える", "correct": false, "answered_at": "2026-03-18 14:25:00"}
+        {
+          "word": "問題",
+          "correct": true,
+          "answered_at": "2026-03-18 14:02:00"
+        },
+        {
+          "word": "暖かい",
+          "correct": true,
+          "answered_at": "2026-03-18 14:04:00"
+        },
+        {
+          "word": "練習",
+          "correct": true,
+          "answered_at": "2026-03-18 14:06:00"
+        },
+        {
+          "word": "天気",
+          "correct": true,
+          "answered_at": "2026-03-18 14:08:00"
+        },
+        {
+          "word": "優しい",
+          "correct": true,
+          "answered_at": "2026-03-18 14:10:00"
+        },
+        {
+          "word": "考える",
+          "correct": false,
+          "answered_at": "2026-03-18 14:12:00"
+        },
+        {
+          "word": "決める",
+          "correct": true,
+          "answered_at": "2026-03-18 14:14:00"
+        },
+        {
+          "word": "信じる",
+          "correct": true,
+          "answered_at": "2026-03-18 14:16:00"
+        },
+        {
+          "word": "走る",
+          "correct": true,
+          "answered_at": "2026-03-18 14:18:00"
+        },
+        {
+          "word": "考える",
+          "correct": false,
+          "answered_at": "2026-03-18 14:25:00"
+        }
       ]
     },
     {
       "started_at": "2026-03-20 15:30:00",
       "answers": [
-        {"word": "静か",   "correct": true,  "answered_at": "2026-03-20 15:32:00"},
-        {"word": "信じる", "correct": true,  "answered_at": "2026-03-20 15:34:00"},
-        {"word": "練習",   "correct": true,  "answered_at": "2026-03-20 15:36:00"},
-        {"word": "問題",   "correct": false, "answered_at": "2026-03-20 15:38:00"},
-        {"word": "暖かい", "correct": true,  "answered_at": "2026-03-20 15:40:00"},
-        {"word": "約束",   "correct": true,  "answered_at": "2026-03-20 15:42:00"},
-        {"word": "話す",   "correct": false, "answered_at": "2026-03-20 15:44:00"},
-        {"word": "問題",   "correct": true,  "answered_at": "2026-03-20 15:51:00"}
+        {
+          "word": "静か",
+          "correct": true,
+          "answered_at": "2026-03-20 15:32:00"
+        },
+        {
+          "word": "信じる",
+          "correct": true,
+          "answered_at": "2026-03-20 15:34:00"
+        },
+        {
+          "word": "練習",
+          "correct": true,
+          "answered_at": "2026-03-20 15:36:00"
+        },
+        {
+          "word": "問題",
+          "correct": false,
+          "answered_at": "2026-03-20 15:38:00"
+        },
+        {
+          "word": "暖かい",
+          "correct": true,
+          "answered_at": "2026-03-20 15:40:00"
+        },
+        {
+          "word": "約束",
+          "correct": true,
+          "answered_at": "2026-03-20 15:42:00"
+        },
+        {
+          "word": "話す",
+          "correct": false,
+          "answered_at": "2026-03-20 15:44:00"
+        },
+        {
+          "word": "問題",
+          "correct": true,
+          "answered_at": "2026-03-20 15:51:00"
+        }
       ]
     },
     {
       "started_at": "2026-03-22 14:00:00",
       "answers": [
-        {"word": "走る",   "correct": true,  "answered_at": "2026-03-22 14:02:00"},
-        {"word": "天気",   "correct": true,  "answered_at": "2026-03-22 14:05:00"},
-        {"word": "暖かい", "correct": true,  "answered_at": "2026-03-22 14:08:00"},
-        {"word": "約束",   "correct": true,  "answered_at": "2026-03-22 14:11:00"},
-        {"word": "考える", "correct": true,  "answered_at": "2026-03-22 14:14:00"},
-        {"word": "困る",   "correct": false, "answered_at": "2026-03-22 14:17:00"},
-        {"word": "忘れる", "correct": true,  "answered_at": "2026-03-22 14:20:00"},
-        {"word": "困る",   "correct": false, "answered_at": "2026-03-22 14:27:00"}
+        {
+          "word": "走る",
+          "correct": true,
+          "answered_at": "2026-03-22 14:02:00"
+        },
+        {
+          "word": "天気",
+          "correct": true,
+          "answered_at": "2026-03-22 14:05:00"
+        },
+        {
+          "word": "暖かい",
+          "correct": true,
+          "answered_at": "2026-03-22 14:08:00"
+        },
+        {
+          "word": "約束",
+          "correct": true,
+          "answered_at": "2026-03-22 14:11:00"
+        },
+        {
+          "word": "考える",
+          "correct": true,
+          "answered_at": "2026-03-22 14:14:00"
+        },
+        {
+          "word": "困る",
+          "correct": false,
+          "answered_at": "2026-03-22 14:17:00"
+        },
+        {
+          "word": "忘れる",
+          "correct": true,
+          "answered_at": "2026-03-22 14:20:00"
+        },
+        {
+          "word": "困る",
+          "correct": false,
+          "answered_at": "2026-03-22 14:27:00"
+        }
       ]
     },
     {
       "started_at": "2026-03-23 09:00:00",
       "answers": [
-        {"word": "忘れる", "correct": true,  "answered_at": "2026-03-23 09:02:00"},
-        {"word": "練習",   "correct": true,  "answered_at": "2026-03-23 09:05:00"},
-        {"word": "優しい", "correct": true,  "answered_at": "2026-03-23 09:08:00"},
-        {"word": "決める", "correct": true,  "answered_at": "2026-03-23 09:11:00"},
-        {"word": "手伝う", "correct": true,  "answered_at": "2026-03-23 09:14:00"},
-        {"word": "考える", "correct": false, "answered_at": "2026-03-23 09:17:00"},
-        {"word": "考える", "correct": false, "answered_at": "2026-03-23 09:24:00"}
+        {
+          "word": "忘れる",
+          "correct": true,
+          "answered_at": "2026-03-23 09:02:00"
+        },
+        {
+          "word": "練習",
+          "correct": true,
+          "answered_at": "2026-03-23 09:05:00"
+        },
+        {
+          "word": "優しい",
+          "correct": true,
+          "answered_at": "2026-03-23 09:08:00"
+        },
+        {
+          "word": "決める",
+          "correct": true,
+          "answered_at": "2026-03-23 09:11:00"
+        },
+        {
+          "word": "手伝う",
+          "correct": true,
+          "answered_at": "2026-03-23 09:14:00"
+        },
+        {
+          "word": "考える",
+          "correct": false,
+          "answered_at": "2026-03-23 09:17:00"
+        },
+        {
+          "word": "考える",
+          "correct": false,
+          "answered_at": "2026-03-23 09:24:00"
+        }
       ]
     },
     {
       "started_at": "2026-03-19 10:45:00",
       "answers": [
-        {"word": "コーヒー",       "correct": true,  "answered_at": "2026-03-19 10:47:00"},
-        {"word": "パン",           "correct": true,  "answered_at": "2026-03-19 10:50:00"},
-        {"word": "ケーキ",         "correct": false, "answered_at": "2026-03-19 10:53:00"},
-        {"word": "レストラン",     "correct": true,  "answered_at": "2026-03-19 10:56:00"},
-        {"word": "ホテル",         "correct": false, "answered_at": "2026-03-19 10:59:00"},
-        {"word": "コンピューター", "correct": true,  "answered_at": "2026-03-19 11:02:00"},
-        {"word": "インターネット", "correct": true,  "answered_at": "2026-03-19 11:05:00"},
-        {"word": "メール",         "correct": true,  "answered_at": "2026-03-19 11:08:00"},
-        {"word": "ニュース",       "correct": false, "answered_at": "2026-03-19 11:11:00"},
-        {"word": "バス",           "correct": true,  "answered_at": "2026-03-19 11:14:00"}
+        {
+          "word": "コーヒー",
+          "correct": true,
+          "answered_at": "2026-03-19 10:47:00"
+        },
+        {
+          "word": "パン",
+          "correct": true,
+          "answered_at": "2026-03-19 10:50:00"
+        },
+        {
+          "word": "ケーキ",
+          "correct": false,
+          "answered_at": "2026-03-19 10:53:00"
+        },
+        {
+          "word": "レストラン",
+          "correct": true,
+          "answered_at": "2026-03-19 10:56:00"
+        },
+        {
+          "word": "ホテル",
+          "correct": false,
+          "answered_at": "2026-03-19 10:59:00"
+        },
+        {
+          "word": "コンピューター",
+          "correct": true,
+          "answered_at": "2026-03-19 11:02:00"
+        },
+        {
+          "word": "インターネット",
+          "correct": true,
+          "answered_at": "2026-03-19 11:05:00"
+        },
+        {
+          "word": "メール",
+          "correct": true,
+          "answered_at": "2026-03-19 11:08:00"
+        },
+        {
+          "word": "ニュース",
+          "correct": false,
+          "answered_at": "2026-03-19 11:11:00"
+        },
+        {
+          "word": "バス",
+          "correct": true,
+          "answered_at": "2026-03-19 11:14:00"
+        }
       ]
     },
     {
       "started_at": "2026-03-24 09:45:00",
       "answers": [
-        {"word": "ビール",         "correct": true,  "answered_at": "2026-03-24 09:47:00"},
-        {"word": "タクシー",       "correct": true,  "answered_at": "2026-03-24 09:50:00"},
-        {"word": "テーブル",       "correct": true,  "answered_at": "2026-03-24 09:53:00"},
-        {"word": "ベッド",         "correct": true,  "answered_at": "2026-03-24 09:56:00"},
-        {"word": "チャンス",       "correct": true,  "answered_at": "2026-03-24 09:59:00"},
-        {"word": "スマートフォン", "correct": true,  "answered_at": "2026-03-24 10:02:00"},
-        {"word": "ラジオ",         "correct": false, "answered_at": "2026-03-24 10:05:00"},
-        {"word": "ビル",           "correct": true,  "answered_at": "2026-03-24 10:08:00"},
-        {"word": "レベル",         "correct": true,  "answered_at": "2026-03-24 10:11:00"}
+        {
+          "word": "ビール",
+          "correct": true,
+          "answered_at": "2026-03-24 09:47:00"
+        },
+        {
+          "word": "タクシー",
+          "correct": true,
+          "answered_at": "2026-03-24 09:50:00"
+        },
+        {
+          "word": "テーブル",
+          "correct": true,
+          "answered_at": "2026-03-24 09:53:00"
+        },
+        {
+          "word": "ベッド",
+          "correct": true,
+          "answered_at": "2026-03-24 09:56:00"
+        },
+        {
+          "word": "チャンス",
+          "correct": true,
+          "answered_at": "2026-03-24 09:59:00"
+        },
+        {
+          "word": "スマートフォン",
+          "correct": true,
+          "answered_at": "2026-03-24 10:02:00"
+        },
+        {
+          "word": "ラジオ",
+          "correct": false,
+          "answered_at": "2026-03-24 10:05:00"
+        },
+        {
+          "word": "ビル",
+          "correct": true,
+          "answered_at": "2026-03-24 10:08:00"
+        },
+        {
+          "word": "レベル",
+          "correct": true,
+          "answered_at": "2026-03-24 10:11:00"
+        }
       ]
     }
   ],
@@ -1147,115 +453,437 @@
       "title": "足立美術館の庭園 The Garden of the Adachi Museum of Art",
       "audio_path": null,
       "sentences": [
-        {"japanese_text": "皆さん、こんにちは。", "english_text": "Everyone, hello.", "is_paragraph_start": true},
-        {"japanese_text": "ちえこです。", "english_text": "I'm Chieko.", "is_paragraph_start": false},
-        {"japanese_text": "よろしくお願いします。", "english_text": "Nice to meet you.", "is_paragraph_start": false},
-        {"japanese_text": "今日は、島根県にある、足立美術館の庭園を紹介します。", "english_text": "Today I'll introduce the garden of the Adachi Museum of Art, located in Shimane Prefecture.", "is_paragraph_start": false},
-        {"japanese_text": "庭園は庭のことですね。", "english_text": "'Teien' (庭園) means a garden.", "is_paragraph_start": false},
-        {"japanese_text": "この庭園は、アメリカの日本庭園の専門雑誌で、２０年、２０年連続で日本一に選ばれているそうです。", "english_text": "Apparently this garden has been ranked number one in Japan for 20 consecutive years by an American specialist magazine on Japanese gardens.", "is_paragraph_start": false},
-        {"japanese_text": "なぜこの庭園がそれほど素晴らしいのか、今日はその秘密を一緒に見ていきましょう。", "english_text": "Let's find out together today why this garden is so wonderful — we'll look at its secrets.", "is_paragraph_start": false},
-
-        {"japanese_text": "まず、この庭園の歴史からお話しします。", "english_text": "First, let me talk about the history of this garden.", "is_paragraph_start": true},
-        {"japanese_text": "足立美術館は１９７０年に開館しました。", "english_text": "The Adachi Museum of Art opened in 1970.", "is_paragraph_start": false},
-        {"japanese_text": "創設者は足立全康という実業家です。", "english_text": "The founder was a businessman named Adachi Zenko.", "is_paragraph_start": false},
-        {"japanese_text": "実業家、ビジネスマンです。", "english_text": "'Jitsugyōka' (実業家) means a businessman.", "is_paragraph_start": false},
-        {"japanese_text": "足立さんは貧しい農家に生まれましたが、努力して、ビジネスで大きい成功を収めました。", "english_text": "Mr. Adachi was born into a poor farming family, but through hard work he achieved great success in business.", "is_paragraph_start": false},
-        {"japanese_text": "貧しい農家、農業をしている家族ですね。", "english_text": "'Mazushii nōka' (貧しい農家) means a poor farming family — a family that farms.", "is_paragraph_start": false},
-        {"japanese_text": "農家に生まれましたけど、自分で頑張って、ビジネスで大きく成功しました。", "english_text": "He was born into a farming family, but worked hard on his own and achieved great success in business.", "is_paragraph_start": false},
-        {"japanese_text": "大きな成功を収めました。", "english_text": "He achieved great success.", "is_paragraph_start": false},
-
-        {"japanese_text": "そして７１歳の時に、自分が集めた美術品、それから庭園を多くの人に見てもらいたいと考えて、この美術館を作りました。", "english_text": "Then at the age of 71, wanting many people to see the art he had collected as well as the garden, he built this museum.", "is_paragraph_start": true},
-        {"japanese_text": "美術品は、え、アートの作品のことですね。", "english_text": "'Bijutsuhin' (美術品) means works of art.", "is_paragraph_start": false},
-        {"japanese_text": "美術品と庭園を見てもらうために、この美術館を作りました。", "english_text": "He built this museum so that people could see the art and the garden.", "is_paragraph_start": false},
-        {"japanese_text": "足立さんは、「庭園もまた一幅の絵画である」という言葉を残しています。", "english_text": "Mr. Adachi left behind the words: 'The garden too is a single hanging-scroll painting.'", "is_paragraph_start": false},
-        {"japanese_text": "絵のことを絵画と言います。", "english_text": "A painting is called 'kaiga' (絵画).", "is_paragraph_start": false},
-        {"japanese_text": "「一幅の絵画」の一幅っていうのは、掛け軸ですね。", "english_text": "The 'ippuku' in 'ippuku no kaiga' (一幅の絵画) refers to a hanging scroll.", "is_paragraph_start": false},
-        {"japanese_text": "掛け軸。", "english_text": "A hanging scroll.", "is_paragraph_start": false},
-        {"japanese_text": "掛け軸が１枚という意味です。", "english_text": "It means one hanging scroll.", "is_paragraph_start": false},
-        {"japanese_text": "つまり、庭園は絵画と同じように、美しい芸術作品だと考えていたそうです。", "english_text": "In other words, he apparently believed that the garden, like a painting, is a beautiful work of art.", "is_paragraph_start": false},
-        {"japanese_text": "この考え方が、足立美術館の庭園の大きな特徴になっています。", "english_text": "This way of thinking has become a defining characteristic of the Adachi Museum's garden.", "is_paragraph_start": false},
-
-        {"japanese_text": "この庭園の広さは約５万坪。", "english_text": "The garden covers approximately 50,000 tsubo.", "is_paragraph_start": true},
-        {"japanese_text": "５万坪は、東京ドーム３個分以上もあります。", "english_text": "50,000 tsubo is equivalent to more than three Tokyo Domes.", "is_paragraph_start": false},
-        {"japanese_text": "日本で場所の広さを表す時、東京ドームを基準にすることが多いですね。", "english_text": "In Japan, the Tokyo Dome is often used as a reference when expressing the size of a place.", "is_paragraph_start": false},
-        {"japanese_text": "「東京ドームで何個分くらいの広さですよ」っていうのが多いですね。", "english_text": "You often hear things like 'it's about the size of X Tokyo Domes.'", "is_paragraph_start": false},
-        {"japanese_text": "この庭園の広さは、東京ドーム３個分です。", "english_text": "This garden is the size of three Tokyo Domes.", "is_paragraph_start": false},
-        {"japanese_text": "とても広いですね。", "english_text": "That's very large.", "is_paragraph_start": false}
+        {
+          "japanese_text": "皆さん、こんにちは。",
+          "english_text": "Everyone, hello.",
+          "is_paragraph_start": true
+        },
+        {
+          "japanese_text": "ちえこです。",
+          "english_text": "I'm Chieko.",
+          "is_paragraph_start": false
+        },
+        {
+          "japanese_text": "よろしくお願いします。",
+          "english_text": "Nice to meet you.",
+          "is_paragraph_start": false
+        },
+        {
+          "japanese_text": "今日は、島根県にある、足立美術館の庭園を紹介します。",
+          "english_text": "Today I'll introduce the garden of the Adachi Museum of Art, located in Shimane Prefecture.",
+          "is_paragraph_start": false
+        },
+        {
+          "japanese_text": "庭園は庭のことですね。",
+          "english_text": "'Teien' (庭園) means a garden.",
+          "is_paragraph_start": false
+        },
+        {
+          "japanese_text": "この庭園は、アメリカの日本庭園の専門雑誌で、２０年、２０年連続で日本一に選ばれているそうです。",
+          "english_text": "Apparently this garden has been ranked number one in Japan for 20 consecutive years by an American specialist magazine on Japanese gardens.",
+          "is_paragraph_start": false
+        },
+        {
+          "japanese_text": "なぜこの庭園がそれほど素晴らしいのか、今日はその秘密を一緒に見ていきましょう。",
+          "english_text": "Let's find out together today why this garden is so wonderful — we'll look at its secrets.",
+          "is_paragraph_start": false
+        },
+        {
+          "japanese_text": "まず、この庭園の歴史からお話しします。",
+          "english_text": "First, let me talk about the history of this garden.",
+          "is_paragraph_start": true
+        },
+        {
+          "japanese_text": "足立美術館は１９７０年に開館しました。",
+          "english_text": "The Adachi Museum of Art opened in 1970.",
+          "is_paragraph_start": false
+        },
+        {
+          "japanese_text": "創設者は足立全康という実業家です。",
+          "english_text": "The founder was a businessman named Adachi Zenko.",
+          "is_paragraph_start": false
+        },
+        {
+          "japanese_text": "実業家、ビジネスマンです。",
+          "english_text": "'Jitsugyōka' (実業家) means a businessman.",
+          "is_paragraph_start": false
+        },
+        {
+          "japanese_text": "足立さんは貧しい農家に生まれましたが、努力して、ビジネスで大きい成功を収めました。",
+          "english_text": "Mr. Adachi was born into a poor farming family, but through hard work he achieved great success in business.",
+          "is_paragraph_start": false
+        },
+        {
+          "japanese_text": "貧しい農家、農業をしている家族ですね。",
+          "english_text": "'Mazushii nōka' (貧しい農家) means a poor farming family — a family that farms.",
+          "is_paragraph_start": false
+        },
+        {
+          "japanese_text": "農家に生まれましたけど、自分で頑張って、ビジネスで大きく成功しました。",
+          "english_text": "He was born into a farming family, but worked hard on his own and achieved great success in business.",
+          "is_paragraph_start": false
+        },
+        {
+          "japanese_text": "大きな成功を収めました。",
+          "english_text": "He achieved great success.",
+          "is_paragraph_start": false
+        },
+        {
+          "japanese_text": "そして７１歳の時に、自分が集めた美術品、それから庭園を多くの人に見てもらいたいと考えて、この美術館を作りました。",
+          "english_text": "Then at the age of 71, wanting many people to see the art he had collected as well as the garden, he built this museum.",
+          "is_paragraph_start": true
+        },
+        {
+          "japanese_text": "美術品は、え、アートの作品のことですね。",
+          "english_text": "'Bijutsuhin' (美術品) means works of art.",
+          "is_paragraph_start": false
+        },
+        {
+          "japanese_text": "美術品と庭園を見てもらうために、この美術館を作りました。",
+          "english_text": "He built this museum so that people could see the art and the garden.",
+          "is_paragraph_start": false
+        },
+        {
+          "japanese_text": "足立さんは、「庭園もまた一幅の絵画である」という言葉を残しています。",
+          "english_text": "Mr. Adachi left behind the words: 'The garden too is a single hanging-scroll painting.'",
+          "is_paragraph_start": false
+        },
+        {
+          "japanese_text": "絵のことを絵画と言います。",
+          "english_text": "A painting is called 'kaiga' (絵画).",
+          "is_paragraph_start": false
+        },
+        {
+          "japanese_text": "「一幅の絵画」の一幅っていうのは、掛け軸ですね。",
+          "english_text": "The 'ippuku' in 'ippuku no kaiga' (一幅の絵画) refers to a hanging scroll.",
+          "is_paragraph_start": false
+        },
+        {
+          "japanese_text": "掛け軸。",
+          "english_text": "A hanging scroll.",
+          "is_paragraph_start": false
+        },
+        {
+          "japanese_text": "掛け軸が１枚という意味です。",
+          "english_text": "It means one hanging scroll.",
+          "is_paragraph_start": false
+        },
+        {
+          "japanese_text": "つまり、庭園は絵画と同じように、美しい芸術作品だと考えていたそうです。",
+          "english_text": "In other words, he apparently believed that the garden, like a painting, is a beautiful work of art.",
+          "is_paragraph_start": false
+        },
+        {
+          "japanese_text": "この考え方が、足立美術館の庭園の大きな特徴になっています。",
+          "english_text": "This way of thinking has become a defining characteristic of the Adachi Museum's garden.",
+          "is_paragraph_start": false
+        },
+        {
+          "japanese_text": "この庭園の広さは約５万坪。",
+          "english_text": "The garden covers approximately 50,000 tsubo.",
+          "is_paragraph_start": true
+        },
+        {
+          "japanese_text": "５万坪は、東京ドーム３個分以上もあります。",
+          "english_text": "50,000 tsubo is equivalent to more than three Tokyo Domes.",
+          "is_paragraph_start": false
+        },
+        {
+          "japanese_text": "日本で場所の広さを表す時、東京ドームを基準にすることが多いですね。",
+          "english_text": "In Japan, the Tokyo Dome is often used as a reference when expressing the size of a place.",
+          "is_paragraph_start": false
+        },
+        {
+          "japanese_text": "「東京ドームで何個分くらいの広さですよ」っていうのが多いですね。",
+          "english_text": "You often hear things like 'it's about the size of X Tokyo Domes.'",
+          "is_paragraph_start": false
+        },
+        {
+          "japanese_text": "この庭園の広さは、東京ドーム３個分です。",
+          "english_text": "This garden is the size of three Tokyo Domes.",
+          "is_paragraph_start": false
+        },
+        {
+          "japanese_text": "とても広いですね。",
+          "english_text": "That's very large.",
+          "is_paragraph_start": false
+        }
       ]
     },
     {
       "title": "日本の童謡『げんこつ山のたぬきさん』 Japanese Nursery Rhyme: Baby Racoondog of Genkotsuyama",
       "audio_path": null,
       "sentences": [
-        {"japanese_text": "皆さん、こんにちは。", "english_text": "Everyone, hello.", "is_paragraph_start": true},
-        {"japanese_text": "ちえこです。", "english_text": "I'm Chieko.", "is_paragraph_start": false},
-        {"japanese_text": "よろしくお願いします。", "english_text": "Nice to meet you.", "is_paragraph_start": false},
-        {"japanese_text": "今日は歌を歌います。", "english_text": "Today we'll sing a song.", "is_paragraph_start": false},
-
-        {"japanese_text": "歌の名前は『げんこつ山のたぬきさん』です。", "english_text": "The name of the song is 'Genkotsu-yama no Tanuki-san.'", "is_paragraph_start": true},
-        {"japanese_text": "『げんこつ山のたぬきさん』です。", "english_text": "'Genkotsu-yama no Tanuki-san.'", "is_paragraph_start": false},
-        {"japanese_text": "どんな歌ですか？", "english_text": "What kind of song is it?", "is_paragraph_start": false},
-
-        {"japanese_text": "見てください。", "english_text": "Please look.", "is_paragraph_start": true},
-        {"japanese_text": "これは、これは何ですか？", "english_text": "What is this, what is this?", "is_paragraph_start": false},
-        {"japanese_text": "これは何ですか？", "english_text": "What is this?", "is_paragraph_start": false},
-        {"japanese_text": "これは山です。", "english_text": "This is a mountain.", "is_paragraph_start": false},
-        {"japanese_text": "これは山です。", "english_text": "This is a mountain.", "is_paragraph_start": false},
-
-        {"japanese_text": "ここ、ここを見てください。", "english_text": "Look here, look here.", "is_paragraph_start": true},
-        {"japanese_text": "何の形ですか？", "english_text": "What shape is it?", "is_paragraph_start": false},
-        {"japanese_text": "何の形ですか？", "english_text": "What shape is it?", "is_paragraph_start": false},
-
-        {"japanese_text": "皆さん、これは何ですか？", "english_text": "Everyone, what is this?", "is_paragraph_start": true},
-        {"japanese_text": "これは手です。", "english_text": "This is a hand.", "is_paragraph_start": false},
-        {"japanese_text": "これは手です。", "english_text": "This is a hand.", "is_paragraph_start": false},
-
-        {"japanese_text": "手を握ります。", "english_text": "You clench your hand.", "is_paragraph_start": true},
-        {"japanese_text": "手を握ります。", "english_text": "You clench your hand.", "is_paragraph_start": false},
-        {"japanese_text": "手を握ると、げんこつです。", "english_text": "When you clench your hand, it becomes a fist (genkotsu).", "is_paragraph_start": false},
-        {"japanese_text": "これはげんこつです。", "english_text": "This is a fist.", "is_paragraph_start": false},
-        {"japanese_text": "これはげんこつです。", "english_text": "This is a fist.", "is_paragraph_start": false},
-
-        {"japanese_text": "この山は、げんこつの形です。", "english_text": "This mountain is in the shape of a fist.", "is_paragraph_start": true},
-        {"japanese_text": "げんこつの形です。", "english_text": "It's in the shape of a fist.", "is_paragraph_start": false},
-        {"japanese_text": "だから、この山の名前は、げんこつ山です。", "english_text": "So the name of this mountain is Genkotsu-yama (Fist Mountain).", "is_paragraph_start": false},
-        {"japanese_text": "げんこつがあります。", "english_text": "There is a fist.", "is_paragraph_start": false},
-        {"japanese_text": "だから、げんこつ山です。", "english_text": "So it's Genkotsu-yama.", "is_paragraph_start": false},
-
-        {"japanese_text": "げんこつ山にたぬきがいます。", "english_text": "There is a tanuki (raccoon dog) on Genkotsu-yama.", "is_paragraph_start": true},
-        {"japanese_text": "げんこつ山に、たぬきがいます。", "english_text": "On Genkotsu-yama, there is a tanuki.", "is_paragraph_start": false},
-
-        {"japanese_text": "たぬきには小さい子供がいます。", "english_text": "The tanuki has a small child.", "is_paragraph_start": true},
-        {"japanese_text": "たぬきの子供です。", "english_text": "It's the tanuki's child.", "is_paragraph_start": false},
-        {"japanese_text": "たぬきの小さい子供がいます。", "english_text": "There is a small tanuki child.", "is_paragraph_start": false},
-
-        {"japanese_text": "この小さい子供のたぬきは、お母さんのおっぱいを飲んでいます。", "english_text": "This small baby tanuki is drinking its mother's milk.", "is_paragraph_start": true},
-        {"japanese_text": "おっぱいを飲んでいます。", "english_text": "It is drinking milk.", "is_paragraph_start": false},
-        {"japanese_text": "このたぬきは、お母さんのおっぱいを飲みます。", "english_text": "This tanuki drinks its mother's milk.", "is_paragraph_start": false},
-        {"japanese_text": "飲みます。", "english_text": "It drinks.", "is_paragraph_start": false},
-
-        {"japanese_text": "それから、このたぬきは寝ます。", "english_text": "Then, this tanuki sleeps.", "is_paragraph_start": true},
-        {"japanese_text": "寝ます。", "english_text": "It sleeps.", "is_paragraph_start": false},
-
-        {"japanese_text": "それから、お母さんは、お母さんは、このたぬきを抱っこします。", "english_text": "Then, the mother holds this tanuki in her arms.", "is_paragraph_start": true},
-        {"japanese_text": "抱っこします。", "english_text": "She holds it.", "is_paragraph_start": false},
-
-        {"japanese_text": "それから、お母さんは、このたぬきをおんぶします。", "english_text": "Then, the mother carries this tanuki on her back.", "is_paragraph_start": true},
-        {"japanese_text": "おんぶします。", "english_text": "She carries it on her back.", "is_paragraph_start": false},
-        {"japanese_text": "はい。", "english_text": "Yes.", "is_paragraph_start": false},
-
-        {"japanese_text": "そして、今日は終わりました。", "english_text": "And, today's lesson is finished.", "is_paragraph_start": true},
-        {"japanese_text": "また明日！", "english_text": "See you tomorrow!", "is_paragraph_start": false},
-
-        {"japanese_text": "はい、こんな歌です。", "english_text": "Yes, that's the song.", "is_paragraph_start": true},
-        {"japanese_text": "はい、じゃあ今からアクションして歌います。", "english_text": "Now let's do the actions and sing.", "is_paragraph_start": false},
-        {"japanese_text": "１回目はゆっくり歌います。", "english_text": "The first time, we'll sing slowly.", "is_paragraph_start": false},
-        {"japanese_text": "アクションもしてください。", "english_text": "Please do the actions too.", "is_paragraph_start": false},
-        {"japanese_text": "いきます。", "english_text": "Here we go.", "is_paragraph_start": false},
-
-        {"japanese_text": "げんこつ山のたぬきさん。", "english_text": "The baby tanuki of Genkotsu-yama.", "is_paragraph_start": true},
-        {"japanese_text": "おっぱい飲んで、ねんねして。", "english_text": "Drinking milk, going to sleep.", "is_paragraph_start": false},
-        {"japanese_text": "抱っこして、おんぶして、また明日。", "english_text": "Being held, being carried on the back — see you tomorrow.", "is_paragraph_start": false}
+        {
+          "japanese_text": "皆さん、こんにちは。",
+          "english_text": "Everyone, hello.",
+          "is_paragraph_start": true
+        },
+        {
+          "japanese_text": "ちえこです。",
+          "english_text": "I'm Chieko.",
+          "is_paragraph_start": false
+        },
+        {
+          "japanese_text": "よろしくお願いします。",
+          "english_text": "Nice to meet you.",
+          "is_paragraph_start": false
+        },
+        {
+          "japanese_text": "今日は歌を歌います。",
+          "english_text": "Today we'll sing a song.",
+          "is_paragraph_start": false
+        },
+        {
+          "japanese_text": "歌の名前は『げんこつ山のたぬきさん』です。",
+          "english_text": "The name of the song is 'Genkotsu-yama no Tanuki-san.'",
+          "is_paragraph_start": true
+        },
+        {
+          "japanese_text": "『げんこつ山のたぬきさん』です。",
+          "english_text": "'Genkotsu-yama no Tanuki-san.'",
+          "is_paragraph_start": false
+        },
+        {
+          "japanese_text": "どんな歌ですか？",
+          "english_text": "What kind of song is it?",
+          "is_paragraph_start": false
+        },
+        {
+          "japanese_text": "見てください。",
+          "english_text": "Please look.",
+          "is_paragraph_start": true
+        },
+        {
+          "japanese_text": "これは、これは何ですか？",
+          "english_text": "What is this, what is this?",
+          "is_paragraph_start": false
+        },
+        {
+          "japanese_text": "これは何ですか？",
+          "english_text": "What is this?",
+          "is_paragraph_start": false
+        },
+        {
+          "japanese_text": "これは山です。",
+          "english_text": "This is a mountain.",
+          "is_paragraph_start": false
+        },
+        {
+          "japanese_text": "これは山です。",
+          "english_text": "This is a mountain.",
+          "is_paragraph_start": false
+        },
+        {
+          "japanese_text": "ここ、ここを見てください。",
+          "english_text": "Look here, look here.",
+          "is_paragraph_start": true
+        },
+        {
+          "japanese_text": "何の形ですか？",
+          "english_text": "What shape is it?",
+          "is_paragraph_start": false
+        },
+        {
+          "japanese_text": "何の形ですか？",
+          "english_text": "What shape is it?",
+          "is_paragraph_start": false
+        },
+        {
+          "japanese_text": "皆さん、これは何ですか？",
+          "english_text": "Everyone, what is this?",
+          "is_paragraph_start": true
+        },
+        {
+          "japanese_text": "これは手です。",
+          "english_text": "This is a hand.",
+          "is_paragraph_start": false
+        },
+        {
+          "japanese_text": "これは手です。",
+          "english_text": "This is a hand.",
+          "is_paragraph_start": false
+        },
+        {
+          "japanese_text": "手を握ります。",
+          "english_text": "You clench your hand.",
+          "is_paragraph_start": true
+        },
+        {
+          "japanese_text": "手を握ります。",
+          "english_text": "You clench your hand.",
+          "is_paragraph_start": false
+        },
+        {
+          "japanese_text": "手を握ると、げんこつです。",
+          "english_text": "When you clench your hand, it becomes a fist (genkotsu).",
+          "is_paragraph_start": false
+        },
+        {
+          "japanese_text": "これはげんこつです。",
+          "english_text": "This is a fist.",
+          "is_paragraph_start": false
+        },
+        {
+          "japanese_text": "これはげんこつです。",
+          "english_text": "This is a fist.",
+          "is_paragraph_start": false
+        },
+        {
+          "japanese_text": "この山は、げんこつの形です。",
+          "english_text": "This mountain is in the shape of a fist.",
+          "is_paragraph_start": true
+        },
+        {
+          "japanese_text": "げんこつの形です。",
+          "english_text": "It's in the shape of a fist.",
+          "is_paragraph_start": false
+        },
+        {
+          "japanese_text": "だから、この山の名前は、げんこつ山です。",
+          "english_text": "So the name of this mountain is Genkotsu-yama (Fist Mountain).",
+          "is_paragraph_start": false
+        },
+        {
+          "japanese_text": "げんこつがあります。",
+          "english_text": "There is a fist.",
+          "is_paragraph_start": false
+        },
+        {
+          "japanese_text": "だから、げんこつ山です。",
+          "english_text": "So it's Genkotsu-yama.",
+          "is_paragraph_start": false
+        },
+        {
+          "japanese_text": "げんこつ山にたぬきがいます。",
+          "english_text": "There is a tanuki (raccoon dog) on Genkotsu-yama.",
+          "is_paragraph_start": true
+        },
+        {
+          "japanese_text": "げんこつ山に、たぬきがいます。",
+          "english_text": "On Genkotsu-yama, there is a tanuki.",
+          "is_paragraph_start": false
+        },
+        {
+          "japanese_text": "たぬきには小さい子供がいます。",
+          "english_text": "The tanuki has a small child.",
+          "is_paragraph_start": true
+        },
+        {
+          "japanese_text": "たぬきの子供です。",
+          "english_text": "It's the tanuki's child.",
+          "is_paragraph_start": false
+        },
+        {
+          "japanese_text": "たぬきの小さい子供がいます。",
+          "english_text": "There is a small tanuki child.",
+          "is_paragraph_start": false
+        },
+        {
+          "japanese_text": "この小さい子供のたぬきは、お母さんのおっぱいを飲んでいます。",
+          "english_text": "This small baby tanuki is drinking its mother's milk.",
+          "is_paragraph_start": true
+        },
+        {
+          "japanese_text": "おっぱいを飲んでいます。",
+          "english_text": "It is drinking milk.",
+          "is_paragraph_start": false
+        },
+        {
+          "japanese_text": "このたぬきは、お母さんのおっぱいを飲みます。",
+          "english_text": "This tanuki drinks its mother's milk.",
+          "is_paragraph_start": false
+        },
+        {
+          "japanese_text": "飲みます。",
+          "english_text": "It drinks.",
+          "is_paragraph_start": false
+        },
+        {
+          "japanese_text": "それから、このたぬきは寝ます。",
+          "english_text": "Then, this tanuki sleeps.",
+          "is_paragraph_start": true
+        },
+        {
+          "japanese_text": "寝ます。",
+          "english_text": "It sleeps.",
+          "is_paragraph_start": false
+        },
+        {
+          "japanese_text": "それから、お母さんは、お母さんは、このたぬきを抱っこします。",
+          "english_text": "Then, the mother holds this tanuki in her arms.",
+          "is_paragraph_start": true
+        },
+        {
+          "japanese_text": "抱っこします。",
+          "english_text": "She holds it.",
+          "is_paragraph_start": false
+        },
+        {
+          "japanese_text": "それから、お母さんは、このたぬきをおんぶします。",
+          "english_text": "Then, the mother carries this tanuki on her back.",
+          "is_paragraph_start": true
+        },
+        {
+          "japanese_text": "おんぶします。",
+          "english_text": "She carries it on her back.",
+          "is_paragraph_start": false
+        },
+        {
+          "japanese_text": "はい。",
+          "english_text": "Yes.",
+          "is_paragraph_start": false
+        },
+        {
+          "japanese_text": "そして、今日は終わりました。",
+          "english_text": "And, today's lesson is finished.",
+          "is_paragraph_start": true
+        },
+        {
+          "japanese_text": "また明日！",
+          "english_text": "See you tomorrow!",
+          "is_paragraph_start": false
+        },
+        {
+          "japanese_text": "はい、こんな歌です。",
+          "english_text": "Yes, that's the song.",
+          "is_paragraph_start": true
+        },
+        {
+          "japanese_text": "はい、じゃあ今からアクションして歌います。",
+          "english_text": "Now let's do the actions and sing.",
+          "is_paragraph_start": false
+        },
+        {
+          "japanese_text": "１回目はゆっくり歌います。",
+          "english_text": "The first time, we'll sing slowly.",
+          "is_paragraph_start": false
+        },
+        {
+          "japanese_text": "アクションもしてください。",
+          "english_text": "Please do the actions too.",
+          "is_paragraph_start": false
+        },
+        {
+          "japanese_text": "いきます。",
+          "english_text": "Here we go.",
+          "is_paragraph_start": false
+        },
+        {
+          "japanese_text": "げんこつ山のたぬきさん。",
+          "english_text": "The baby tanuki of Genkotsu-yama.",
+          "is_paragraph_start": true
+        },
+        {
+          "japanese_text": "おっぱい飲んで、ねんねして。",
+          "english_text": "Drinking milk, going to sleep.",
+          "is_paragraph_start": false
+        },
+        {
+          "japanese_text": "抱っこして、おんぶして、また明日。",
+          "english_text": "Being held, being carried on the back — see you tomorrow.",
+          "is_paragraph_start": false
+        }
       ]
     }
   ],

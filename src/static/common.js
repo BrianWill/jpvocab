@@ -762,10 +762,12 @@ export function populateWordTooltip(tooltipEl, word, kanjiMap, renderReading) {
   tooltipEl.querySelector('[data-word-tooltip="example-en"]').textContent = word.exampleEn || '';
 
   const imgEl = tooltipEl.querySelector('[data-word-tooltip="image"]');
-  if (word.imagePath) {
-    imgEl.src = '/static/' + word.imagePath;
+  const imagePath = typeof word.imagePath === 'string' ? word.imagePath.trim() : '';
+  if (imagePath) {
+    imgEl.src = '/static/' + imagePath;
     imgEl.style.display = '';
   } else {
+    imgEl.removeAttribute('src');
     imgEl.style.display = 'none';
   }
 

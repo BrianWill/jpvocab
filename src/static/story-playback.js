@@ -196,43 +196,82 @@ async function startSpeechPlayback() {
   setPlaybackPlaying(true);
 }
 
+// ── Clause splitting ──────────────────────────────────────────────────────────
+// Splits a sentence into clauses by breaking after any token whose displayWord
+// contains a Japanese comma (、). Returns an array of word-token arrays.
+export function splitByClause(sentence) {
+  const clauses = [];
+  let current = [];
+  for (const word of sentence.words) {
+    current.push(word);
+    if (word.displayWord.includes('、')) {
+      clauses.push(current);
+      current = [];
+    }
+  }
+  if (current.length > 0) clauses.push(current);
+  return clauses.filter(c => c.length > 0);
+}
+
 // ── On-demand synthesis ───────────────────────────────────────────────────────
-function synthSentenceAudio(sentence) {
+function synthClauseAudio(words) {
   const vv = getVoicevoxSettings();
-  const text = sentence.words.map(w => w.displayWord).join('');
+  const text = words.map(w => w.displayWord).join('');
   return getSynthAudio(text, vv);
 }
 
-function prefetchSentence(idx) {
-  if (!_state.story || idx >= _state.story.sentences.length) return;
-  synthSentenceAudio(_state.story.sentences[idx]).catch(() => {});
+function prefetchClause(sentenceIdx, clauseIdx) {
+  if (!_state.story || sentenceIdx >= _state.story.sentences.length) return;
+  const clauses = splitByClause(_state.story.sentences[sentenceIdx]);
+  if (clauseIdx >= clauses.length) return;
+  synthClauseAudio(clauses[clauseIdx]).catch(() => {});
 }
 
 function createAudioElement() {
   const el = new Audio();
-  el.addEventListener('ended', () => { loadSentenceAudio(_state.audioSentenceIdx + 1, 0); });
+  el.addEventListener('ended', () => {
+    const sIdx = _state.audioSentenceIdx;
+    const cIdx = _state.audioClauseIdx;
+    if (!_state.story) { clearHighlight(); setPlaybackPlaying(false); return; }
+    const sentence = _state.story.sentences[sIdx];
+    if (!sentence) { clearHighlight(); setPlaybackPlaying(false); return; }
+    const clauses = splitByClause(sentence);
+    if (cIdx + 1 < clauses.length) {
+      loadClauseAudio(sIdx, cIdx + 1);
+    } else {
+      loadClauseAudio(sIdx + 1, 0);
+    }
+  });
   el.addEventListener('pause', () => setPlaybackPlaying(false));
   el.addEventListener('play', () => setPlaybackPlaying(true));
   return el;
 }
 
-async function loadSentenceAudio(idx, startSec = 0) {
-  if (idx >= _state.sentenceSpans.length) {
+async function loadClauseAudio(sentenceIdx, clauseIdx) {
+  if (sentenceIdx >= _state.sentenceSpans.length) {
     // Reached end of story.
     clearHighlight();
     setPlaybackPlaying(false);
     return;
   }
-  _state.audioSentenceIdx = idx;
-  setActiveIdx(idx);
+  _state.audioSentenceIdx = sentenceIdx;
+  _state.audioClauseIdx = clauseIdx;
+  setActiveIdx(sentenceIdx);
 
-  const sentence = _state.story.sentences[idx];
+  const sentence = _state.story.sentences[sentenceIdx];
+  const clauses = splitByClause(sentence);
+
+  if (clauseIdx >= clauses.length) {
+    // No clause at this index; advance to next sentence.
+    loadClauseAudio(sentenceIdx + 1, 0);
+    return;
+  }
 
   if (_state.synthMode) {
     const gen = ++_state.synthGeneration;
     let blobUrl;
     try {
-      blobUrl = await synthSentenceAudio(sentence);
+      blobUrl = await synthClauseAudio(clauses[clauseIdx]);
     } catch (_) {
       if (_state.synthGeneration === gen) {
         _state.synthLoadingIdx = -1;
@@ -246,8 +285,14 @@ async function loadSentenceAudio(idx, startSec = 0) {
     _state.audioEl.src = blobUrl;
     _state.audioEl.playbackRate = _state.playbackRate;
     _state.audioEl.play().catch(() => {});
-    // Prefetch next sentence while this one plays.
-    prefetchSentence(idx + 1);
+    // Prefetch next clause while this one plays. If this is the last clause of
+    // the sentence, split the next sentence and prefetch its first clause.
+    const isLastClause = clauseIdx + 1 >= clauses.length;
+    if (isLastClause) {
+      prefetchClause(sentenceIdx + 1, 0);
+    } else {
+      prefetchClause(sentenceIdx, clauseIdx + 1);
+    }
   }
 }
 
@@ -256,11 +301,11 @@ function stopAudio() {
   _state.synthGeneration++;    // Invalidate any in-progress synthesis so it won't auto-play.
   _state.synthLoadingIdx = -1;
   setPlaybackPlaying(false);
-  // Keep highlight and position for resume.
+  // Keep highlight and clause position for resume.
 }
 
-function startAudio(idx = _state.audioSentenceIdx, startSec = 0) {
-  loadSentenceAudio(idx, startSec);
+function startAudio(sentenceIdx = _state.audioSentenceIdx, clauseIdx = _state.audioClauseIdx) {
+  loadClauseAudio(sentenceIdx, clauseIdx);
   setPlaybackPlaying(true);
 }
 
@@ -312,7 +357,7 @@ export function initPlayback(els, state, storyId) {
       state.synthLoadingIdx = idx;
       updateSentencePlayBtnIcon();
       setPlaybackPlaying(true);
-      loadSentenceAudio(idx, 0);
+      loadClauseAudio(idx, 0);
     } else {
       if (state.currentUtterance) {
         state.currentUtterance.onboundary = null;
@@ -332,7 +377,7 @@ export function initPlayback(els, state, storyId) {
       if (state.audioEl && !state.audioEl.paused) {
         stopAudio();
       } else {
-        startAudio(state.audioSentenceIdx, 0);
+        startAudio();
       }
       return;
     }

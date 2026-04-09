@@ -58,6 +58,7 @@ const state = {
   synthLoadingIdx: -1,
   synthGeneration: 0,
   audioSentenceIdx: 0,
+  audioClauseIdx: 0,
   currentUtterance: null,
   hoveredWord: null,
   notedWords: [],

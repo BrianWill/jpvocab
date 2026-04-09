@@ -409,7 +409,7 @@ body {
 .btn-cancel:hover { border-color: #6c7086; color: #cdd6f4; }
 .btn-cancel:disabled { opacity: 0.35; cursor: default; pointer-events: none; }
 .btn-save {
-  background: rgba(137,180,250,0.12);
+  background: rgb(38, 43, 64);
   border: 1px solid rgba(137,180,250,0.3);
   color: #89b4fa;
   border-radius: 6px;
@@ -419,7 +419,7 @@ body {
   font-family: inherit;
   cursor: pointer;
 }
-.btn-save:hover { background: rgba(137,180,250,0.2); }
+.btn-save:hover { background: rgb(66, 76, 116); }
 .btn-save:disabled { opacity: 0.35; cursor: not-allowed; pointer-events: none; }
 .btn-save--dirty {
   background: rgba(166,227,161,0.15);

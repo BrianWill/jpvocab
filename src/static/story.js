@@ -324,6 +324,7 @@ function renderStory(story) {
   const chunks = Array.isArray(story.chunks) && story.chunks.length ? story.chunks : [{ id: 0, position: 1, storyWords: story.storyWords || [], sentences: story.sentences || [] }];
   for (const chunk of chunks) {
     const translated = isChunkTranslated(chunk);
+    const translateTooltip = translated ? 'Retranslate section' : 'Translate section';
     const chunkSection = document.createElement('section');
     chunkSection.className = 'story-chunk';
     chunkSection.dataset.chunkId = String(chunk.id || 0);
@@ -332,7 +333,7 @@ function renderStory(story) {
     chunkHeader.className = 'story-chunk-header';
     chunkHeader.innerHTML = `
       <div class="story-chunk-header-spacer" aria-hidden="true"></div>
-      <button class="btn-save story-gen-btn story-chunk-translate-btn" type="button" data-chunk-id="${chunk.id || 0}" data-chunk-label="this section" ${hasProviders ? '' : 'disabled'}>${translated ? 'Retranslate section' : 'Translate section'}</button>
+      <button class="btn-save story-gen-btn story-chunk-translate-btn" type="button" data-chunk-id="${chunk.id || 0}" data-chunk-label="this section" data-tooltip="${translateTooltip}" aria-label="${translateTooltip}" ${hasProviders ? '' : 'disabled'}>文A</button>
     `;
     chunkSection.appendChild(chunkHeader);
 
@@ -341,6 +342,7 @@ function renderStory(story) {
     const chunkWordSet = new Set(Array.isArray(chunk.storyWords) ? chunk.storyWords : []);
     let currentParagraph = null;
     for (const sentence of (chunk.sentences || [])) {
+      const sentenceIdx = globalSentenceIdx;
       if (!currentParagraph || sentence.isParagraphStart) {
         currentParagraph = document.createElement('p');
         currentParagraph.className = 'story-paragraph';
@@ -392,7 +394,7 @@ function renderStory(story) {
         });
         sentenceSpan.appendChild(wordSpan);
       }
-      sentenceSpan.addEventListener('mouseenter', () => showSentencePlayBtn(globalSentenceIdx));
+      sentenceSpan.addEventListener('mouseenter', () => showSentencePlayBtn(sentenceIdx));
       sentenceSpan.addEventListener('mouseleave', scheduleSentencePlayHide);
       currentParagraph.appendChild(sentenceSpan);
       currentParagraph.appendChild(document.createTextNode(' '));

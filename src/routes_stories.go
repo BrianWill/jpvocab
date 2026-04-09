@@ -282,9 +282,9 @@ func findStoryChunk(story *storyJSON, chunkID int64) *storyChunkJSON {
 // apiGenerateStoryTranslation calls an AI provider to translate all sentences in the
 // story. Streams NDJSON:
 //
-//	{"status": "translating", "sentenceCount": N}  — emitted immediately
-//	{"allDone": true}                               — on success
-//	{"error": "..."}                               — on failure
+//	{"status": "translating", "sentenceCount": N}                                   — emitted immediately
+//	{"allDone": true, "inputTokens": N, "outputTokens": N, "totalTokens": N}        — on success
+//	{"error": "..."}                                                                  — on failure
 func apiGenerateStoryTranslation(db *sql.DB) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		id, ok := parseRouteInt64(w, r, "id", "invalid story id")
@@ -353,7 +353,7 @@ func apiGenerateStoryTranslation(db *sql.DB) http.HandlerFunc {
 			}
 		}()
 
-		result, err := translateStory(db, sentenceTexts, body.AIModel)
+		result, usage, err := translateStory(db, sentenceTexts, body.AIModel)
 		close(done)
 		if err != nil {
 			streamEvent(map[string]string{"error": err.Error()})
@@ -370,16 +370,21 @@ func apiGenerateStoryTranslation(db *sql.DB) http.HandlerFunc {
 			}
 		}
 
-		streamEvent(map[string]bool{"allDone": true})
+		streamEvent(map[string]any{
+			"allDone":      true,
+			"inputTokens":  usage.InputTokens,
+			"outputTokens": usage.OutputTokens,
+			"totalTokens":  usage.InputTokens + usage.OutputTokens,
+		})
 	}
 }
 
 // apiGenerateStoryWordInfo runs autofill for all story words that have no word info yet
 // (meaning, reading, part_of_speech, example_jp, example_en all empty). Streams NDJSON:
 //
-//	{"status": "autofilling", "wordCount": N}  — emitted immediately
-//	{"allDone": true}                           — on success
-//	{"error": "..."}                           — on failure
+//	{"status": "autofilling", "wordCount": N}                                  — emitted immediately
+//	{"allDone": true, "inputTokens": N, "outputTokens": N, "totalTokens": N}   — on success
+//	{"error": "..."}                                                            — on failure
 func apiGenerateStoryWordInfo(db *sql.DB) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		id, ok := parseRouteInt64(w, r, "id", "invalid story id")
@@ -419,7 +424,12 @@ func apiGenerateStoryWordInfo(db *sql.DB) http.HandlerFunc {
 		}
 
 		if len(targetStoryWords) == 0 {
-			streamEvent(map[string]bool{"allDone": true})
+			streamEvent(map[string]any{
+				"allDone":      true,
+				"inputTokens":  0,
+				"outputTokens": 0,
+				"totalTokens":  0,
+			})
 			return
 		}
 
@@ -461,7 +471,12 @@ func apiGenerateStoryWordInfo(db *sql.DB) http.HandlerFunc {
 		rows.Close()
 
 		if len(wordsToFill) == 0 {
-			streamEvent(map[string]bool{"allDone": true})
+			streamEvent(map[string]any{
+				"allDone":      true,
+				"inputTokens":  0,
+				"outputTokens": 0,
+				"totalTokens":  0,
+			})
 			return
 		}
 
@@ -489,7 +504,7 @@ func apiGenerateStoryWordInfo(db *sql.DB) http.HandlerFunc {
 		for i, e := range wordsToFill {
 			wordStrings[i] = e.Word
 		}
-		fills, err := autoFillWordsBatch(db, wordStrings, body.AIModel)
+		fills, usage, err := autoFillWordsBatchWithUsage(db, wordStrings, body.AIModel)
 		close(done)
 		if err != nil {
 			streamEvent(map[string]string{"error": err.Error()})
@@ -506,6 +521,11 @@ func apiGenerateStoryWordInfo(db *sql.DB) http.HandlerFunc {
 			}
 		}
 
-		streamEvent(map[string]bool{"allDone": true})
+		streamEvent(map[string]any{
+			"allDone":      true,
+			"inputTokens":  usage.InputTokens,
+			"outputTokens": usage.OutputTokens,
+			"totalTokens":  usage.InputTokens + usage.OutputTokens,
+		})
 	}
 }

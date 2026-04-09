@@ -123,9 +123,16 @@ Return only a valid JSON array with no markdown, no code fences, and no extra co
 // chunks concurrently. The returned slice has exactly len(words) entries; entries are nil
 // for any chunk that fails or returns fewer results than expected.
 func autoFillWordsBatch(db *sql.DB, words []string, providerModel string) ([]*wordAutoFill, error) {
+	fills, _, err := autoFillWordsBatchWithUsage(db, words, providerModel)
+	return fills, err
+}
+
+// autoFillWordsBatchWithUsage is like autoFillWordsBatch but also returns the
+// aggregated token usage across all AI calls made for the batch.
+func autoFillWordsBatchWithUsage(db *sql.DB, words []string, providerModel string) ([]*wordAutoFill, tokenUsage, error) {
 	parts := strings.SplitN(providerModel, "/", 2)
 	if len(parts) != 2 {
-		return nil, fmt.Errorf("invalid ai_model value %q", providerModel)
+		return nil, tokenUsage{}, fmt.Errorf("invalid ai_model value %q", providerModel)
 	}
 	provider, model := parts[0], parts[1]
 
@@ -178,7 +185,7 @@ func autoFillWordsBatch(db *sql.DB, words []string, providerModel string) ([]*wo
 	}
 	wg.Wait()
 	insertTokenUsage(db, provider, model, "autofill-batch", totalUsage.InputTokens, totalUsage.OutputTokens)
-	return results, nil
+	return results, totalUsage, nil
 }
 
 const rerollMeaningSystemPrompt = `You are a Japanese dictionary assistant. Given a Japanese word and its current English meaning, return a JSON array of exactly 3 alternative concise English meanings (short phrases). Do not repeat the current meaning. Return only the JSON array with no markdown, no code fences, and no extra commentary.`
@@ -412,11 +419,12 @@ type storyTranslationResult struct {
 }
 
 // translateStory sends all sentences to the AI in a single call and returns ordered
-// English translations. providerModel must be "provider/model" format.
-func translateStory(db *sql.DB, sentences []string, providerModel string) (*storyTranslationResult, error) {
+// English translations plus the token usage for the underlying model call.
+// providerModel must be "provider/model" format.
+func translateStory(db *sql.DB, sentences []string, providerModel string) (*storyTranslationResult, tokenUsage, error) {
 	parts := strings.SplitN(providerModel, "/", 2)
 	if len(parts) != 2 {
-		return nil, fmt.Errorf("invalid ai_model value %q", providerModel)
+		return nil, tokenUsage{}, fmt.Errorf("invalid ai_model value %q", providerModel)
 	}
 	provider, model := parts[0], parts[1]
 	prompt := `You are a Japanese language teacher helping English-speaking students read Japanese stories. Given a JSON array of Japanese sentences, return an equally ordered JSON array of English translations.
@@ -435,7 +443,7 @@ Return only valid JSON with no markdown, no code fences, and no extra commentary
 
 	userMsg, err := json.Marshal(sentences)
 	if err != nil {
-		return nil, err
+		return nil, tokenUsage{}, err
 	}
 
 	const maxTokens = 8192
@@ -466,15 +474,15 @@ Return only valid JSON with no markdown, no code fences, and no extra commentary
 		}
 	}
 	if err != nil {
-		return nil, err
+		return nil, tokenUsage{}, err
 	}
 	insertTokenUsage(db, provider, model, "translate-story", usage.InputTokens, usage.OutputTokens)
 
 	var result storyTranslationResult
 	if err := json.Unmarshal([]byte(jsonPrefix+text), &result); err != nil {
-		return nil, fmt.Errorf("parse translation JSON: %w", err)
+		return nil, tokenUsage{}, fmt.Errorf("parse translation JSON: %w", err)
 	}
-	return &result, nil
+	return &result, usage, nil
 }
 
 // tutorChat sends the conversation history to the AI and returns its reply.

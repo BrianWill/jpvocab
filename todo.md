@@ -13,6 +13,8 @@ This file is random notes of possible features and bug fixes.
     - modal to edit current word
         - sidebar, edit button appears when hovered
 
+- store kanji meanings in own table so that they don't get inconsistent meanings between words
+
 - stories:
     - display story stats for whole story: sentence count, total word count, unique word count
         - compute total word counta and unique word count when story is added

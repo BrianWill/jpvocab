@@ -366,19 +366,19 @@ func TestGetActivityStats_Buckets(t *testing.T) {
 	}
 }
 
-func TestGetActivityStats_ExcludesNotInLexicon(t *testing.T) {
+func TestGetActivityStats_ExcludesUntracked(t *testing.T) {
 	db := testDB(t)
-	// One manually-added word (in_lexicon=1, the default).
+	// One manually-added word (tracked=1, the default).
 	db.Exec(`INSERT INTO words (base_word, drill_count, drill_target) VALUES ('空', 0, 3)`)
-	// One story-sourced word (in_lexicon=0) — must be invisible to stats.
-	db.Exec(`INSERT INTO words (base_word, drill_count, drill_target, in_lexicon) VALUES ('海', 0, 3, 0)`)
+	// One story-sourced word (tracked=0) — must be invisible to stats.
+	db.Exec(`INSERT INTO words (base_word, drill_count, drill_target, tracked) VALUES ('海', 0, 3, 0)`)
 
 	stats, err := getActivityStats(db)
 	if err != nil {
 		t.Fatal(err)
 	}
 	if stats.LexiconSize != 1 {
-		t.Errorf("LexiconSize: got %d, want 1 (in_lexicon=0 word must be excluded)", stats.LexiconSize)
+		t.Errorf("LexiconSize: got %d, want 1 (tracked=0 word must be excluded)", stats.LexiconSize)
 	}
 	if stats.ActiveWords != 1 {
 		t.Errorf("ActiveWords: got %d, want 1", stats.ActiveWords)
@@ -638,10 +638,10 @@ func TestResetDB_ClearsData(t *testing.T) {
 	}
 
 	// After reset the DB is re-migrated (and possibly re-seeded from seed.json).
-	// Our manually-added words (in_lexicon=1) must no longer be present; seed
-	// story tokenisation may re-add some base words with in_lexicon=0, which is fine.
+	// Our manually-added words (tracked=1) must no longer be present; seed
+	// story tokenisation may re-add some base words with tracked=0, which is fine.
 	var count int
-	db.QueryRow(`SELECT COUNT(*) FROM words WHERE base_word IN ('山', '川') AND in_lexicon = 1`).Scan(&count)
+	db.QueryRow(`SELECT COUNT(*) FROM words WHERE base_word IN ('山', '川') AND tracked = 1`).Scan(&count)
 	if count != 0 {
 		t.Errorf("test words still present after reset: got %d, want 0", count)
 	}
@@ -1213,7 +1213,7 @@ func TestStoryNotedWords_PersistOnStory(t *testing.T) {
 
 func TestGetStoryByID_PopulatesWordInfoFromWordsTable(t *testing.T) {
 	db := testDB(t)
-	// insertStory auto-adds 猫 to words with in_lexicon=0 and empty meaning/reading.
+	// insertStory auto-adds 猫 to words with tracked=0 and empty meaning/reading.
 	id, err := insertStory(db, "Reading Story", nil, []storySentenceInput{
 		{
 			Words: []storyWordInput{
@@ -1533,12 +1533,12 @@ func TestGetActivityCalendar_HistoryStartIsContainingSunday(t *testing.T) {
 	}
 }
 
-func TestGetActivityCalendar_ExcludesNotInLexicon(t *testing.T) {
+func TestGetActivityCalendar_ExcludesUntracked(t *testing.T) {
 	db := testDB(t)
 	// One manually-added word on 2024-05-01.
 	db.Exec(`INSERT INTO words (base_word, created_at) VALUES ('星', '2024-05-01 00:00:00')`)
 	// One story-sourced word on the same date — must not appear in Added.
-	db.Exec(`INSERT INTO words (word, created_at, in_lexicon) VALUES ('月', '2024-05-01 00:00:00', 0)`)
+	db.Exec(`INSERT INTO words (word, created_at, tracked) VALUES ('月', '2024-05-01 00:00:00', 0)`)
 
 	cal, err := getActivityCalendar(db)
 	if err != nil {
@@ -1549,7 +1549,7 @@ func TestGetActivityCalendar_ExcludesNotInLexicon(t *testing.T) {
 		t.Fatal("expected calendar entry for 2024-05-01")
 	}
 	if len(day.Added) != 1 {
-		t.Errorf("Added: got %d entries, want 1 (in_lexicon=0 word must be excluded)", len(day.Added))
+		t.Errorf("Added: got %d entries, want 1 (tracked=0 word must be excluded)", len(day.Added))
 	}
 	if day.Added[0].Word != "星" {
 		t.Errorf("Added[0].Word: got %q, want 星", day.Added[0].Word)

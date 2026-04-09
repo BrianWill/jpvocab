@@ -295,12 +295,12 @@ async function initWordListSidebar() {
     for (const list of lists) {
       const item = document.createElement('div');
       item.className = 'add-modal-sidebar-item';
-      item.dataset.tooltip = listItemTooltip(list.slug, list.total, list.in_lexicon);
+      item.dataset.tooltip = listItemTooltip(list.slug, list.total, list.tracked);
 
       const btn = document.createElement('button');
       btn.className = 'add-modal-sidebar-add-btn';
       btn.textContent = '+';
-      btn.addEventListener('click', () => addWordFromList(list.slug, list.name, list.total, list.in_lexicon, btn, item));
+      btn.addEventListener('click', () => addWordFromList(list.slug, list.name, list.total, list.tracked, btn, item));
 
       const label = document.createElement('span');
       label.className = 'add-modal-sidebar-name';
@@ -325,7 +325,7 @@ async function addWordFromList(slug, name, total, inLexicon, btn, item) {
       state.wordListCache.set(slug, {
         remaining: words,
         total: data.total ?? total,
-        inLexicon: data.in_lexicon ?? inLexicon,
+        inLexicon: data.tracked ?? inLexicon,
         initialAvailable: words.length,
       });
     }

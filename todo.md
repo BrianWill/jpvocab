@@ -4,7 +4,6 @@ This file is random notes of possible features and bug fixes.
 
 - add more common Japanese words to the word insertion blacklist
 
-
 - mic STT : why only last a few seconds? what causes it to stop?
     - should user have to hit button to stop STT? also stop STT when user submits the message?
     - English prompt modes should 
@@ -12,8 +11,10 @@ This file is random notes of possible features and bug fixes.
 - instead of generating and saving audio ahead of time, just generate on fly
     - profiling program in /bin to test latency / generation time per sentence
         variety of sentence lengths
+    - profile translation as well
+        - separate numbers for sentence and word translation
+        - determine size of text that can be translated in less than 10 minutes
 
-- in_lexicon should be called something else...but what? ask AI
 
 - drill
     - the a and d hotkey indicators only revealed on hover
@@ -21,6 +22,12 @@ This file is random notes of possible features and bug fixes.
         - add hotkey indicators for w and s with same hover reveal
     - modal to edit current word
         - sidebar, edit button appears when hovered
+
+- long story support
+    - broken into chunks automatically
+        - chunks have marker indicating if they have been translated
+        - find chunk size that is reasonably fast to translate (under 10 seconds?)
+    - store sentences and unique words per chunk rather than for full story
 
 - tutor:
     - user can create custom prompts
@@ -32,7 +39,7 @@ This file is random notes of possible features and bug fixes.
             - field that determine whether user is expected to speak English, Jp, or mix of both.
         - start from template of the stock prompts
             - stock prompts cannot be edited or erased
-    - words are added to lexicon (as in_lexicon=0)
+    - words are added to lexicon (as tracked=0)
     - maybe your own prompts are spoken by voicevox? or just use TTS for own?
         - use a different voice
         - play the AI's correction?

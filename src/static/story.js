@@ -135,7 +135,7 @@ function buildWordTooltipHtml(word, sentenceEnglish, isStoryWord, isNoted = isWo
     html += '<span class="tooltip-word-reading">' + esc(wordReading) + '</span>';
   }
   if (html) html += '<br><br>';
-  if (word.inLexicon) {
+  if (word.tracked) {
     const remaining = Math.max(0, (word.drillTarget || 0) - (word.drillCount || 0));
     html += '<span class="tooltip-word-note"><span>Word in lexicon: <span class="tooltip-drill-remaining">' + esc(String(remaining)) + '</span> drill' + (remaining === 1 ? '' : 's') + ' remaining</span><span class="tooltip-hotkey-hint">(- / + to adjust)</span></span>';
   } else {
@@ -150,8 +150,8 @@ function updateWordTokenUI() {
   for (const meta of state.wordTokenMetas) {
     meta.el.dataset.tooltipHtml = buildWordTooltipHtml(meta.word, meta.sentenceEnglishText, meta.isStoryWord);
     meta.el.dataset.tooltipClass = 'tooltip-translation';
-    meta.el.classList.toggle('story-word--noted', meta.isStoryWord && isWordNoted(meta.word.baseWord) && !meta.word.inLexicon);
-    meta.el.classList.toggle('story-word--in-lexicon', meta.isStoryWord && !!meta.word.inLexicon);
+    meta.el.classList.toggle('story-word--noted', meta.isStoryWord && isWordNoted(meta.word.baseWord) && !meta.word.tracked);
+    meta.el.classList.toggle('story-word--in-lexicon', meta.isStoryWord && !!meta.word.tracked);
   }
 }
 
@@ -224,7 +224,7 @@ async function removeNotedWord(baseWord) {
 document.addEventListener('keydown', e => {
   if (e.target.closest('input, textarea, select, [contenteditable]')) return;
   const word = state.hoveredWord;
-  if (!word?.inLexicon || !word.wordId) return;
+  if (!word?.tracked || !word.wordId) return;
   const delta = (e.key === '-') ? -1 : (e.key === '+' || e.key === '=') ? 1 : 0;
   if (delta === 0) return;
   e.preventDefault();
@@ -274,11 +274,11 @@ els.storyNotedAddAll.addEventListener('click', async () => {
     const lexiconSet = new Set();
     for (const sentence of (updated.sentences || [])) {
       for (const word of (sentence.words || [])) {
-        if (word.inLexicon) lexiconSet.add(word.baseWord);
+        if (word.tracked) lexiconSet.add(word.baseWord);
       }
     }
     for (const meta of state.wordTokenMetas) {
-      meta.word.inLexicon = lexiconSet.has(meta.word.baseWord);
+      meta.word.tracked = lexiconSet.has(meta.word.baseWord);
     }
   } catch (_) {}
   renderNotedWords();
@@ -346,7 +346,7 @@ function renderStory(story) {
         wordSpan.dataset.tooltipClass = 'tooltip-translation';
       }
       if (isStoryWord && word.english) wordSpan.classList.add('story-word--translated');
-      if (isStoryWord && word.inLexicon) wordSpan.classList.add('story-word--in-lexicon');
+      if (isStoryWord && word.tracked) wordSpan.classList.add('story-word--in-lexicon');
       if (isStoryWord) {
         wordSpan.addEventListener('mouseenter', () => {
           state.hoveredWord = word;
@@ -356,7 +356,7 @@ function renderStory(story) {
         });
         wordSpan.addEventListener('click', () => {
           state.hoveredWord = word;
-          if (word.inLexicon) return;
+          if (word.tracked) return;
           const currentlyNoted = isWordNoted(word.baseWord);
           wordSpan.dataset.tooltipHtml = buildWordTooltipHtml(word, sentence.englishText, true, !currentlyNoted);
           refreshTooltip(wordSpan);

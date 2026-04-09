@@ -453,7 +453,7 @@ func adminAddWordsBatch(db *sql.DB) http.HandlerFunc {
 				continue
 			}
 			// Read back from DB so we reflect any info already present on the row
-			// (e.g. autofilled by generate-word-info while in_lexicon=0).
+			// (e.g. autofilled by generate-word-info while tracked=0).
 			var actualReading, actualPOS, actualMeaning, actualExJP, actualExEN string
 			db.QueryRowContext(r.Context(),
 				`SELECT COALESCE(reading,''), COALESCE(part_of_speech,''), COALESCE(meaning,''),

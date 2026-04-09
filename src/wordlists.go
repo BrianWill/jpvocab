@@ -73,14 +73,14 @@ func init() {
 	log.Printf("Loaded %d word list(s)", len(loadedWordLists))
 }
 
-// apiGetWordLists returns the slug, name, total word count, and in-lexicon count for each word list.
+// apiGetWordLists returns the slug, name, total word count, and tracked count for each word list.
 func apiGetWordLists(db *sql.DB) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		type item struct {
 			Slug      string `json:"slug"`
 			Name      string `json:"name"`
 			Total     int    `json:"total"`
-			InLexicon int    `json:"in_lexicon"`
+			Tracked   int    `json:"tracked"`
 		}
 		items := make([]item, len(loadedWordLists))
 		for i, wl := range loadedWordLists {
@@ -89,7 +89,7 @@ func apiGetWordLists(db *sql.DB) http.HandlerFunc {
 				http.Error(w, err.Error(), http.StatusInternalServerError)
 				return
 			}
-			items[i] = item{Slug: wl.Slug, Name: wl.Name, Total: len(wl.Entries), InLexicon: len(inDB)}
+			items[i] = item{Slug: wl.Slug, Name: wl.Name, Total: len(wl.Entries), Tracked: len(inDB)}
 		}
 		w.Header().Set("Content-Type", "application/json")
 		json.NewEncoder(w).Encode(items)
@@ -133,7 +133,7 @@ func apiGetWordListWords(db *sql.DB) http.HandlerFunc {
 			"words":      availableWords,
 			"entries":    availableEntries,
 			"total":      len(wl.Entries),
-			"in_lexicon": len(wl.Entries) - len(availableEntries),
+			"tracked": len(wl.Entries) - len(availableEntries),
 		})
 	}
 }

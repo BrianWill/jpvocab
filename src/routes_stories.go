@@ -75,7 +75,7 @@ func apiGetStory(db *sql.DB) http.HandlerFunc {
 		lexiconSet := map[string]bool{}
 		for _, sentence := range story.Sentences {
 			for _, word := range sentence.Words {
-				if word.InLexicon {
+				if word.Tracked {
 					lexiconSet[word.BaseWord] = true
 				}
 			}

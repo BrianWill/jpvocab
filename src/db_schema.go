@@ -34,7 +34,7 @@ func migrate(db *sql.DB) {
 		`CREATE TABLE IF NOT EXISTS words (
 			id                INTEGER  PRIMARY KEY AUTOINCREMENT,
 			base_word         TEXT     NOT NULL UNIQUE,
-			in_lexicon        INTEGER NOT NULL DEFAULT 1,
+			tracked           INTEGER NOT NULL DEFAULT 1,
 			reading           TEXT,
 			pitch_accent      INTEGER,
 			part_of_speech    TEXT,

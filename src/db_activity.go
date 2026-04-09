@@ -240,7 +240,7 @@ func getActivityStats(db *sql.DB) (activityStats, error) {
 			SUM(CASE WHEN drill_count < drill_target AND (drill_target - drill_count) > 4 AND (drill_target - drill_count) <= 8 THEN 1 ELSE 0 END),
 			SUM(CASE WHEN drill_count < drill_target AND (drill_target - drill_count) > 8 THEN 1 ELSE 0 END)
 		FROM words
-		WHERE in_lexicon = 1
+		WHERE tracked = 1
 	`).Scan(&s.LexiconSize, &s.ActiveWords, &s.ClearedLifetime, &s.DrillsCleared, &s.DrillsClose, &s.DrillsMid, &s.DrillsFar)
 	return s, err
 }
@@ -283,7 +283,7 @@ func getActivityCalendar(db *sql.DB) (activityCalendar, error) {
 	rows2, err := db.Query(`
 		SELECT base_word, COALESCE(reading,''), COALESCE(meaning,''), DATE(created_at)
 		FROM words
-		WHERE in_lexicon = 1
+		WHERE tracked = 1
 		ORDER BY created_at
 	`)
 	if err != nil {
@@ -307,7 +307,7 @@ func getActivityCalendar(db *sql.DB) (activityCalendar, error) {
 	rows3, err := db.Query(`
 		SELECT base_word, COALESCE(reading,''), COALESCE(meaning,''), DATE(target_reached_at)
 		FROM words
-		WHERE in_lexicon = 1 AND target_reached_at IS NOT NULL
+		WHERE tracked = 1 AND target_reached_at IS NOT NULL
 		ORDER BY target_reached_at
 	`)
 	if err != nil {

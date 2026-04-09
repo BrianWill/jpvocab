@@ -23,8 +23,8 @@ type storyWordJSON struct {
 	BaseWord         string `json:"baseWord"`
 	English          string `json:"english,omitempty"`    // populated from words.meaning at query time; not stored per-token
 	Reading          string `json:"reading,omitempty"`    // populated from words.reading at query time; not stored per-token
-	InLexicon        bool   `json:"inLexicon,omitempty"`   // true if the base word is currently in the lexicon
-	WordID           int64  `json:"wordId,omitempty"`      // DB id of the lexicon entry (only set when InLexicon)
+	Tracked          bool   `json:"tracked,omitempty"`     // true if the base word is currently tracked (explicitly added by user)
+	WordID           int64  `json:"wordId,omitempty"`      // DB id of the lexicon entry (only set when Tracked)
 	DrillCount       int    `json:"drillCount,omitempty"`  // correct drill answers so far
 	DrillTarget      int    `json:"drillTarget,omitempty"` // target correct answers to retire the word
 	AudioTimestampMs *int64 `json:"audioTimestampMs"`
@@ -149,7 +149,7 @@ func insertStoryTx(tx *sql.Tx, title string, audioPath *string, sentences []stor
 		}
 	}
 
-	// Auto-add all story base words to the lexicon as in_lexicon=0 if not already present.
+	// Auto-add all story base words to the lexicon as tracked=0 if not already present.
 	baseWords := make([]string, 0, len(baseWordSet))
 	for bw := range baseWordSet {
 		baseWords = append(baseWords, bw)
@@ -419,7 +419,7 @@ func queryStories(db *sql.DB, whereClause string, args ...any) ([]storyJSON, err
 		}
 	}
 
-	// Populate word info (meaning, reading, drill counts, in_lexicon) from the words table.
+	// Populate word info (meaning, reading, drill counts, tracked) from the words table.
 	if len(baseWordSet) > 0 {
 		placeholders := make([]string, 0, len(baseWordSet))
 		lexArgs := make([]any, 0, len(baseWordSet))
@@ -433,10 +433,10 @@ func queryStories(db *sql.DB, whereClause string, args ...any) ([]storyJSON, err
 			drillTarget int
 			meaning     string
 			reading     string
-			inLexicon   int
+			tracked     int
 		}
 		lexRows, err := db.Query(
-			`SELECT id, base_word, drill_count, drill_target, COALESCE(meaning,''), COALESCE(reading,''), in_lexicon
+			`SELECT id, base_word, drill_count, drill_target, COALESCE(meaning,''), COALESCE(reading,''), tracked
 			 FROM words WHERE base_word IN (`+strings.Join(placeholders, ",")+`)`,
 			lexArgs...,
 		)
@@ -447,7 +447,7 @@ func queryStories(db *sql.DB, whereClause string, args ...any) ([]storyJSON, err
 		for lexRows.Next() {
 			var w string
 			var info wordInfo
-			if err := lexRows.Scan(&info.id, &w, &info.drillCount, &info.drillTarget, &info.meaning, &info.reading, &info.inLexicon); err != nil {
+			if err := lexRows.Scan(&info.id, &w, &info.drillCount, &info.drillTarget, &info.meaning, &info.reading, &info.tracked); err != nil {
 				lexRows.Close()
 				return nil, err
 			}
@@ -462,7 +462,7 @@ func queryStories(db *sql.DB, whereClause string, args ...any) ([]storyJSON, err
 				for k := range stories[i].Sentences[j].Words {
 					bw := stories[i].Sentences[j].Words[k].BaseWord
 					if info, ok := wordInfoMap[bw]; ok {
-						stories[i].Sentences[j].Words[k].InLexicon = info.inLexicon == 1
+						stories[i].Sentences[j].Words[k].Tracked = info.tracked == 1
 						stories[i].Sentences[j].Words[k].WordID = info.id
 						stories[i].Sentences[j].Words[k].DrillCount = info.drillCount
 						stories[i].Sentences[j].Words[k].DrillTarget = info.drillTarget

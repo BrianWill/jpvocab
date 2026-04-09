@@ -54,7 +54,7 @@ type wordJSON struct {
 	KanjiData        []kanjiDataEntry `json:"kanjiData"`
 	HasWordAudio     bool             `json:"hasWordAudio"`
 	HasSentenceAudio bool             `json:"hasSentenceAudio"`
-	InLexicon        int              `json:"inLexicon"`
+	Tracked          int              `json:"tracked"`
 }
 
 // insertWord adds a single word to the lexicon. Only the word itself is
@@ -79,9 +79,9 @@ func insertWord(db *sql.DB, word, reading, partOfSpeech, meaning, exampleJP, exa
 }
 
 // insertWordReturningID inserts a new word into the lexicon and returns its ID.
-// If the word already exists with in_lexicon=0 (auto-inserted via a story), it is
-// promoted: in_lexicon is set to 1 and all provided fields are applied.
-// Returns an error if the word already exists with in_lexicon=1.
+// If the word already exists with tracked=0 (auto-inserted via a story), it is
+// promoted: tracked is set to 1 and all provided fields are applied.
+// Returns an error if the word already exists with tracked=1.
 func insertWordReturningID(db *sql.DB, word, reading, partOfSpeech, meaning, exampleJP, exampleEN, kanjiData string, drillTarget int) (int64, error) {
 	if drillTarget < 1 {
 		drillTarget = 1
@@ -97,7 +97,7 @@ func insertWordReturningID(db *sql.DB, word, reading, partOfSpeech, meaning, exa
 		INSERT INTO words (base_word, reading, part_of_speech, meaning, example_jp, example_en, drill_target, is_katakana, kanji_data)
 		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
 		ON CONFLICT(base_word) DO UPDATE SET
-			in_lexicon     = 1,
+			tracked        = 1,
 			reading        = CASE WHEN COALESCE(reading, '')        = '' THEN excluded.reading        ELSE reading        END,
 			part_of_speech = CASE WHEN COALESCE(part_of_speech, '') = '' THEN excluded.part_of_speech ELSE part_of_speech END,
 			meaning        = CASE WHEN COALESCE(meaning, '')        = '' THEN excluded.meaning        ELSE meaning        END,
@@ -105,7 +105,7 @@ func insertWordReturningID(db *sql.DB, word, reading, partOfSpeech, meaning, exa
 			example_en     = CASE WHEN COALESCE(example_en, '')     = '' THEN excluded.example_en     ELSE example_en     END,
 			drill_target   = excluded.drill_target,
 			kanji_data     = CASE WHEN COALESCE(kanji_data, '[]')   = '[]' THEN excluded.kanji_data  ELSE kanji_data     END
-		WHERE in_lexicon = 0
+		WHERE tracked = 0
 	`, word, reading, partOfSpeech, meaning, exampleJP, exampleEN, drillTarget, kat, kanjiData)
 	if err != nil {
 		return 0, err
@@ -173,7 +173,7 @@ func wordsInfoInDB(db *sql.DB, words []string) (map[string]existingWordInfo, err
 		args[i] = w
 	}
 	rows, err := db.Query(
-		"SELECT id, base_word, reading, part_of_speech, meaning, example_jp, example_en, image_path, drill_count, incorrect_count, drill_target FROM words WHERE in_lexicon = 1 AND base_word IN ("+placeholders+")",
+		"SELECT id, base_word, reading, part_of_speech, meaning, example_jp, example_en, image_path, drill_count, incorrect_count, drill_target FROM words WHERE tracked = 1 AND base_word IN ("+placeholders+")",
 		args...,
 	)
 	if err != nil {
@@ -270,9 +270,9 @@ func listWords(db *sql.DB) ([]wordJSON, error) {
 		SELECT id, base_word, COALESCE(reading,''), pitch_accent, COALESCE(part_of_speech,''), COALESCE(meaning,''),
 		       COALESCE(example_jp,''), COALESCE(example_en,''),
 		       drill_count, incorrect_count, drill_target, created_at, last_drilled_at,
-		       image_path, kanji_data, has_word_audio, has_sentence_audio, in_lexicon
+		       image_path, kanji_data, has_word_audio, has_sentence_audio, tracked
 		FROM words
-		WHERE in_lexicon = 1
+		WHERE tracked = 1
 		ORDER BY created_at DESC
 	`)
 	if err != nil {
@@ -288,7 +288,7 @@ func listWords(db *sql.DB) ([]wordJSON, error) {
 		if err := rows.Scan(
 			&w.ID, &w.Word, &w.Reading, &w.PitchAccent, &w.Type, &w.Meaning, &w.ExampleJp, &w.ExampleEn,
 			&w.Correct, &w.Incorrect, &w.Target, &w.CreatedAt, &w.LastDrilled,
-			&w.ImagePath, &kanjiDataStr, &hasWordAudio, &hasSentenceAudio, &w.InLexicon,
+			&w.ImagePath, &kanjiDataStr, &hasWordAudio, &hasSentenceAudio, &w.Tracked,
 		); err != nil {
 			return nil, err
 		}
@@ -434,8 +434,8 @@ func updateWordInfoIfEmpty(db *sql.DB, word, meaning, reading string) error {
 }
 
 // insertWordsIfAbsent adds each word in baseWords to the lexicon with
-// in_lexicon=0 if that word is not already present. Existing rows, regardless
-// of their in_lexicon value, are left untouched. Pure punctuation/symbol tokens
+// tracked=0 if that word is not already present. Existing rows, regardless
+// of their tracked value, are left untouched. Pure punctuation/symbol tokens
 // (no kana or kanji) are silently skipped.
 // Returns the subset of baseWords that passed the gate (inserted or pre-existing).
 func insertWordsIfAbsent(tx *sql.Tx, baseWords []string) ([]string, error) {
@@ -455,7 +455,7 @@ func insertWordsIfAbsent(tx *sql.Tx, baseWords []string) ([]string, error) {
 			kat = 1
 		}
 		if _, err := tx.Exec(`
-			INSERT OR IGNORE INTO words (base_word, is_katakana, in_lexicon)
+			INSERT OR IGNORE INTO words (base_word, is_katakana, tracked)
 			VALUES (?, ?, 0)
 		`, word, kat); err != nil {
 			return nil, err

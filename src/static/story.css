@@ -248,6 +248,12 @@
   margin-bottom: 2rem;
 }
 
+.story-top-bar-left {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
 .story-top-bar-actions {
   display: flex;
   gap: 0.5rem;
@@ -298,6 +304,13 @@
 
 .story-back-link:hover {
   text-decoration: underline;
+}
+
+.story-meta {
+  color: #7b8cb8;
+  font-size: 0.74rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
 }
 
 .story-title {
@@ -454,6 +467,10 @@
     flex-direction: column;
     align-items: flex-start;
     gap: 0.75rem;
+  }
+
+  .story-top-bar-left {
+    gap: 0.45rem;
   }
 
   .story-top-bar-actions {

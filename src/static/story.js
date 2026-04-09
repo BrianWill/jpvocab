@@ -29,6 +29,7 @@ const els = {
   speedInc: document.getElementById('story-speed-inc'),
   speedVal: document.getElementById('story-speed-val'),
   storyLayout: document.getElementById('story-layout'),
+  storyMeta: document.getElementById('story-meta'),
   storyContent: document.getElementById('story-content'),
   storyError: document.getElementById('story-error'),
   storyNotedAddAll: document.getElementById('story-noted-add-all'),
@@ -91,6 +92,13 @@ const state = {
 // ── Helpers ───────────────────────────────────────────────────────────────────
 function pluralize(count, singular, plural = singular + 's') {
   return `${count} ${count === 1 ? singular : plural}`;
+}
+
+function storyMetaLabel(story) {
+  return [
+    pluralize(story.sentenceCount || 0, 'sentence'),
+    pluralize(story.lexiconWordCount || 0, 'lexicon word'),
+  ].join(' | ');
 }
 
 // ── Story ID ──────────────────────────────────────────────────────────────────
@@ -307,6 +315,7 @@ function renderStory(story) {
   state.notedWordsOpen = false;
   document.title = `${story.title} | Story`;
   els.storyTitle.textContent = story.title;
+  els.storyMeta.textContent = storyMetaLabel(story);
 
   const SEPARATOR = '　';
   state.sentenceSpans = [];

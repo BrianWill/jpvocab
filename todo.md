@@ -9,7 +9,6 @@ This file is random notes of possible features and bug fixes.
     - English prompt modes should 
 
 - drill
-    - pre-cache voicevox audio for next several words
     - modal to edit current word
         - sidebar, edit button appears when hovered
 

@@ -66,13 +66,15 @@ type storyNotedWordJSON struct {
 }
 
 type storyJSON struct {
-	ID         int64                `json:"id"`
-	Title      string               `json:"title"`
-	CreatedAt  string               `json:"createdAt"`
-	StoryWords []string             `json:"storyWords"`
-	NotedWords []storyNotedWordJSON `json:"notedWords"`
-	Chunks     []storyChunkJSON     `json:"chunks"`
-	Sentences  []storySentenceJSON  `json:"sentences"`
+	ID               int64                `json:"id"`
+	Title            string               `json:"title"`
+	CreatedAt        string               `json:"createdAt"`
+	SentenceCount    int                  `json:"sentenceCount"`
+	LexiconWordCount int                  `json:"lexiconWordCount"`
+	StoryWords       []string             `json:"storyWords"`
+	NotedWords       []storyNotedWordJSON `json:"notedWords"`
+	Chunks           []storyChunkJSON     `json:"chunks"`
+	Sentences        []storySentenceJSON  `json:"sentences"`
 }
 
 const storyChunkMinChars = 500
@@ -111,11 +113,13 @@ func insertStoryTx(tx *sql.Tx, title string, sentences []storySentenceInput) (in
 		return 0, errors.New("story must have at least one sentence")
 	}
 	createdAt := time.Now().UTC().Format("2006-01-02 15:04:05")
+	sentenceCount := len(sentences)
+	lexiconWordCount := storyLexiconWordCount(sentences)
 
 	res, err := tx.Exec(`
-		INSERT INTO stories (title, created_at)
-		VALUES (?, ?)
-	`, title, createdAt)
+		INSERT INTO stories (title, sentence_count, lexicon_word_count, created_at)
+		VALUES (?, ?, ?, ?)
+	`, title, sentenceCount, lexiconWordCount, createdAt)
 	if err != nil {
 		return 0, err
 	}
@@ -260,7 +264,7 @@ func deleteStory(db *sql.DB, id int64) error {
 
 func queryStories(db *sql.DB, whereClause string, args ...any) ([]storyJSON, error) {
 	rows, err := db.Query(`
-		SELECT s.id, s.title, s.created_at, s.noted_words_json, s.story_words_json,
+		SELECT s.id, s.title, s.created_at, s.sentence_count, s.lexicon_word_count, s.noted_words_json, s.story_words_json,
 		       sc.id, sc.position, sc.story_words_json,
 		       ss.id, ss.position, ss.chunk_position, ss.words_json, ss.english_text, ss.is_paragraph_start
 		FROM stories s
@@ -284,6 +288,8 @@ func queryStories(db *sql.DB, whereClause string, args ...any) ([]storyJSON, err
 		var storyID int64
 		var title string
 		var createdAt string
+		var sentenceCount int
+		var lexiconWordCount int
 		var notedWordsJSON sql.NullString
 		var storyWordsJSON sql.NullString
 		var chunkID sql.NullInt64
@@ -297,7 +303,7 @@ func queryStories(db *sql.DB, whereClause string, args ...any) ([]storyJSON, err
 		var isParagraphStart sql.NullInt64
 
 		if err := rows.Scan(
-			&storyID, &title, &createdAt, &notedWordsJSON, &storyWordsJSON,
+			&storyID, &title, &createdAt, &sentenceCount, &lexiconWordCount, &notedWordsJSON, &storyWordsJSON,
 			&chunkID, &chunkPosition, &chunkStoryWordsJSON,
 			&sentenceID, &position, &chunkSentencePosition, &wordsJSON, &englishText, &isParagraphStart,
 		); err != nil {
@@ -306,13 +312,15 @@ func queryStories(db *sql.DB, whereClause string, args ...any) ([]storyJSON, err
 
 		if current == nil || storyID != currentID {
 			story := storyJSON{
-				ID:         storyID,
-				Title:      title,
-				CreatedAt:  createdAt,
-				StoryWords: []string{},
-				NotedWords: []storyNotedWordJSON{},
-				Chunks:     []storyChunkJSON{},
-				Sentences:  []storySentenceJSON{},
+				ID:               storyID,
+				Title:            title,
+				CreatedAt:        createdAt,
+				SentenceCount:    sentenceCount,
+				LexiconWordCount: lexiconWordCount,
+				StoryWords:       []string{},
+				NotedWords:       []storyNotedWordJSON{},
+				Chunks:           []storyChunkJSON{},
+				Sentences:        []storySentenceJSON{},
 			}
 			if notedWordsJSON.Valid && notedWordsJSON.String != "" {
 				json.Unmarshal([]byte(notedWordsJSON.String), &story.NotedWords) //nolint:errcheck
@@ -587,6 +595,35 @@ func storySentenceTextFromInput(sentence storySentenceInput) string {
 		b.WriteString(word.DisplayWord)
 	}
 	return b.String()
+}
+
+func storyLexiconWordCount(sentences []storySentenceInput) int {
+	texts := make([]string, 0, len(sentences))
+	for _, sentence := range sentences {
+		texts = append(texts, storySentenceTextFromInput(sentence))
+	}
+	return storyLexiconWordCountFromTexts(texts)
+}
+
+func storyLexiconWordCountJSON(sentences []storySentenceJSON) int {
+	texts := make([]string, 0, len(sentences))
+	for _, sentence := range sentences {
+		texts = append(texts, storySentenceText(sentence))
+	}
+	return storyLexiconWordCountFromTexts(texts)
+}
+
+func storyLexiconWordCountFromTexts(texts []string) int {
+	seen := map[string]struct{}{}
+	for _, text := range texts {
+		for _, word := range extractContentWords(text) {
+			if word == "" {
+				continue
+			}
+			seen[word] = struct{}{}
+		}
+	}
+	return len(seen)
 }
 
 func storySentenceBaseWords(sentences []storySentenceInput) []string {

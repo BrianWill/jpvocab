@@ -1060,6 +1060,12 @@ func TestInsertStory_AndListStories(t *testing.T) {
 		t.Fatal("expected created_at timestamp")
 	}
 	parseDBDateTime(t, story.CreatedAt)
+	if story.SentenceCount != 2 {
+		t.Fatalf("sentence count: got %d, want 2", story.SentenceCount)
+	}
+	if story.LexiconWordCount != 2 {
+		t.Fatalf("lexicon word count: got %d, want 2", story.LexiconWordCount)
+	}
 	if len(story.Sentences) != 2 {
 		t.Fatalf("expected 2 sentences, got %d", len(story.Sentences))
 	}
@@ -1256,6 +1262,35 @@ func TestBuildStorySentenceWords_TokenizesDisplayAndBaseForms(t *testing.T) {
 	}
 	if !foundPeriod {
 		t.Error("expected punctuation token in story words")
+	}
+}
+
+func TestStoryLexiconWordCount_FiltersNonLexiconTokens(t *testing.T) {
+	got := storyLexiconWordCount([]storySentenceInput{
+		{
+			Words: []storyWordInput{
+				{DisplayWord: "これ", BaseWord: "これ"},
+				{DisplayWord: "は", BaseWord: "は"},
+				{DisplayWord: "三", BaseWord: "三"},
+				{DisplayWord: "匹", BaseWord: "匹"},
+				{DisplayWord: "の", BaseWord: "の"},
+				{DisplayWord: "猫", BaseWord: "猫"},
+				{DisplayWord: "です", BaseWord: "です"},
+				{DisplayWord: "。", BaseWord: "。"},
+			},
+			IsParagraphStart: true,
+		},
+		{
+			Words: []storyWordInput{
+				{DisplayWord: "静かな", BaseWord: "静か"},
+				{DisplayWord: "公園", BaseWord: "公園"},
+				{DisplayWord: "です", BaseWord: "です"},
+				{DisplayWord: "。", BaseWord: "。"},
+			},
+		},
+	})
+	if got != 3 {
+		t.Fatalf("storyLexiconWordCount: got %d, want 3", got)
 	}
 }
 

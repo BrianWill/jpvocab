@@ -372,6 +372,12 @@ func TestAPIGetStories_ReturnsTitle(t *testing.T) {
 	if stories[0].Title != title {
 		t.Errorf("title: got %q, want %q", stories[0].Title, title)
 	}
+	if stories[0].SentenceCount != 1 {
+		t.Errorf("sentenceCount: got %d, want 1", stories[0].SentenceCount)
+	}
+	if stories[0].LexiconWordCount != 1 {
+		t.Errorf("lexiconWordCount: got %d, want 1", stories[0].LexiconWordCount)
+	}
 }
 
 func TestAPICreateStory_BadJSON(t *testing.T) {
@@ -409,6 +415,13 @@ func TestAPICreateStory_Success(t *testing.T) {
 	parseDBDateTime(t, story.CreatedAt)
 	if len(story.Sentences) != 3 {
 		t.Fatalf("sentences: got %d, want 3", len(story.Sentences))
+	}
+	if story.SentenceCount != 3 {
+		t.Fatalf("sentenceCount: got %d, want 3", story.SentenceCount)
+	}
+	wantLexiconWordCount := storyLexiconWordCount(buildStorySentencesFromText("皆さん、こんにちは。今日は庭園に行きます。\n\nとても静かです。"))
+	if story.LexiconWordCount != wantLexiconWordCount {
+		t.Fatalf("lexiconWordCount: got %d, want %d", story.LexiconWordCount, wantLexiconWordCount)
 	}
 	if len(story.Chunks) != 1 {
 		t.Fatalf("chunks: got %d, want 1", len(story.Chunks))
@@ -452,6 +465,12 @@ func TestAPIGetStory_ReturnsStoryByID(t *testing.T) {
 	}
 	if story.Title != title {
 		t.Errorf("title: got %q, want %q", story.Title, title)
+	}
+	if story.SentenceCount != 1 {
+		t.Errorf("sentenceCount: got %d, want 1", story.SentenceCount)
+	}
+	if story.LexiconWordCount != 1 {
+		t.Errorf("lexiconWordCount: got %d, want 1", story.LexiconWordCount)
 	}
 	if len(story.Chunks) != 1 {
 		t.Errorf("chunks: got %d, want 1", len(story.Chunks))
@@ -738,9 +757,9 @@ func TestAPIGetTokenUsage_EmptyReturnsStructure(t *testing.T) {
 	}
 	var resp struct {
 		Totals struct {
-			Calls         int `json:"calls"`
-			InputTokens   int `json:"input_tokens"`
-			OutputTokens  int `json:"output_tokens"`
+			Calls        int `json:"calls"`
+			InputTokens  int `json:"input_tokens"`
+			OutputTokens int `json:"output_tokens"`
 		} `json:"totals"`
 		Summary []tokenUsageSummaryRow `json:"summary"`
 		Log     []tokenUsageEntry      `json:"log"`

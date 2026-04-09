@@ -239,17 +239,23 @@ const VOICEVOX_GENDER = {
 const VOICEVOX_DEFAULT_SPEAKER_UUID = '4f51116a-d9ee-4516-925d-21f183e2afad'; // 青山龍星
 
 let _voicevoxSpeakers = null; // cached speaker list; null = not yet fetched, [] = unavailable
+let _voicevoxCheckPromise = null; // deduplicates concurrent first-call fetches
 
 // Fetches the speaker list once and caches it. Returns true if VoiceVox is available.
-export async function checkVoicevoxAvailable() {
-  if (_voicevoxSpeakers !== null) return _voicevoxSpeakers.length > 0;
-  try {
-    const resp = await fetch('/api/voicevox/speakers');
-    _voicevoxSpeakers = await resp.json();
-  } catch (_) {
-    _voicevoxSpeakers = [];
+// Concurrent callers during the first fetch share the same in-flight promise.
+export function checkVoicevoxAvailable() {
+  if (_voicevoxSpeakers !== null) return Promise.resolve(_voicevoxSpeakers.length > 0);
+  if (!_voicevoxCheckPromise) {
+    _voicevoxCheckPromise = fetch('/api/voicevox/speakers')
+      .then(resp => resp.json())
+      .catch(() => [])
+      .then(speakers => {
+        _voicevoxSpeakers = Array.isArray(speakers) ? speakers : [];
+        _voicevoxCheckPromise = null;
+        return _voicevoxSpeakers.length > 0;
+      });
   }
-  return _voicevoxSpeakers.length > 0;
+  return _voicevoxCheckPromise;
 }
 
 // Returns the ノーマル style ID for the default speaker (青山龍星) from the cached list,
@@ -371,10 +377,14 @@ async function playVoicevoxText(text, rate = 1) {
   const requestId = ++_playbackRequestId;
   stopCurrentPlayback();
   const controller = new AbortController();
-  _currentSynthController = controller;
+  // _currentSynthController is set only around the synthesis fetch, not during the
+  // availability check, so that concurrent checkVoicevoxAvailable() calls from the
+  // prefetch don't accidentally trigger a stopCurrentPlayback() abort on our controller.
   try {
     const available = await checkVoicevoxAvailable();
     if (!available) throw new Error('VoiceVox unavailable');
+    if (requestId !== _playbackRequestId) return true; // superseded during availability check
+    _currentSynthController = controller;
     const audioUrl = await getSynthAudio(text, getVoicevoxSettings(), controller.signal);
     _currentSynthController = null;
     if (requestId !== _playbackRequestId) return true; // superseded — newer request took over
@@ -388,11 +398,24 @@ async function playVoicevoxText(text, rate = 1) {
       // callers don't incorrectly downgrade to browser TTS when VoiceVox audio
       // was actually generated successfully.
       if (requestId !== _playbackRequestId) return true;
+      if (err?.name === 'NotAllowedError') {
+        // Browser autoplay policy blocked playback (no prior user gesture).
+        // Defer to the next interaction; discard if a newer word has taken over by then.
+        const resume = () => {
+          document.removeEventListener('click', resume);
+          document.removeEventListener('keydown', resume);
+          if (requestId === _playbackRequestId) audio.play().catch(() => {});
+        };
+        document.addEventListener('click', resume);
+        document.addEventListener('keydown', resume);
+        return true;
+      }
       console.warn('VoiceVox playback start failed', err);
       return true;
     }
     return true;
   } catch (err) {
+    _currentSynthController = null;
     if (requestId !== _playbackRequestId) return true;
     // AbortError means synthesis was cancelled by a newer request — VoiceVox is still
     // available, so don't fall back to browser TTS.

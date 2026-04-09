@@ -76,11 +76,13 @@ func migrate(db *sql.DB) {
 			value TEXT NOT NULL
 		)`,
 		`CREATE TABLE IF NOT EXISTS stories (
-			id               INTEGER  PRIMARY KEY AUTOINCREMENT,
-			title            TEXT     NOT NULL,
-			story_words_json TEXT     NOT NULL DEFAULT '[]',
-			noted_words_json TEXT     NOT NULL DEFAULT '[]',
-			created_at       DATETIME NOT NULL DEFAULT (datetime('now'))
+			id                  INTEGER  PRIMARY KEY AUTOINCREMENT,
+			title               TEXT     NOT NULL,
+			story_words_json    TEXT     NOT NULL DEFAULT '[]',
+			noted_words_json    TEXT     NOT NULL DEFAULT '[]',
+			sentence_count      INTEGER  NOT NULL DEFAULT 0,
+			lexicon_word_count  INTEGER  NOT NULL DEFAULT 0,
+			created_at          DATETIME NOT NULL DEFAULT (datetime('now'))
 		)`,
 		`CREATE TABLE IF NOT EXISTS story_chunks (
 			id               INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -140,6 +142,19 @@ func migrate(db *sql.DB) {
 		db.Exec(fmt.Sprintf("PRAGMA user_version = %d", i+1))
 	}
 	log.Printf("DB migration OK (version %d)", len(migrations))
+}
+
+func columnExists(db *sql.DB, tableName, columnName string) bool {
+	cols, err := listColumns(db, tableName)
+	if err != nil {
+		return false
+	}
+	for _, col := range cols {
+		if col.Name == columnName {
+			return true
+		}
+	}
+	return false
 }
 
 // resetDB drops all user tables and re-runs migrations, giving a clean slate.

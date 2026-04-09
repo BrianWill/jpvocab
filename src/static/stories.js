@@ -57,12 +57,8 @@ function sentenceCountLabel(n) {
   return n === 1 ? '1 sentence' : `${n} sentences`;
 }
 
-function wordCount(story) {
-  return story.sentences.reduce((total, sentence) => total + sentence.words.length, 0);
-}
-
 function wordCountLabel(n) {
-  return n === 1 ? '1 word' : `${n} words`;
+  return n === 1 ? '1 lexicon word' : `${n} lexicon words`;
 }
 
 function esc(value) {
@@ -99,8 +95,8 @@ function renderStories(stories) {
           <span class="story-card-date" data-tooltip="Added ${esc(formatTimestamp(story.createdAt))}">${formatDate(story.createdAt)}</span>
         </div>
         <div class="story-card-meta">
-          <span>${sentenceCountLabel(story.sentences.length)}</span>
-          <span>${wordCountLabel(wordCount(story))}</span>
+          <span>${sentenceCountLabel(story.sentenceCount || 0)}</span>
+          <span>${wordCountLabel(story.lexiconWordCount || 0)}</span>
         </div>
       </article>
     </a>

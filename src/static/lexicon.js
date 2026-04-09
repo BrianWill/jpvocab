@@ -63,7 +63,7 @@ function renderRow(w, trMain, trEx) {
   trMain.innerHTML =
     imgCell +
     '<td><div class="cell-word" data-tooltip="Word">' + w.word +
-      '<button class="btn-edit" data-tooltip="Edit word">✎</button>' +
+      '<button class="btn-edit" data-word-id="' + w.id + '" data-tooltip="Edit word">✎</button>' +
       '<button class="btn-delete" data-tooltip="Delete word">✕</button>' +
     '</div></td>' +
     '<td class="cell-reading" data-tooltip="Reading (Pronunciation)">' + renderReading(w.reading, w.word, w.kanjiData, w.pitchAccent) + '</td>' +
@@ -81,6 +81,7 @@ function renderRow(w, trMain, trEx) {
     '<td></td>';
   trMain._word = w;
   trMain._trEx  = trEx;
+  trMain.dataset.wordId = w.id;
 
   trMain.querySelector('.cell-word').addEventListener('click', () => playWordAudio(w, 1, LEXICON_AUDIO_OPTIONS));
   trMain.querySelector('.btn-edit').addEventListener('click', openEditModal);

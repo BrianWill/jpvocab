@@ -119,6 +119,42 @@ func TestInsertWord_Duplicate(t *testing.T) {
 	}
 }
 
+func TestInsertWordReturningID_PromotedTrackedZeroReturnsPromotedRowID(t *testing.T) {
+	db := testDB(t)
+
+	res, err := db.Exec(`
+		INSERT INTO words (base_word, reading, part_of_speech, meaning, example_jp, example_en, drill_target, tracked)
+		VALUES (?, ?, ?, ?, ?, ?, ?, 0)
+	`, "黄色", "きいろ", "noun", "yellow", "黄色の花が咲いている。", "Yellow flowers are blooming.", 3)
+	if err != nil {
+		t.Fatal(err)
+	}
+	expectedID, err := res.LastInsertId()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	gotID, err := insertWordReturningID(db, "黄色", "", "", "", "", "", "", 8)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if gotID != expectedID {
+		t.Fatalf("returned id: got %d, want %d", gotID, expectedID)
+	}
+
+	var tracked int
+	var target int
+	if err := db.QueryRow(`SELECT tracked, drill_target FROM words WHERE id = ?`, expectedID).Scan(&tracked, &target); err != nil {
+		t.Fatal(err)
+	}
+	if tracked != 1 {
+		t.Fatalf("tracked: got %d, want 1", tracked)
+	}
+	if target != 8 {
+		t.Fatalf("drill_target: got %d, want 8", target)
+	}
+}
+
 // --- validTableName ---
 
 func TestValidTableName(t *testing.T) {

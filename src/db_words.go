@@ -115,7 +115,11 @@ func insertWordReturningID(db *sql.DB, word, reading, partOfSpeech, meaning, exa
 	if n == 0 {
 		return 0, fmt.Errorf("already in lexicon")
 	}
-	return res.LastInsertId()
+	var id int64
+	if err := db.QueryRow(`SELECT id FROM words WHERE base_word = ?`, word).Scan(&id); err != nil {
+		return 0, err
+	}
+	return id, nil
 }
 
 // updateWordFill sets the AI-generated fields for an existing word by ID.

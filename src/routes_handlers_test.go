@@ -26,6 +26,45 @@ func int64ToString(v int64) string {
 	return strconv.FormatInt(v, 10)
 }
 
+func newMultipartRequest(t *testing.T, method, path string, fields map[string]string) *http.Request {
+	t.Helper()
+	var body bytes.Buffer
+	writer := multipart.NewWriter(&body)
+	for key, value := range fields {
+		if err := writer.WriteField(key, value); err != nil {
+			t.Fatalf("WriteField(%q): %v", key, err)
+		}
+	}
+	if err := writer.Close(); err != nil {
+		t.Fatalf("Close multipart writer: %v", err)
+	}
+	req := httptest.NewRequest(method, path, &body)
+	req.Header.Set("Content-Type", writer.FormDataContentType())
+	return req
+}
+
+func parseSSEBatchResults(t *testing.T, body string) []batchWordResult {
+	t.Helper()
+	parts := strings.Split(body, "\n\n")
+	results := make([]batchWordResult, 0, len(parts))
+	for _, part := range parts {
+		part = strings.TrimSpace(part)
+		if !strings.HasPrefix(part, "data: ") {
+			continue
+		}
+		payload := strings.TrimPrefix(part, "data: ")
+		if strings.Contains(payload, `"done":true`) {
+			continue
+		}
+		var result batchWordResult
+		if err := json.Unmarshal([]byte(payload), &result); err != nil {
+			t.Fatalf("unmarshal SSE payload %q: %v", payload, err)
+		}
+		results = append(results, result)
+	}
+	return results
+}
+
 func TestAPIUpdateWord_InvalidID(t *testing.T) {
 	db := testDB(t)
 	req := httptest.NewRequest(http.MethodPatch, "/api/words/nope", bytes.NewBufferString(`{}`))
@@ -187,6 +226,99 @@ func TestAPIUploadWordImage_Success(t *testing.T) {
 	}
 	if _, err := os.Stat(filepath.Join("static", filepath.FromSlash(resp.ImagePath))); err != nil {
 		t.Fatalf("saved file missing: %v", err)
+	}
+}
+
+func TestAdminAddWordsBatch_UsesCorrectPerWordWordListInfo(t *testing.T) {
+	db := testDB(t)
+	req := newMultipartRequest(t, http.MethodPost, "/admin/words/batch", map[string]string{
+		"words":    "黄色\n白い\n犬\nサル",
+		"autofill": "off",
+	})
+	rec := httptest.NewRecorder()
+
+	adminAddWordsBatch(db).ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status: got %d, want %d body=%q", rec.Code, http.StatusOK, rec.Body.String())
+	}
+
+	results := parseSSEBatchResults(t, rec.Body.String())
+	if len(results) != 4 {
+		t.Fatalf("result count: got %d, want 4 body=%q", len(results), rec.Body.String())
+	}
+
+	byWord := make(map[string]batchWordResult, len(results))
+	for _, result := range results {
+		byWord[result.Word] = result
+	}
+
+	if got := byWord["黄色"].Reading; got != "きいろ" {
+		t.Fatalf("黄色 reading: got %q, want %q", got, "きいろ")
+	}
+	if got := byWord["黄色"].Meaning; got != "yellow" {
+		t.Fatalf("黄色 meaning: got %q, want %q", got, "yellow")
+	}
+	if got := byWord["白い"].Reading; got != "しろい" {
+		t.Fatalf("白い reading: got %q, want %q", got, "しろい")
+	}
+	if got := byWord["白い"].Meaning; got != "white" {
+		t.Fatalf("白い meaning: got %q, want %q", got, "white")
+	}
+	if got := byWord["犬"].Reading; got != "いぬ" {
+		t.Fatalf("犬 reading: got %q, want %q", got, "いぬ")
+	}
+	if got := byWord["犬"].Meaning; got != "dog" {
+		t.Fatalf("犬 meaning: got %q, want %q", got, "dog")
+	}
+	if got := byWord["サル"].Reading; got != "サル" {
+		t.Fatalf("サル reading: got %q, want %q", got, "サル")
+	}
+	if got := byWord["サル"].Meaning; got != "monkey" {
+		t.Fatalf("サル meaning: got %q, want %q", got, "monkey")
+	}
+}
+
+func TestAdminAddWordsBatch_PromotedTrackedZeroWordKeepsItsOwnInfo(t *testing.T) {
+	db := testDB(t)
+
+	if _, err := db.Exec(`
+		INSERT INTO words (base_word, reading, part_of_speech, meaning, example_jp, example_en, drill_target, tracked)
+		VALUES
+			('黄色', 'きいろ', 'noun', 'yellow', '黄色の花が咲いている。', 'Yellow flowers are blooming.', 3, 0),
+			('サル', 'サル', 'noun', 'monkey', '木の上でサルが遊んでいる。', 'Monkeys are playing in the tree.', 3, 1)
+	`); err != nil {
+		t.Fatal(err)
+	}
+
+	req := newMultipartRequest(t, http.MethodPost, "/admin/words/batch", map[string]string{
+		"words":    "黄色",
+		"autofill": "off",
+	})
+	rec := httptest.NewRecorder()
+
+	adminAddWordsBatch(db).ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status: got %d, want %d body=%q", rec.Code, http.StatusOK, rec.Body.String())
+	}
+
+	results := parseSSEBatchResults(t, rec.Body.String())
+	if len(results) != 1 {
+		t.Fatalf("result count: got %d, want 1 body=%q", len(results), rec.Body.String())
+	}
+	result := results[0]
+	if !result.Added {
+		t.Fatalf("added: got %v, want true", result.Added)
+	}
+	if result.Word != "黄色" {
+		t.Fatalf("word: got %q, want %q", result.Word, "黄色")
+	}
+	if result.Reading != "きいろ" {
+		t.Fatalf("reading: got %q, want %q", result.Reading, "きいろ")
+	}
+	if result.Meaning != "yellow" {
+		t.Fatalf("meaning: got %q, want %q", result.Meaning, "yellow")
 	}
 }
 

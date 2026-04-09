@@ -60,8 +60,11 @@ export const state = {
 // --- Edit modal (reuses add-result modal with a single word) ---
 export function openEditModal(event) {
   event.stopPropagation();
+  const editBtn = event.target.closest('.btn-edit');
   const trMain = event.target.closest('tr');
-  const w = trMain._word;
+  const wordId = parseInt(editBtn?.dataset.wordId || trMain?.dataset.wordId || '', 10);
+  const w = lexiconState.words.find(word => word.id === wordId) || trMain?._word;
+  if (!w) return;
 
   state.addPhase = 'done';
   state.isSingleEdit = true;

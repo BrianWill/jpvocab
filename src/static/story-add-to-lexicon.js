@@ -1,12 +1,11 @@
 import { esc, typeLabels } from './lexicon-utils.js';
-import { getVoicevoxSettings, playWordAudio, playSentenceAudio, playDing, PROVIDER_MODELS, checkVoicevoxAvailable, checkFfmpegAvailable } from './common.js';
+import { playWordAudio, playSentenceAudio, playDing, PROVIDER_MODELS } from './common.js';
 import {
   adjustWordTarget,
   bindWordResultImageUpload,
   bindWordResultEditorEvents,
   buildWordResultDetails,
   buildWordResultImage,
-  getAudioGenerationTooltip,
   getWordBtnLabel,
   saveWordRowEdits,
   setWordRowImage,
@@ -26,8 +25,6 @@ const state = {
   prevPendingGenerates: 0,
   providers: null,
   skippedCount: 0,
-  voicevoxAvailable: false,
-  ffmpegAvailable: false,
 };
 
 let eventsBound = false;
@@ -189,10 +186,6 @@ async function loadSupportState() {
   const providers = await fetch('/api/providers').then(r => r.json()).catch(() => null);
   state.providers = providers?.ai ?? null;
   state.imageSources = providers?.image_sources ?? null;
-  [state.voicevoxAvailable, state.ffmpegAvailable] = await Promise.all([
-    checkVoicevoxAvailable(),
-    checkFfmpegAvailable(),
-  ]);
 }
 
 export async function initStoryAddToLexicon() {
@@ -304,7 +297,6 @@ function appendWordRow(data) {
       const btn = row.querySelector('.btn-generate');
       const type = getGenerateType();
       if (type === 'image') generateWordImage(e, data.word_id, data.word, btn);
-      else if (type === 'audio') generateWordAudio(e, data.word_id, data.word, btn);
       else generateWordAutofill(e, data.word_id, data.word, btn);
     });
     const [minusBtn, plusBtn] = row.querySelectorAll('.btn-target-adj');
@@ -401,47 +393,6 @@ async function generateWordImage(event, wordId, word, btn) {
     const imageEl = row?.querySelector('.word-result-image');
     if (imageEl && prevImageHtml) imageEl.outerHTML = prevImageHtml;
     else setWordRowImage(row, '', 'failed');
-  } finally {
-    if (btn._generateAbort === abort) {
-      btn._generateAbort = null;
-      if (btn.classList.contains('btn-generate--busy')) {
-        btn.classList.remove('btn-generate--busy', 'btn-generate--cancellable');
-        btn.innerHTML = getWordBtnLabel(state.generateType);
-        state.pendingGenerates = Math.max(0, state.pendingGenerates - 1);
-        renderStatus();
-      }
-    }
-  }
-}
-
-async function generateWordAudio(event, wordId, word, btn) {
-  event.stopPropagation();
-  if (btn._generateAbort) {
-    btn._generateAbort.abort();
-    return;
-  }
-  if (btn.classList.contains('btn-generate--busy')) return;
-  const abort = new AbortController();
-  btn._generateAbort = abort;
-  btn.classList.add('btn-generate--busy', 'btn-generate--cancellable');
-  btn.innerHTML = '<span class="spinner"></span><span class="btn-gen-label">generating…</span><span class="btn-gen-cancel">cancel</span>';
-  state.pendingGenerates++;
-  renderStatus();
-  try {
-    const vv = getVoicevoxSettings();
-    const res = await fetch('/api/words/' + wordId + '/generate-audio', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ word, speaker: vv.speaker, speedScale: vv.speedScale, intonationScale: vv.intonationScale }),
-      signal: abort.signal,
-    });
-    if (!res.ok) throw new Error(await res.text());
-    const data = await res.json();
-    const row = btn.closest('.word-result-row');
-    if (row) {
-      row._hasWordAudio = data.hasWordAudio;
-      row._hasSentenceAudio = data.hasSentenceAudio;
-    }
   } finally {
     if (btn._generateAbort === abort) {
       btn._generateAbort = null;
@@ -573,10 +524,9 @@ function renderStatus() {
 
   const hasProviders = !!(state.providers && PROVIDER_MODELS.some(p => state.providers[p.key]));
   const genType = getGenerateType();
-  const audioReady = state.voicevoxAvailable && state.ffmpegAvailable;
   const enabled = els.addResultBody.querySelectorAll('.word-result-row .btn-generate:not(.btn-generate--busy):not([disabled])').length > 0 &&
-    (genType === 'audio' ? audioReady : hasProviders);
-  const labels = { 'word-info': 'Generate word info', 'image': 'Generate images', 'audio': 'Generate audio' };
+    hasProviders;
+  const labels = { 'word-info': 'Generate word info', 'image': 'Generate images' };
   if (state.pendingGenerates > 0) {
     actionEl.innerHTML =
       '<button class="btn-danger btn-generate--cancel">' +
@@ -589,10 +539,9 @@ function renderStatus() {
         '<button class="btn-save btn-generate--all split-btn-main story-split-btn-main"' + (enabled ? '' : ' disabled') + '>' + labels[genType] + '</button>' +
         '<button class="btn-save btn-generate--all split-btn-arrow story-split-btn-arrow"' + (enabled ? '' : ' disabled') + '>▾</button>' +
         '<div class="split-btn-menu" id="story-split-btn-menu" hidden>' +
-          ['word-info', 'image', 'audio'].map(type => '<button class="split-btn-option' + (type === genType ? ' split-btn-option--active' : '') + '" data-type="' + type + '">' + labels[type] + '</button>').join('') +
+          ['word-info', 'image'].map(type => '<button class="split-btn-option' + (type === genType ? ' split-btn-option--active' : '') + '" data-type="' + type + '">' + labels[type] + '</button>').join('') +
         '</div>' +
-      '</div>' +
-      (genType === 'audio' ? '<span class="provider-info-icon" data-tooltip="' + getAudioGenerationTooltip({ voicevoxAvailable: state.voicevoxAvailable, ffmpegAvailable: state.ffmpegAvailable }) + '">?</span>' : '');
+      '</div>';
 
     const mainBtn = actionEl.querySelector('.split-btn-main');
     const arrowBtn = actionEl.querySelector('.split-btn-arrow');

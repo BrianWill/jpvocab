@@ -111,15 +111,7 @@ export function buildWordResultDetails(word, data, typeLabels) {
 export function getWordBtnLabel(generateType) {
   return generateType === 'image'
     ? 'generate image'
-    : generateType === 'audio'
-      ? 'generate audio'
-      : 'generate word info';
-}
-
-export function getAudioGenerationTooltip({ voicevoxAvailable, ffmpegAvailable, readyMessage = 'Generate audio with VoiceVox' }) {
-  if (!voicevoxAvailable) return 'VoiceVox is not running';
-  if (!ffmpegAvailable) return 'ffmpeg is not installed (required for audio generation)';
-  return readyMessage;
+    : 'generate word info';
 }
 
 export function bindWordResultEditorEvents({ containerEl, footerEl, closeButtonId, state, onSaveRowEdits }) {

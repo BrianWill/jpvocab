@@ -1,13 +1,12 @@
-import { state as lexiconState, typeLabels, reloadWords, renderTable, getSortedWords, closeAddModal, updateWordImagePath, updateWordAudioFlags } from './lexicon.js';
+import { state as lexiconState, typeLabels, reloadWords, renderTable, getSortedWords, closeAddModal, updateWordImagePath } from './lexicon.js';
 import { esc } from './lexicon-utils.js';
-import { getVoicevoxSettings, playWordAudio, playSentenceAudio, playDing, PROVIDER_MODELS } from './common.js';
+import { playWordAudio, playSentenceAudio, playDing, PROVIDER_MODELS } from './common.js';
 import {
   adjustWordTarget,
   bindWordResultImageUpload,
   bindWordResultEditorEvents,
   buildWordResultDetails,
   buildWordResultImage,
-  getAudioGenerationTooltip,
   getWordBtnLabel,
   saveWordRowEdits,
   setWordRowImage,
@@ -346,7 +345,6 @@ function appendWordRow(data) {
     if (genBtnEl) genBtnEl.addEventListener('mousedown', e => {
       const t = getGenerateType();
       if (t === 'image') generateWordImage(e, data.word_id, data.word, genBtnEl);
-      else if (t === 'audio') generateWordAudio(e, data.word_id, data.word, genBtnEl);
       else generateWordAutofill(e, data.word_id, data.word, genBtnEl);
     });
 
@@ -408,17 +406,10 @@ function getImageSource() {
 function updateGenerateBtnStates() {
   const type = getGenerateType();
   const hasProviders = lexiconState.providers && (lexiconState.providers.anthropic || lexiconState.providers.openai || lexiconState.providers.google || lexiconState.providers.mistral || lexiconState.providers.glm);
-  const audioReady = lexiconState.voicevoxAvailable && lexiconState.ffmpegAvailable;
-  const disabled = type === 'audio' ? !audioReady : !hasProviders;
-  const tooltip = type === 'audio'
-    ? getAudioGenerationTooltip({
-        voicevoxAvailable: lexiconState.voicevoxAvailable,
-        ffmpegAvailable: lexiconState.ffmpegAvailable,
-        readyMessage: 'Generates audio via the local VoiceVox engine',
-      })
-    : type === 'image'
-      ? 'Uses an AI API request to find and download an image for this word'
-      : 'Uses an AI API request to get the word\'s reading, part-of-speech, meaning, and an example sentence';
+  const disabled = !hasProviders;
+  const tooltip = type === 'image'
+    ? 'Uses an AI API request to find and download an image for this word'
+    : 'Uses an AI API request to get the word\'s reading, part-of-speech, meaning, and an example sentence';
   els.addResultBody.querySelectorAll('.btn-generate:not(.btn-generate--busy)').forEach(btn => {
     btn.disabled = disabled;
     btn.dataset.tooltip = tooltip;
@@ -500,48 +491,6 @@ async function generateWordImage(event, wordId, word, btn) {
       const imageEl = row.querySelector('.word-result-image');
       if (imageEl && prevImageHtml) imageEl.outerHTML = prevImageHtml;
       else setWordRowImage(row, '', 'failed');
-    }
-  } finally {
-    if (btn._generateAbort === abort) {
-      btn._generateAbort = null;
-      if (btn.classList.contains('btn-generate--busy')) {
-        btn.classList.remove('btn-generate--busy', 'btn-generate--cancellable');
-        btn.innerHTML = getWordBtnLabel(state.generateType);
-        state.pendingGenerates = Math.max(0, state.pendingGenerates - 1);
-        renderStatus();
-      }
-    }
-  }
-}
-
-async function generateWordAudio(event, wordId, word, btn) {
-  event.stopPropagation();
-  if (btn._generateAbort) {
-    btn._generateAbort.abort();
-    return;
-  }
-  if (btn.classList.contains('btn-generate--busy')) return;
-  const abort = new AbortController();
-  btn._generateAbort = abort;
-  btn.classList.add('btn-generate--busy', 'btn-generate--cancellable');
-  btn.innerHTML = '<span class="spinner"></span><span class="btn-gen-label">generating\u2026</span><span class="btn-gen-cancel">cancel</span>';
-  state.pendingGenerates++;
-  renderStatus();
-  try {
-    const vv = getVoicevoxSettings();
-    const res = await fetch('/api/words/' + wordId + '/generate-audio', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ word, speaker: vv.speaker, speedScale: vv.speedScale, intonationScale: vv.intonationScale }),
-      signal: abort.signal,
-    });
-    if (!res.ok) throw new Error(await res.text());
-    const data = await res.json();
-    updateWordAudioFlags(wordId, data.hasWordAudio, data.hasSentenceAudio);
-    const row = btn.closest('.word-result-row');
-    if (row) {
-      if (data.hasWordAudio) row._hasWordAudio = true;
-      if (data.hasSentenceAudio) row._hasSentenceAudio = true;
     }
   } finally {
     if (btn._generateAbort === abort) {
@@ -710,20 +659,13 @@ function renderStatus() {
     '</span>';
   const hasProviders = lexiconState.providers && (lexiconState.providers.anthropic || lexiconState.providers.openai || lexiconState.providers.google || lexiconState.providers.mistral || lexiconState.providers.glm);
   const genType = getGenerateType();
-  const audioReady = lexiconState.voicevoxAvailable && lexiconState.ffmpegAvailable;
-  const genAllTooltip = genType === 'audio'
-    ? getAudioGenerationTooltip({
-        voicevoxAvailable: lexiconState.voicevoxAvailable,
-        ffmpegAvailable: lexiconState.ffmpegAvailable,
-        readyMessage: 'Generates audio via the local VoiceVox engine',
-      })
-    : genType === 'image'
-      ? 'Uses an AI API request to find and download an image for each word'
-      : 'Uses an AI API request to get the reading, part-of-speech, meaning, and an example sentence for each word';
+  const genAllTooltip = genType === 'image'
+    ? 'Uses an AI API request to find and download an image for each word'
+    : 'Uses an AI API request to get the reading, part-of-speech, meaning, and an example sentence for each word';
   const genAllEnabled =
     els.addResultBody.querySelectorAll('.word-result-row .btn-generate:not(.btn-generate--busy):not([disabled])').length > 0 &&
-    (genType === 'audio' ? audioReady : hasProviders) && state.addPhase !== 'loading';
-  const genTypeLabels = { 'word-info': 'Generate word info', 'image': 'Generate images', 'audio': 'Generate audio' };
+    hasProviders && state.addPhase !== 'loading';
+  const genTypeLabels = { 'word-info': 'Generate word info', 'image': 'Generate images' };
   const actionHtml = state.pendingGenerates > 0
     ? '<button class="btn-danger btn-generate--cancel">' +
         '<span class="spinner"></span>Cancel generation' +
@@ -738,14 +680,13 @@ function renderStatus() {
           (genAllEnabled ? '' : ' disabled') +
           '>▾</button>' +
         '<div class="split-btn-menu" id="split-btn-menu" hidden>' +
-          ['word-info', 'image', 'audio'].map(t =>
+          ['word-info', 'image'].map(t =>
             '<button class="split-btn-option' + (t === state.generateType ? ' split-btn-option--active' : '') + '" data-type="' + t + '">' +
               genTypeLabels[t] +
             '</button>'
           ).join('') +
         '</div>' +
-      '</div>' +
-      (state.generateType === 'audio' ? '<span class="provider-info-icon" data-tooltip="VoiceVox must be running on this &#10;machine at http://localhost:50021&#10;&#10;Download: https://voicevox.hiroshiba.jp/">?</span>' : '');
+      '</div>';
   if (actionEl) {
     actionEl.innerHTML = actionHtml;
     if (state.pendingGenerates > 0) {

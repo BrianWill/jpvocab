@@ -39,13 +39,14 @@ function cacheSet(key, url) {
 /**
  * Returns a Blob URL for the synthesized audio of `text` using the given
  * VoiceVox settings. Hits the cache first; synthesizes and caches on miss.
- * Throws if the synthesis request fails.
+ * Throws if the synthesis request fails or is aborted.
  *
  * @param {string} text
  * @param {{ speaker?: number, speedScale?: number, intonationScale?: number }} vvSettings
+ * @param {AbortSignal} [signal]
  * @returns {Promise<string>} Blob URL
  */
-export async function getSynthAudio(text, { speaker = 1, speedScale = 1.0, intonationScale = 1.0 } = {}) {
+export async function getSynthAudio(text, { speaker = 1, speedScale = 1.0, intonationScale = 1.0 } = {}, signal) {
   const key = cacheKey(text, speaker, speedScale, intonationScale);
   const cached = cacheGet(key);
   if (cached) return cached;
@@ -54,6 +55,7 @@ export async function getSynthAudio(text, { speaker = 1, speedScale = 1.0, inton
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ text, speaker, speedScale, intonationScale }),
+    signal,
   });
   if (!res.ok) throw new Error(`synthesis failed: ${res.status}`);
   const blob = await res.blob();

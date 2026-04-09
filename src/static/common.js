@@ -341,10 +341,15 @@ function waitForVoices() {
 }
 
 let _currentAudio = null;
+let _currentSynthController = null;
 let _playbackRequestId = 0;
 
 function stopCurrentPlayback() {
   speechSynthesis.cancel();
+  if (_currentSynthController) {
+    _currentSynthController.abort();
+    _currentSynthController = null;
+  }
   if (_currentAudio) {
     _currentAudio.pause();
     _currentAudio = null;
@@ -365,11 +370,14 @@ export async function playTts(text, lang, rate = 1) {
 async function playVoicevoxText(text, rate = 1) {
   const requestId = ++_playbackRequestId;
   stopCurrentPlayback();
+  const controller = new AbortController();
+  _currentSynthController = controller;
   try {
     const available = await checkVoicevoxAvailable();
     if (!available) throw new Error('VoiceVox unavailable');
-    const audioUrl = await getSynthAudio(text, getVoicevoxSettings());
-    if (requestId !== _playbackRequestId) return false;
+    const audioUrl = await getSynthAudio(text, getVoicevoxSettings(), controller.signal);
+    _currentSynthController = null;
+    if (requestId !== _playbackRequestId) return true; // superseded — newer request took over
     const audio = new Audio(audioUrl);
     audio.playbackRate = rate;
     _currentAudio = audio;
@@ -384,8 +392,11 @@ async function playVoicevoxText(text, rate = 1) {
       return true;
     }
     return true;
-  } catch (_) {
+  } catch (err) {
     if (requestId !== _playbackRequestId) return true;
+    // AbortError means synthesis was cancelled by a newer request — VoiceVox is still
+    // available, so don't fall back to browser TTS.
+    if (err?.name === 'AbortError') return true;
     return false;
   }
 }

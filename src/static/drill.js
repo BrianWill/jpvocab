@@ -1,12 +1,15 @@
 import {
   attachNumberStepper,
+  checkVoicevoxAvailable,
   DRILL_FILTER_KEYS,
+  getVoicevoxSettings,
   playTts,
   playWordAudio,
   playSentenceAudio,
   populateWordTooltip,
   WORD_TTS_RATE,
 } from './common.js';
+import { getSynthAudio } from './synth-cache.js';
 import {
   buildRoundState,
   createSession,
@@ -30,6 +33,27 @@ import { renderReading } from './lexicon-utils.js';
 const els = createDrillElements();
 const state = createDrillState(DRILL_FILTER_KEYS);
 const DRILL_AUDIO_OPTIONS = { preferSynthesis: true, fallbackToBrowserTts: true };
+
+let _prefetchController = null;
+
+async function prefetchRoundAudio(remaining) {
+  if (_prefetchController) _prefetchController.abort();
+  _prefetchController = new AbortController();
+  const { signal } = _prefetchController;
+  const available = await checkVoicevoxAvailable();
+  if (signal.aborted) return;
+  const vv = getVoicevoxSettings();
+  // Skip remaining[0] (the current word) — auto-play fetches it on demand.
+  // Prefetch sequentially so prefetch requests don't crowd out the current word's synthesis.
+  for (const word of remaining.slice(1, 10)) {
+    if (signal.aborted) return;
+    await getSynthAudio(word.word, vv, signal).catch(() => {});
+    if (word.exampleJp) {
+      if (signal.aborted) return;
+      await getSynthAudio(word.exampleJp, vv, signal).catch(() => {});
+    }
+  }
+}
 
 function playDrillWordAudio(word, rate = 1) {
   return playWordAudio(word, rate, DRILL_AUDIO_OPTIONS);
@@ -87,6 +111,7 @@ function restoreSession(session) {
 
   syncRestartFilterButtons(els, state.activeFilters);
   renderDrill(els, state);
+  prefetchRoundAudio(state.remaining);
 }
 
 async function init() {
@@ -125,6 +150,7 @@ async function init() {
 
   state.sessionId = await createSession(serializeSessionState(state));
   renderDrill(els, state);
+  prefetchRoundAudio(state.remaining);
 }
 
 async function reveal(knew) {
@@ -135,6 +161,7 @@ async function reveal(knew) {
   Object.assign(state, getNextRevealState(state, knew));
   state.sidebarFlash = { word: answered.word, knew };
   renderDrill(els, state);
+  prefetchRoundAudio(state.remaining);
 
   try {
     await postAnswer(state.sessionId, answered.id, knew, serializeSessionState(state));
@@ -167,6 +194,7 @@ function restartDrill(totalWords, roundSize, sourceWords) {
   state.sidebarFlash = null;
 
   renderDrill(els, state);
+  prefetchRoundAudio(state.remaining);
 }
 
 async function confirmRestart() {

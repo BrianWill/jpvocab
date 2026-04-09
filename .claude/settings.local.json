@@ -33,7 +33,8 @@
       "Bash(go get:*)",
       "Bash(powershell:*)",
       "Bash(wails3 generate:*)",
-      "Bash(go vet:*)"
+      "Bash(go vet:*)",
+      "Bash(go run:*)"
     ]
   },
   "outputStyle": "Explanatory"

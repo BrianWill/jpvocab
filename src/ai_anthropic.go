@@ -81,21 +81,24 @@ func autoFillWordAnthropic(word, model string) (*wordAutoFill, tokenUsage, error
 	messages = append(messages, message{Role: "user", Content: word})
 	messages = append(messages, message{Role: "assistant", Content: "{"})
 
-	text, usage, err := callAnthropic(model, autoFillSystemPrompt, messages, 512)
-	if err != nil {
-		return nil, tokenUsage{}, err
-	}
-	var e wordAutoFill
-	if err := json.Unmarshal([]byte("{"+text), &e); err != nil {
-		return nil, tokenUsage{}, fmt.Errorf("parse auto-fill JSON: %w", err)
-	}
-	return &e, usage, nil
+	return retryJSONRequest("anthropic autofill", func() (string, tokenUsage, error) {
+		text, usage, err := callAnthropic(model, autoFillSystemPrompt, messages, 512)
+		if err != nil {
+			return "", tokenUsage{}, err
+		}
+		return "{" + text, usage, nil
+	}, func(text string) (*wordAutoFill, error) {
+		var e wordAutoFill
+		if err := unmarshalJSONObjectWithSalvage(text, &e); err != nil {
+			return nil, fmt.Errorf("parse auto-fill JSON: %w", err)
+		}
+		return &e, nil
+	})
 }
 
 func autoFillWordsBatchAnthropic(words []string, model string) ([]*wordAutoFill, tokenUsage, error) {
 	// One few-shot example: a 2-word array in, a 2-element JSON array out.
-	exInput, _ := json.Marshal([]string{autoFillExamples[0].word, autoFillExamples[1].word})
-	exOutput := "[" + autoFillExamples[0].result + "," + autoFillExamples[1].result + "]"
+	exInput, exOutput := autoFillBatchFewShot()
 	input, err := json.Marshal(words)
 	if err != nil {
 		return nil, tokenUsage{}, err
@@ -110,15 +113,19 @@ func autoFillWordsBatchAnthropic(words []string, model string) ([]*wordAutoFill,
 		{Role: "user", Content: string(input)},
 		{Role: "assistant", Content: "[{"},
 	}
-	text, usage, err := callAnthropic(model, autoFillBatchSystemPrompt, messages, maxTokens)
-	if err != nil {
-		return nil, tokenUsage{}, err
-	}
-	var fills []*wordAutoFill
-	if err := json.Unmarshal([]byte("[{"+text), &fills); err != nil {
-		return nil, tokenUsage{}, fmt.Errorf("parse batch auto-fill JSON: %w", err)
-	}
-	return fills, usage, nil
+	return retryJSONRequest("anthropic batch autofill", func() (string, tokenUsage, error) {
+		text, usage, err := callAnthropic(model, autoFillBatchSystemPrompt, messages, maxTokens)
+		if err != nil {
+			return "", tokenUsage{}, err
+		}
+		return "[{" + text, usage, nil
+	}, func(text string) ([]*wordAutoFill, error) {
+		var fills []*wordAutoFill
+		if err := unmarshalJSONArrayWithSalvage(text, &fills); err != nil {
+			return nil, fmt.Errorf("parse batch auto-fill JSON: %w", err)
+		}
+		return fills, nil
+	})
 }
 
 func rerollMeaningAnthropic(word, currentMeaning, model string) ([]string, tokenUsage, error) {
@@ -126,15 +133,19 @@ func rerollMeaningAnthropic(word, currentMeaning, model string) ([]string, token
 		{Role: "user", Content: marshalUserMsg(map[string]string{"word": word, "current_meaning": currentMeaning})},
 		{Role: "assistant", Content: "["},
 	}
-	text, usage, err := callAnthropic(model, rerollMeaningSystemPrompt, messages, 256)
-	if err != nil {
-		return nil, tokenUsage{}, err
-	}
-	var result []string
-	if err := json.Unmarshal([]byte("["+text), &result); err != nil {
-		return nil, tokenUsage{}, fmt.Errorf("parse reroll-meaning JSON: %w", err)
-	}
-	return result, usage, nil
+	return retryJSONRequest("anthropic reroll meaning", func() (string, tokenUsage, error) {
+		text, usage, err := callAnthropic(model, rerollMeaningSystemPrompt, messages, 256)
+		if err != nil {
+			return "", tokenUsage{}, err
+		}
+		return "[" + text, usage, nil
+	}, func(text string) ([]string, error) {
+		var result []string
+		if err := unmarshalJSONArrayWithSalvage(text, &result); err != nil {
+			return nil, fmt.Errorf("parse reroll-meaning JSON: %w", err)
+		}
+		return result, nil
+	})
 }
 
 func rerollExamplesAnthropic(word, model string) ([]examplePair, tokenUsage, error) {
@@ -142,13 +153,17 @@ func rerollExamplesAnthropic(word, model string) ([]examplePair, tokenUsage, err
 		{Role: "user", Content: word},
 		{Role: "assistant", Content: "["},
 	}
-	text, usage, err := callAnthropic(model, rerollExamplesSystemPrompt, messages, 512)
-	if err != nil {
-		return nil, tokenUsage{}, err
-	}
-	var result []examplePair
-	if err := json.Unmarshal([]byte("["+text), &result); err != nil {
-		return nil, tokenUsage{}, fmt.Errorf("parse reroll-examples JSON: %w", err)
-	}
-	return result, usage, nil
+	return retryJSONRequest("anthropic reroll examples", func() (string, tokenUsage, error) {
+		text, usage, err := callAnthropic(model, rerollExamplesSystemPrompt, messages, 512)
+		if err != nil {
+			return "", tokenUsage{}, err
+		}
+		return "[" + text, usage, nil
+	}, func(text string) ([]examplePair, error) {
+		var result []examplePair
+		if err := unmarshalJSONArrayWithSalvage(text, &result); err != nil {
+			return nil, fmt.Errorf("parse reroll-examples JSON: %w", err)
+		}
+		return result, nil
+	})
 }

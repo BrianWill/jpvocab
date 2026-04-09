@@ -74,20 +74,19 @@ func autoFillWordOpenAI(word, model string) (*wordAutoFill, tokenUsage, error) {
 	}
 	messages = append(messages, message{Role: "user", Content: word})
 
-	text, usage, err := callOpenAI(model, messages)
-	if err != nil {
-		return nil, tokenUsage{}, err
-	}
-	var e wordAutoFill
-	if err := json.Unmarshal([]byte(text), &e); err != nil {
-		return nil, tokenUsage{}, fmt.Errorf("parse auto-fill JSON: %w", err)
-	}
-	return &e, usage, nil
+	return retryJSONRequest("openai autofill", func() (string, tokenUsage, error) {
+		return callOpenAI(model, messages)
+	}, func(text string) (*wordAutoFill, error) {
+		var e wordAutoFill
+		if err := unmarshalJSONObjectWithSalvage(text, &e); err != nil {
+			return nil, fmt.Errorf("parse auto-fill JSON: %w", err)
+		}
+		return &e, nil
+	})
 }
 
 func autoFillWordsBatchOpenAI(words []string, model string) ([]*wordAutoFill, tokenUsage, error) {
-	exInput, _ := json.Marshal([]string{autoFillExamples[0].word, autoFillExamples[1].word})
-	exOutput := "[" + autoFillExamples[0].result + "," + autoFillExamples[1].result + "]"
+	exInput, exOutput := autoFillBatchFewShot()
 	input, _ := json.Marshal(words)
 	messages := []message{
 		{Role: "system", Content: autoFillBatchSystemPrompt},
@@ -95,15 +94,15 @@ func autoFillWordsBatchOpenAI(words []string, model string) ([]*wordAutoFill, to
 		{Role: "assistant", Content: exOutput},
 		{Role: "user", Content: string(input)},
 	}
-	text, usage, err := callOpenAI(model, messages)
-	if err != nil {
-		return nil, tokenUsage{}, err
-	}
-	var fills []*wordAutoFill
-	if err := json.Unmarshal([]byte(text), &fills); err != nil {
-		return nil, tokenUsage{}, fmt.Errorf("parse batch auto-fill JSON: %w", err)
-	}
-	return fills, usage, nil
+	return retryJSONRequest("openai batch autofill", func() (string, tokenUsage, error) {
+		return callOpenAI(model, messages)
+	}, func(text string) ([]*wordAutoFill, error) {
+		var fills []*wordAutoFill
+		if err := unmarshalJSONArrayWithSalvage(text, &fills); err != nil {
+			return nil, fmt.Errorf("parse batch auto-fill JSON: %w", err)
+		}
+		return fills, nil
+	})
 }
 
 func rerollMeaningOpenAI(word, currentMeaning, model string) ([]string, tokenUsage, error) {
@@ -111,15 +110,15 @@ func rerollMeaningOpenAI(word, currentMeaning, model string) ([]string, tokenUsa
 		{Role: "system", Content: rerollMeaningSystemPrompt},
 		{Role: "user", Content: marshalUserMsg(map[string]string{"word": word, "current_meaning": currentMeaning})},
 	}
-	text, usage, err := callOpenAI(model, messages)
-	if err != nil {
-		return nil, tokenUsage{}, err
-	}
-	var result []string
-	if err := json.Unmarshal([]byte(text), &result); err != nil {
-		return nil, tokenUsage{}, fmt.Errorf("parse reroll-meaning JSON: %w", err)
-	}
-	return result, usage, nil
+	return retryJSONRequest("openai reroll meaning", func() (string, tokenUsage, error) {
+		return callOpenAI(model, messages)
+	}, func(text string) ([]string, error) {
+		var result []string
+		if err := unmarshalJSONArrayWithSalvage(text, &result); err != nil {
+			return nil, fmt.Errorf("parse reroll-meaning JSON: %w", err)
+		}
+		return result, nil
+	})
 }
 
 func rerollExamplesOpenAI(word, model string) ([]examplePair, tokenUsage, error) {
@@ -127,13 +126,13 @@ func rerollExamplesOpenAI(word, model string) ([]examplePair, tokenUsage, error)
 		{Role: "system", Content: rerollExamplesSystemPrompt},
 		{Role: "user", Content: word},
 	}
-	text, usage, err := callOpenAI(model, messages)
-	if err != nil {
-		return nil, tokenUsage{}, err
-	}
-	var result []examplePair
-	if err := json.Unmarshal([]byte(text), &result); err != nil {
-		return nil, tokenUsage{}, fmt.Errorf("parse reroll-examples JSON: %w", err)
-	}
-	return result, usage, nil
+	return retryJSONRequest("openai reroll examples", func() (string, tokenUsage, error) {
+		return callOpenAI(model, messages)
+	}, func(text string) ([]examplePair, error) {
+		var result []examplePair
+		if err := unmarshalJSONArrayWithSalvage(text, &result); err != nil {
+			return nil, fmt.Errorf("parse reroll-examples JSON: %w", err)
+		}
+		return result, nil
+	})
 }

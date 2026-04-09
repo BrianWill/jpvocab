@@ -7,6 +7,7 @@ import (
 	"os"
 	"strings"
 	"sync"
+	"time"
 )
 
 // tokenUsage holds the input/output token counts from a single AI API call.
@@ -93,6 +94,22 @@ var autoFillExamples = []autoFillExample{
 		result: `{"reading":"きれい","pitch_accent":0,"part_of_speech":"na-adjective","meaning":"beautiful; clean; pretty","example_jp":"この花はきれいですね。","example_en":"This flower is beautiful, isn't it?","kanji":[]}`,
 	},
 	{
+		word:   "話す",
+		result: `{"reading":"はなす","pitch_accent":2,"part_of_speech":"godan-verb","meaning":"to speak; to talk","example_jp":"友達と日本語で話す。","example_en":"I speak in Japanese with my friend.","kanji":[{"character":"話","reading":"はな","meanings":["talk","speech","story","conversation"]}]}`,
+	},
+	{
+		word:   "早い",
+		result: `{"reading":"はやい","pitch_accent":2,"part_of_speech":"i-adjective","meaning":"early; fast","example_jp":"今日は起きるのが早い。","example_en":"I wake up early today.","kanji":[{"character":"早","reading":"はや","meanings":["early","fast","quick"]}]}`,
+	},
+	{
+		word:   "たぶん",
+		result: `{"reading":"たぶん","pitch_accent":1,"part_of_speech":"adverb","meaning":"probably; perhaps","example_jp":"たぶん明日は雨です。","example_en":"It will probably rain tomorrow.","kanji":[]}`,
+	},
+	{
+		word:   "こんにちは",
+		result: `{"reading":"こんにちは","pitch_accent":0,"part_of_speech":"other","meaning":"hello; good afternoon","example_jp":"先生にこんにちはと言った。","example_en":"I said hello to the teacher.","kanji":[]}`,
+	},
+	{
 		// Demonstrates that kanji readings must match the word's actual pronunciation,
 		// not the kanji's most common standalone reading (日 → ニ here, not ニチ).
 		word:   "日本語",
@@ -118,6 +135,80 @@ var autoFillBatchSystemPrompt = `You are a Japanese dictionary assistant. Given 
   For words with no kanji (e.g. pure kana or katakana loanwords), use an empty array.
 The output array must contain exactly as many objects as the input array, in the same order.
 Return only a valid JSON array with no markdown, no code fences, and no extra commentary.`
+
+const aiJSONRetryCount = 3
+
+func autoFillBatchFewShot() (string, string) {
+	count := min(4, len(autoFillExamples))
+	inputWords := make([]string, 0, count)
+	outputs := make([]string, 0, count)
+	for i := 0; i < count; i++ {
+		inputWords = append(inputWords, autoFillExamples[i].word)
+		outputs = append(outputs, autoFillExamples[i].result)
+	}
+	inputJSON, _ := json.Marshal(inputWords)
+	return string(inputJSON), "[" + strings.Join(outputs, ",") + "]"
+}
+
+func extractJSONArray(text string) string {
+	start := strings.IndexByte(text, '[')
+	end := strings.LastIndexByte(text, ']')
+	if start < 0 || end < start {
+		return text
+	}
+	return text[start : end+1]
+}
+
+func extractJSONObject(text string) string {
+	start := strings.IndexByte(text, '{')
+	end := strings.LastIndexByte(text, '}')
+	if start < 0 || end < start {
+		return text
+	}
+	return text[start : end+1]
+}
+
+func unmarshalJSONArrayWithSalvage(text string, v any) error {
+	if err := json.Unmarshal([]byte(text), v); err == nil {
+		return nil
+	}
+	salvaged := extractJSONArray(text)
+	if salvaged == text {
+		return fmt.Errorf("invalid JSON array")
+	}
+	return json.Unmarshal([]byte(salvaged), v)
+}
+
+func unmarshalJSONObjectWithSalvage(text string, v any) error {
+	if err := json.Unmarshal([]byte(text), v); err == nil {
+		return nil
+	}
+	salvaged := extractJSONObject(text)
+	if salvaged == text {
+		return fmt.Errorf("invalid JSON object")
+	}
+	return json.Unmarshal([]byte(salvaged), v)
+}
+
+func retryJSONRequest[T any](label string, fn func() (string, tokenUsage, error), parse func(string) (T, error)) (T, tokenUsage, error) {
+	var zero T
+	var lastErr error
+	for attempt := 1; attempt <= aiJSONRetryCount; attempt++ {
+		text, usage, err := fn()
+		if err == nil {
+			value, parseErr := parse(text)
+			if parseErr == nil {
+				return value, usage, nil
+			}
+			err = fmt.Errorf("%s parse: %w", label, parseErr)
+		}
+		lastErr = err
+		if attempt < aiJSONRetryCount {
+			time.Sleep(time.Duration(attempt) * 250 * time.Millisecond)
+		}
+	}
+	return zero, tokenUsage{}, lastErr
+}
 
 // autoFillWordsBatch sends words to the AI in chunks of autoFillBatchSize, processing
 // chunks concurrently. The returned slice has exactly len(words) entries; entries are nil
@@ -205,42 +296,45 @@ func suggestImageSearchQuery(db *sql.DB, word, meaning, providerModel string) (s
 	provider, model := parts[0], parts[1]
 	userMsg := marshalUserMsg(map[string]string{"word": word, "meaning": meaning})
 
-	var text, jsonPrefix string
-	var usage tokenUsage
-	var err error
-	if provider == "anthropic" {
-		messages := []message{
-			{Role: "user", Content: userMsg},
-			{Role: "assistant", Content: "{"},
+	result, usage, err := retryJSONRequest("suggest image query", func() (string, tokenUsage, error) {
+		if provider == "anthropic" {
+			messages := []message{
+				{Role: "user", Content: userMsg},
+				{Role: "assistant", Content: "{"},
+			}
+			text, usage, err := callAnthropic(model, suggestImageSearchQuerySystemPrompt, messages, 64)
+			if err != nil {
+				return "", tokenUsage{}, err
+			}
+			return "{" + text, usage, nil
 		}
-		text, usage, err = callAnthropic(model, suggestImageSearchQuerySystemPrompt, messages, 64)
-		jsonPrefix = "{"
-	} else {
 		messages := []message{
 			{Role: "system", Content: suggestImageSearchQuerySystemPrompt},
 			{Role: "user", Content: userMsg},
 		}
 		switch provider {
 		case "openai":
-			text, usage, err = callOpenAI(model, messages)
+			return callOpenAI(model, messages)
 		case "google":
-			text, usage, err = callGoogle(model, "", messages)
+			return callGoogle(model, "", messages)
 		case "mistral":
-			text, usage, err = callMistral(model, messages)
-		default: // glm
-			text, usage, err = callGLM(model, messages)
+			return callMistral(model, messages)
+		default:
+			return callGLM(model, messages)
 		}
-	}
+	}, func(text string) (struct{ Query string `json:"query"` }, error) {
+		var result struct {
+			Query string `json:"query"`
+		}
+		if err := unmarshalJSONObjectWithSalvage(text, &result); err != nil {
+			return result, fmt.Errorf("parse image search query JSON: %w", err)
+		}
+		return result, nil
+	})
 	if err != nil {
 		return "", err
 	}
 	insertTokenUsage(db, provider, model, "suggest-image-query", usage.InputTokens, usage.OutputTokens)
-	var result struct {
-		Query string `json:"query"`
-	}
-	if err := json.Unmarshal([]byte(jsonPrefix+text), &result); err != nil {
-		return "", fmt.Errorf("parse image search query JSON: %w", err)
-	}
 	if result.Query == "" {
 		return "", fmt.Errorf("empty query in image search response")
 	}
@@ -256,42 +350,45 @@ func suggestImageURL(db *sql.DB, word, meaning, providerModel string) (string, e
 	provider, model := parts[0], parts[1]
 	userMsg := marshalUserMsg(map[string]string{"word": word, "meaning": meaning})
 
-	var text, jsonPrefix string
-	var usage tokenUsage
-	var err error
-	if provider == "anthropic" {
-		messages := []message{
-			{Role: "user", Content: userMsg},
-			{Role: "assistant", Content: "{"},
+	result, usage, err := retryJSONRequest("suggest image URL", func() (string, tokenUsage, error) {
+		if provider == "anthropic" {
+			messages := []message{
+				{Role: "user", Content: userMsg},
+				{Role: "assistant", Content: "{"},
+			}
+			text, usage, err := callAnthropic(model, suggestImageSystemPrompt, messages, 256)
+			if err != nil {
+				return "", tokenUsage{}, err
+			}
+			return "{" + text, usage, nil
 		}
-		text, usage, err = callAnthropic(model, suggestImageSystemPrompt, messages, 256)
-		jsonPrefix = "{"
-	} else {
 		messages := []message{
 			{Role: "system", Content: suggestImageSystemPrompt},
 			{Role: "user", Content: userMsg},
 		}
 		switch provider {
 		case "openai":
-			text, usage, err = callOpenAI(model, messages)
+			return callOpenAI(model, messages)
 		case "google":
-			text, usage, err = callGoogle(model, "", messages)
+			return callGoogle(model, "", messages)
 		case "mistral":
-			text, usage, err = callMistral(model, messages)
-		default: // glm
-			text, usage, err = callGLM(model, messages)
+			return callMistral(model, messages)
+		default:
+			return callGLM(model, messages)
 		}
-	}
+	}, func(text string) (struct{ URL string `json:"url"` }, error) {
+		var result struct {
+			URL string `json:"url"`
+		}
+		if err := unmarshalJSONObjectWithSalvage(text, &result); err != nil {
+			return result, fmt.Errorf("parse image URL JSON: %w", err)
+		}
+		return result, nil
+	})
 	if err != nil {
 		return "", err
 	}
 	insertTokenUsage(db, provider, model, "suggest-image", usage.InputTokens, usage.OutputTokens)
-	var result struct {
-		URL string `json:"url"`
-	}
-	if err := json.Unmarshal([]byte(jsonPrefix+text), &result); err != nil {
-		return "", fmt.Errorf("parse image URL JSON: %w", err)
-	}
 	if result.URL == "" {
 		return "", fmt.Errorf("empty URL in image suggestion response")
 	}
@@ -447,42 +544,44 @@ Return only valid JSON with no markdown, no code fences, and no extra commentary
 	}
 
 	const maxTokens = 8192
-	var text, jsonPrefix string
-	var usage tokenUsage
-
-	if provider == "anthropic" {
-		msgs := []message{
-			{Role: "user", Content: string(userMsg)},
-			{Role: "assistant", Content: "{"},
+	result, usage, err := retryJSONRequest("translate story", func() (string, tokenUsage, error) {
+		if provider == "anthropic" {
+			msgs := []message{
+				{Role: "user", Content: string(userMsg)},
+				{Role: "assistant", Content: "{"},
+			}
+			text, usage, err := callAnthropic(model, prompt, msgs, maxTokens)
+			if err != nil {
+				return "", tokenUsage{}, err
+			}
+			return "{" + text, usage, nil
 		}
-		text, usage, err = callAnthropic(model, prompt, msgs, maxTokens)
-		jsonPrefix = "{"
-	} else {
 		msgs := []message{
 			{Role: "system", Content: prompt},
 			{Role: "user", Content: string(userMsg)},
 		}
 		switch provider {
 		case "openai":
-			text, usage, err = callOpenAI(model, msgs)
+			return callOpenAI(model, msgs)
 		case "google":
-			text, usage, err = callGoogle(model, "", msgs)
+			return callGoogle(model, "", msgs)
 		case "mistral":
-			text, usage, err = callMistral(model, msgs)
-		default: // glm
-			text, usage, err = callGLM(model, msgs)
+			return callMistral(model, msgs)
+		default:
+			return callGLM(model, msgs)
 		}
-	}
+	}, func(text string) (*storyTranslationResult, error) {
+		var result storyTranslationResult
+		if err := unmarshalJSONObjectWithSalvage(text, &result); err != nil {
+			return nil, fmt.Errorf("parse translation JSON: %w", err)
+		}
+		return &result, nil
+	})
 	if err != nil {
 		return nil, tokenUsage{}, err
 	}
 	insertTokenUsage(db, provider, model, "translate-story", usage.InputTokens, usage.OutputTokens)
-
-	var result storyTranslationResult
-	if err := json.Unmarshal([]byte(jsonPrefix+text), &result); err != nil {
-		return nil, tokenUsage{}, fmt.Errorf("parse translation JSON: %w", err)
-	}
-	return &result, usage, nil
+	return result, usage, nil
 }
 
 // tutorChat sends the conversation history to the AI and returns its reply.

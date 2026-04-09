@@ -46,7 +46,7 @@ func serverInit(db *sql.DB) {
 		}
 	}
 
-	r.Get("/", appPage("activity.html", "activity"))
+	r.Get("/", appPage("welcome.html", "welcome"))
 	r.Get("/welcome", appPage("welcome.html", "welcome"))
 	r.Get("/activity", appPage("activity.html", "activity"))
 	r.Get("/lexicon", appPage("lexicon.html", "lexicon"))

@@ -15,6 +15,10 @@ This file is random notes of possible features and bug fixes.
         - separate numbers for sentence and word translation
         - determine size of text that can be translated in less than 10 minutes
 
+- stories:
+    support English stories that get translated into Japanese (sentence by sentence)
+        in this setup, going for decent natural translations by chunk rather than by sentence?
+            if so, need to also translate back to English sentence-by-sentence to get gloss of each Japanese sentence
 
 - drill
     - the a and d hotkey indicators only revealed on hover
@@ -32,16 +36,9 @@ This file is random notes of possible features and bug fixes.
 - tutor:
     - JLPT level should be configurable with a separate pulldown
         - use {{level}} in prompt text to substitute JLPT level?
-    - user can create custom prompts
-        - 'Customize' button left of the prompt pulldown, brings up modal
-            - pulldown in modal pastes text of existing prompt into the textarea
-        - first step: prompts should be stored in database
-            - put prompts in the seed db file
-            - field that marks the prompt as undeletable
-            - field that determine whether user is expected to speak English, Jp, or mix of both.
-        - start from template of the stock prompts
-            - stock prompts cannot be edited or erased
-    - words are added to lexicon (as tracked=0)
+    - hotkey to repeat audio of last prompt
+    - button on each AI message to play audio
+    - words from every AI message are added to lexicon (as tracked=0)
     - maybe your own prompts are spoken by voicevox? or just use TTS for own?
         - use a different voice
         - play the AI's correction?

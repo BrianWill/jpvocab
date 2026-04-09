@@ -76,12 +76,10 @@ Thumbs.db
 # ----------------------------
 # Misc
 # ----------------------------
-coverage/
 src/jpvocab.db
 src/tmp/
-src/jpvocab-backend
 
-prototype/tmp/
 *.stackdump
 
 src/static/images/words/
+src/jpvocab

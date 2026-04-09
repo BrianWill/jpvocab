@@ -1,4 +1,4 @@
-module jpvocab-backend
+module jpvocab
 
 go 1.25.0
 

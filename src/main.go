@@ -26,7 +26,6 @@ func main() {
 	defer db.Close()
 
 	log.Printf("jpvocab backend running on http://localhost:%d", port)
-	log.Printf("Admin UI: http://localhost:%d/admin", port)
 
 	if *serverOnly {
 		// Blocking: run the web server on the main goroutine with no GUI.

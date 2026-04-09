@@ -734,21 +734,10 @@ func apiGenerateWordAudio(db *sql.DB) http.HandlerFunc {
 			return
 		}
 
-		hasSentence := false
 		if exampleJP != "" {
-			if err := synthesizeVoicevoxToFile(r.Context(), exampleJP, p, sentencePath); err == nil {
-				hasSentence = true
-			}
+			_ = synthesizeVoicevoxToFile(r.Context(), exampleJP, p, sentencePath)
 		}
-
-		if err := updateWordSentenceAudioFlag(db, id, hasSentence); err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
-			return
-		}
-
-		writeJSON(w, map[string]any{
-			"hasSentenceAudio": hasSentence,
-		})
+		w.WriteHeader(http.StatusNoContent)
 	}
 }
 

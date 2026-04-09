@@ -1428,38 +1428,6 @@ func TestUpdateWordImagePath_RoundTrip(t *testing.T) {
 	}
 }
 
-// --- updateWordSentenceAudioFlag / getWordAudioInfo ---
-
-func TestUpdateWordSentenceAudioFlag_SetsFlag(t *testing.T) {
-	db := testDB(t)
-	id := insertTestWord(t, db, "雨", 1)
-
-	if err := updateWordSentenceAudioFlag(db, id, true); err != nil {
-		t.Fatal(err)
-	}
-	var hasSentence int
-	db.QueryRow(`SELECT has_sentence_audio FROM words WHERE id = ?`, id).
-		Scan(&hasSentence)
-	if hasSentence != 1 {
-		t.Errorf("has_sentence_audio: got %d, want 1", hasSentence)
-	}
-}
-
-func TestUpdateWordSentenceAudioFlag_ClearsFlag(t *testing.T) {
-	db := testDB(t)
-	id := insertTestWord(t, db, "風", 1)
-	updateWordSentenceAudioFlag(db, id, true)
-	if err := updateWordSentenceAudioFlag(db, id, false); err != nil {
-		t.Fatal(err)
-	}
-	var hasSentence int
-	db.QueryRow(`SELECT has_sentence_audio FROM words WHERE id = ?`, id).
-		Scan(&hasSentence)
-	if hasSentence != 0 {
-		t.Errorf("flag should be 0 after clearing, got sentence=%d", hasSentence)
-	}
-}
-
 func TestGetWordAudioInfo_NotFound(t *testing.T) {
 	db := testDB(t)
 	word, exJp, err := getWordAudioInfo(db, 9999)

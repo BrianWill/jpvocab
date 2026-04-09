@@ -52,7 +52,6 @@ type wordJSON struct {
 	LastDrilled      *string          `json:"lastDrilled"`
 	ImagePath        *string          `json:"imagePath"`
 	KanjiData        []kanjiDataEntry `json:"kanjiData"`
-	HasSentenceAudio bool             `json:"hasSentenceAudio"`
 	Tracked          int              `json:"tracked"`
 }
 
@@ -269,7 +268,7 @@ func listWords(db *sql.DB) ([]wordJSON, error) {
 		SELECT id, base_word, COALESCE(reading,''), pitch_accent, COALESCE(part_of_speech,''), COALESCE(meaning,''),
 		       COALESCE(example_jp,''), COALESCE(example_en,''),
 		       drill_count, incorrect_count, drill_target, created_at, last_drilled_at,
-		       image_path, kanji_data, has_sentence_audio, tracked
+		       image_path, kanji_data, tracked
 		FROM words
 		WHERE tracked = 1
 		ORDER BY created_at DESC
@@ -283,15 +282,13 @@ func listWords(db *sql.DB) ([]wordJSON, error) {
 	for rows.Next() {
 		var w wordJSON
 		var kanjiDataStr *string
-		var hasSentenceAudio int
 		if err := rows.Scan(
 			&w.ID, &w.Word, &w.Reading, &w.PitchAccent, &w.Type, &w.Meaning, &w.ExampleJp, &w.ExampleEn,
 			&w.Correct, &w.Incorrect, &w.Target, &w.CreatedAt, &w.LastDrilled,
-			&w.ImagePath, &kanjiDataStr, &hasSentenceAudio, &w.Tracked,
+			&w.ImagePath, &kanjiDataStr, &w.Tracked,
 		); err != nil {
 			return nil, err
 		}
-		w.HasSentenceAudio = hasSentenceAudio == 1
 		if kanjiDataStr != nil {
 			json.Unmarshal([]byte(*kanjiDataStr), &w.KanjiData)
 		}
@@ -334,16 +331,6 @@ func deleteWordsByName(db *sql.DB, words []string) error {
 		args[i] = w
 	}
 	_, err := db.Exec("DELETE FROM words WHERE base_word IN ("+placeholders+")", args...)
-	return err
-}
-
-// updateWordSentenceAudioFlag sets the has_sentence_audio flag for a word by ID.
-func updateWordSentenceAudioFlag(db *sql.DB, id int64, hasSentence bool) error {
-	s := 0
-	if hasSentence {
-		s = 1
-	}
-	_, err := db.Exec("UPDATE words SET has_sentence_audio=? WHERE id=?", s, id)
 	return err
 }
 

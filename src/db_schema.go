@@ -43,7 +43,6 @@ func migrate(db *sql.DB) {
 			meaning           TEXT,
 			example_jp        TEXT,
 			example_en        TEXT,
-			has_sentence_audio INTEGER NOT NULL DEFAULT 0,
 			drill_count       INTEGER  NOT NULL DEFAULT 0,
 			drill_target      INTEGER  NOT NULL DEFAULT 1,
 			incorrect_count   INTEGER  NOT NULL DEFAULT 0,

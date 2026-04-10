@@ -2,7 +2,8 @@
 
 This file is random notes of possible features and bug fixes.
 
-- add more common Japanese words to the word insertion blacklist
+- add more common Japanese words to the word insertion blacklist?
+    already filtering based on POS, but some common things sneak through, like　です
 
 - mic STT : why only last a few seconds? what causes it to stop?
     - should user have to hit button to stop STT? also stop STT when user submits the message?
@@ -13,8 +14,6 @@ This file is random notes of possible features and bug fixes.
         ideally shouldn't move around
     - modal to edit current word
         - sidebar, edit button appears when hovered
-
-- store kanji meanings in own table so that they don't get inconsistent meanings between words
 
 - stories:
     - load chunks progressively as you scroll
@@ -42,10 +41,26 @@ This file is random notes of possible features and bug fixes.
     - games:
         - describe what is in the picture
         - modes where the user only expected to answer in English
+    - translation exercise:
+        - use words from users lexicon     
+        - present sentence in Japanese to translate to English
+        - present English trnaslation to translate to Japanese
     - how to integrate lexicon? 
         generate topics / questions from a random set of recently drilled words? or from active words?
+        - instruct bot to use words that are in user's active lexicon
+        - these encounters could be tallied as correct drills? 
 
     - option to rewind chat? undo last prompt and response?
+
+- grammatical analysis of story sentences
+    - click sentence to open analysis modal 
+        - what is hotkey? how to distinguish from click-to-play? ctrl-click? hover popup next to sentence?
+        - uses AI to give breakdown of phrases / clauses
+        - has chat window so user can ask about points of grammar (continues context of the sentence breakdown)
+        - analysis and chat session of each sentence is preserved in db
+            - maybe option to clear the conversation?
+    - sentence breakdown
+    - isolate, classify, and explain phrases
     
 - typing trainer
     - this could be just another chat bot
@@ -56,7 +71,6 @@ This file is random notes of possible features and bug fixes.
     - option to crop image
     - copy from clipboard support
     
-
 - wails
     - double scrollbar appears on start of wails
     - on mac, cmd+-/+ does weird zoom behavior
@@ -68,8 +82,11 @@ This file is random notes of possible features and bug fixes.
     - expand existing lists
 
 - lexicon
-    - should we worry about load time once the lexicon has thousands of words?
-        - also what about sort times?
+    - slow to render with thousands of words
+        - slow to scroll? slow toload? slow to sort? 
+        - slow on client or backend?
+        - add pagination?
+        - add search for lexicon list?
 
 - story list
     - add a date last viewed to optionally sort by?
@@ -84,24 +101,14 @@ This file is random notes of possible features and bug fixes.
         - maybe just auto add high-frequency words to noted words, 
             e.g. add all words in story tha occur more than N times
             - filter out proper names, particles, conjunctions, etc.
-    - option to filter out presenting translations/info of particles and other very common words
-        
 
 - increase the base size of fonts i.e. effective base zoom level
 
-- write the README
-    - need setup instructions
-        - add these instructions or link them on the welcome page
+- README
     - explain drilling theory / workflow
-
-
         
 - proper error messages for failed API requests
     - what if user runs out of tokens? or other API failures
-
-
-
-
 - experiment with openAI audio generation. Might be better quality than voicevox
 
 - play with visual styles
@@ -112,27 +119,6 @@ This file is random notes of possible features and bug fixes.
     - need mascot character(s)?
         - marble animals? 
     - shadcn
-
-
-- grammatical analysis of story sentences
-    - click sentence to open analysis modal 
-        - what is hotkey? how to distinguish from click-to-play? ctrl-click? hover popup next to sentence?
-        - uses AI to give breakdown of phrases / clauses
-        - has chat window so user can ask about points of grammar (continues context of the sentence breakdown)
-        - analysis and chat session of each sentence is preserved in db
-            - maybe option to clear the conversation?
-    - sentence breakdown
-    - isolate, classify, and explain phrases
-
-- translation exercise:
-    - use words from users lexicon     
-    - present sentence in Japanese to translate to English
-    - present English trnaslation to translate to Japanese
-
-- speaking tutor chatbot
-    - user types, chatbot responds with generated audio (voicevox?)
-    - instruct bot to use words that are in user's active lexicon
-        - these encounters could be tallied as correct drills? 
 
 
 - make a mobile app (sync through turso)

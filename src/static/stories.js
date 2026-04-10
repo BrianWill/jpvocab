@@ -58,7 +58,7 @@ function sentenceCountLabel(n) {
 }
 
 function wordCountLabel(n) {
-  return n === 1 ? '1 lexicon word' : `${n} lexicon words`;
+  return n === 1 ? '1 unique lexicon word' : `${n} unique lexicon words`;
 }
 
 function esc(value) {

@@ -12,20 +12,14 @@ This file is random notes of possible features and bug fixes.
     - modal to edit current word
         - sidebar, edit button appears when hovered
 
+
 - store kanji meanings in own table so that they don't get inconsistent meanings between words
 
 - stories:
-    - display story stats for whole story: sentence count, total word count, unique word count
-        - compute total word counta and unique word count when story is added
     - load chunks progressively as you scroll
     - support English stories that get translated into Japanese (sentence by sentence)
         in this setup, going for decent natural translations by chunk rather than by sentence?
             if so, need to also translate back to English sentence-by-sentence to get gloss of each Japanese sentence
-    - long story support
-        - broken into chunks automatically
-            - chunks have marker indicating if they have been translated
-            - find chunk size that is reasonably fast to translate (under 10 seconds?)
-        - store sentences and unique words per chunk rather than for full story
     - story unique word translation should include pitch info and separated by kanji (like on lexicon or in drill)
     - tooltip should display reading info (also kanji info?)
         - make word info display match the word info in drill page? (even include image?)
@@ -88,7 +82,6 @@ This file is random notes of possible features and bug fixes.
     - embed youtube player?
 
 - story page
-    - text when zoomed in hugs the collapsed noted words tab too much
     - scan text to auto suggest noted words from the frequently occuring unique words in the story
         - maybe just auto add high-frequency words to noted words, 
             e.g. add all words in story tha occur more than N times

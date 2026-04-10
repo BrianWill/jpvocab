@@ -405,9 +405,14 @@ type seedStorySentence struct {
 }
 
 type seedStory struct {
-	Title     string              `json:"title"`
-	Sentences []seedStorySentence `json:"sentences"`
+	Title       string              `json:"title"`
+	Sentences   []seedStorySentence `json:"sentences"`
+	ContentFile string              `json:"content_file"` // path to plain .txt file relative to seed.json
+	Large       bool                `json:"large"`        // if true, skipped when skipLargeSeedStories is set
 }
+
+// skipLargeSeedStories is set by main() via --skip-large-seed-stories or SKIP_LARGE_SEED_STORIES=true.
+var skipLargeSeedStories bool
 
 // seedTutorPrompt is one entry in the "tutor_prompts" array in seed.json.
 type seedTutorPrompt struct {
@@ -582,21 +587,39 @@ func seedDB(db *sql.DB) {
 	}
 
 	for _, story := range seed.Stories {
+		if story.Large && skipLargeSeedStories {
+			log.Printf("seed: skipping large story %q (--skip-large-seed-stories)", story.Title)
+			continue
+		}
 		if story.Title == "" {
 			tx.Rollback()
 			log.Fatal("seed: story title is required")
 		}
-		sentences := make([]storySentenceInput, 0, len(story.Sentences))
-		for _, sentence := range story.Sentences {
-			if sentence.JapaneseText == "" {
+		var sentences []storySentenceInput
+		if story.ContentFile != "" {
+			raw, err := os.ReadFile(story.ContentFile)
+			if err != nil {
 				tx.Rollback()
-				log.Fatal("seed: story sentence japanese_text is required")
+				log.Fatal("seed: read content file:", err)
 			}
-			sentences = append(sentences, storySentenceInput{
-				Words:            buildStorySentenceWords(sentence.JapaneseText),
-				EnglishText:      sentence.EnglishText,
-				IsParagraphStart: sentence.IsParagraphStart,
-			})
+			sentences = buildStorySentencesFromText(string(raw))
+			if len(sentences) == 0 {
+				tx.Rollback()
+				log.Fatal("seed: content file produced no sentences:", story.ContentFile)
+			}
+		} else {
+			sentences = make([]storySentenceInput, 0, len(story.Sentences))
+			for _, sentence := range story.Sentences {
+				if sentence.JapaneseText == "" {
+					tx.Rollback()
+					log.Fatal("seed: story sentence japanese_text is required")
+				}
+				sentences = append(sentences, storySentenceInput{
+					Words:            buildStorySentenceWords(sentence.JapaneseText),
+					EnglishText:      sentence.EnglishText,
+					IsParagraphStart: sentence.IsParagraphStart,
+				})
+			}
 		}
 		if _, err := insertStoryTx(tx, story.Title, sentences); err != nil {
 			tx.Rollback()

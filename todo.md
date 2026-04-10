@@ -2,10 +2,6 @@
 
 This file is random notes of possible features and bug fixes.
 
-- the tutor vertical scroll should be on left edge of the viewport (the scroll content may need larger margins) 
-
-- fix tooltip positioning across all pages
-
 - add more common Japanese words to the word insertion blacklist
 
 - activity page
@@ -13,6 +9,8 @@ This file is random notes of possible features and bug fixes.
         add story
         read story?
     - stats on number of tracked words in lexicon vs untracked
+
+- integrate a free dictionary for word info
 
 - mic STT : why only last a few seconds? what causes it to stop?
     - should user have to hit button to stop STT? also stop STT when user submits the message?

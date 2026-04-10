@@ -34,7 +34,22 @@
       "Bash(powershell:*)",
       "Bash(wails3 generate:*)",
       "Bash(go vet:*)",
-      "Bash(go run:*)"
+      "Bash(go run:*)",
+      "Bash(python3 -c \"import json, sys; data = json.load\\(sys.stdin\\); print\\(f\\\\\"Stories: {len\\(data.get\\('stories', []\\)\\)}\\\\\"\\)\")",
+      "WebFetch(domain:www.aozora.gr.jp)",
+      "WebFetch(domain:raw.githubusercontent.com)",
+      "WebFetch(domain:github.com)",
+      "WebFetch(domain:aozorahack.org)",
+      "WebFetch(domain:api.github.com)",
+      "Bash(curl -s \"https://raw.githubusercontent.com/levelevel/AozoraTxt/master/person_utf8/000148/752_ruby_utf8_bocchan.txt\" -o /tmp/botchan_raw.txt)",
+      "Read(//tmp/**)",
+      "Bash(python3.exe --version)",
+      "Bash(py --version)",
+      "Bash(where python:*)",
+      "Bash(where py:*)",
+      "Bash(curl -s \"https://raw.githubusercontent.com/levelevel/AozoraTxt/master/person_utf8/000148/752_ruby_utf8_bocchan.txt\" -o \"C:/Users/Brian/AppData/Local/Temp/botchan_raw.txt\")",
+      "Read(//c/Users/Brian/AppData/Local/Temp/**)",
+      "Bash(python:*)"
     ]
   },
   "outputStyle": "Explanatory"

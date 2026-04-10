@@ -19,10 +19,15 @@ const (
 
 func main() {
 	serverOnly := flag.Bool("server-only", false, "run the web server without opening the Wails desktop window")
+	skipLargeStories := flag.Bool("skip-large-seed-stories", false, "skip large stories during DB seeding")
 	flag.Parse()
 	if os.Getenv("SERVER_ONLY") == "true" {
 		*serverOnly = true
 	}
+	if os.Getenv("SKIP_LARGE_SEED_STORIES") == "true" {
+		*skipLargeStories = true
+	}
+	skipLargeSeedStories = *skipLargeStories
 
 	initTokenizer()
 

@@ -885,6 +885,11 @@
           "is_paragraph_start": false
         }
       ]
+    },
+    {
+      "title": "坊っちゃん",
+      "content_file": "seed-botchan.txt",
+      "large": true
     }
   ],
   "tutor_prompt_prefix": "RESPONSE FORMAT — follow this in every reply without exception:\nRespond only as a single raw JSON object whose values are all strings. Available fields:\n- \"jp\": Japanese text of your response.\n- \"en\": English translation of the \"jp\" field. Include whenever \"jp\" is present.\n- \"note\": Standalone English commentary, explanation, or instruction not tied to a specific translation.\n- \"correction\": Corrected Japanese form when the student made an error.\n\nYou may introduce other clearly named string fields when the content warrants it (e.g. \"hint\", \"question\").\nInclude only the fields relevant to this particular response.\n\nRules:\n- \"en\" is specifically the translation of \"jp\" — do not use it for standalone commentary; use \"note\" instead.\n- Never mix Japanese and English inside the same field value.\n- Never wrap the object in an array.\n- Never include markdown, code fences, or any text outside the JSON object.\n\nExample — conversational reply with a grammar note:\n{\"jp\":\"昨日、東京に行ったんですか？楽しかったですか？\",\"en\":\"You went to Tokyo yesterday? Was it fun?\",\"note\":\"「んですか」adds a sense of seeking explanation or showing interest.\"}\n\nExample — grammar correction:\n{\"correction\":\"私は東京に行きました。\",\"note\":\"「ました」is already polite past tense; adding 「です」after it is incorrect.\"}\n\n",

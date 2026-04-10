@@ -14,8 +14,6 @@ This file is random notes of possible features and bug fixes.
     - modal to edit current word
         - sidebar, edit button appears when hovered
 
-
-
 - store kanji meanings in own table so that they don't get inconsistent meanings between words
 
 - stories:
@@ -23,10 +21,7 @@ This file is random notes of possible features and bug fixes.
     - support English stories that get translated into Japanese (sentence by sentence)
         in this setup, going for decent natural translations by chunk rather than by sentence?
             if so, need to also translate back to English sentence-by-sentence to get gloss of each Japanese sentence
-    - story unique word translation should include pitch info and separated by kanji (like on lexicon or in drill)
-    - tooltip should display kanji info?
-        - maybe just make word info display match the word info in drill page? (even include image?)
-
+    
 - tutor:
     - JLPT level should be configurable with a separate pulldown
         - use {{level}} in prompt text to substitute JLPT level?

@@ -301,6 +301,7 @@ async function initWordListSidebar() {
       const label = document.createElement('span');
       label.className = 'add-modal-sidebar-name';
       label.textContent = list.name;
+      label.addEventListener('click', () => btn.click());
 
       item.appendChild(btn);
       item.appendChild(label);

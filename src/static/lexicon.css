@@ -180,6 +180,7 @@
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  cursor: pointer;
 }
 .add-modal-main { flex: 1; padding: 1.25rem; }
 .add-modal-status {

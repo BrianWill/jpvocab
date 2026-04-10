@@ -2,6 +2,10 @@
 
 This file is random notes of possible features and bug fixes.
 
+- the tutor vertical scroll should be on left edge of the viewport (the scroll content may need larger margins) 
+
+- fix tooltip positioning across all pages
+
 - add more common Japanese words to the word insertion blacklist
 
 - activity page
@@ -27,8 +31,6 @@ This file is random notes of possible features and bug fixes.
             if so, need to also translate back to English sentence-by-sentence to get gloss of each Japanese sentence
     
 - tutor:
-    - JLPT level should be configurable with a separate pulldown
-        - use {{level}} in prompt text to substitute JLPT level?
     - hotkey to repeat audio of last prompt
     - button on each AI message to play audio
     - words from every AI message are added to lexicon (as tracked=0)

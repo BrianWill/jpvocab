@@ -15,6 +15,16 @@
   min-width: 18rem;
 }
 
+#btn-debug-toggle {
+  padding-bottom: 0.4rem;
+}
+
+#btn-new-chat {
+  padding-top: 0.2rem;
+  padding-bottom: 0.4rem;
+}
+
+
 .tutor-select {
   background: #11111b;
   border: 1px solid #313244;
@@ -34,10 +44,8 @@
   display: flex;
   flex-direction: column;
   min-height: 0;
-  max-width: 860px;
   width: 100%;
-  margin: 0 auto;
-  padding: 1.25rem 1.5rem 0;
+  padding: 1.25rem 0 0;
 }
 
 /* ── Message list ────────────────────────────────────────────────────────────*/
@@ -48,6 +56,8 @@
   flex-direction: column;
   gap: 0.85rem;
   padding-bottom: 0.75rem;
+  padding-left: max(1.5rem, calc((100% - 860px) / 2));
+  padding-right: max(1.5rem, calc((100% - 860px) / 2));
 }
 
 .tutor-message {
@@ -82,12 +92,10 @@
 /* Japanese segment with hidden English tooltip */
 .tutor-seg--jp {
   cursor: help;
-  border-bottom: 1px dotted #45475a;
   display: inline-block;
 }
 .tutor-seg--jp:hover {
   color: #b4befe;
-  border-bottom-color: #89b4fa;
 }
 
 /* English-only segment: direct translation when jp is absent */
@@ -101,6 +109,12 @@
   color: #585b70;
   font-size: 0.78em;
   font-style: italic;
+}
+
+/* Border separator only when a jp segment exists somewhere above the note */
+.tutor-seg--jp ~ .tutor-seg--note {
+  border-top: 1px solid #313244;
+  padding-top: 0.4rem;
 }
 
 /* Generic extra-field segment */
@@ -139,6 +153,15 @@
   border: 1px solid #313244;
   color: #cdd6f4;
   border-bottom-left-radius: 4px;
+}
+
+.tutor-bubble--playing {
+  animation: tutor-playing-pulse 1.8s ease-in-out infinite;
+}
+
+@keyframes tutor-playing-pulse {
+  0%, 100% { border-color: #313244; box-shadow: none; }
+  50%       { border-color: #89b4fa; box-shadow: 0 0 6px rgba(137,180,250,0.25); }
 }
 
 /* ── Per-message play button ─────────────────────────────────────────────────*/
@@ -187,10 +210,23 @@
 .tutor-input-row {
   display: flex;
   gap: 0.5rem;
-  padding: 0.65rem 0 1rem;
-  border-top: 1px solid #313244;
+  padding: 0.65rem 1.5rem 1rem;
   align-items: flex-end;
   flex-shrink: 0;
+  max-width: 860px;
+  width: 100%;
+  margin: 0 auto;
+  position: relative;
+}
+
+.tutor-input-row::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 100vw;
+  border-top: 1px solid #313244;
 }
 
 .tutor-input {

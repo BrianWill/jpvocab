@@ -1,12 +1,35 @@
 import { PROVIDER_MODELS, playJapaneseText, WORD_TTS_RATE, checkVoicevoxAvailable, stopCurrentPlayback } from './common.js';
 
-const stopAudio = stopCurrentPlayback;
-
 // ── VoiceVox / TTS playback ────────────────────────────────────────────────
 
-// Plays Japanese text via VoiceVox if available, otherwise falls back to Web Speech TTS.
-async function playJp(text) {
-  await playJapaneseText(text, WORD_TTS_RATE, { preferSynthesis: true, fallbackToBrowserTts: true });
+function clearPlayingBubble() {
+  if (state.playingBubble) {
+    state.playingBubble.classList.remove('tutor-bubble--playing');
+    state.playingBubble = null;
+  }
+  if (state.playingTimer) {
+    clearTimeout(state.playingTimer);
+    state.playingTimer = null;
+  }
+}
+
+function stopAudio() {
+  clearPlayingBubble();
+  stopCurrentPlayback();
+}
+
+// Plays Japanese text, optionally pulsing `bubble` while audio is playing.
+// onEnd fires when the audio finishes naturally; a 30-second safety timeout
+// handles any edge case where the ended event doesn't fire.
+async function playJp(text, bubble = null) {
+  clearPlayingBubble();
+  if (bubble) {
+    state.playingBubble = bubble;
+    bubble.classList.add('tutor-bubble--playing');
+    state.playingTimer = setTimeout(clearPlayingBubble, 30000);
+  }
+  const onEnd = bubble ? () => { if (state.playingBubble === bubble) clearPlayingBubble(); } : null;
+  await playJapaneseText(text, WORD_TTS_RATE, { preferSynthesis: true, fallbackToBrowserTts: true, onEnd });
 }
 
 // Topics suitable for N5–N3 learners. Each entry has a Japanese topic phrase and
@@ -50,6 +73,8 @@ const state = {
   waitingForStart:  false,  // true after startNewChat; cleared once the bot sends its first real message
   pendingGreeting:  null,   // greeting string shown while waitingForStart, never sent to AI
   editingPromptId:  null,   // id of the prompt being edited; null when creating a new one
+  playingBubble:    null,   // bubble element currently animating during playback
+  playingTimer:     null,   // safety timeout id for clearing playingBubble
 };
 
 // ── Provider / model select ────────────────────────────────────────────────
@@ -167,7 +192,7 @@ function responseToHTML(resp) {
 
 // ── Normal chat rendering ──────────────────────────────────────────────────
 
-function appendMessage(role, content) {
+function appendMessage(role, content, { autoPlay = true } = {}) {
   const row = document.createElement('div');
   row.className = 'tutor-message tutor-message--' + role;
   const bubble = document.createElement('div');
@@ -179,10 +204,11 @@ function appendMessage(role, content) {
       const btn = document.createElement('button');
       btn.className = 'tutor-play-btn';
       btn.setAttribute('aria-label', 'Play Japanese');
+      btn.dataset.tooltip = 'Play Japanese (Alt+P replays last)';
       btn.textContent = '▶';
-      btn.addEventListener('click', () => playJp(resp.jp));
+      btn.addEventListener('click', () => playJp(resp.jp, bubble));
       row.appendChild(btn);
-      playJp(resp.jp);
+      if (autoPlay) playJp(resp.jp); // no bubble, so no pulse animation
     }
     if (resp.correction) {
       // Fade the preceding user message
@@ -278,7 +304,7 @@ async function renderAllMessages() {
     appendDebugBlock('system', state.systemPrompt);
     for (const msg of state.history) appendDebugBlock(msg.role, msg.content);
   } else {
-    for (const msg of state.history) appendMessage(msg.role, msg.content);
+    for (const msg of state.history) appendMessage(msg.role, msg.content, { autoPlay: false });
   }
 }
 
@@ -705,6 +731,20 @@ async function init() {
   });
 
   els.input.addEventListener('input', () => autoResize(els.input));
+
+  // Alt+P: replay the last assistant message's Japanese audio from anywhere on the page.
+  document.addEventListener('keydown', e => {
+    if (e.altKey && e.key === 'p') {
+      e.preventDefault();
+      const last = [...state.history].reverse().find(m => m.role === 'assistant');
+      if (!last) return;
+      const resp = parseResponse(last.content);
+      if (!resp.jp) return;
+      const lastRow = [...els.messages.querySelectorAll('.tutor-message--assistant')].pop();
+      const bubble = lastRow?.querySelector('.tutor-bubble') || null;
+      playJp(resp.jp, bubble);
+    }
+  });
 
   initMic();
   els.input.focus();

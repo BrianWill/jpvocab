@@ -44,7 +44,6 @@ export function createDrillState(filterKeys) {
     currentWord: null,
     doneCount: 0,
     drillStartedAt: Date.now(),
-    isSubmittingAnswer: false,
     lastAnswered: null,
     lastAutoPlayedId: null,
     pool: [],

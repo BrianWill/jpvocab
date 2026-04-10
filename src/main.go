@@ -4,6 +4,7 @@ import (
 	"flag"
 	"fmt"
 	"log"
+	"os"
 	"time"
 
 	"github.com/wailsapp/wails/v3/pkg/application"
@@ -19,6 +20,9 @@ const (
 func main() {
 	serverOnly := flag.Bool("server-only", false, "run the web server without opening the Wails desktop window")
 	flag.Parse()
+	if os.Getenv("SERVER_ONLY") == "true" {
+		*serverOnly = true
+	}
 
 	initTokenizer()
 

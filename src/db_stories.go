@@ -20,15 +20,17 @@ type storyWordInput struct {
 }
 
 type storyWordJSON struct {
-	DisplayWord      string `json:"displayWord"`
-	BaseWord         string `json:"baseWord"`
-	English          string `json:"english,omitempty"`     // populated from words.meaning at query time; not stored per-token
-	Reading          string `json:"reading,omitempty"`     // populated from words.reading at query time; not stored per-token
-	Tracked          bool   `json:"tracked,omitempty"`     // true if the base word is currently tracked (explicitly added by user)
-	WordID           int64  `json:"wordId,omitempty"`      // DB id of the lexicon entry (only set when Tracked)
-	DrillCount       int    `json:"drillCount,omitempty"`  // correct drill answers so far
-	DrillTarget      int    `json:"drillTarget,omitempty"` // target correct answers to retire the word
-	AudioTimestampMs *int64 `json:"audioTimestampMs"`
+	DisplayWord      string           `json:"displayWord"`
+	BaseWord         string           `json:"baseWord"`
+	English          string           `json:"english,omitempty"`     // populated from words.meaning at query time; not stored per-token
+	Reading          string           `json:"reading,omitempty"`     // populated from words.reading at query time; not stored per-token
+	KanjiData        []kanjiDataEntry `json:"kanjiData,omitempty"`   // populated from words.kanji_data at query time; not stored per-token
+	PitchAccent      *int             `json:"pitchAccent,omitempty"` // populated from words.pitch_accent at query time; not stored per-token
+	Tracked          bool             `json:"tracked,omitempty"`     // true if the base word is currently tracked (explicitly added by user)
+	WordID           int64            `json:"wordId,omitempty"`      // DB id of the lexicon entry (only set when Tracked)
+	DrillCount       int              `json:"drillCount,omitempty"`  // correct drill answers so far
+	DrillTarget      int              `json:"drillTarget,omitempty"` // target correct answers to retire the word
+	AudioTimestampMs *int64           `json:"audioTimestampMs"`
 }
 
 type storySentenceInput struct {
@@ -429,10 +431,12 @@ func queryStories(db *sql.DB, whereClause string, args ...any) ([]storyJSON, err
 			drillTarget int
 			meaning     string
 			reading     string
+			pitchAccent *int
+			kanjiData   []kanjiDataEntry
 			tracked     int
 		}
 		lexRows, err := db.Query(
-			`SELECT id, base_word, drill_count, drill_target, COALESCE(meaning,''), COALESCE(reading,''), tracked
+			`SELECT id, base_word, drill_count, drill_target, COALESCE(meaning,''), COALESCE(reading,''), pitch_accent, COALESCE(kanji_data,'[]'), tracked
 			 FROM words WHERE base_word IN (`+strings.Join(placeholders, ",")+`)`,
 			lexArgs...,
 		)
@@ -443,9 +447,14 @@ func queryStories(db *sql.DB, whereClause string, args ...any) ([]storyJSON, err
 		for lexRows.Next() {
 			var w string
 			var info wordInfo
-			if err := lexRows.Scan(&info.id, &w, &info.drillCount, &info.drillTarget, &info.meaning, &info.reading, &info.tracked); err != nil {
+			var kanjiDataStr string
+			if err := lexRows.Scan(&info.id, &w, &info.drillCount, &info.drillTarget, &info.meaning, &info.reading, &info.pitchAccent, &kanjiDataStr, &info.tracked); err != nil {
 				lexRows.Close()
 				return nil, err
+			}
+			json.Unmarshal([]byte(kanjiDataStr), &info.kanjiData) //nolint:errcheck
+			if info.kanjiData == nil {
+				info.kanjiData = []kanjiDataEntry{}
 			}
 			wordInfoMap[w] = info
 		}
@@ -453,6 +462,8 @@ func queryStories(db *sql.DB, whereClause string, args ...any) ([]storyJSON, err
 		if err := lexRows.Err(); err != nil {
 			return nil, err
 		}
+
+		// todo: optimize with better query?
 		for i := range stories {
 			for c := range stories[i].Chunks {
 				for j := range stories[i].Chunks[c].Sentences {
@@ -465,6 +476,8 @@ func queryStories(db *sql.DB, whereClause string, args ...any) ([]storyJSON, err
 							stories[i].Chunks[c].Sentences[j].Words[k].DrillTarget = info.drillTarget
 							stories[i].Chunks[c].Sentences[j].Words[k].English = info.meaning
 							stories[i].Chunks[c].Sentences[j].Words[k].Reading = info.reading
+							stories[i].Chunks[c].Sentences[j].Words[k].KanjiData = info.kanjiData
+							stories[i].Chunks[c].Sentences[j].Words[k].PitchAccent = info.pitchAccent
 						}
 					}
 				}

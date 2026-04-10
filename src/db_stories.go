@@ -24,6 +24,7 @@ type storyWordJSON struct {
 	BaseWord         string           `json:"baseWord"`
 	English          string           `json:"english,omitempty"`     // populated from words.meaning at query time; not stored per-token
 	Reading          string           `json:"reading,omitempty"`     // populated from words.reading at query time; not stored per-token
+	Type             string           `json:"type,omitempty"`        // populated from words.part_of_speech at query time; not stored per-token
 	KanjiData        []kanjiDataEntry `json:"kanjiData,omitempty"`   // populated from words.kanji_data at query time; not stored per-token
 	PitchAccent      *int             `json:"pitchAccent,omitempty"` // populated from words.pitch_accent at query time; not stored per-token
 	Tracked          bool             `json:"tracked,omitempty"`     // true if the base word is currently tracked (explicitly added by user)
@@ -426,17 +427,18 @@ func queryStories(db *sql.DB, whereClause string, args ...any) ([]storyJSON, err
 			lexArgs = append(lexArgs, bw)
 		}
 		type wordInfo struct {
-			id          int64
-			drillCount  int
-			drillTarget int
-			meaning     string
-			reading     string
-			pitchAccent *int
-			kanjiData   []kanjiDataEntry
-			tracked     int
+			id           int64
+			drillCount   int
+			drillTarget  int
+			meaning      string
+			reading      string
+			partOfSpeech string
+			pitchAccent  *int
+			kanjiData    []kanjiDataEntry
+			tracked      int
 		}
 		lexRows, err := db.Query(
-			`SELECT id, base_word, drill_count, drill_target, COALESCE(meaning,''), COALESCE(reading,''), pitch_accent, COALESCE(kanji_data,'[]'), tracked
+			`SELECT id, base_word, drill_count, drill_target, COALESCE(meaning,''), COALESCE(reading,''), COALESCE(part_of_speech,''), pitch_accent, COALESCE(kanji_data,'[]'), tracked
 			 FROM words WHERE base_word IN (`+strings.Join(placeholders, ",")+`)`,
 			lexArgs...,
 		)
@@ -448,7 +450,7 @@ func queryStories(db *sql.DB, whereClause string, args ...any) ([]storyJSON, err
 			var w string
 			var info wordInfo
 			var kanjiDataStr string
-			if err := lexRows.Scan(&info.id, &w, &info.drillCount, &info.drillTarget, &info.meaning, &info.reading, &info.pitchAccent, &kanjiDataStr, &info.tracked); err != nil {
+			if err := lexRows.Scan(&info.id, &w, &info.drillCount, &info.drillTarget, &info.meaning, &info.reading, &info.partOfSpeech, &info.pitchAccent, &kanjiDataStr, &info.tracked); err != nil {
 				lexRows.Close()
 				return nil, err
 			}
@@ -461,6 +463,61 @@ func queryStories(db *sql.DB, whereClause string, args ...any) ([]storyJSON, err
 		lexRows.Close()
 		if err := lexRows.Err(); err != nil {
 			return nil, err
+		}
+
+		// Some kanji_data entries were stored with only {id, reading} and no
+		// character or meanings. Fill those in from the kanji table now.
+		missingKanjiIDs := map[int64]struct{}{}
+		for _, info := range wordInfoMap {
+			for _, ke := range info.kanjiData {
+				if ke.ID > 0 && ke.Character == "" {
+					missingKanjiIDs[ke.ID] = struct{}{}
+				}
+			}
+		}
+		if len(missingKanjiIDs) > 0 {
+			kPlaceholders := make([]string, 0, len(missingKanjiIDs))
+			kArgs := make([]any, 0, len(missingKanjiIDs))
+			for id := range missingKanjiIDs {
+				kPlaceholders = append(kPlaceholders, "?")
+				kArgs = append(kArgs, id)
+			}
+			kRows, kErr := db.Query(
+				`SELECT id, character, meanings FROM kanji WHERE id IN (`+strings.Join(kPlaceholders, ",")+`)`,
+				kArgs...,
+			)
+			if kErr == nil {
+				type kanjiMeta struct {
+					character string
+					meanings  []string
+				}
+				kanjiLookup := map[int64]kanjiMeta{}
+				for kRows.Next() {
+					var kid int64
+					var char, meaningsJSON string
+					if kRows.Scan(&kid, &char, &meaningsJSON) == nil {
+						var meanings []string
+						json.Unmarshal([]byte(meaningsJSON), &meanings) //nolint:errcheck
+						kanjiLookup[kid] = kanjiMeta{character: char, meanings: meanings}
+					}
+				}
+				kRows.Close()
+				for bw, info := range wordInfoMap {
+					patched := false
+					for i, ke := range info.kanjiData {
+						if ke.ID > 0 && ke.Character == "" {
+							if km, ok := kanjiLookup[ke.ID]; ok {
+								info.kanjiData[i].Character = km.character
+								info.kanjiData[i].Meanings = km.meanings
+								patched = true
+							}
+						}
+					}
+					if patched {
+						wordInfoMap[bw] = info
+					}
+				}
+			}
 		}
 
 		// todo: optimize with better query?
@@ -476,6 +533,7 @@ func queryStories(db *sql.DB, whereClause string, args ...any) ([]storyJSON, err
 							stories[i].Chunks[c].Sentences[j].Words[k].DrillTarget = info.drillTarget
 							stories[i].Chunks[c].Sentences[j].Words[k].English = info.meaning
 							stories[i].Chunks[c].Sentences[j].Words[k].Reading = info.reading
+							stories[i].Chunks[c].Sentences[j].Words[k].Type = info.partOfSpeech
 							stories[i].Chunks[c].Sentences[j].Words[k].KanjiData = info.kanjiData
 							stories[i].Chunks[c].Sentences[j].Words[k].PitchAccent = info.pitchAccent
 						}

@@ -24,8 +24,8 @@ This file is random notes of possible features and bug fixes.
         in this setup, going for decent natural translations by chunk rather than by sentence?
             if so, need to also translate back to English sentence-by-sentence to get gloss of each Japanese sentence
     - story unique word translation should include pitch info and separated by kanji (like on lexicon or in drill)
-    - tooltip should display reading info (also kanji info?)
-        - make word info display match the word info in drill page? (even include image?)
+    - tooltip should display kanji info?
+        - maybe just make word info display match the word info in drill page? (even include image?)
 
 - tutor:
     - JLPT level should be configurable with a separate pulldown

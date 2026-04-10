@@ -531,15 +531,65 @@
   max-width: 24rem;
 }
 
-.tooltip-word-label {
-  color: #89b4fa;
+/* Story word hover tooltip — overrides .lex-tooltip defaults so the
+   word-tooltip structure (flex cols, rem-based sizes) renders correctly. */
+.lex-tooltip.story-word-tooltip {
+  white-space: normal;
+  width: auto;
+  max-width: 440px;
+  min-width: 220px;
+  padding: 0.6rem 0.8rem;
 }
 
-.tooltip-word-reading {
-  display: inline-block;
-  font-size: 1rem;
-  line-height: 1.2;
-  white-space: nowrap;
+/* Mirror the .word-tooltip descendant rules from common.css, which require a
+   .word-tooltip ancestor that the shared hover tooltip element does not have. */
+.story-word-tooltip .tooltip-cols {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.85rem;
+}
+
+.story-word-tooltip .tooltip-main {
+  flex: 1;
+  min-width: 180px;
+}
+
+.story-word-tooltip .tooltip-word {
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: #cdd6f4;
+  margin-bottom: 0.25rem;
+}
+
+.story-word-tooltip .tooltip-reading {
+  font-size: 0.85rem;
+  color: #a6adc8;
+  margin-bottom: 0.2rem;
+}
+
+.story-word-tooltip .tooltip-pos {
+  font-size: 0.65rem;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: #585b70;
+  margin-bottom: 0.15rem;
+}
+
+.story-word-tooltip .tooltip-meaning {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: #cdd6f4;
+  margin-bottom: 0.3rem;
+}
+
+/* Sentence translation shown above word info inside the story word tooltip */
+.story-tip-sentence {
+  font-size: 0.7rem;
+  color: #a6e3a1;
+  line-height: 1.5;
+  margin-bottom: 0.65rem;
+  padding-bottom: 0.5rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
 }
 
 .tooltip-word-note {
@@ -551,7 +601,7 @@
   padding-top: 0.45rem;
   border-top: 1px solid rgba(137, 180, 250, 0.18);
   color: #6c7086;
-  font-size: 0.82em;
+  font-size: 0.7rem;
 }
 
 .tooltip-hotkey-hint {

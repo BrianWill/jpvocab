@@ -741,9 +741,20 @@ document.addEventListener('mouseover', e => {
     _tooltipExtraClass = el.dataset.tooltipClass;
     _hoverTooltip.classList.add(_tooltipExtraClass);
   }
-  _hoverTooltip.style.left = (e.clientX + 14) + 'px';
-  _hoverTooltip.style.top = (e.clientY + 18) + 'px';
+  // Render off-screen first so offsetWidth/Height reflect natural size before
+  // viewport-edge clamping is applied, preventing the "growing" reflow on mousemove.
+  _hoverTooltip.style.left = '-9999px';
+  _hoverTooltip.style.top = '-9999px';
   _hoverTooltip.classList.add('visible');
+  const pad = 8;
+  const w = _hoverTooltip.offsetWidth;
+  const h = _hoverTooltip.offsetHeight;
+  let left = e.clientX + 14;
+  if (left + w > window.innerWidth - pad) left = window.innerWidth - w - pad;
+  let top = e.clientY + 18;
+  top = Math.max(pad, Math.min(top, window.innerHeight - h - pad));
+  _hoverTooltip.style.left = left + 'px';
+  _hoverTooltip.style.top = top + 'px';
 });
 document.addEventListener('mousemove', e => {
   if (!_hoverTooltip.classList.contains('visible')) return;

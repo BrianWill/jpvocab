@@ -119,42 +119,58 @@ function isWordNoted(baseWord) {
 
 function buildWordTooltipHtml(word, sentenceEnglish, isStoryWord, isNoted = isWordNoted(word.baseWord)) {
   if (!isStoryWord) return sentenceEnglish ? escapeTooltipText(sentenceEnglish) : '';
-  const wordTranslation = word.english || '';
+
+  const wordDisplay = word.baseWord || word.displayWord;
   const wordReading = word.reading
-    ? renderReading(word.reading, word.baseWord || word.displayWord, word.kanjiData, word.pitchAccent)
+    ? renderReading(word.reading, wordDisplay, word.kanjiData, word.pitchAccent)
     : '';
-  const tooltipWordLabel = word.baseWord || word.displayWord;
-  let html = '';
-  if (sentenceEnglish) html += escapeTooltipText(sentenceEnglish);
-  if (wordTranslation) {
-    if (sentenceEnglish) html += '<br><br>';
-    html += '<strong><span class="tooltip-word-label">' + esc(tooltipWordLabel) + ':</span></strong> ' + escapeTooltipText(wordTranslation);
-  }
-  if (wordReading) {
-    if (wordTranslation) {
-      html += '<br>';
-    } else {
-      if (sentenceEnglish) html += '<br><br>';
-      html += '<strong><span class="tooltip-word-label">' + esc(tooltipWordLabel) + ':</span></strong><br>';
-    }
-    html += '<span class="tooltip-word-reading">' + wordReading + '</span>';
-  }
-  if (html) html += '<br><br>';
+
+  // Kanji panel — mirrors renderWordTooltipKanji but as an HTML string
+  const kanjiEntries = (word.kanjiData || []).map(entry => {
+    if (!entry.character) return '';
+    const isOn = /[\u30A0-\u30FF]/.test(entry.reading);
+    return '<div class="kanji-entry">' +
+      '<div class="kanji-char">' + esc(entry.character) + '</div>' +
+      '<div class="kanji-detail">' +
+        '<div class="kanji-readings"><span class="kanji-' + (isOn ? 'on' : 'kun') + '">' + esc(entry.reading) + '</span></div>' +
+        '<div class="kanji-meanings">' + esc((entry.meanings || []).join(', ')) + '</div>' +
+      '</div>' +
+    '</div>';
+  }).filter(Boolean).join('');
+  const kanjiHtml = kanjiEntries
+    ? '<div class="word-tooltip-kanji">' + kanjiEntries + '</div>'
+    : '';
+
+  // Story-specific footer
+  let footerHtml;
   if (word.tracked) {
     const remaining = Math.max(0, (word.drillTarget || 0) - (word.drillCount || 0));
-    html += '<span class="tooltip-word-note"><span>Word in lexicon: <span class="tooltip-drill-remaining">' + esc(String(remaining)) + '</span> drill' + (remaining === 1 ? '' : 's') + ' remaining</span><span class="tooltip-hotkey-hint">(- / + to adjust)</span></span>';
+    footerHtml = '<div class="tooltip-word-note"><span>Word in lexicon: <span class="tooltip-drill-remaining">' +
+      esc(String(remaining)) + '</span> drill' + (remaining === 1 ? '' : 's') + ' remaining</span>' +
+      '<span class="tooltip-hotkey-hint">(- / + to adjust)</span></div>';
   } else {
-    html += '<span class="tooltip-word-note">' +
+    footerHtml = '<div class="tooltip-word-note">' +
       esc(isNoted ? 'Click to remove from noted words' : 'Click to add this word to noted words') +
-      '</span>';
+      '</div>';
   }
-  return html;
+
+  return (sentenceEnglish ? '<div class="story-tip-sentence">' + escapeTooltipText(sentenceEnglish) + '</div>' : '') +
+    '<div class="tooltip-cols">' +
+      '<div class="tooltip-main">' +
+        '<div class="tooltip-word">' + esc(wordDisplay) + '</div>' +
+        (wordReading ? '<div class="tooltip-reading">' + wordReading + '</div>' : '') +
+        (word.type ? '<div class="tooltip-pos">' + esc(word.type) + '</div>' : '') +
+        (word.english ? '<div class="tooltip-meaning">' + esc(word.english) + '</div>' : '') +
+      '</div>' +
+      kanjiHtml +
+    '</div>' +
+    footerHtml;
 }
 
 function updateWordTokenUI() {
   for (const meta of state.wordTokenMetas) {
     meta.el.dataset.tooltipHtml = buildWordTooltipHtml(meta.word, meta.sentenceEnglishText, meta.isStoryWord);
-    meta.el.dataset.tooltipClass = 'tooltip-translation';
+    meta.el.dataset.tooltipClass = meta.isStoryWord ? 'story-word-tooltip' : 'tooltip-translation';
     meta.el.classList.toggle('story-word--noted', meta.isStoryWord && isWordNoted(meta.word.baseWord) && !meta.word.tracked);
     meta.el.classList.toggle('story-word--in-lexicon', meta.isStoryWord && !!meta.word.tracked);
   }
@@ -379,7 +395,7 @@ function renderStory(story) {
         const isStoryWord = chunkWordSet.has(word.baseWord);
         if (isStoryWord || sentence.englishText) {
           wordSpan.dataset.tooltipHtml = buildWordTooltipHtml(word, sentence.englishText, isStoryWord);
-          wordSpan.dataset.tooltipClass = 'tooltip-translation';
+          wordSpan.dataset.tooltipClass = isStoryWord ? 'story-word-tooltip' : 'tooltip-translation';
         }
         if (isStoryWord && word.english) wordSpan.classList.add('story-word--translated');
         if (isStoryWord && word.tracked) wordSpan.classList.add('story-word--in-lexicon');

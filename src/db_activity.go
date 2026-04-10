@@ -233,12 +233,12 @@ func getActivityStats(db *sql.DB) (activityStats, error) {
 	err := db.QueryRow(`
 		SELECT
 			COUNT(*),
-			SUM(CASE WHEN drill_count < drill_target THEN 1 ELSE 0 END),
-			SUM(CASE WHEN target_reached_at IS NOT NULL THEN 1 ELSE 0 END),
-			SUM(CASE WHEN drill_count >= drill_target THEN 1 ELSE 0 END),
-			SUM(CASE WHEN drill_count < drill_target AND (drill_target - drill_count) <= 4 THEN 1 ELSE 0 END),
-			SUM(CASE WHEN drill_count < drill_target AND (drill_target - drill_count) > 4 AND (drill_target - drill_count) <= 8 THEN 1 ELSE 0 END),
-			SUM(CASE WHEN drill_count < drill_target AND (drill_target - drill_count) > 8 THEN 1 ELSE 0 END)
+			COALESCE(SUM(CASE WHEN drill_count < drill_target THEN 1 ELSE 0 END), 0),
+			COALESCE(SUM(CASE WHEN target_reached_at IS NOT NULL THEN 1 ELSE 0 END), 0),
+			COALESCE(SUM(CASE WHEN drill_count >= drill_target THEN 1 ELSE 0 END), 0),
+			COALESCE(SUM(CASE WHEN drill_count < drill_target AND (drill_target - drill_count) <= 4 THEN 1 ELSE 0 END), 0),
+			COALESCE(SUM(CASE WHEN drill_count < drill_target AND (drill_target - drill_count) > 4 AND (drill_target - drill_count) <= 8 THEN 1 ELSE 0 END), 0),
+			COALESCE(SUM(CASE WHEN drill_count < drill_target AND (drill_target - drill_count) > 8 THEN 1 ELSE 0 END), 0)
 		FROM words
 		WHERE tracked = 1
 	`).Scan(&s.LexiconSize, &s.ActiveWords, &s.ClearedLifetime, &s.DrillsCleared, &s.DrillsClose, &s.DrillsMid, &s.DrillsFar)

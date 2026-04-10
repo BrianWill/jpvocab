@@ -350,7 +350,7 @@ let _currentAudio = null;
 let _currentSynthController = null;
 let _playbackRequestId = 0;
 
-function stopCurrentPlayback() {
+export function stopCurrentPlayback() {
   speechSynthesis.cancel();
   if (_currentSynthController) {
     _currentSynthController.abort();

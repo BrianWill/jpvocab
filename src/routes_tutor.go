@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"net/http"
 	"strconv"
+	"strings"
 )
 
 // tutorSegment is a flexible map so the AI can include any string-valued fields
@@ -16,6 +17,7 @@ type tutorSegment = map[string]string
 var tutorSession struct {
 	AIModel   string    `json:"ai_model"`
 	TutorMode string    `json:"tutor_mode"`
+	JLPTLevel string    `json:"jlpt_level"`
 	Messages  []message `json:"messages"`
 }
 
@@ -156,6 +158,7 @@ func apiTutorChat(db *sql.DB) http.HandlerFunc {
 		var req struct {
 			AIModel   string    `json:"ai_model"`
 			TutorMode string    `json:"tutor_mode"`
+			JLPTLevel string    `json:"jlpt_level"`
 			Messages  []message `json:"messages"`
 		}
 		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
@@ -169,7 +172,11 @@ func apiTutorChat(db *sql.DB) http.HandlerFunc {
 		// Empty messages is valid — used to generate the bot's opening turn.
 
 		modeID, _ := strconv.ParseInt(req.TutorMode, 10, 64)
-		system := tutorSystemPromptByID(db, modeID)
+		level := req.JLPTLevel
+		if level == "" {
+			level = "N5"
+		}
+		system := strings.ReplaceAll(tutorSystemPromptByID(db, modeID), "{{level}}", level)
 		reply, err := tutorChat(db, req.Messages, system, req.AIModel)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -196,9 +203,10 @@ func apiTutorChat(db *sql.DB) http.HandlerFunc {
 		}
 
 		// Persist the full conversation (including the new reply) so it survives navigation.
-		tutorSession.AIModel = req.AIModel
+		tutorSession.AIModel   = req.AIModel
 		tutorSession.TutorMode = req.TutorMode
-		tutorSession.Messages = append(req.Messages, message{Role: "assistant", Content: reply})
+		tutorSession.JLPTLevel = level
+		tutorSession.Messages  = append(req.Messages, message{Role: "assistant", Content: reply})
 
 		writeJSON(w, map[string]any{"response": response})
 	}

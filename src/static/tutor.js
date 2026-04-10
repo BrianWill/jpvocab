@@ -1,4 +1,6 @@
-import { PROVIDER_MODELS, playJapaneseText, WORD_TTS_RATE } from './common.js';
+import { PROVIDER_MODELS, playJapaneseText, WORD_TTS_RATE, checkVoicevoxAvailable, stopCurrentPlayback } from './common.js';
+
+const stopAudio = stopCurrentPlayback;
 
 // ── VoiceVox / TTS playback ────────────────────────────────────────────────
 
@@ -11,6 +13,7 @@ async function playJp(text) {
 // an English label used to build the opening greeting.
 
 const els = {
+  levelSelect:       document.getElementById('tutor-level-select'),
   modeSelect:        document.getElementById('tutor-mode-select'),
   modelSelect:       document.getElementById('tutor-model-select'),
   providerInfo:      document.getElementById('tutor-provider-info'),
@@ -326,6 +329,7 @@ async function kickoffChat() {
       body: JSON.stringify({
         ai_model:   aiModel,
         tutor_mode: els.modeSelect.value,
+        jlpt_level: els.levelSelect.value,
         messages:   [],
       }),
     });
@@ -374,6 +378,7 @@ async function sendMessage(text) {
       body: JSON.stringify({
         ai_model:   aiModel,
         tutor_mode: els.modeSelect.value,
+        jlpt_level: els.levelSelect.value,
         messages:   state.history,
       }),
     });
@@ -489,9 +494,10 @@ function restoreSession(session) {
     startNewChat();
     return;
   }
-  // Restore mode and model selects
-  if (session.tutor_mode) els.modeSelect.value = session.tutor_mode;
-  if (session.ai_model)   els.modelSelect.value = session.ai_model;
+  // Restore mode, model, and level selects
+  if (session.tutor_mode)  els.modeSelect.value  = session.tutor_mode;
+  if (session.ai_model)    els.modelSelect.value  = session.ai_model;
+  if (session.jlpt_level)  els.levelSelect.value  = session.jlpt_level;
 
   // Rebuild the chat from saved history
   state.history = session.messages;
@@ -651,6 +657,7 @@ async function init() {
   restoreSession(session);
 
   els.modeSelect.addEventListener('change', () => { updatePromptButtons(); startNewChat(); });
+  els.levelSelect.addEventListener('change', startNewChat);
   els.btnNewChat.addEventListener('click', startNewChat);
   els.btnAddPrompt.addEventListener('click', openAddPromptModal);
   els.btnEditPrompt.addEventListener('click', openEditPromptModal);

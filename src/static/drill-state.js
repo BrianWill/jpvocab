@@ -1,22 +1,19 @@
 export const DEFAULT_ROUND_SIZE = 10;
 
 export async function loadDrillData() {
-  const [wordsResp, kanjiResp, settingsResp, currentSessionResp] = await Promise.all([
+  const [wordsResp, settingsResp, currentSessionResp] = await Promise.all([
     fetch('/api/words'),
-    fetch('/api/kanji'),
     fetch('/api/settings/drill'),
     fetch('/api/drill/sessions/current'),
   ]);
 
   const allWords = await wordsResp.json();
-  const kanjiList = await kanjiResp.json();
   const settings = await settingsResp.json();
   const currentSessionData = await currentSessionResp.json();
 
   return {
     allWords,
     currentSession: currentSessionData.session,
-    kanjiList,
     settings,
   };
 }
@@ -48,7 +45,6 @@ export function createDrillState(filterKeys) {
     doneCount: 0,
     drillStartedAt: Date.now(),
     isSubmittingAnswer: false,
-    kanjiMap: {},
     lastAnswered: null,
     lastAutoPlayedId: null,
     pool: [],

@@ -18,7 +18,6 @@ els.dayModalCloseBtn = els.dayModalBackdrop.querySelector('.modal-close');
 const state = {
   activityData: null,
   historyStart: null,
-  kanjiMap: {},
   stats: null,
   today: null,
   weeksLoaded: 0,
@@ -314,7 +313,7 @@ els.dayModalCloseBtn.addEventListener('click', closeDayModal);
 function showWordTooltip(item) {
   if (!item.dataset.wordInfo) return;
   const data = JSON.parse(item.dataset.wordInfo);
-  populateWordTooltip(els.wordTooltip, data, state.kanjiMap, renderReading);
+  populateWordTooltip(els.wordTooltip, data, renderReading);
   positionWordTooltip(item);
   els.wordTooltip.classList.add('visible');
 }
@@ -340,23 +339,19 @@ document.addEventListener('mouseout', e => {
 });
 
 async function init() {
-  const [statsRes, calRes, wordsRes, kanjiRes] = await Promise.all([
+  const [statsRes, calRes, wordsRes] = await Promise.all([
     fetch('/api/activity/stats'),
     fetch('/api/activity/calendar'),
     fetch('/api/words'),
-    fetch('/api/kanji'),
   ]);
   state.stats = await statsRes.json();
   const cal = await calRes.json();
   const words = await wordsRes.json();
-  const kanjiList = await kanjiRes.json();
   state.today = cal.today;
   state.historyStart = cal.historyStart;
   state.activityData = cal.days;
   state.wordMap = {};
   words.forEach(word => { state.wordMap[word.word] = word; });
-  state.kanjiMap = {};
-  kanjiList.forEach(kanji => { state.kanjiMap[kanji.id] = kanji; });
   renderStats();
   renderCalendar();
 }

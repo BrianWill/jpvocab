@@ -157,7 +157,7 @@ func persistWordAutoFill(db *sql.DB, wordID int64, filled *wordAutoFill) ([]kanj
 		if err != nil {
 			continue
 		}
-		kd = append(kd, kanjiDataEntry{ID: kID, Reading: k.Reading})
+		kd = append(kd, kanjiDataEntry{ID: kID, Character: k.Character, Reading: k.Reading, Meanings: k.Meanings})
 	}
 	b, _ := json.Marshal(kd)
 	if err := updateWordFill(db, wordID, filled.Reading, filled.PitchAccent, filled.PartOfSpeech, filled.Meaning, filled.ExampleJP, filled.ExampleEN, string(b)); err != nil {

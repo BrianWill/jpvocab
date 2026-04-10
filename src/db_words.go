@@ -29,9 +29,14 @@ type kanjiJSON struct {
 }
 
 // kanjiDataEntry is one element of a word's kanji_data JSON column.
+// Character and Meanings are not stored in the column; they are joined from the
+// kanji table at query time and included in API responses so callers do not need
+// a separate /api/kanji fetch.
 type kanjiDataEntry struct {
-	ID      int64  `json:"id"`
-	Reading string `json:"reading"`
+	ID        int64    `json:"id"`
+	Character string   `json:"character,omitempty"`
+	Reading   string   `json:"reading"`
+	Meanings  []string `json:"meanings,omitempty"`
 }
 
 // wordJSON is the JSON shape returned by the /api/words endpoint.
@@ -231,7 +236,7 @@ func upsertKanji(db *sql.DB, character string, meanings []string) (int64, error)
 	}
 	if _, err := db.Exec(`
 		INSERT INTO kanji (character, meanings) VALUES (?, ?)
-		ON CONFLICT(character) DO NOTHING
+		ON CONFLICT(character) DO UPDATE SET meanings = excluded.meanings
 	`, character, string(meaningsJSON)); err != nil {
 		return 0, err
 	}
@@ -267,6 +272,8 @@ func listKanji(db *sql.DB) ([]kanjiJSON, error) {
 }
 
 // listWords returns all words from the lexicon ordered by creation date descending.
+// Each word's KanjiData entries are enriched with Character and Meanings from the
+// kanji table so callers receive complete kanji info without a separate query.
 func listWords(db *sql.DB) ([]wordJSON, error) {
 	rows, err := db.Query(`
 		SELECT id, base_word, COALESCE(reading,''), pitch_accent, COALESCE(part_of_speech,''), COALESCE(meaning,''),
@@ -301,7 +308,37 @@ func listWords(db *sql.DB) ([]wordJSON, error) {
 		}
 		words = append(words, w)
 	}
-	return words, rows.Err()
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+
+	// Enrich kanji entries with character and meanings from the kanji table.
+	km, err := loadKanjiMap(db)
+	if err != nil {
+		return nil, err
+	}
+	for i := range words {
+		for j := range words[i].KanjiData {
+			if k, ok := km[words[i].KanjiData[j].ID]; ok {
+				words[i].KanjiData[j].Character = k.Character
+				words[i].KanjiData[j].Meanings = k.Meanings
+			}
+		}
+	}
+	return words, nil
+}
+
+// loadKanjiMap returns all kanji rows keyed by ID.
+func loadKanjiMap(db *sql.DB) (map[int64]kanjiJSON, error) {
+	kanji, err := listKanji(db)
+	if err != nil {
+		return nil, err
+	}
+	m := make(map[int64]kanjiJSON, len(kanji))
+	for _, k := range kanji {
+		m[k.ID] = k
+	}
+	return m, nil
 }
 
 // updateWord saves editable fields for an existing word by ID.

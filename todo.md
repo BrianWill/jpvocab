@@ -9,8 +9,11 @@ This file is random notes of possible features and bug fixes.
     - English prompt modes should 
 
 - drill
+    - word info should be aligned to bottom of viewport
+        better separation to distinguish from the current word
     - modal to edit current word
         - sidebar, edit button appears when hovered
+
 
 
 - store kanji meanings in own table so that they don't get inconsistent meanings between words

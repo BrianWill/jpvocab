@@ -122,7 +122,7 @@ function renderLastAnswered(els, state) {
   els.lastMeaning.textContent = answered.meaning;
   els.lastExampleJp.textContent = answered.exampleJp;
   els.lastExampleEn.textContent = answered.exampleEn;
-  renderWordTooltipKanji(els.lastKanjiInfo, answered, state.kanjiMap);
+  renderWordTooltipKanji(els.lastKanjiInfo, answered);
   const imagePath = typeof answered.imagePath === 'string' ? answered.imagePath.trim() : '';
   if (imagePath) {
     els.lastWordImage.src = '/static/' + imagePath;

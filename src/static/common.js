@@ -767,26 +767,25 @@ export function refreshTooltip(el) {
   }
 }
 
-export function renderWordTooltipKanji(container, word, kanjiMap) {
+export function renderWordTooltipKanji(container, word) {
   container.innerHTML = '';
   if (!word.kanjiData || word.kanjiData.length === 0) return;
   word.kanjiData.forEach(entry => {
-    const kanji = kanjiMap[entry.id];
-    if (!kanji) return;
+    if (!entry.character) return;
     const isOn = /[\u30A0-\u30FF]/.test(entry.reading);
     const div = document.createElement('div');
     div.className = 'kanji-entry';
     div.innerHTML =
-      '<div class="kanji-char">' + kanji.character + '</div>' +
+      '<div class="kanji-char">' + entry.character + '</div>' +
       '<div class="kanji-detail">' +
         '<div class="kanji-readings"><span class="kanji-' + (isOn ? 'on' : 'kun') + '">' + entry.reading + '</span></div>' +
-        '<div class="kanji-meanings">' + kanji.meanings.join(', ') + '</div>' +
+        '<div class="kanji-meanings">' + (entry.meanings || []).join(', ') + '</div>' +
       '</div>';
     container.appendChild(div);
   });
 }
 
-export function populateWordTooltip(tooltipEl, word, kanjiMap, renderReading) {
+export function populateWordTooltip(tooltipEl, word, renderReading) {
   tooltipEl.querySelector('[data-word-tooltip="word"]').textContent = word.word;
   tooltipEl.querySelector('[data-word-tooltip="reading"]').innerHTML =
     renderReading(word.reading, word.word, word.kanjiData);
@@ -807,8 +806,7 @@ export function populateWordTooltip(tooltipEl, word, kanjiMap, renderReading) {
 
   renderWordTooltipKanji(
     tooltipEl.querySelector('[data-word-tooltip="kanji"]'),
-    word,
-    kanjiMap
+    word
   );
 }
 

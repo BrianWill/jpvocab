@@ -115,10 +115,7 @@ function restoreSession(session) {
 }
 
 async function init() {
-  const { allWords, currentSession, kanjiList, settings } = await loadDrillData();
-
-  state.kanjiMap = {};
-  kanjiList.forEach(kanji => { state.kanjiMap[kanji.id] = kanji; });
+  const { allWords, currentSession, settings } = await loadDrillData();
 
   state.words = allWords.filter(word => word.correct < word.target);
   state.settingsMaxWords = settings.maxWords;
@@ -218,7 +215,7 @@ els.sidebarList.addEventListener('mouseover', event => {
   const item = event.target.closest('.sidebar-item');
   if (!item || !item.dataset.word) return;
   const word = JSON.parse(item.dataset.word);
-  populateWordTooltip(els.tip, word, state.kanjiMap, renderReading);
+  populateWordTooltip(els.tip, word, renderReading);
   positionSidebarTooltip(els, item, els.tip);
 });
 

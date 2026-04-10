@@ -164,8 +164,10 @@
 .day-word-item.knew .day-word-jp  { color: #a6e3a1; }
 .day-word-item.missed .day-word-jp { color: #f38ba8; }
 .day-word-reading {
-  color: #89b4fa;
-  font-size: 0.875rem;
+  color: #a6adc8;
+  font-size: 1rem;
+  line-height: 1.2;
+  white-space: nowrap;
 }
 .day-word-meaning {
   color: #585b70;

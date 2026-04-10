@@ -279,13 +279,19 @@ function buildSection(title, words, type, note) {
 
   words.forEach(entry => {
     const fullWord = state.wordMap[entry.word] || null;
+    const readingHtml = renderReading(
+      fullWord?.reading ?? entry.reading,
+      fullWord?.word ?? entry.word,
+      fullWord?.kanjiData ?? null,
+      fullWord?.pitchAccent
+    );
     const item = document.createElement('div');
     item.className = 'day-word-item';
     if (type === 'drilled') item.classList.add(entry.knew ? 'knew' : 'missed');
     if (fullWord) item.dataset.wordInfo = JSON.stringify(fullWord);
     item.innerHTML =
       '<span class="day-word-jp">' + entry.word + '</span>' +
-      '<span class="day-word-reading">' + entry.reading + '</span>' +
+      '<span class="day-word-reading">' + readingHtml + '</span>' +
       '<span class="day-word-meaning">' + entry.meaning + '</span>';
     item.querySelector('.day-word-jp').addEventListener('click', () =>
       playJapaneseText(entry.word, WORD_TTS_RATE, { preferSynthesis: true, fallbackToBrowserTts: true })

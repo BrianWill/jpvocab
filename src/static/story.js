@@ -1,5 +1,5 @@
 import { getTtsVoice, getVoicevoxSettings, checkVoicevoxAvailable, playDing, PROVIDER_MODELS, refreshTooltip } from './common.js';
-import { esc } from './lexicon-utils.js';
+import { esc, renderReading } from './lexicon-utils.js';
 import { initGenerateModals, openTranslationModal, populateTranslationModelSelect } from './story-generate.js';
 import { initStoryAddToLexicon, addWordsToLexicon } from './story-add-to-lexicon.js';
 import { initPlayback, initSynthPlayback, showSentencePlayBtn, scheduleSentencePlayHide, hideSentencePlayBtn, cancelSentencePlayHide, stopPlayback } from './story-playback.js';
@@ -120,7 +120,9 @@ function isWordNoted(baseWord) {
 function buildWordTooltipHtml(word, sentenceEnglish, isStoryWord, isNoted = isWordNoted(word.baseWord)) {
   if (!isStoryWord) return sentenceEnglish ? escapeTooltipText(sentenceEnglish) : '';
   const wordTranslation = word.english || '';
-  const wordReading = word.reading || '';
+  const wordReading = word.reading
+    ? renderReading(word.reading, word.baseWord || word.displayWord, word.kanjiData, word.pitchAccent)
+    : '';
   const tooltipWordLabel = word.baseWord || word.displayWord;
   let html = '';
   if (sentenceEnglish) html += escapeTooltipText(sentenceEnglish);
@@ -135,7 +137,7 @@ function buildWordTooltipHtml(word, sentenceEnglish, isStoryWord, isNoted = isWo
       if (sentenceEnglish) html += '<br><br>';
       html += '<strong><span class="tooltip-word-label">' + esc(tooltipWordLabel) + ':</span></strong><br>';
     }
-    html += '<span class="tooltip-word-reading">' + esc(wordReading) + '</span>';
+    html += '<span class="tooltip-word-reading">' + wordReading + '</span>';
   }
   if (html) html += '<br><br>';
   if (word.tracked) {

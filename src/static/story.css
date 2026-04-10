@@ -536,7 +536,10 @@
 }
 
 .tooltip-word-reading {
-  color: #f9e2af;
+  display: inline-block;
+  font-size: 1rem;
+  line-height: 1.2;
+  white-space: nowrap;
 }
 
 .tooltip-word-note {

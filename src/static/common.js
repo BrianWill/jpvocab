@@ -788,7 +788,7 @@ export function renderWordTooltipKanji(container, word) {
 export function populateWordTooltip(tooltipEl, word, renderReading) {
   tooltipEl.querySelector('[data-word-tooltip="word"]').textContent = word.word;
   tooltipEl.querySelector('[data-word-tooltip="reading"]').innerHTML =
-    renderReading(word.reading, word.word, word.kanjiData);
+    renderReading(word.reading, word.word, word.kanjiData, word.pitchAccent);
   tooltipEl.querySelector('[data-word-tooltip="pos"]').textContent = word.type || '';
   tooltipEl.querySelector('[data-word-tooltip="meaning"]').textContent = word.meaning || '';
   tooltipEl.querySelector('[data-word-tooltip="example"]').textContent = word.exampleJp || '';

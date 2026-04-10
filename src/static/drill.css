@@ -199,10 +199,10 @@
   flex-shrink: 0;
 }
 .last-word-card {
-  margin-top: 0.75rem;
+  margin-top: auto;
   width: 100%;
   max-width: 600px;
-  padding: 1.5rem 2rem;
+  padding: 1.5rem 2rem 0;
   flex-shrink: 0;
 }
 .last-word-cols {
@@ -223,7 +223,9 @@
 .last-word-card .tooltip-word.missed { color: #f38ba8; }
 .last-word-card .tooltip-word { font-size: 1.4rem; cursor: pointer; }
 .last-word-card .tooltip-word:hover { filter: brightness(1.25); }
+.word-tooltip .tooltip-reading,
 .last-word-card .tooltip-reading { font-size: 1rem; }
+.word-tooltip .tooltip-reading { line-height: 1.2; }
 .last-word-card .tooltip-pos { font-size: 0.75rem; padding-top: 0.4rem; }
 .last-word-card .tooltip-meaning { font-size: 1.05rem; }
 .last-word-card .tooltip-example { font-size: 0.95rem; padding-top: 0.6rem; cursor: pointer; }

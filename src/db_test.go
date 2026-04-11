@@ -1048,6 +1048,8 @@ func TestDeleteWordsByName(t *testing.T) {
 func TestInsertStory_AndGetStoryByID(t *testing.T) {
 	db := testDB(t)
 	title := "足立美術館の庭園"
+	jp1 := "おはよう。"
+	jp2 := "今日も頑張ろう。"
 	en1 := "Good morning."
 	en2 := "Let's do our best today too."
 
@@ -1057,7 +1059,9 @@ func TestInsertStory_AndGetStoryByID(t *testing.T) {
 				{DisplayWord: "おはよう", BaseWord: "おはよう"},
 				{DisplayWord: "。", BaseWord: "。"},
 			},
-			EnglishText:      &en1,
+			JPText:           &jp1,
+			ENText:           &en1,
+			OrigLang:         "jp",
 			IsParagraphStart: true,
 		},
 		{
@@ -1067,7 +1071,9 @@ func TestInsertStory_AndGetStoryByID(t *testing.T) {
 				{DisplayWord: "頑張ろう", BaseWord: "頑張る"},
 				{DisplayWord: "。", BaseWord: "。"},
 			},
-			EnglishText: &en2,
+			JPText:   &jp2,
+			ENText:   &en2,
+			OrigLang: "jp",
 		},
 	})
 	if err != nil {
@@ -1112,8 +1118,14 @@ func TestInsertStory_AndGetStoryByID(t *testing.T) {
 	if story.Sentences[1].Words[2].BaseWord != "頑張る" {
 		t.Errorf("base word: got %q, want 頑張る", story.Sentences[1].Words[2].BaseWord)
 	}
-	if story.Sentences[0].EnglishText == nil || *story.Sentences[0].EnglishText != en1 {
-		t.Errorf("sentence 1 english: got %+v", story.Sentences[0].EnglishText)
+	if story.Sentences[0].ENText == nil || *story.Sentences[0].ENText != en1 {
+		t.Errorf("sentence 1 english: got %+v", story.Sentences[0].ENText)
+	}
+	if story.Sentences[0].JPText == nil || *story.Sentences[0].JPText != jp1 {
+		t.Errorf("sentence 1 japanese: got %+v", story.Sentences[0].JPText)
+	}
+	if story.Sentences[0].OrigLang != "jp" {
+		t.Errorf("sentence 1 orig_lang: got %q, want jp", story.Sentences[0].OrigLang)
 	}
 	if !story.Sentences[0].IsParagraphStart {
 		t.Error("sentence 1 should be marked as paragraph start")
@@ -1138,7 +1150,8 @@ func TestInsertStory_RequiresAtLeastOneSentence(t *testing.T) {
 func TestInsertStory_RequiresAtLeastOneWordPerSentence(t *testing.T) {
 	db := testDB(t)
 
-	_, err := insertStory(db, "Missing words", []storySentenceInput{{}})
+	text := "庭園。"
+	_, err := insertStory(db, "Missing words", []storySentenceInput{{JPText: &text, OrigLang: "jp"}})
 	if err == nil {
 		t.Fatal("expected error for missing words")
 	}
@@ -1151,7 +1164,7 @@ func TestInsertStory_RequiresTitle(t *testing.T) {
 	db := testDB(t)
 
 	_, err := insertStory(db, "", []storySentenceInput{
-		{Words: []storyWordInput{{DisplayWord: "庭園", BaseWord: "庭園"}}},
+		{Words: []storyWordInput{{DisplayWord: "庭園", BaseWord: "庭園"}}, OrigLang: "jp"},
 	})
 	if err == nil {
 		t.Fatal("expected error for missing title")
@@ -1176,6 +1189,7 @@ func TestInsertStory_RollsBackActivityEventOnFailure(t *testing.T) {
 	_, err := insertStory(db, "Broken Story", []storySentenceInput{
 		{
 			Words:            []storyWordInput{{DisplayWord: "庭園", BaseWord: "庭園"}},
+			OrigLang:         "jp",
 			IsParagraphStart: true,
 		},
 	})
@@ -1204,6 +1218,7 @@ func TestStoryNotedWords_PersistOnStory(t *testing.T) {
 				{DisplayWord: "へ", BaseWord: "へ"},
 				{DisplayWord: "行く", BaseWord: "行く"},
 			},
+			OrigLang:         "jp",
 			IsParagraphStart: true,
 		},
 	})
@@ -1269,6 +1284,28 @@ func TestBuildStorySentenceWords_TokenizesDisplayAndBaseForms(t *testing.T) {
 	}
 }
 
+func TestBuildStorySentencesFromText_ClassifiesJapaneseAndEnglish(t *testing.T) {
+	sentences := buildStorySentencesFromText("今日はmeetingがあります。\n\nThis is a test.")
+	if len(sentences) != 2 {
+		t.Fatalf("expected 2 sentences, got %d", len(sentences))
+	}
+	if sentences[0].OrigLang != "jp" {
+		t.Fatalf("sentence 1 orig_lang: got %q, want jp", sentences[0].OrigLang)
+	}
+	if sentences[0].JPText == nil || *sentences[0].JPText != "今日はmeetingがあります。" {
+		t.Fatalf("sentence 1 jp text: got %+v", sentences[0].JPText)
+	}
+	if sentences[1].OrigLang != "en" {
+		t.Fatalf("sentence 2 orig_lang: got %q, want en", sentences[1].OrigLang)
+	}
+	if sentences[1].ENText == nil || *sentences[1].ENText != "This is a test." {
+		t.Fatalf("sentence 2 en text: got %+v", sentences[1].ENText)
+	}
+	if len(sentences[1].Words) != 0 {
+		t.Fatalf("expected english sentence to have no japanese word tokens, got %d", len(sentences[1].Words))
+	}
+}
+
 func TestStoryLexiconWordCount_FiltersNonLexiconTokens(t *testing.T) {
 	got := storyLexiconWordCount([]storySentenceInput{
 		{
@@ -1282,6 +1319,7 @@ func TestStoryLexiconWordCount_FiltersNonLexiconTokens(t *testing.T) {
 				{DisplayWord: "です", BaseWord: "です"},
 				{DisplayWord: "。", BaseWord: "。"},
 			},
+			OrigLang:         "jp",
 			IsParagraphStart: true,
 		},
 		{
@@ -1291,6 +1329,7 @@ func TestStoryLexiconWordCount_FiltersNonLexiconTokens(t *testing.T) {
 				{DisplayWord: "です", BaseWord: "です"},
 				{DisplayWord: "。", BaseWord: "。"},
 			},
+			OrigLang: "jp",
 		},
 	})
 	if got != 3 {
@@ -1301,9 +1340,9 @@ func TestStoryLexiconWordCount_FiltersNonLexiconTokens(t *testing.T) {
 func TestBuildStoryChunks_SplitsAfterMinimumChars(t *testing.T) {
 	longWord := strings.Repeat("あ", 100)
 	sentences := []storySentenceInput{
-		{Words: []storyWordInput{{DisplayWord: longWord + "。", BaseWord: longWord + "。"}}, IsParagraphStart: true},
-		{Words: []storyWordInput{{DisplayWord: longWord + "。", BaseWord: longWord + "。"}}},
-		{Words: []storyWordInput{{DisplayWord: "短いです。", BaseWord: "短いです。"}}},
+		{Words: []storyWordInput{{DisplayWord: longWord + "。", BaseWord: longWord + "。"}}, OrigLang: "jp", IsParagraphStart: true},
+		{Words: []storyWordInput{{DisplayWord: longWord + "。", BaseWord: longWord + "。"}}, OrigLang: "jp"},
+		{Words: []storyWordInput{{DisplayWord: "短いです。", BaseWord: "短いです。"}}, OrigLang: "jp"},
 	}
 
 	chunks := buildStoryChunks(sentences)

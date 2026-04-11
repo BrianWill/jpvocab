@@ -484,6 +484,7 @@ func TestAPIGetStories_ReturnsTitle(t *testing.T) {
 			Words: []storyWordInput{
 				{DisplayWord: "庭園", BaseWord: "庭園"},
 			},
+			OrigLang:         "jp",
 			IsParagraphStart: true,
 		},
 	})
@@ -580,11 +581,36 @@ func TestAPICreateStory_Success(t *testing.T) {
 	}
 }
 
+func TestAPICreateStory_ClassifiesMixedLanguageSentences(t *testing.T) {
+	db := testDB(t)
+	req := httptest.NewRequest(http.MethodPost, "/api/stories", bytes.NewBufferString(`{"title":"Mixed Story","content":"This is a test.\n\n今日はmeetingがあります。"}`))
+	rec := httptest.NewRecorder()
+
+	apiCreateStory(db).ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusCreated {
+		t.Fatalf("status: got %d, want %d", rec.Code, http.StatusCreated)
+	}
+	var story storyJSON
+	if err := json.NewDecoder(rec.Body).Decode(&story); err != nil {
+		t.Fatal(err)
+	}
+	if len(story.Sentences) != 2 {
+		t.Fatalf("sentences: got %d, want 2", len(story.Sentences))
+	}
+	if story.Sentences[0].OrigLang != "en" || story.Sentences[0].ENText == nil || *story.Sentences[0].ENText != "This is a test." {
+		t.Fatalf("sentence 1: got %+v", story.Sentences[0])
+	}
+	if story.Sentences[1].OrigLang != "jp" || story.Sentences[1].JPText == nil || *story.Sentences[1].JPText != "今日はmeetingがあります。" {
+		t.Fatalf("sentence 2: got %+v", story.Sentences[1])
+	}
+}
+
 func TestAPIGetStory_ReturnsStoryByID(t *testing.T) {
 	db := testDB(t)
 	title := "Garden Story"
 	id, err := insertStory(db, title, []storySentenceInput{
-		{Words: []storyWordInput{{DisplayWord: "庭園", BaseWord: "庭園"}}, IsParagraphStart: true},
+		{Words: []storyWordInput{{DisplayWord: "庭園", BaseWord: "庭園"}}, OrigLang: "jp", IsParagraphStart: true},
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -667,8 +693,8 @@ func TestAPIDeleteStory_InvalidID(t *testing.T) {
 func TestAPIDeleteStory_Success(t *testing.T) {
 	db := testDB(t)
 	id, err := insertStory(db, "Garden Story", []storySentenceInput{
-		{Words: []storyWordInput{{DisplayWord: "庭園", BaseWord: "庭園"}}, IsParagraphStart: true},
-		{Words: []storyWordInput{{DisplayWord: "歩く", BaseWord: "歩く"}}, IsParagraphStart: false},
+		{Words: []storyWordInput{{DisplayWord: "庭園", BaseWord: "庭園"}}, OrigLang: "jp", IsParagraphStart: true},
+		{Words: []storyWordInput{{DisplayWord: "歩く", BaseWord: "歩く"}}, OrigLang: "jp", IsParagraphStart: false},
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -783,6 +809,7 @@ func TestAPIStoryNotedWords_AddAndRemove(t *testing.T) {
 				{DisplayWord: "を", BaseWord: "を"},
 				{DisplayWord: "歩く", BaseWord: "歩く"},
 			},
+			OrigLang:         "jp",
 			IsParagraphStart: true,
 		},
 	})
@@ -870,7 +897,7 @@ func TestRenderAppPage_RendersHTMLAndSharedNav(t *testing.T) {
 func TestAPIGetWordInfo_ReturnsWordInfo(t *testing.T) {
 	db := testDB(t)
 	_, err := insertStory(db, "Word Info Story", []storySentenceInput{
-		{Words: []storyWordInput{{DisplayWord: "猫", BaseWord: "猫"}}, IsParagraphStart: true},
+		{Words: []storyWordInput{{DisplayWord: "猫", BaseWord: "猫"}}, OrigLang: "jp", IsParagraphStart: true},
 	})
 	if err != nil {
 		t.Fatal(err)

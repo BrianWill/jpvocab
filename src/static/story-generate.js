@@ -22,7 +22,9 @@ function updateTranslationCountsText() {
   const target = getTranslationTarget();
   const sentenceCount = Array.isArray(target?.sentences) ? target.sentences.length : 0;
   const uniqueWordCount = new Set(
-    (target?.sentences || []).flatMap(s => (s.words || []).filter(w => w.base).map(w => w.base))
+    (target?.sentences || [])
+      .filter(s => s.orig_lang === 'jp')
+      .flatMap(s => (s.words || []).filter(w => w.base).map(w => w.base))
   ).size;
   _els.genTranslationCounts.textContent =
     `${sentenceCount} sentence${sentenceCount === 1 ? '' : 's'}, ${uniqueWordCount} unique word${uniqueWordCount === 1 ? '' : 's'}`;
@@ -107,7 +109,7 @@ export function openTranslationModal(chunkPosition = null, chunkLabel = '') {
   resetTranslationProgressUi();
   if (_els.genTranslationCopy) {
     const target = _state.translationChunkLabel || 'this chunk';
-    _els.genTranslationCopy.innerHTML = `Generate English sentence translations for ${target} using AI?<br>Any existing translations will be replaced.`;
+    _els.genTranslationCopy.innerHTML = `Generate sentence translations for ${target} using AI?<br>Any existing non-original-language text will be replaced.`;
   }
   setTranslationModalGenerating(false);
   _els.genTranslationModalBackdrop.classList.remove('hidden');

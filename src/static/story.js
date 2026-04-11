@@ -105,6 +105,29 @@ function storyMetaLabel(story) {
   ].join(' | ');
 }
 
+function sentenceDisplayText(sentence) {
+  if (sentence.jp) return sentence.jp;
+  if (sentence.en) return sentence.en;
+  return (sentence.words || []).map(word => word.display).join('');
+}
+
+function sentenceTranslationText(sentence) {
+  if (sentence.jp && sentence.en) return sentence.en;
+  return '';
+}
+
+function sentenceHasTranslation(sentence) {
+  return !!sentenceTranslationText(sentence);
+}
+
+function sentenceDisplaysTranslatedJapanese(sentence) {
+  return sentence.orig_lang === 'en' && !!sentence.jp && !!sentence.en;
+}
+
+function storyCanUseSynthPlayback(story) {
+  return (story?.sentences || []).every(sentence => sentence.orig_lang !== 'en');
+}
+
 // ── Story ID ──────────────────────────────────────────────────────────────────
 function storyIdFromPath() {
   const parts = window.location.pathname.split('/').filter(Boolean);
@@ -359,10 +382,6 @@ async function loadStory(id) {
   return res.json();
 }
 
-function sentenceText(sentence) {
-  return sentence.words.map(word => word.display).join('');
-}
-
 function renderStory(story) {
   els.storyScrollArea.classList.remove('story-scroll-area--loading');
   els.storyError.hidden = true;
@@ -386,7 +405,7 @@ function renderStory(story) {
   const textParts = [];
   let offset = 0;
   for (const sentence of story.sentences) {
-    const text = sentenceText(sentence);
+    const text = sentenceDisplayText(sentence);
     state.sentenceOffsets.push(offset);
     textParts.push(text);
     offset += text.length + SEPARATOR.length;
@@ -402,8 +421,8 @@ function renderStory(story) {
   const chunkPositions = [...new Set((story.sentences || []).map(s => s.chunkPosition))].sort((a, b) => a - b);
   for (const chunkPos of chunkPositions) {
     const chunkSentences = (story.sentences || []).filter(s => s.chunkPosition === chunkPos);
-    const fullyTranslated = chunkSentences.length > 0 && chunkSentences.every(s => !!s.englishText);
-    const hasAnyTranslation = chunkSentences.some(s => !!s.englishText);
+    const fullyTranslated = chunkSentences.length > 0 && chunkSentences.every(sentenceHasTranslation);
+    const hasAnyTranslation = chunkSentences.some(sentenceHasTranslation);
     const translateTooltip = hasAnyTranslation ? 'Retranslate section' : 'Translate section';
     const translateBtnClass = fullyTranslated ? ' story-chunk-translate-btn--translated' : '';
     const chunkSection = document.createElement('section');
@@ -430,50 +449,56 @@ function renderStory(story) {
       }
       const sentenceSpan = document.createElement('span');
       sentenceSpan.className = 'story-sentence';
-      if (sentence.englishText) {
-        sentenceSpan.dataset.tooltip = sentence.englishText;
+      sentenceSpan.classList.toggle('story-sentence--translated-jp', sentenceDisplaysTranslatedJapanese(sentence));
+      const translationText = sentenceTranslationText(sentence);
+      if (translationText) {
+        sentenceSpan.dataset.tooltip = translationText;
         sentenceSpan.dataset.tooltipClass = 'tooltip-translation';
       }
 
-      for (const word of sentence.words) {
-        const wordSpan = document.createElement('span');
-        wordSpan.className = 'story-word';
-        wordSpan.textContent = word.display;
-        const wordInfo = state.wordInfoMap.get(word.base) || null;
-        const isStoryWord = !!wordInfo;
-        if (word.base || sentence.englishText) {
-          wordSpan.dataset.tooltipHtml = buildWordTooltipHtml(word, sentence.englishText, wordInfo);
-          wordSpan.dataset.tooltipClass = isStoryWord ? 'story-word-tooltip' : (sentence.englishText ? 'tooltip-translation' : '');
+      if (sentence.orig_lang === 'jp') {
+        for (const word of sentence.words) {
+          const wordSpan = document.createElement('span');
+          wordSpan.className = 'story-word';
+          wordSpan.textContent = word.display;
+          const wordInfo = state.wordInfoMap.get(word.base) || null;
+          const isStoryWord = !!wordInfo;
+          if (word.base || translationText) {
+            wordSpan.dataset.tooltipHtml = buildWordTooltipHtml(word, translationText, wordInfo);
+            wordSpan.dataset.tooltipClass = isStoryWord ? 'story-word-tooltip' : (translationText ? 'tooltip-translation' : '');
+          }
+          if (isStoryWord && wordInfo.english) wordSpan.classList.add('story-word--translated');
+          if (isStoryWord && wordInfo.tracked) wordSpan.classList.add('story-word--in-lexicon');
+          if (word.base) {
+            wordSpan.addEventListener('mouseenter', () => {
+              state.hoveredWord = word;
+            });
+            wordSpan.addEventListener('mouseleave', () => {
+              if (state.hoveredWord === word) state.hoveredWord = null;
+            });
+            wordSpan.addEventListener('click', () => {
+              state.hoveredWord = word;
+              const wi = state.wordInfoMap.get(word.base) || null;
+              if (wi?.tracked) return;
+              const currentlyNoted = isWordNoted(word.base);
+              wordSpan.dataset.tooltipHtml = buildWordTooltipHtml(word, translationText, wi, !currentlyNoted);
+              refreshTooltip(wordSpan);
+              if (currentlyNoted) {
+                removeNotedWord(word.base).catch(() => {});
+              } else {
+                addHoveredWordToNotedWords().catch(() => {});
+              }
+            });
+          }
+          state.wordTokenMetas.push({
+            el: wordSpan,
+            sentenceEnglishText: translationText,
+            word,
+          });
+          sentenceSpan.appendChild(wordSpan);
         }
-        if (isStoryWord && wordInfo.english) wordSpan.classList.add('story-word--translated');
-        if (isStoryWord && wordInfo.tracked) wordSpan.classList.add('story-word--in-lexicon');
-        if (word.base) {
-          wordSpan.addEventListener('mouseenter', () => {
-            state.hoveredWord = word;
-          });
-          wordSpan.addEventListener('mouseleave', () => {
-            if (state.hoveredWord === word) state.hoveredWord = null;
-          });
-          wordSpan.addEventListener('click', () => {
-            state.hoveredWord = word;
-            const wi = state.wordInfoMap.get(word.base) || null;
-            if (wi?.tracked) return;
-            const currentlyNoted = isWordNoted(word.base);
-            wordSpan.dataset.tooltipHtml = buildWordTooltipHtml(word, sentence.englishText, wi, !currentlyNoted);
-            refreshTooltip(wordSpan);
-            if (currentlyNoted) {
-              removeNotedWord(word.base).catch(() => {});
-            } else {
-              addHoveredWordToNotedWords().catch(() => {});
-            }
-          });
-        }
-        state.wordTokenMetas.push({
-          el: wordSpan,
-          sentenceEnglishText: sentence.englishText || '',
-          word,
-        });
-        sentenceSpan.appendChild(wordSpan);
+      } else {
+        sentenceSpan.textContent = sentenceDisplayText(sentence);
       }
       sentenceSpan.addEventListener('mouseenter', () => showSentencePlayBtn(sentenceIdx));
       sentenceSpan.addEventListener('mouseleave', scheduleSentencePlayHide);
@@ -537,7 +562,7 @@ function renderStory(story) {
 
   // Enable synth-mode playback if VoiceVox is available.
   checkVoicevoxAvailable().then(available => {
-    if (available) initSynthPlayback();
+    if (available && storyCanUseSynthPlayback(story)) initSynthPlayback();
   });
 
   // Enable generate translation button if AI providers are available.

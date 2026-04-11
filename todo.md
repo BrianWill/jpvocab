@@ -9,15 +9,14 @@ This file is random notes of possible features and bug fixes.
 
 - on story import, can we detect if a sentence is Japanese or English (mixed cases default to Japanese)?
 
+- for repurposing English content, may best to translate on paragraph or multi-graph level, then split into sentences?
+    - would require translating back
+
 - video stories with subtitles
     first import subtitle files
 
     either local video file or embedded youtube 
 
-
-
-- create more word lists
-    - expand existing lists
 
 - add more common Japanese words to the word insertion blacklist
 

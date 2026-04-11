@@ -400,6 +400,10 @@
   border-radius: 3px;
 }
 
+.story-sentence--translated-jp {
+  color: #c7d7a8;
+}
+
 .story-word {
   cursor: pointer;
   border-radius: 2px;

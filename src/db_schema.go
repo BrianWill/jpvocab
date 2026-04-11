@@ -7,6 +7,7 @@ import (
 	"log"
 	"os"
 	"slices"
+	"strings"
 
 	_ "modernc.org/sqlite"
 )
@@ -89,7 +90,9 @@ func migrate(db *sql.DB) {
 			story_id           INTEGER NOT NULL REFERENCES stories(id) ON DELETE CASCADE,
 			position           INTEGER NOT NULL,
 			words_json         TEXT    NOT NULL,
-			english_text       TEXT,
+			jp_text            TEXT,
+			en_text            TEXT,
+			orig_lang          TEXT    NOT NULL DEFAULT 'jp',
 			is_paragraph_start INTEGER NOT NULL DEFAULT 0 CHECK (is_paragraph_start IN (0, 1)),
 			is_chunk_start     INTEGER NOT NULL DEFAULT 0 CHECK (is_chunk_start IN (0, 1)),
 			UNIQUE(story_id, position)
@@ -386,8 +389,11 @@ type seedSession struct {
 }
 
 type seedStorySentence struct {
-	JapaneseText     string  `json:"japanese_text"`
+	JapaneseText     *string `json:"japanese_text"`
 	EnglishText      *string `json:"english_text"`
+	JPText           *string `json:"jp"`
+	ENText           *string `json:"en"`
+	OrigLang         string  `json:"orig_lang"`
 	IsParagraphStart bool    `json:"is_paragraph_start"`
 }
 
@@ -597,15 +603,46 @@ func seedDB(db *sql.DB) {
 		} else {
 			sentences = make([]storySentenceInput, 0, len(story.Sentences))
 			for _, sentence := range story.Sentences {
-				if sentence.JapaneseText == "" {
-					tx.Rollback()
-					log.Fatal("seed: story sentence japanese_text is required")
+				jpText := sentence.JPText
+				if jpText == nil {
+					jpText = sentence.JapaneseText
 				}
-				sentences = append(sentences, storySentenceInput{
-					Words:            buildStorySentenceWords(sentence.JapaneseText),
-					EnglishText:      sentence.EnglishText,
-					IsParagraphStart: sentence.IsParagraphStart,
-				})
+				enText := sentence.ENText
+				if enText == nil {
+					enText = sentence.EnglishText
+				}
+				origLang := sentence.OrigLang
+				if origLang == "" {
+					switch {
+					case enText != nil && strings.TrimSpace(*enText) != "" && (jpText == nil || strings.TrimSpace(*jpText) == ""):
+						origLang = "en"
+					default:
+						origLang = "jp"
+					}
+				}
+				var sourceText string
+				switch origLang {
+				case "en":
+					if enText != nil {
+						sourceText = strings.TrimSpace(*enText)
+					}
+				case "jp":
+					if jpText != nil {
+						sourceText = strings.TrimSpace(*jpText)
+					}
+				}
+				if sourceText == "" {
+					tx.Rollback()
+					log.Fatal("seed: story sentence original-language text is required")
+				}
+				input := buildStorySentenceInput(sourceText, sentence.IsParagraphStart)
+				input.OrigLang = origLang
+				input.JPText = jpText
+				input.ENText = enText
+				if input.OrigLang == "jp" && len(input.Words) == 0 {
+					input.Words = buildStorySentenceWords(sourceText)
+				}
+				sentences = append(sentences, input)
 			}
 		}
 		if _, err := insertStoryTx(tx, story.Title, sentences); err != nil {

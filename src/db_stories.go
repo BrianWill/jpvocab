@@ -25,7 +25,9 @@ type storyWordJSON struct {
 
 type storySentenceInput struct {
 	Words            []storyWordInput
-	EnglishText      *string
+	JPText           *string
+	ENText           *string
+	OrigLang         string
 	IsParagraphStart bool
 }
 
@@ -34,7 +36,9 @@ type storySentenceJSON struct {
 	Position         int             `json:"position"`
 	ChunkPosition    int             `json:"chunkPosition"`
 	Words            []storyWordJSON `json:"words"`
-	EnglishText      *string         `json:"englishText"`
+	JPText           *string         `json:"jp"`
+	ENText           *string         `json:"en"`
+	OrigLang         string          `json:"orig_lang"`
 	IsParagraphStart bool            `json:"isParagraphStart"`
 }
 
@@ -86,8 +90,14 @@ func insertStoryTx(tx *sql.Tx, title string, sentences []storySentenceInput) (in
 		return 0, errors.New("story must have at least one sentence")
 	}
 	for _, sentence := range sentences {
-		if len(sentence.Words) == 0 {
-			return 0, errors.New("story sentence must have at least one word")
+		if sentence.OrigLang != "jp" && sentence.OrigLang != "en" {
+			return 0, errors.New("story sentence orig lang must be jp or en")
+		}
+		if strings.TrimSpace(storySentenceTextFromInput(sentence)) == "" {
+			return 0, errors.New("story sentence text is required")
+		}
+		if sentence.OrigLang == "jp" && len(sentence.Words) == 0 {
+			return 0, errors.New("japanese story sentence must have at least one word")
 		}
 	}
 	chunks := buildStoryChunks(sentences)
@@ -129,8 +139,8 @@ func insertStoryTx(tx *sql.Tx, title string, sentences []storySentenceInput) (in
 	storySentencePos := 1
 	for _, chunk := range chunks {
 		for sentenceIdx, sentence := range chunk.Sentences {
-			if len(sentence.Words) == 0 {
-				return 0, errors.New("story sentence must have at least one word")
+			if sentence.OrigLang == "jp" && len(sentence.Words) == 0 {
+				return 0, errors.New("japanese story sentence must have at least one word")
 			}
 			words := make([]storyWordJSON, len(sentence.Words))
 			for j, word := range sentence.Words {
@@ -160,9 +170,9 @@ func insertStoryTx(tx *sql.Tx, title string, sentences []storySentenceInput) (in
 			}
 
 			if _, err := tx.Exec(`
-				INSERT INTO story_sentences (story_id, position, words_json, english_text, is_paragraph_start, is_chunk_start)
-				VALUES (?, ?, ?, ?, ?, ?)
-			`, storyID, storySentencePos, string(wordsJSON), sentence.EnglishText, paragraphStart, chunkStart); err != nil {
+				INSERT INTO story_sentences (story_id, position, words_json, jp_text, en_text, orig_lang, is_paragraph_start, is_chunk_start)
+				VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+			`, storyID, storySentencePos, string(wordsJSON), sentence.JPText, sentence.ENText, sentence.OrigLang, paragraphStart, chunkStart); err != nil {
 				return 0, err
 			}
 			storySentencePos++
@@ -248,7 +258,7 @@ func deleteStory(db *sql.DB, id int64) error {
 func queryStories(db *sql.DB, whereClause string, args ...any) ([]storyJSON, error) {
 	rows, err := db.Query(`
 		SELECT s.id, s.title, s.created_at, s.sentence_count, s.lexicon_word_count, s.noted_words_json,
-		       ss.id, ss.position, ss.words_json, ss.english_text, ss.is_paragraph_start, ss.is_chunk_start
+		       ss.id, ss.position, ss.words_json, ss.jp_text, ss.en_text, ss.orig_lang, ss.is_paragraph_start, ss.is_chunk_start
 		FROM stories s
 		LEFT JOIN story_sentences ss ON ss.story_id = s.id
 	`+whereClause+`
@@ -274,13 +284,15 @@ func queryStories(db *sql.DB, whereClause string, args ...any) ([]storyJSON, err
 		var sentenceID sql.NullInt64
 		var position sql.NullInt64
 		var wordsJSON sql.NullString
-		var englishText sql.NullString
+		var jpText sql.NullString
+		var enText sql.NullString
+		var origLang sql.NullString
 		var isParagraphStart sql.NullInt64
 		var isChunkStart sql.NullInt64
 
 		if err := rows.Scan(
 			&storyID, &title, &createdAt, &sentenceCount, &lexiconWordCount, &notedWordsJSON,
-			&sentenceID, &position, &wordsJSON, &englishText, &isParagraphStart, &isChunkStart,
+			&sentenceID, &position, &wordsJSON, &jpText, &enText, &origLang, &isParagraphStart, &isChunkStart,
 		); err != nil {
 			return nil, err
 		}
@@ -316,6 +328,7 @@ func queryStories(db *sql.DB, whereClause string, args ...any) ([]storyJSON, err
 				Position:         int(position.Int64),
 				ChunkPosition:    currentChunkPos,
 				Words:            []storyWordJSON{},
+				OrigLang:         "jp",
 				IsParagraphStart: isParagraphStart.Valid && isParagraphStart.Int64 == 1,
 			}
 			if wordsJSON.Valid {
@@ -327,9 +340,16 @@ func queryStories(db *sql.DB, whereClause string, args ...any) ([]storyJSON, err
 				}
 				fillMissingBaseWords(sentence.Words)
 			}
-			if englishText.Valid {
-				text := englishText.String
-				sentence.EnglishText = &text
+			if jpText.Valid {
+				text := jpText.String
+				sentence.JPText = &text
+			}
+			if enText.Valid {
+				text := enText.String
+				sentence.ENText = &text
+			}
+			if origLang.Valid && origLang.String != "" {
+				sentence.OrigLang = origLang.String
 			}
 			current.Sentences = append(current.Sentences, sentence)
 		}
@@ -374,20 +394,20 @@ func querySentencesLite(db *sql.DB, storyID int64, chunkPosition int) ([]storySe
 
 		if nextStart.Valid {
 			rows, err = db.Query(
-				`SELECT id, position, words_json, english_text, is_paragraph_start FROM story_sentences
+				`SELECT id, position, words_json, jp_text, en_text, orig_lang, is_paragraph_start FROM story_sentences
 				 WHERE story_id = ? AND position >= ? AND position < ? ORDER BY position`,
 				storyID, startPos, nextStart.Int64,
 			)
 		} else {
 			rows, err = db.Query(
-				`SELECT id, position, words_json, english_text, is_paragraph_start FROM story_sentences
+				`SELECT id, position, words_json, jp_text, en_text, orig_lang, is_paragraph_start FROM story_sentences
 				 WHERE story_id = ? AND position >= ? ORDER BY position`,
 				storyID, startPos,
 			)
 		}
 	} else {
 		rows, err = db.Query(
-			`SELECT id, position, words_json, english_text, is_paragraph_start FROM story_sentences
+			`SELECT id, position, words_json, jp_text, en_text, orig_lang, is_paragraph_start FROM story_sentences
 			 WHERE story_id = ? ORDER BY position`,
 			storyID,
 		)
@@ -401,9 +421,11 @@ func querySentencesLite(db *sql.DB, storyID int64, chunkPosition int) ([]storySe
 	for rows.Next() {
 		var s storySentenceJSON
 		var wordsJSON sql.NullString
-		var englishText sql.NullString
+		var jpText sql.NullString
+		var enText sql.NullString
+		var origLang sql.NullString
 		var isParagraphStart sql.NullInt64
-		if err := rows.Scan(&s.ID, &s.Position, &wordsJSON, &englishText, &isParagraphStart); err != nil {
+		if err := rows.Scan(&s.ID, &s.Position, &wordsJSON, &jpText, &enText, &origLang, &isParagraphStart); err != nil {
 			return nil, err
 		}
 		if wordsJSON.Valid {
@@ -413,9 +435,18 @@ func querySentencesLite(db *sql.DB, storyID int64, chunkPosition int) ([]storySe
 		if s.Words == nil {
 			s.Words = []storyWordJSON{}
 		}
-		if englishText.Valid {
-			t := englishText.String
-			s.EnglishText = &t
+		if jpText.Valid {
+			t := jpText.String
+			s.JPText = &t
+		}
+		if enText.Valid {
+			t := enText.String
+			s.ENText = &t
+		}
+		if origLang.Valid && origLang.String != "" {
+			s.OrigLang = origLang.String
+		} else {
+			s.OrigLang = "jp"
 		}
 		s.IsParagraphStart = isParagraphStart.Valid && isParagraphStart.Int64 == 1
 		sentences = append(sentences, s)
@@ -423,9 +454,17 @@ func querySentencesLite(db *sql.DB, storyID int64, chunkPosition int) ([]storySe
 	return sentences, rows.Err()
 }
 
-func setSentenceEnglishText(db *sql.DB, sentenceID int64, text string) error {
-	_, err := db.Exec(`UPDATE story_sentences SET english_text = ? WHERE id = ?`, text, sentenceID)
-	return err
+func setSentenceTranslationText(db *sql.DB, sentenceID int64, targetLang, text string) error {
+	switch targetLang {
+	case "jp":
+		_, err := db.Exec(`UPDATE story_sentences SET jp_text = ? WHERE id = ?`, text, sentenceID)
+		return err
+	case "en":
+		_, err := db.Exec(`UPDATE story_sentences SET en_text = ? WHERE id = ?`, text, sentenceID)
+		return err
+	default:
+		return errors.New("target language must be jp or en")
+	}
 }
 
 func setStoryNotedWords(db *sql.DB, storyID int64, words []storyNotedWordJSON) error {
@@ -501,11 +540,102 @@ func removeStoryNotedWord(db *sql.DB, storyID int64, baseWord string) error {
 }
 
 func storySentenceTextFromInput(sentence storySentenceInput) string {
+	if sentence.OrigLang == "en" {
+		if sentence.ENText != nil {
+			return *sentence.ENText
+		}
+		return ""
+	}
+	if sentence.JPText != nil {
+		return *sentence.JPText
+	}
 	var b strings.Builder
 	for _, word := range sentence.Words {
 		b.WriteString(word.DisplayWord)
 	}
 	return b.String()
+}
+
+func storySentenceDisplayText(s storySentenceJSON) string {
+	if s.OrigLang == "en" {
+		if s.ENText != nil {
+			return *s.ENText
+		}
+	} else if s.JPText != nil {
+		return *s.JPText
+	}
+	var parts []string
+	for _, w := range s.Words {
+		parts = append(parts, w.DisplayWord)
+	}
+	return strings.Join(parts, "")
+}
+
+func storySentenceTranslationText(s storySentenceJSON) string {
+	if s.OrigLang == "en" {
+		if s.JPText != nil {
+			return *s.JPText
+		}
+		return ""
+	}
+	if s.ENText != nil {
+		return *s.ENText
+	}
+	return ""
+}
+
+func storySentenceSourceText(s storySentenceJSON) string {
+	return strings.TrimSpace(storySentenceDisplayText(s))
+}
+
+func storySentenceTargetLang(origLang string) string {
+	if origLang == "en" {
+		return "jp"
+	}
+	return "en"
+}
+
+func storySentenceHasTranslation(s storySentenceJSON) bool {
+	if s.OrigLang == "en" {
+		return s.JPText != nil && strings.TrimSpace(*s.JPText) != ""
+	}
+	return s.ENText != nil && strings.TrimSpace(*s.ENText) != ""
+}
+
+func classifySentenceLanguage(text string) string {
+	hasJP := false
+	hasLatin := false
+	for _, r := range text {
+		switch {
+		case (r >= 0x3040 && r <= 0x309F) || (r >= 0x30A0 && r <= 0x30FF) || (r >= 0x4E00 && r <= 0x9FFF):
+			hasJP = true
+		case (r >= 'A' && r <= 'Z') || (r >= 'a' && r <= 'z'):
+			hasLatin = true
+		}
+	}
+	if hasJP {
+		return "jp"
+	}
+	if hasLatin {
+		return "en"
+	}
+	return "jp"
+}
+
+func buildStorySentenceInput(text string, isParagraphStart bool) storySentenceInput {
+	lang := classifySentenceLanguage(text)
+	sentence := storySentenceInput{
+		OrigLang:         lang,
+		IsParagraphStart: isParagraphStart,
+	}
+	if lang == "en" {
+		sentence.ENText = &text
+		sentence.Words = []storyWordInput{}
+		return sentence
+	}
+	sentence.JPText = &text
+	sentence.Words = buildStorySentenceWords(text)
+	return sentence
 }
 
 // fillMissingBaseWords sets BaseWord = DisplayWord for any word where BaseWord
@@ -521,6 +651,9 @@ func fillMissingBaseWords(words []storyWordJSON) {
 func storyLexiconWordCount(sentences []storySentenceInput) int {
 	texts := make([]string, 0, len(sentences))
 	for _, sentence := range sentences {
+		if sentence.OrigLang != "jp" {
+			continue
+		}
 		texts = append(texts, storySentenceTextFromInput(sentence))
 	}
 	return storyLexiconWordCountFromTexts(texts)
@@ -543,6 +676,9 @@ func storySentenceBaseWords(sentences []storySentenceInput) []string {
 	seen := map[string]struct{}{}
 	baseWords := make([]string, 0)
 	for _, sentence := range sentences {
+		if sentence.OrigLang != "jp" {
+			continue
+		}
 		for _, word := range sentence.Words {
 			base := strings.TrimSpace(word.BaseWord)
 			if base == "" {
@@ -564,9 +700,6 @@ func buildStoryChunks(sentences []storySentenceInput) []storyChunkInput {
 	currentChars := 0
 
 	for _, sentence := range sentences {
-		if len(sentence.Words) == 0 {
-			continue
-		}
 		if len(current.Sentences) > 0 && currentChars >= storyChunkMinChars {
 			chunks = append(chunks, current)
 			current = storyChunkInput{Sentences: []storySentenceInput{}}
@@ -606,7 +739,7 @@ func buildStorySentenceWords(sentence string) []storyWordInput {
 	return words
 }
 
-var storySentenceSplitRE = regexp.MustCompile(`[^。！？!?]+[。！？!?]?`)
+var storySentenceSplitRE = regexp.MustCompile(`[^。！？!?.]+[。！？!?.]?`)
 
 func buildStorySentencesFromText(content string) []storySentenceInput {
 	normalized := strings.ReplaceAll(content, "\r\n", "\n")
@@ -626,14 +759,11 @@ func buildStorySentencesFromText(content string) []storySentenceInput {
 			if text == "" {
 				continue
 			}
-			words := buildStorySentenceWords(text)
-			if len(words) == 0 {
+			sentence := buildStorySentenceInput(text, !paragraphHasSentence)
+			if strings.TrimSpace(storySentenceTextFromInput(sentence)) == "" {
 				continue
 			}
-			sentences = append(sentences, storySentenceInput{
-				Words:            words,
-				IsParagraphStart: !paragraphHasSentence,
-			})
+			sentences = append(sentences, sentence)
 			paragraphHasSentence = true
 		}
 	}

@@ -168,6 +168,14 @@ function highlightAt(charIndex) {
   if (sIdx !== _state.activeIdx) setActiveIdx(sIdx);
 }
 
+function speechPlaybackLang() {
+  const sentences = _state.story?.sentences || [];
+  if (sentences.length > 0 && sentences.every(sentence => sentence.orig_lang === 'en')) {
+    return 'en-US';
+  }
+  return 'ja-JP';
+}
+
 function stopSpeechPlayback() {
   _state.resumeOffset = _state.lastWordAbsPos;
   if (_state.currentUtterance) {
@@ -185,9 +193,9 @@ async function startSpeechPlayback() {
     await new Promise(resolve => speechSynthesis.addEventListener('voiceschanged', resolve, { once: true }));
   }
   _state.currentUtterance = new SpeechSynthesisUtterance(_state.speechText.slice(_state.resumeOffset));
-  _state.currentUtterance.lang = 'ja-JP';
+  _state.currentUtterance.lang = speechPlaybackLang();
   _state.currentUtterance.rate = _state.playbackRate;
-  const voice = getTtsVoice('ja-JP');
+  const voice = getTtsVoice(_state.currentUtterance.lang);
   if (voice) _state.currentUtterance.voice = voice;
   _state.currentUtterance.onboundary = e => highlightAt(e.charIndex);
   _state.currentUtterance.onend = () => { _state.currentUtterance = null; clearHighlight(); setPlaybackPlaying(false); };

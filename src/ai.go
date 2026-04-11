@@ -479,31 +479,42 @@ func marshalUserMsg(v map[string]string) string {
 }
 
 // storyTranslationResult holds the AI-generated sentence translations for a story.
+type storyTranslationRequest struct {
+	OrigLang string `json:"orig_lang"`
+	Text     string `json:"text"`
+}
+
 type storyTranslationResult struct {
-	Sentences []string `json:"sentences"`
+	Sentences   []string `json:"sentences"`
+	TargetLangs []string `json:"-"`
 }
 
 // translateStory sends all sentences to the AI in a single call and returns ordered
-// English translations plus the token usage for the underlying model call.
+// translations into each sentence's non-original language plus token usage.
 // providerModel must be "provider/model" format.
-func translateStory(db *sql.DB, sentences []string, providerModel string) (*storyTranslationResult, tokenUsage, error) {
+func translateStory(db *sql.DB, sentences []storyTranslationRequest, providerModel string) (*storyTranslationResult, tokenUsage, error) {
 	target, err := parseAIModel(providerModel)
 	if err != nil {
 		return nil, tokenUsage{}, err
 	}
-	prompt := `You are a Japanese language teacher helping English-speaking students read Japanese stories. Given a JSON array of Japanese sentences, return an equally ordered JSON array of English translations.
+	prompt := `You are helping with a bilingual Japanese/English reader. Given a JSON array of sentence objects, return an equally ordered JSON array of translations.
 
 Instructions:
+- Each object has "orig_lang" ("jp" or "en") and "text".
+- If orig_lang is "jp", translate the text into English.
+- If orig_lang is "en", translate the text into Japanese.
 - Translate each sentence in isolation without using surrounding sentences for context.
-- Favor literal, morpheme-by-morpheme accuracy over natural English fluency — the goal is to help learners understand Japanese grammatical structure, not to produce polished prose.
+- Favor literal, structure-preserving translations over polished prose.
+- Return only valid JSON with this shape: {"sentences":["...", "..."]}.
 
 Example input:
-["猫が窓の外を見ている。","彼女はゆっくりと立ち上がった。"]
+[
+  {"orig_lang":"jp","text":"猫が窓の外を見ている。"},
+  {"orig_lang":"en","text":"The cat is sleeping on the sofa."}
+]
 
 Example output:
-{"sentences":["The cat is looking at the outside of the window.","She slowly stood up."]}
-
-Return only valid JSON with no markdown, no code fences, and no extra commentary.`
+{"sentences":["The cat is looking at the outside of the window.","猫はソファーで眠っている。"]}`
 
 	userMsg, err := json.Marshal(sentences)
 	if err != nil {
@@ -537,6 +548,10 @@ Return only valid JSON with no markdown, no code fences, and no extra commentary
 	})
 	if err != nil {
 		return nil, tokenUsage{}, err
+	}
+	result.TargetLangs = make([]string, len(sentences))
+	for i, sentence := range sentences {
+		result.TargetLangs[i] = storySentenceTargetLang(sentence.OrigLang)
 	}
 	target.insertUsage(db, "translate-story", usage)
 	return result, usage, nil

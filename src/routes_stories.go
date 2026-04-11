@@ -256,11 +256,7 @@ func apiCreateStory(db *sql.DB) http.HandlerFunc {
 
 // storySentenceText reconstructs the plain text of a sentence from its word tokens.
 func storySentenceText(s storySentenceJSON) string {
-	parts := make([]string, len(s.Words))
-	for i, w := range s.Words {
-		parts[i] = w.DisplayWord
-	}
-	return strings.Join(parts, "")
+	return storySentenceDisplayText(s)
 }
 
 func writeStoryJobSuccess(streamEvent func(v any), usage tokenUsage) {
@@ -300,8 +296,8 @@ func runStoryNDJSONJob(w http.ResponseWriter, initialEvent map[string]any, work 
 	writeStoryJobSuccess(streamEvent, usage)
 }
 
-// apiGenerateStoryTranslation calls an AI provider to translate all sentences in the
-// story. Streams NDJSON:
+// apiGenerateStoryTranslation calls an AI provider to translate story sentences from
+// each sentence's original language into the opposite language. Streams NDJSON:
 //
 //	{"status": "translating", "sentenceCount": N}                                   — emitted immediately
 //	{"allDone": true, "inputTokens": N, "outputTokens": N, "totalTokens": N}        — on success
@@ -332,32 +328,35 @@ func apiGenerateStoryTranslation(db *sql.DB) http.HandlerFunc {
 			return
 		}
 
-		var sentenceTexts []string
+		var requests []storyTranslationRequest
 		var sentenceIDs []int64
 		for _, s := range targetSentences {
-			text := storySentenceText(s)
+			text := storySentenceSourceText(s)
 			if strings.TrimSpace(text) == "" {
 				continue
 			}
-			sentenceTexts = append(sentenceTexts, text)
+			requests = append(requests, storyTranslationRequest{
+				OrigLang: s.OrigLang,
+				Text:     text,
+			})
 			sentenceIDs = append(sentenceIDs, s.ID)
 		}
 
 		runStoryNDJSONJob(w, map[string]any{
 			"status":        "translating",
-			"sentenceCount": len(sentenceTexts),
+			"sentenceCount": len(requests),
 			"chunkPosition": body.ChunkPosition,
 		}, func() (tokenUsage, error) {
-			result, usage, err := translateStory(db, sentenceTexts, body.AIModel)
+			result, usage, err := translateStory(db, requests, body.AIModel)
 			if err != nil {
 				return tokenUsage{}, err
 			}
 
 			for i, translation := range result.Sentences {
-				if i >= len(sentenceIDs) || translation == "" {
-					break
+				if i >= len(sentenceIDs) || i >= len(result.TargetLangs) || translation == "" {
+					continue
 				}
-				if err := setSentenceEnglishText(db, sentenceIDs[i], translation); err != nil {
+				if err := setSentenceTranslationText(db, sentenceIDs[i], result.TargetLangs[i], translation); err != nil {
 					return tokenUsage{}, err
 				}
 			}

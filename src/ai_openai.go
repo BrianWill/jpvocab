@@ -104,35 +104,3 @@ func autoFillWordsBatchOpenAI(words []string, model string) ([]*wordAutoFill, to
 		return fills, nil
 	})
 }
-
-func rerollMeaningOpenAI(word, currentMeaning, model string) ([]string, tokenUsage, error) {
-	messages := []message{
-		{Role: "system", Content: rerollMeaningSystemPrompt},
-		{Role: "user", Content: marshalUserMsg(map[string]string{"word": word, "current_meaning": currentMeaning})},
-	}
-	return retryJSONRequest("openai reroll meaning", func() (string, tokenUsage, error) {
-		return callOpenAI(model, messages)
-	}, func(text string) ([]string, error) {
-		var result []string
-		if err := unmarshalJSONArrayWithSalvage(text, &result); err != nil {
-			return nil, fmt.Errorf("parse reroll-meaning JSON: %w", err)
-		}
-		return result, nil
-	})
-}
-
-func rerollExamplesOpenAI(word, model string) ([]examplePair, tokenUsage, error) {
-	messages := []message{
-		{Role: "system", Content: rerollExamplesSystemPrompt},
-		{Role: "user", Content: word},
-	}
-	return retryJSONRequest("openai reroll examples", func() (string, tokenUsage, error) {
-		return callOpenAI(model, messages)
-	}, func(text string) ([]examplePair, error) {
-		var result []examplePair
-		if err := unmarshalJSONArrayWithSalvage(text, &result); err != nil {
-			return nil, fmt.Errorf("parse reroll-examples JSON: %w", err)
-		}
-		return result, nil
-	})
-}

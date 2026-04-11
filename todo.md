@@ -3,7 +3,14 @@
 This file is random notes of possible features and bug fixes.
 
 - use dictionary instead of AI for word info
-    - still have AI fallback?
+    make sure story chunk translation does not use AI for words
+- still have AI fallback?
+    - yes, because simpler more concise meanings and can generate example sentences
+
+
+
+- create more word lists
+    - expand existing lists
 
 - add more common Japanese words to the word insertion blacklist
 
@@ -45,8 +52,10 @@ This file is random notes of possible features and bug fixes.
             if so, need to also translate back to English sentence-by-sentence to get gloss of each Japanese sentence
     
 - tutor:
-    - prompts should all be tolerant of swapping between English and Japanese. If English, don't provide critque of their languge, but otherwise just procede whether they answer in Japanese or English.
-    - words from every AI message are added to lexicon (as tracked=0) ?
+    - ability to hold separate chats at same time in separate tabs
+        - wouldn't work in wails, but that's OK?
+    - prompts should all be tolerant of swapping between English and Japanese. If English, don't provide critque of their language, but otherwise just procede whether they answer in Japanese or English.
+    - single click on words in bot messages to add them to the dictionary
     - maybe play the AI's correction? use different voice?
     - if AI provides a correction, your last message is faded and teh correction placed below it with new color
     - should warn users somehow about conversation getting too long (context collapse)
@@ -61,45 +70,32 @@ This file is random notes of possible features and bug fixes.
         - modes where the user only expected to answer in English
     - how to integrate lexicon? 
         generate topics / questions from a random set of recently drilled words? or from active words?
-
     - option to rewind chat? undo last prompt and response?
-
     - in chat, highlight words in lexicon, different color for words that are active? 
         - when user responds to bot message that contains active word, increment that drill count?
-
-
-- grammatical analysis of story sentences
-    - click sentence to open analysis modal 
-        - what is hotkey? how to distinguish from click-to-play? ctrl-click? hover popup next to sentence?
-        - uses AI to give breakdown of phrases / clauses
-        - has chat window so user can ask about points of grammar (continues context of the sentence breakdown)
-        - analysis and chat session of each sentence is preserved in db
-            - maybe option to clear the conversation?
-    - sentence breakdown
-    - isolate, classify, and explain phrases
-
-
-    
-
-- typing trainer
-    - this could be just another chat bot
-        seems wasteful maybe to use tokens, but the tokens should be pretty cheap
+    - bot that provides grammatical analysis of sentences
+        user can ask questions in English / Japanese or mix
+            - what is hotkey? how to distinguish from click-to-play? ctrl-click? hover popup next to sentence?
+            - uses AI to give breakdown of phrases / clauses
+            - has chat window so user can ask about points of grammar (continues context of the sentence breakdown)
+            - analysis and chat session of each sentence is preserved in db
+                - maybe option to clear the conversation?
+        - sentence breakdown
+        - isolate, classify, and explain phrases
+    - typing trainer bot
+        - this could be just another chat bot
+            seems wasteful maybe to use tokens, but the tokens should be pretty cheap
 
 - word images: 
     - drag-and-drop support to change image
     - option to crop image
     - copy from clipboard support
-    
 
 - wails
     - double scrollbar appears on start of wails
     - on mac, cmd+-/+ does weird zoom behavior
         (but ctrl+scroll and ctrl+-/+ is fine)
-
-
-
-- create more word lists
-    - expand existing lists
+    - custom scroll behaviour breaks page layout
 
 - lexicon
     - should we worry about load time once the lexicon has thousands of words?

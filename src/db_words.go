@@ -198,34 +198,6 @@ func updateWordFill(db *sql.DB, id int64, reading string, pitchAccent *int, part
 	return err
 }
 
-// wordsExistInDB returns a set of which words from the given slice are already
-// present in the lexicon, keyed by their normalised word value.
-func wordsExistInDB(db *sql.DB, words []string) (map[string]bool, error) {
-	if len(words) == 0 {
-		return nil, nil
-	}
-	placeholders := strings.Repeat("?,", len(words))
-	placeholders = placeholders[:len(placeholders)-1]
-	args := make([]any, len(words))
-	for i, w := range words {
-		args[i] = w
-	}
-	rows, err := db.Query("SELECT base_word FROM words WHERE base_word IN ("+placeholders+")", args...)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-	existing := make(map[string]bool, len(words))
-	for rows.Next() {
-		var w string
-		if err := rows.Scan(&w); err != nil {
-			return nil, err
-		}
-		existing[w] = true
-	}
-	return existing, rows.Err()
-}
-
 // wordsInfoInDB returns info for words already in the lexicon,
 // keyed by their normalised word value.
 func wordsInfoInDB(db *sql.DB, words []string) (map[string]existingWordInfo, error) {
@@ -516,19 +488,6 @@ func containsJapaneseLetter(s string) bool {
 		}
 	}
 	return false
-}
-
-// updateWordInfoIfEmpty sets meaning and/or reading on the words row for the
-// given word text only where the current value is NULL or empty, preserving
-// any data the user has already entered.
-func updateWordInfoIfEmpty(db *sql.DB, word, meaning, reading string) error {
-	_, err := db.Exec(`
-		UPDATE words
-		SET meaning = CASE WHEN COALESCE(meaning,'') = '' THEN ? ELSE meaning END,
-		    reading = CASE WHEN COALESCE(reading,'') = '' THEN ? ELSE reading END
-		WHERE base_word = ?
-	`, meaning, reading, word)
-	return err
 }
 
 // insertWordsIfAbsent adds each word in baseWords to the lexicon with

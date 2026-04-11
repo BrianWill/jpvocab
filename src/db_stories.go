@@ -169,10 +169,6 @@ func insertStoryTx(tx *sql.Tx, title string, sentences []storySentenceInput) (in
 	return storyID, nil
 }
 
-func listStories(db *sql.DB) ([]storyJSON, error) {
-	return queryStories(db, "")
-}
-
 type storyMetaJSON struct {
 	ID               int64  `json:"id"`
 	Title            string `json:"title"`
@@ -562,14 +558,6 @@ func storyLexiconWordCount(sentences []storySentenceInput) int {
 	texts := make([]string, 0, len(sentences))
 	for _, sentence := range sentences {
 		texts = append(texts, storySentenceTextFromInput(sentence))
-	}
-	return storyLexiconWordCountFromTexts(texts)
-}
-
-func storyLexiconWordCountJSON(sentences []storySentenceJSON) int {
-	texts := make([]string, 0, len(sentences))
-	for _, sentence := range sentences {
-		texts = append(texts, storySentenceText(sentence))
 	}
 	return storyLexiconWordCountFromTexts(texts)
 }

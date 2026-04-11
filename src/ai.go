@@ -279,10 +279,6 @@ func autoFillWordsBatchWithUsage(db *sql.DB, words []string, providerModel strin
 	return results, totalUsage, nil
 }
 
-const rerollMeaningSystemPrompt = `You are a Japanese dictionary assistant. Given a Japanese word and its current English meaning, return a JSON array of exactly 3 alternative concise English meanings (short phrases). Do not repeat the current meaning. Return only the JSON array with no markdown, no code fences, and no extra commentary.`
-
-const rerollExamplesSystemPrompt = `You are a Japanese dictionary assistant. Given a Japanese word, return a JSON array of exactly 3 natural example sentences using that word. Each entry must have "jp" (the Japanese sentence) and "en" (its English translation). Return only the JSON array with no markdown, no code fences, and no extra commentary.`
-
 const suggestImageSearchQuerySystemPrompt = `You are a helpful assistant. Given a Japanese word and its English meaning, return a JSON object with a single field "query" containing a concise English search query (2-5 words) suitable for finding a clear, representative photo on a stock photo site. Prefer concrete, visual terms. Return only the JSON object with no markdown, no code fences, and no extra commentary.`
 
 const suggestImageSystemPrompt = `You are a helpful assistant. Given a Japanese word and its English meaning, return a JSON object with a single field "url" containing a URL to a freely licensed image on Wikimedia Commons using the Special:FilePath format: https://commons.wikimedia.org/wiki/Special:FilePath/<filename>. Choose a well-known, unambiguous photo that directly represents the concept. Return only a valid JSON object with no markdown, no code fences, and no extra commentary.`
@@ -445,66 +441,8 @@ func autoFillWord(db *sql.DB, word, providerModel string) (*wordAutoFill, error)
 	return result, nil
 }
 
-// rerollMeaning asks the AI for 3 alternative English meanings for a word.
-func rerollMeaning(db *sql.DB, word, currentMeaning, providerModel string) ([]string, error) {
-	parts := strings.SplitN(providerModel, "/", 2)
-	if len(parts) != 2 {
-		return nil, fmt.Errorf("invalid ai_model value %q", providerModel)
-	}
-	provider, model := parts[0], parts[1]
-	var result []string
-	var usage tokenUsage
-	var err error
-	switch provider {
-	case "openai":
-		result, usage, err = rerollMeaningOpenAI(word, currentMeaning, model)
-	case "google":
-		result, usage, err = rerollMeaningGoogle(word, currentMeaning, model)
-	case "mistral":
-		result, usage, err = rerollMeaningMistral(word, currentMeaning, model)
-	case "glm":
-		result, usage, err = rerollMeaningGLM(word, currentMeaning, model)
-	default:
-		result, usage, err = rerollMeaningAnthropic(word, currentMeaning, model)
-	}
-	if err != nil {
-		return nil, err
-	}
-	insertTokenUsage(db, provider, model, "reroll-meaning", usage.InputTokens, usage.OutputTokens)
-	return result, nil
-}
-
-// rerollExamples asks the AI for 3 alternative example sentence pairs.
-func rerollExamples(db *sql.DB, word, providerModel string) ([]examplePair, error) {
-	parts := strings.SplitN(providerModel, "/", 2)
-	if len(parts) != 2 {
-		return nil, fmt.Errorf("invalid ai_model value %q", providerModel)
-	}
-	provider, model := parts[0], parts[1]
-	var result []examplePair
-	var usage tokenUsage
-	var err error
-	switch provider {
-	case "openai":
-		result, usage, err = rerollExamplesOpenAI(word, model)
-	case "google":
-		result, usage, err = rerollExamplesGoogle(word, model)
-	case "mistral":
-		result, usage, err = rerollExamplesMistral(word, model)
-	case "glm":
-		result, usage, err = rerollExamplesGLM(word, model)
-	default:
-		result, usage, err = rerollExamplesAnthropic(word, model)
-	}
-	if err != nil {
-		return nil, err
-	}
-	insertTokenUsage(db, provider, model, "reroll-examples", usage.InputTokens, usage.OutputTokens)
-	return result, nil
-}
-
 // marshalUserMsg marshals a map to JSON, returning the string form.
-// Used to build structured user messages for reroll requests.
+// Used to build structured user messages for AI requests.
 func marshalUserMsg(v map[string]string) string {
 	b, _ := json.Marshal(v)
 	return string(b)

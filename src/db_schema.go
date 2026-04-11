@@ -136,19 +136,6 @@ func migrate(db *sql.DB) {
 	log.Printf("DB migration OK (version %d)", len(migrations))
 }
 
-func columnExists(db *sql.DB, tableName, columnName string) bool {
-	cols, err := listColumns(db, tableName)
-	if err != nil {
-		return false
-	}
-	for _, col := range cols {
-		if col.Name == columnName {
-			return true
-		}
-	}
-	return false
-}
-
 // resetDB drops all user tables and re-runs migrations, giving a clean slate.
 func resetDB(db *sql.DB) error {
 	tables, err := listTables(db)

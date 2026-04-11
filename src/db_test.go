@@ -294,36 +294,6 @@ func TestContainsKatakana(t *testing.T) {
 	}
 }
 
-// --- wordsExistInDB ---
-
-func TestWordsExistInDB_Empty(t *testing.T) {
-	db := testDB(t)
-	result, err := wordsExistInDB(db, nil)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if result != nil {
-		t.Errorf("expected nil map for empty input, got %v", result)
-	}
-}
-
-func TestWordsExistInDB_Mixed(t *testing.T) {
-	db := testDB(t)
-	insertWord(db, "猫", "", "", "", "", "", "", 1)
-	insertWord(db, "犬", "", "", "", "", "", "", 1)
-
-	result, err := wordsExistInDB(db, []string{"猫", "魚"})
-	if err != nil {
-		t.Fatal(err)
-	}
-	if !result["猫"] {
-		t.Error("猫 should be in result (present in DB)")
-	}
-	if result["魚"] {
-		t.Error("魚 should not be in result (absent from DB)")
-	}
-}
-
 // --- upsertKanji ---
 
 func TestUpsertKanji_Insert(t *testing.T) {
@@ -1046,7 +1016,7 @@ func TestDeleteWordsByName(t *testing.T) {
 
 // --- stories ---
 
-func TestInsertStory_AndListStories(t *testing.T) {
+func TestInsertStory_AndGetStoryByID(t *testing.T) {
 	db := testDB(t)
 	title := "足立美術館の庭園"
 	en1 := "Good morning."
@@ -1078,14 +1048,13 @@ func TestInsertStory_AndListStories(t *testing.T) {
 		t.Fatal("expected non-zero story id")
 	}
 
-	stories, err := listStories(db)
+	story, err := getStoryByID(db, id)
 	if err != nil {
-		t.Fatalf("listStories: %v", err)
+		t.Fatalf("getStoryByID: %v", err)
 	}
-	if len(stories) != 1 {
-		t.Fatalf("expected 1 story, got %d", len(stories))
+	if story == nil {
+		t.Fatal("expected story")
 	}
-	story := stories[0]
 	if story.Title != title {
 		t.Errorf("title: got %q, want %q", story.Title, title)
 	}
@@ -1635,3 +1604,5 @@ func TestGetTokenUsageTotals_EmptyReturnsZeros(t *testing.T) {
 		t.Errorf("expected all zeros for empty table, got calls=%d input=%d output=%d", calls, input, output)
 	}
 }
+
+

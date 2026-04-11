@@ -94,7 +94,7 @@ AI integration tests live in `src/ai_integration_test.go` and are gated behind t
 
 - **Audio** — selecting "audio" in the generate-type dropdown and clicking generate calls `POST /api/words/{id}/generate-audio`, which synthesizes WAV files via the local VoiceVox engine (must be running at `http://localhost:50021`). Word audio is saved as `static/audio/{word}.wav`; sentence audio as `static/audio/{word}_sentence.wav`. The DB stores `has_word_audio` and `has_sentence_audio` boolean flags (not paths, which are derivable from the word text). When a word or sentence is played, the WAV file is used if the flag is set; otherwise falls back to Web Speech API TTS.
 
-- **Note:** `/api/words/{id}/reroll-meaning` and `/api/words/{id}/reroll-examples` may be dead code � the old edit modal that used them was removed (commit `f119e10`). Confirm before adding new callers.
+- **Note:** `/api/words/{id}/reroll-meaning` and `/api/words/{id}/reroll-examples` were removed after the old edit modal that used them was removed (commit `f119e10`). Do not add new callers for those endpoints.
 
 
 ## Stories Features
@@ -141,14 +141,14 @@ The HTML/CSS/JS frontend files live in `src/static/` and are served by the backe
 - **`routes.go`** � `serverInit` (router setup), activity/drill/admin HTTP handlers, and template render helpers. No direct DB access; handlers call functions from the `db_*.go` files.
 - **`routes_tutor.go`** — tutor API handlers: `POST /api/tutor/chat` (parses `{ai_model, tutor_mode, messages}`, looks up system prompt via `tutorSystemPromptByID` in `db_tutor.go`, calls `tutorChat`, returns `{reply}`); `GET /api/tutor/prompts`; `POST /api/tutor/prompts`; `DELETE /api/tutor/prompts/{id}`.
 - **`routes_stories.go`** — story API handlers: `GET /api/stories`, `GET /api/stories/{id}`, `POST /api/stories/{id}/noted-words`, `DELETE /api/stories/{id}/noted-words`, `POST /api/stories/{id}/generate-audio` (VoiceVox, NDJSON streaming), `POST /api/stories/{id}/generate-translation` (AI translation, NDJSON streaming).
-- **`routes_words.go`** — word and kanji API handlers: GET/PATCH/DELETE words, single and batch autofill, reroll meaning/examples, GET kanji.
+- **`routes_words.go`** — word and kanji API handlers: GET/PATCH/DELETE words, single and batch autofill, GET kanji.
 - **`routes_handlers_test.go`** � HTTP handler tests for backend JSON endpoints, focused on request validation, status codes, and basic success-path responses for word, drill-session, and drill-settings APIs.
-- **`ai.go`** - Shared AI types, prompts, few-shot examples, and provider-dispatch functions (`autoFillWord`, `autoFillWordsBatch`, `rerollMeaning`, `rerollExamples`, `translateStory`). `autoFillWordsBatch` splits words into chunks of `autoFillBatchSize` (20) and runs chunks concurrently, each as a single AI call returning a JSON array. `translateStory` sends all story sentences and unlexiconed words in one call, returning ordered translation strings plus per-word gloss and reading data. No direct DB access. Environment variables: `ANTHROPIC_API_KEY`, `OPENAI_API_KEY`, `GOOGLE_API_KEY`, `MISTRAL_API_KEY`, `GLM_API_KEY`.
-- **`ai_anthropic.go`** — Anthropic Messages API: `callAnthropic` HTTP helper + single and batch autofill/reroll implementations.
-- **`ai_openai.go`** — OpenAI Chat Completions API: `callOpenAI` HTTP helper + single and batch autofill/reroll implementations.
-- **`ai_google.go`** — Google Generative Language API: `callGoogle` HTTP helper + single and batch autofill/reroll implementations.
-- **`ai_mistral.go`** — Mistral Chat API (OpenAI-compatible): `callMistral` HTTP helper + single and batch autofill/reroll implementations.
-- **`ai_glm.go`** — Zhipu GLM API (OpenAI-compatible): `callGLM` HTTP helper + single and batch autofill/reroll implementations. Environment variable: `GLM_API_KEY`.
+- **`ai.go`** - Shared AI types, prompts, few-shot examples, and provider-dispatch functions (`autoFillWord`, `autoFillWordsBatch`, `translateStory`). `autoFillWordsBatch` splits words into chunks of `autoFillBatchSize` (20) and runs chunks concurrently, each as a single AI call returning a JSON array. `translateStory` sends all story sentences and unlexiconed words in one call, returning ordered translation strings plus per-word gloss and reading data. No direct DB access. Environment variables: `ANTHROPIC_API_KEY`, `OPENAI_API_KEY`, `GOOGLE_API_KEY`, `MISTRAL_API_KEY`, `GLM_API_KEY`.
+- **`ai_anthropic.go`** — Anthropic Messages API: `callAnthropic` HTTP helper + single and batch autofill implementations.
+- **`ai_openai.go`** — OpenAI Chat Completions API: `callOpenAI` HTTP helper + single and batch autofill implementations.
+- **`ai_google.go`** — Google Generative Language API: `callGoogle` HTTP helper + single and batch autofill implementations.
+- **`ai_mistral.go`** — Mistral Chat API (OpenAI-compatible): `callMistral` HTTP helper + single and batch autofill implementations.
+- **`ai_glm.go`** — Zhipu GLM API (OpenAI-compatible): `callGLM` HTTP helper + single and batch autofill implementations. Environment variable: `GLM_API_KEY`.
 - **`morphology.go`** � word normalisation to dictionary base form (used in the add-words flow).
 - **`wordlists.go`** � loads JSON word-list files from the embedded `wordlists/` directory at startup (via `//go:embed wordlists`). Exposes `apiGetWordLists` and `apiGetWordListWords` handlers. Each file is `{slug}.json` with `name` (display name) and `words` (string array) fields. Current lists: `animals`, `colors`, `ichidan-verbs`.
 - **Dictionary source precedence for initial word info** � explicit caller-provided values (for example word-list metadata) win first, then local dictionary lookup fills missing reading / part-of-speech / meaning / kanji info, and AI autofill only runs when explicitly requested by the user.
@@ -178,8 +178,6 @@ Key API endpoints (beyond CRUD on `/api/words` and `/api/kanji`):
 | `POST` | `/api/words/autofill-batch` | AI-generate reading, meaning, and examples for multiple words at once; body: `{words:[{id,word}], ai_model}`; words are chunked (≤20 per AI call) and chunks run concurrently |
 | `POST` | `/api/words/{id}/autofill` | AI-generate reading, meaning, and examples for a single word |
 | `POST` | `/api/words/{id}/generate-audio` | Generate WAV audio via local VoiceVox engine; sets `has_word_audio`/`has_sentence_audio` flags |
-| `POST` | `/api/words/{id}/reroll-meaning` | Regenerate just the meaning via AI *(may be unused � see Lexicon Features note)* |
-| `POST` | `/api/words/{id}/reroll-examples` | Regenerate just the example sentences via AI *(may be unused � see Lexicon Features note)* |
 | `GET` | `/api/drill/sessions/current` | Return the current in-progress drill session, if one exists |
 | `POST` | `/api/stories/{id}/generate-translation` | AI-generate English sentence translations and word glosses for a story; body: `{ai_model}`; streams NDJSON |
 | `POST` | `/api/drill/sessions` | Start a new drill session |
@@ -241,3 +239,4 @@ When adding new fields to the word edit/add modal, follow whichever convention m
 - **Ask before touching unfamiliar files.** If a file has not been part of the current conversation and has not been recently discussed, confirm with the user before editing it. This applies especially to Go source files, config files, and anything outside `src/`.
 - **Keep AGENTS.md current.** After any non-trivial change � new files, new endpoints, renamed functions, changed conventions, new features, or shifted architecture � proactively propose specific updates to this file. Do not wait to be asked. If you added a file, added an endpoint, or changed how something works, edit AGENTS.md immediately (but be sure to tell me when you).
 - **Use `git mv` for all file moves and renames.** Never copy-and-delete or use the Write tool to recreate a file at a new path. Always use `git mv <old> <new>` so history is preserved.
+

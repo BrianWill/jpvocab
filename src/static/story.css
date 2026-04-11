@@ -31,6 +31,10 @@
   padding-top: 1.25rem;
 }
 
+.story-scroll-area--loading {
+  visibility: hidden;
+}
+
 .story-layout {
   display: flex;
   align-items: stretch;
@@ -351,6 +355,18 @@
   min-width: 3rem;
   padding: 0.25rem 0.55rem;
   text-align: center;
+}
+
+.story-chunk-translate-btn--translated {
+  background: rgba(49, 50, 68, 0.95);
+  border-color: rgba(108, 112, 134, 0.45);
+  color: #a6adc8;
+}
+
+.story-chunk-translate-btn--translated:hover:not(:disabled) {
+  background: rgba(69, 71, 90, 0.95);
+  border-color: rgba(148, 156, 187, 0.4);
+  color: #cdd6f4;
 }
 
 .story-chunk-body {

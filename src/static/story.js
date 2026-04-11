@@ -32,6 +32,7 @@ const els = {
   storyMeta: document.getElementById('story-meta'),
   storyContent: document.getElementById('story-content'),
   storyError: document.getElementById('story-error'),
+  storyScrollArea: document.getElementById('story-scroll-area'),
   storyNotedAddAll: document.getElementById('story-noted-add-all'),
   storyNotedClose: document.getElementById('story-noted-close'),
   storyNotedCount: document.getElementById('story-noted-count'),
@@ -364,6 +365,8 @@ function sentenceText(sentence) {
 }
 
 function renderStory(story) {
+  els.storyScrollArea.classList.remove('story-scroll-area--loading');
+  els.storyError.hidden = true;
   if (state.chunkObserver) {
     state.chunkObserver.disconnect();
     state.chunkObserver = null;
@@ -400,8 +403,10 @@ function renderStory(story) {
   const chunkPositions = [...new Set((story.sentences || []).map(s => s.chunkPosition))].sort((a, b) => a - b);
   for (const chunkPos of chunkPositions) {
     const chunkSentences = (story.sentences || []).filter(s => s.chunkPosition === chunkPos);
-    const translated = chunkSentences.some(s => !!s.englishText);
-    const translateTooltip = translated ? 'Retranslate section' : 'Translate section';
+    const fullyTranslated = chunkSentences.length > 0 && chunkSentences.every(s => !!s.englishText);
+    const hasAnyTranslation = chunkSentences.some(s => !!s.englishText);
+    const translateTooltip = hasAnyTranslation ? 'Retranslate section' : 'Translate section';
+    const translateBtnClass = fullyTranslated ? ' story-chunk-translate-btn--translated' : '';
     const chunkSection = document.createElement('section');
     chunkSection.className = 'story-chunk';
     chunkSection.dataset.chunkPosition = String(chunkPos);
@@ -410,7 +415,7 @@ function renderStory(story) {
     chunkHeader.className = 'story-chunk-header';
     chunkHeader.innerHTML = `
       <div class="story-chunk-header-spacer" aria-hidden="true"></div>
-      <button class="btn-save story-gen-btn story-chunk-translate-btn" type="button" data-chunk-position="${chunkPos}" data-chunk-label="this section" data-tooltip="${translateTooltip}" aria-label="${translateTooltip}" ${hasProviders ? '' : 'disabled'}>文A</button>
+      <button class="btn-save story-gen-btn story-chunk-translate-btn${translateBtnClass}" type="button" data-chunk-position="${chunkPos}" data-chunk-label="this section" data-tooltip="${translateTooltip}" aria-label="${translateTooltip}" ${hasProviders ? '' : 'disabled'}>文A</button>
     `;
     chunkSection.appendChild(chunkHeader);
 
@@ -544,6 +549,7 @@ function renderStory(story) {
 }
 
 function renderError() {
+  els.storyScrollArea.classList.remove('story-scroll-area--loading');
   els.storyError.hidden = false;
 }
 

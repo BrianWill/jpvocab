@@ -2,16 +2,21 @@
 
 This file is random notes of possible features and bug fixes.
 
+- use dictionary instead of AI for word info
+    - still have AI fallback?
+
 - add more common Japanese words to the word insertion blacklist
 
 - story
-    word info retrieval and presentation still needs work
+    - how to load faster?
+        
+    - word info retrieval and presentation still needs work
         filter out more noise words
             have the server mark words that should show work info in the json
                 frontend should only request wordinfo for words that might have it
                 frontend shows nothing for words that cannot have word info
                     if no translation, teh hover tooltip says "no translation available"
-    chunks where all sentences already have a translation should show translation button faded
+    
 
 - the wails zoom override is interferring with layout
     not full equivalent of browser zoom

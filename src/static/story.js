@@ -70,7 +70,7 @@ const state = {
   notedWordsOpen: false,
   providers: null,
   translating: false,
-  translationChunkId: null,
+  translationChunkPosition: null,
   translationChunkLabel: '',
   translationController: null,
   translationElapsedTimer: null,
@@ -308,7 +308,7 @@ els.storyNotedAddAll.addEventListener('click', async () => {
 els.storyContent.addEventListener('click', event => {
   const btn = event.target.closest('.story-chunk-translate-btn');
   if (!btn) return;
-  openTranslationModal(Number(btn.dataset.chunkId), btn.dataset.chunkLabel || '');
+  openTranslationModal(Number(btn.dataset.chunkPosition), btn.dataset.chunkLabel || '');
 });
 
 // ── Render ────────────────────────────────────────────────────────────────────
@@ -360,13 +360,13 @@ function renderStory(story) {
     const translateTooltip = translated ? 'Retranslate section' : 'Translate section';
     const chunkSection = document.createElement('section');
     chunkSection.className = 'story-chunk';
-    chunkSection.dataset.chunkId = String(chunk.id || 0);
+    chunkSection.dataset.chunkPosition = String(chunk.position || 0);
 
     const chunkHeader = document.createElement('div');
     chunkHeader.className = 'story-chunk-header';
     chunkHeader.innerHTML = `
       <div class="story-chunk-header-spacer" aria-hidden="true"></div>
-      <button class="btn-save story-gen-btn story-chunk-translate-btn" type="button" data-chunk-id="${chunk.id || 0}" data-chunk-label="this section" data-tooltip="${translateTooltip}" aria-label="${translateTooltip}" ${hasProviders ? '' : 'disabled'}>文A</button>
+      <button class="btn-save story-gen-btn story-chunk-translate-btn" type="button" data-chunk-position="${chunk.position || 0}" data-chunk-label="this section" data-tooltip="${translateTooltip}" aria-label="${translateTooltip}" ${hasProviders ? '' : 'disabled'}>文A</button>
     `;
     chunkSection.appendChild(chunkHeader);
 

@@ -12,8 +12,8 @@ function formatTokenCount(count) {
 
 function getTranslationTarget() {
   if (!_state.story) return null;
-  if (_state.translationChunkId) {
-    return (_state.story.chunks || []).find(chunk => String(chunk.id || 0) === String(_state.translationChunkId)) || null;
+  if (_state.translationChunkPosition) {
+    return (_state.story.chunks || []).find(chunk => chunk.position === _state.translationChunkPosition) || null;
   }
   return {
     sentences: _state.story.sentences || [],
@@ -106,8 +106,8 @@ function setTranslationModalGenerating(generating) {
   _els.genTranslationModalClose.disabled = generating;
 }
 
-export function openTranslationModal(chunkId = null, chunkLabel = '') {
-  _state.translationChunkId = chunkId || null;
+export function openTranslationModal(chunkPosition = null, chunkLabel = '') {
+  _state.translationChunkPosition = chunkPosition || null;
   _state.translationChunkLabel = chunkLabel || '';
   resetTranslationProgressUi();
   if (_els.genTranslationCopy) {
@@ -195,7 +195,7 @@ export function initGenerateModals(els, state, { storyId, onTranslationDone, sto
         const res = await fetch(url, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ ai_model: aiModel, chunk_id: _state.translationChunkId }),
+          body: JSON.stringify({ ai_model: aiModel, chunk_position: _state.translationChunkPosition }),
           signal: _state.translationController.signal,
         });
         return await readNDJSON(res, onMsg);

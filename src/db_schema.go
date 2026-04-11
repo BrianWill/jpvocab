@@ -84,22 +84,14 @@ func migrate(db *sql.DB) {
 			lexicon_word_count  INTEGER  NOT NULL DEFAULT 0,
 			created_at          DATETIME NOT NULL DEFAULT (datetime('now'))
 		)`,
-		`CREATE TABLE IF NOT EXISTS story_chunks (
-			id               INTEGER PRIMARY KEY AUTOINCREMENT,
-			story_id         INTEGER NOT NULL REFERENCES stories(id) ON DELETE CASCADE,
-			position         INTEGER NOT NULL,
-			story_words_json TEXT    NOT NULL DEFAULT '[]',
-			UNIQUE(story_id, position)
-		)`,
 		`CREATE TABLE IF NOT EXISTS story_sentences (
 			id                 INTEGER PRIMARY KEY AUTOINCREMENT,
 			story_id           INTEGER NOT NULL REFERENCES stories(id) ON DELETE CASCADE,
-			chunk_id           INTEGER REFERENCES story_chunks(id) ON DELETE CASCADE,
 			position           INTEGER NOT NULL,
-			chunk_position     INTEGER NOT NULL DEFAULT 1,
 			words_json         TEXT    NOT NULL,
 			english_text       TEXT,
 			is_paragraph_start INTEGER NOT NULL DEFAULT 0 CHECK (is_paragraph_start IN (0, 1)),
+			is_chunk_start     INTEGER NOT NULL DEFAULT 0 CHECK (is_chunk_start IN (0, 1)),
 			UNIQUE(story_id, position)
 		)`,
 		`CREATE TABLE IF NOT EXISTS token_usage (

@@ -204,7 +204,7 @@ export function splitByClause(sentence) {
   let current = [];
   for (const word of sentence.words) {
     current.push(word);
-    if (word.displayWord.includes('、')) {
+    if (word.display.includes('、')) {
       clauses.push(current);
       current = [];
     }
@@ -216,7 +216,7 @@ export function splitByClause(sentence) {
 // ── On-demand synthesis ───────────────────────────────────────────────────────
 function synthClauseAudio(words) {
   const vv = getVoicevoxSettings();
-  const text = words.map(w => w.displayWord).join('');
+  const text = words.map(w => w.display).join('');
   return getSynthAudio(text, vv);
 }
 

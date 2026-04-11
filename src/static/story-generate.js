@@ -12,19 +12,18 @@ function formatTokenCount(count) {
 
 function getTranslationTarget() {
   if (!_state.story) return null;
-  if (_state.translationChunkPosition) {
-    return (_state.story.chunks || []).find(chunk => chunk.position === _state.translationChunkPosition) || null;
-  }
-  return {
-    sentences: _state.story.sentences || [],
-    storyWords: _state.story.storyWords || [],
-  };
+  const sentences = _state.translationChunkPosition
+    ? (_state.story.sentences || []).filter(s => s.chunkPosition === _state.translationChunkPosition)
+    : (_state.story.sentences || []);
+  return { sentences };
 }
 
 function updateTranslationCountsText(extraWordInfoCount = null) {
   const target = getTranslationTarget();
   const sentenceCount = Array.isArray(target?.sentences) ? target.sentences.length : 0;
-  const uniqueWordCount = Array.isArray(target?.storyWords) ? target.storyWords.length : 0;
+  const uniqueWordCount = new Set(
+    (target?.sentences || []).flatMap(s => (s.words || []).filter(w => w.base).map(w => w.base))
+  ).size;
   let text = `${sentenceCount} sentence${sentenceCount === 1 ? '' : 's'}, ${uniqueWordCount} unique word${uniqueWordCount === 1 ? '' : 's'}`;
   if (typeof extraWordInfoCount === 'number') {
     text += ` (${extraWordInfoCount} need word info)`;
@@ -234,7 +233,7 @@ export function initGenerateModals(els, state, { storyId, onTranslationDone, sto
       _els.genTranslationModalDone.classList.remove('hidden');
       _els.genTranslationModalClose.disabled = false;
       const updated = await fetch(`/api/stories/${_storyId}`).then(r => r.json());
-      _onTranslationDone(updated);
+      _onTranslationDone(updated, _state.translationChunkPosition);
     } else {
       setTranslationModalGenerating(false);
       closeTranslationModal();

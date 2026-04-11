@@ -68,19 +68,13 @@ func apiGetStory(db *sql.DB) http.HandlerFunc {
 			return
 		}
 
-		// Remove any noted words whose base word is now in the lexicon.
-		lexiconSet := map[string]bool{}
-		for _, sentence := range story.Sentences {
-			for _, word := range sentence.Words {
-				if word.Tracked {
-					lexiconSet[word.BaseWord] = true
-				}
-			}
-		}
+		// Remove any noted words whose base word is now tracked in the lexicon.
 		var cleanedNoted []storyNotedWordJSON
 		changed := false
 		for _, nw := range story.NotedWords {
-			if lexiconSet[nw.BaseWord] {
+			var tracked int
+			db.QueryRow(`SELECT tracked FROM words WHERE base_word = ?`, nw.BaseWord).Scan(&tracked) //nolint:errcheck
+			if tracked == 1 {
 				changed = true
 			} else {
 				cleanedNoted = append(cleanedNoted, nw)
@@ -133,7 +127,6 @@ func apiAddStoryNotedWord(db *sql.DB) http.HandlerFunc {
 		if err := addStoryNotedWord(db, id, storyNotedWordJSON{
 			DisplayWord: word.DisplayWord,
 			BaseWord:    word.BaseWord,
-			English:     word.English,
 		}); err != nil {
 			if err.Error() == "story not found" {
 				http.Error(w, err.Error(), http.StatusNotFound)

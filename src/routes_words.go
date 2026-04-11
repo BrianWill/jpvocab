@@ -103,6 +103,171 @@ func apiUpdateWordTarget(db *sql.DB) http.HandlerFunc {
 	}
 }
 
+type wordInfoResponseJSON struct {
+	WordID      int64            `json:"wordId"`
+	English     string           `json:"english,omitempty"`
+	Reading     string           `json:"reading,omitempty"`
+	Type        string           `json:"type,omitempty"`
+	KanjiData   []kanjiDataEntry `json:"kanjiData,omitempty"`
+	PitchAccent *int             `json:"pitchAccent,omitempty"`
+	Tracked     bool             `json:"tracked"`
+	DrillCount  int              `json:"drillCount"`
+	DrillTarget int              `json:"drillTarget"`
+}
+
+func apiGetWordInfo(db *sql.DB) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		base := strings.TrimSpace(r.URL.Query().Get("base"))
+		if base == "" {
+			http.Error(w, "base is required", http.StatusBadRequest)
+			return
+		}
+		var info wordInfoResponseJSON
+		var partOfSpeech string
+		var kanjiDataStr string
+		err := db.QueryRow(
+			`SELECT id, COALESCE(meaning,''), COALESCE(reading,''), COALESCE(part_of_speech,''), pitch_accent, COALESCE(kanji_data,'[]'), tracked, drill_count, drill_target
+			 FROM words WHERE base_word = ?`, base,
+		).Scan(&info.WordID, &info.English, &info.Reading, &partOfSpeech, &info.PitchAccent, &kanjiDataStr, &info.Tracked, &info.DrillCount, &info.DrillTarget)
+		if err == sql.ErrNoRows {
+			writeJSON(w, wordInfoResponseJSON{})
+			return
+		}
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		info.Type = partOfSpeech
+		json.Unmarshal([]byte(kanjiDataStr), &info.KanjiData) //nolint:errcheck
+		if info.KanjiData == nil {
+			info.KanjiData = []kanjiDataEntry{}
+		}
+		// Fill in any kanji entries that were stored with only {id, reading}.
+		missingIDs := map[int64]int{}
+		for i, ke := range info.KanjiData {
+			if ke.ID > 0 && ke.Character == "" {
+				missingIDs[ke.ID] = i
+			}
+		}
+		if len(missingIDs) > 0 {
+			placeholders := make([]string, 0, len(missingIDs))
+			kArgs := make([]any, 0, len(missingIDs))
+			for id := range missingIDs {
+				placeholders = append(placeholders, "?")
+				kArgs = append(kArgs, id)
+			}
+			kRows, kErr := db.Query(
+				`SELECT id, character, meanings FROM kanji WHERE id IN (`+strings.Join(placeholders, ",")+`)`,
+				kArgs...,
+			)
+			if kErr == nil {
+				for kRows.Next() {
+					var kid int64
+					var char, meaningsJSON string
+					if kRows.Scan(&kid, &char, &meaningsJSON) == nil {
+						if idx, ok := missingIDs[kid]; ok {
+							info.KanjiData[idx].Character = char
+							json.Unmarshal([]byte(meaningsJSON), &info.KanjiData[idx].Meanings) //nolint:errcheck
+						}
+					}
+				}
+				kRows.Close()
+			}
+		}
+		writeJSON(w, info)
+	}
+}
+
+type wordInfoBatchRequestJSON struct {
+	Bases []string `json:"bases"`
+}
+
+type wordInfoBatchResponseJSON struct {
+	Words map[string]wordInfoResponseJSON `json:"words"`
+}
+
+func apiGetWordInfoBatch(db *sql.DB) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		var req wordInfoBatchRequestJSON
+		if err := json.NewDecoder(r.Body).Decode(&req); err != nil || len(req.Bases) == 0 {
+			writeJSON(w, wordInfoBatchResponseJSON{Words: map[string]wordInfoResponseJSON{}})
+			return
+		}
+		placeholders := make([]string, len(req.Bases))
+		args := make([]any, len(req.Bases))
+		for i, b := range req.Bases {
+			placeholders[i] = "?"
+			args[i] = b
+		}
+		rows, err := db.Query(
+			`SELECT id, base_word, COALESCE(meaning,''), COALESCE(reading,''), COALESCE(part_of_speech,''), pitch_accent, COALESCE(kanji_data,'[]'), tracked, drill_count, drill_target
+			 FROM words WHERE base_word IN (`+strings.Join(placeholders, ",")+`)`,
+			args...,
+		)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		defer rows.Close()
+
+		result := wordInfoBatchResponseJSON{Words: map[string]wordInfoResponseJSON{}}
+		type kanjiRef struct {
+			base string
+			idx  int
+		}
+		missingKanji := map[int64][]kanjiRef{}
+
+		for rows.Next() {
+			var info wordInfoResponseJSON
+			var base, partOfSpeech, kanjiDataStr string
+			if rows.Scan(&info.WordID, &base, &info.English, &info.Reading, &partOfSpeech, &info.PitchAccent, &kanjiDataStr, &info.Tracked, &info.DrillCount, &info.DrillTarget) != nil {
+				continue
+			}
+			info.Type = partOfSpeech
+			json.Unmarshal([]byte(kanjiDataStr), &info.KanjiData) //nolint:errcheck
+			if info.KanjiData == nil {
+				info.KanjiData = []kanjiDataEntry{}
+			}
+			for i, ke := range info.KanjiData {
+				if ke.ID > 0 && ke.Character == "" {
+					missingKanji[ke.ID] = append(missingKanji[ke.ID], kanjiRef{base, i})
+				}
+			}
+			result.Words[base] = info
+		}
+
+		if len(missingKanji) > 0 {
+			kPlaceholders := make([]string, 0, len(missingKanji))
+			kArgs := make([]any, 0, len(missingKanji))
+			for id := range missingKanji {
+				kPlaceholders = append(kPlaceholders, "?")
+				kArgs = append(kArgs, id)
+			}
+			kRows, kErr := db.Query(
+				`SELECT id, character, meanings FROM kanji WHERE id IN (`+strings.Join(kPlaceholders, ",")+`)`,
+				kArgs...,
+			)
+			if kErr == nil {
+				for kRows.Next() {
+					var kid int64
+					var char, meaningsJSON string
+					if kRows.Scan(&kid, &char, &meaningsJSON) == nil {
+						for _, ref := range missingKanji[kid] {
+							info := result.Words[ref.base]
+							info.KanjiData[ref.idx].Character = char
+							json.Unmarshal([]byte(meaningsJSON), &info.KanjiData[ref.idx].Meanings) //nolint:errcheck
+							result.Words[ref.base] = info
+						}
+					}
+				}
+				kRows.Close()
+			}
+		}
+
+		writeJSON(w, result)
+	}
+}
+
 func apiDeleteWord(db *sql.DB) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		id, ok := parseRouteInt64(w, r, "id", "invalid id")

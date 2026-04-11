@@ -555,8 +555,9 @@ func TestAPICreateStory_Success(t *testing.T) {
 	if story.LexiconWordCount != wantLexiconWordCount {
 		t.Fatalf("lexiconWordCount: got %d, want %d", story.LexiconWordCount, wantLexiconWordCount)
 	}
-	if len(story.Chunks) != 1 {
-		t.Fatalf("chunks: got %d, want 1", len(story.Chunks))
+	if story.Sentences[0].ChunkPosition != 1 || story.Sentences[1].ChunkPosition != 1 || story.Sentences[2].ChunkPosition != 1 {
+		t.Errorf("chunkPositions: got %d, %d, %d; want 1, 1, 1",
+			story.Sentences[0].ChunkPosition, story.Sentences[1].ChunkPosition, story.Sentences[2].ChunkPosition)
 	}
 	if !story.Sentences[0].IsParagraphStart {
 		t.Fatal("sentence 1 should start a paragraph")
@@ -604,16 +605,16 @@ func TestAPIGetStory_ReturnsStoryByID(t *testing.T) {
 	if story.LexiconWordCount != 1 {
 		t.Errorf("lexiconWordCount: got %d, want 1", story.LexiconWordCount)
 	}
-	if len(story.Chunks) != 1 {
-		t.Errorf("chunks: got %d, want 1", len(story.Chunks))
+	if story.Sentences[0].ChunkPosition != 1 {
+		t.Errorf("chunkPosition: got %d, want 1", story.Sentences[0].ChunkPosition)
 	}
 }
 
 func TestAPICreateStory_SplitsLongStoryIntoChunks(t *testing.T) {
 	db := testDB(t)
-	longSentenceA := strings.Repeat("あ", 260) + "。"
-	longSentenceB := strings.Repeat("い", 260) + "。"
-	longSentenceC := strings.Repeat("う", 260) + "。"
+	longSentenceA := strings.Repeat("あ", 100) + "。"
+	longSentenceB := strings.Repeat("い", 100) + "。"
+	longSentenceC := strings.Repeat("う", 100) + "。"
 	body := "{\"title\":\"Long Story\",\"content\":\"" + longSentenceA + longSentenceB + longSentenceC + "\"}"
 	req := httptest.NewRequest(http.MethodPost, "/api/stories", bytes.NewBufferString(body))
 	rec := httptest.NewRecorder()
@@ -627,14 +628,16 @@ func TestAPICreateStory_SplitsLongStoryIntoChunks(t *testing.T) {
 	if err := json.NewDecoder(rec.Body).Decode(&story); err != nil {
 		t.Fatal(err)
 	}
-	if len(story.Chunks) != 2 {
-		t.Fatalf("chunks: got %d, want 2", len(story.Chunks))
+	// 3 sentences of 100+ chars each: first two fit in chunk 1, third overflows into chunk 2.
+	if len(story.Sentences) != 3 {
+		t.Fatalf("sentences: got %d, want 3", len(story.Sentences))
 	}
-	if len(story.Chunks[0].Sentences) != 2 {
-		t.Fatalf("chunk 1 sentences: got %d, want 2", len(story.Chunks[0].Sentences))
+	if story.Sentences[0].ChunkPosition != 1 || story.Sentences[1].ChunkPosition != 1 {
+		t.Errorf("chunk 1 sentences: got chunkPositions %d, %d; want 1, 1",
+			story.Sentences[0].ChunkPosition, story.Sentences[1].ChunkPosition)
 	}
-	if len(story.Chunks[1].Sentences) != 1 {
-		t.Fatalf("chunk 2 sentences: got %d, want 1", len(story.Chunks[1].Sentences))
+	if story.Sentences[2].ChunkPosition != 2 {
+		t.Errorf("chunk 2 sentence: got chunkPosition %d, want 2", story.Sentences[2].ChunkPosition)
 	}
 }
 
@@ -778,6 +781,86 @@ func TestRenderAppPage_RendersHTMLAndSharedNav(t *testing.T) {
 	}
 	if !strings.Contains(body, `nav-dropdown-item nav-dropdown-item--current" href="/activity"`) {
 		t.Error("expected current-page nav styling for activity page")
+	}
+}
+
+func TestAPIGetWordInfo_ReturnsWordInfo(t *testing.T) {
+	db := testDB(t)
+	_, err := insertStory(db, "Word Info Story", []storySentenceInput{
+		{Words: []storyWordInput{{DisplayWord: "猫", BaseWord: "猫"}}, IsParagraphStart: true},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := db.Exec(`UPDATE words SET meaning = 'cat', reading = 'ねこ' WHERE base_word = '猫'`); err != nil {
+		t.Fatal(err)
+	}
+
+	req := httptest.NewRequest(http.MethodGet, "/api/word-info?base=%E7%8C%AB", nil)
+	rec := httptest.NewRecorder()
+	apiGetWordInfo(db).ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status: got %d, want %d", rec.Code, http.StatusOK)
+	}
+	var info wordInfoResponseJSON
+	if err := json.NewDecoder(rec.Body).Decode(&info); err != nil {
+		t.Fatal(err)
+	}
+	if info.English != "cat" {
+		t.Errorf("english: got %q, want %q", info.English, "cat")
+	}
+	if info.Reading != "ねこ" {
+		t.Errorf("reading: got %q, want %q", info.Reading, "ねこ")
+	}
+	if info.WordID == 0 {
+		t.Error("expected non-zero wordId")
+	}
+}
+
+func TestAPIGetWordInfoBatch(t *testing.T) {
+	db := testDB(t)
+	if _, err := db.Exec(`INSERT INTO words (base_word, meaning, reading, tracked) VALUES ('猫', 'cat', 'ねこ', 1)`); err != nil {
+		t.Fatal(err)
+	}
+	body, _ := json.Marshal(map[string]any{"bases": []string{"猫", "未知"}})
+	req := httptest.NewRequest(http.MethodPost, "/api/word-info-batch", bytes.NewReader(body))
+	req.Header.Set("Content-Type", "application/json")
+	rec := httptest.NewRecorder()
+	apiGetWordInfoBatch(db).ServeHTTP(rec, req)
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status: got %d, want %d", rec.Code, http.StatusOK)
+	}
+	var result wordInfoBatchResponseJSON
+	if err := json.NewDecoder(rec.Body).Decode(&result); err != nil {
+		t.Fatal(err)
+	}
+	cat := result.Words["猫"]
+	if cat.English != "cat" {
+		t.Errorf("english: got %q, want %q", cat.English, "cat")
+	}
+	if cat.WordID == 0 {
+		t.Error("expected non-zero wordId for 猫")
+	}
+	if _, ok := result.Words["未知"]; ok {
+		t.Error("expected 未知 to be absent from result (not in DB)")
+	}
+}
+
+func TestAPIGetWordInfo_NotFound(t *testing.T) {
+	db := testDB(t)
+	req := httptest.NewRequest(http.MethodGet, "/api/word-info?base=%E7%8C%AB", nil)
+	rec := httptest.NewRecorder()
+	apiGetWordInfo(db).ServeHTTP(rec, req)
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status: got %d, want %d", rec.Code, http.StatusOK)
+	}
+	var info wordInfoResponseJSON
+	if err := json.NewDecoder(rec.Body).Decode(&info); err != nil {
+		t.Fatal(err)
+	}
+	if info.WordID != 0 {
+		t.Errorf("expected zero wordId for unknown word, got %d", info.WordID)
 	}
 }
 

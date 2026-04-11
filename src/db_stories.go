@@ -14,24 +14,13 @@ import (
 )
 
 type storyWordInput struct {
-	DisplayWord      string
-	BaseWord         string
-	AudioTimestampMs *int64
+	DisplayWord string
+	BaseWord    string
 }
 
 type storyWordJSON struct {
-	DisplayWord      string           `json:"displayWord"`
-	BaseWord         string           `json:"baseWord"`
-	English          string           `json:"english,omitempty"`     // populated from words.meaning at query time; not stored per-token
-	Reading          string           `json:"reading,omitempty"`     // populated from words.reading at query time; not stored per-token
-	Type             string           `json:"type,omitempty"`        // populated from words.part_of_speech at query time; not stored per-token
-	KanjiData        []kanjiDataEntry `json:"kanjiData,omitempty"`   // populated from words.kanji_data at query time; not stored per-token
-	PitchAccent      *int             `json:"pitchAccent,omitempty"` // populated from words.pitch_accent at query time; not stored per-token
-	Tracked          bool             `json:"tracked,omitempty"`     // true if the base word is currently tracked (explicitly added by user)
-	WordID           int64            `json:"wordId,omitempty"`      // DB id of the lexicon entry (only set when Tracked)
-	DrillCount       int              `json:"drillCount,omitempty"`  // correct drill answers so far
-	DrillTarget      int              `json:"drillTarget,omitempty"` // target correct answers to retire the word
-	AudioTimestampMs *int64           `json:"audioTimestampMs"`
+	DisplayWord string `json:"display"`
+	BaseWord    string `json:"base,omitempty"`
 }
 
 type storySentenceInput struct {
@@ -43,6 +32,7 @@ type storySentenceInput struct {
 type storySentenceJSON struct {
 	ID               int64           `json:"id"`
 	Position         int             `json:"position"`
+	ChunkPosition    int             `json:"chunkPosition"`
 	Words            []storyWordJSON `json:"words"`
 	EnglishText      *string         `json:"englishText"`
 	IsParagraphStart bool            `json:"isParagraphStart"`
@@ -50,12 +40,6 @@ type storySentenceJSON struct {
 
 type storyChunkInput struct {
 	Sentences []storySentenceInput
-}
-
-type storyChunkJSON struct {
-	Position   int                 `json:"position"`
-	StoryWords []string            `json:"storyWords"`
-	Sentences  []storySentenceJSON `json:"sentences"`
 }
 
 type storyNotedWordJSON struct {
@@ -71,9 +55,7 @@ type storyJSON struct {
 	CreatedAt        string               `json:"createdAt"`
 	SentenceCount    int                  `json:"sentenceCount"`
 	LexiconWordCount int                  `json:"lexiconWordCount"`
-	StoryWords       []string             `json:"storyWords"`
 	NotedWords       []storyNotedWordJSON `json:"notedWords"`
-	Chunks           []storyChunkJSON     `json:"chunks"`
 	Sentences        []storySentenceJSON  `json:"sentences"`
 }
 
@@ -155,14 +137,11 @@ func insertStoryTx(tx *sql.Tx, title string, sentences []storySentenceInput) (in
 				if word.BaseWord == "" {
 					return 0, errors.New("story word base word is required")
 				}
-				if word.AudioTimestampMs != nil && *word.AudioTimestampMs < 0 {
-					return 0, errors.New("story word audio timestamp must be non-negative")
+				w := storyWordJSON{DisplayWord: word.DisplayWord}
+				if word.BaseWord != word.DisplayWord {
+					w.BaseWord = word.BaseWord
 				}
-				words[j] = storyWordJSON{
-					DisplayWord:      word.DisplayWord,
-					BaseWord:         word.BaseWord,
-					AudioTimestampMs: word.AudioTimestampMs,
-				}
+				words[j] = w
 			}
 			wordsJSON, err := json.Marshal(words)
 			if err != nil {
@@ -269,7 +248,7 @@ func deleteStory(db *sql.DB, id int64) error {
 
 func queryStories(db *sql.DB, whereClause string, args ...any) ([]storyJSON, error) {
 	rows, err := db.Query(`
-		SELECT s.id, s.title, s.created_at, s.sentence_count, s.lexicon_word_count, s.noted_words_json, s.story_words_json,
+		SELECT s.id, s.title, s.created_at, s.sentence_count, s.lexicon_word_count, s.noted_words_json,
 		       ss.id, ss.position, ss.words_json, ss.english_text, ss.is_paragraph_start, ss.is_chunk_start
 		FROM stories s
 		LEFT JOIN story_sentences ss ON ss.story_id = s.id
@@ -284,8 +263,7 @@ func queryStories(db *sql.DB, whereClause string, args ...any) ([]storyJSON, err
 	var stories []storyJSON
 	var current *storyJSON
 	var currentID int64 = -1
-	var currentChunk *storyChunkJSON
-	var currentChunkWordSeen map[string]struct{}
+	var currentChunkPos int
 
 	for rows.Next() {
 		var storyID int64
@@ -294,7 +272,6 @@ func queryStories(db *sql.DB, whereClause string, args ...any) ([]storyJSON, err
 		var sentenceCount int
 		var lexiconWordCount int
 		var notedWordsJSON sql.NullString
-		var storyWordsJSON sql.NullString
 		var sentenceID sql.NullInt64
 		var position sql.NullInt64
 		var wordsJSON sql.NullString
@@ -303,7 +280,7 @@ func queryStories(db *sql.DB, whereClause string, args ...any) ([]storyJSON, err
 		var isChunkStart sql.NullInt64
 
 		if err := rows.Scan(
-			&storyID, &title, &createdAt, &sentenceCount, &lexiconWordCount, &notedWordsJSON, &storyWordsJSON,
+			&storyID, &title, &createdAt, &sentenceCount, &lexiconWordCount, &notedWordsJSON,
 			&sentenceID, &position, &wordsJSON, &englishText, &isParagraphStart, &isChunkStart,
 		); err != nil {
 			return nil, err
@@ -316,9 +293,7 @@ func queryStories(db *sql.DB, whereClause string, args ...any) ([]storyJSON, err
 				CreatedAt:        createdAt,
 				SentenceCount:    sentenceCount,
 				LexiconWordCount: lexiconWordCount,
-				StoryWords:       []string{},
 				NotedWords:       []storyNotedWordJSON{},
-				Chunks:           []storyChunkJSON{},
 				Sentences:        []storySentenceJSON{},
 			}
 			if notedWordsJSON.Valid && notedWordsJSON.String != "" {
@@ -327,23 +302,20 @@ func queryStories(db *sql.DB, whereClause string, args ...any) ([]storyJSON, err
 					story.NotedWords = []storyNotedWordJSON{}
 				}
 			}
-			if storyWordsJSON.Valid && storyWordsJSON.String != "" {
-				json.Unmarshal([]byte(storyWordsJSON.String), &story.StoryWords) //nolint:errcheck
-				if story.StoryWords == nil {
-					story.StoryWords = []string{}
-				}
-			}
 			stories = append(stories, story)
 			current = &stories[len(stories)-1]
 			currentID = storyID
-			currentChunk = nil
-			currentChunkWordSeen = nil
+			currentChunkPos = 0
 		}
 
 		if sentenceID.Valid {
+			if isChunkStart.Valid && isChunkStart.Int64 == 1 {
+				currentChunkPos++
+			}
 			sentence := storySentenceJSON{
 				ID:               sentenceID.Int64,
 				Position:         int(position.Int64),
+				ChunkPosition:    currentChunkPos,
 				Words:            []storyWordJSON{},
 				IsParagraphStart: isParagraphStart.Valid && isParagraphStart.Int64 == 1,
 			}
@@ -354,37 +326,13 @@ func queryStories(db *sql.DB, whereClause string, args ...any) ([]storyJSON, err
 				if sentence.Words == nil {
 					sentence.Words = []storyWordJSON{}
 				}
+				fillMissingBaseWords(sentence.Words)
 			}
 			if englishText.Valid {
 				text := englishText.String
 				sentence.EnglishText = &text
 			}
-
-			// Start a new chunk whenever is_chunk_start == 1.
-			if isChunkStart.Valid && isChunkStart.Int64 == 1 {
-				chunk := storyChunkJSON{
-					Position:   len(current.Chunks) + 1,
-					StoryWords: []string{},
-					Sentences:  []storySentenceJSON{},
-				}
-				current.Chunks = append(current.Chunks, chunk)
-				currentChunk = &current.Chunks[len(current.Chunks)-1]
-				currentChunkWordSeen = map[string]struct{}{}
-			}
-
-			// Accumulate unique base words per chunk (used by word-info autofill).
-			if currentChunk != nil {
-				for _, w := range sentence.Words {
-					if w.BaseWord == "" {
-						continue
-					}
-					if _, ok := currentChunkWordSeen[w.BaseWord]; !ok {
-						currentChunkWordSeen[w.BaseWord] = struct{}{}
-						currentChunk.StoryWords = append(currentChunk.StoryWords, w.BaseWord)
-					}
-				}
-				currentChunk.Sentences = append(currentChunk.Sentences, sentence)
-			}
+			current.Sentences = append(current.Sentences, sentence)
 		}
 	}
 	if err := rows.Err(); err != nil {
@@ -392,159 +340,6 @@ func queryStories(db *sql.DB, whereClause string, args ...any) ([]storyJSON, err
 	}
 	if stories == nil {
 		stories = []storyJSON{}
-	}
-
-	// Build the word lookup set from story-level StoryWords and noted words.
-	baseWordSet := map[string]struct{}{}
-	for i := range stories {
-		for _, bw := range stories[i].StoryWords {
-			if bw != "" {
-				baseWordSet[bw] = struct{}{}
-			}
-		}
-		for _, nw := range stories[i].NotedWords {
-			if nw.BaseWord != "" {
-				baseWordSet[nw.BaseWord] = struct{}{}
-			}
-		}
-	}
-
-	// Populate word info (meaning, reading, drill counts, tracked) from the words table.
-	if len(baseWordSet) > 0 {
-		placeholders := make([]string, 0, len(baseWordSet))
-		lexArgs := make([]any, 0, len(baseWordSet))
-		for bw := range baseWordSet {
-			placeholders = append(placeholders, "?")
-			lexArgs = append(lexArgs, bw)
-		}
-		type wordInfo struct {
-			id           int64
-			drillCount   int
-			drillTarget  int
-			meaning      string
-			reading      string
-			partOfSpeech string
-			pitchAccent  *int
-			kanjiData    []kanjiDataEntry
-			tracked      int
-		}
-		lexRows, err := db.Query(
-			`SELECT id, base_word, drill_count, drill_target, COALESCE(meaning,''), COALESCE(reading,''), COALESCE(part_of_speech,''), pitch_accent, COALESCE(kanji_data,'[]'), tracked
-			 FROM words WHERE base_word IN (`+strings.Join(placeholders, ",")+`)`,
-			lexArgs...,
-		)
-		if err != nil {
-			return nil, err
-		}
-		wordInfoMap := map[string]wordInfo{}
-		for lexRows.Next() {
-			var w string
-			var info wordInfo
-			var kanjiDataStr string
-			if err := lexRows.Scan(&info.id, &w, &info.drillCount, &info.drillTarget, &info.meaning, &info.reading, &info.partOfSpeech, &info.pitchAccent, &kanjiDataStr, &info.tracked); err != nil {
-				lexRows.Close()
-				return nil, err
-			}
-			json.Unmarshal([]byte(kanjiDataStr), &info.kanjiData) //nolint:errcheck
-			if info.kanjiData == nil {
-				info.kanjiData = []kanjiDataEntry{}
-			}
-			wordInfoMap[w] = info
-		}
-		lexRows.Close()
-		if err := lexRows.Err(); err != nil {
-			return nil, err
-		}
-
-		// Some kanji_data entries were stored with only {id, reading} and no
-		// character or meanings. Fill those in from the kanji table now.
-		missingKanjiIDs := map[int64]struct{}{}
-		for _, info := range wordInfoMap {
-			for _, ke := range info.kanjiData {
-				if ke.ID > 0 && ke.Character == "" {
-					missingKanjiIDs[ke.ID] = struct{}{}
-				}
-			}
-		}
-		if len(missingKanjiIDs) > 0 {
-			kPlaceholders := make([]string, 0, len(missingKanjiIDs))
-			kArgs := make([]any, 0, len(missingKanjiIDs))
-			for id := range missingKanjiIDs {
-				kPlaceholders = append(kPlaceholders, "?")
-				kArgs = append(kArgs, id)
-			}
-			kRows, kErr := db.Query(
-				`SELECT id, character, meanings FROM kanji WHERE id IN (`+strings.Join(kPlaceholders, ",")+`)`,
-				kArgs...,
-			)
-			if kErr == nil {
-				type kanjiMeta struct {
-					character string
-					meanings  []string
-				}
-				kanjiLookup := map[int64]kanjiMeta{}
-				for kRows.Next() {
-					var kid int64
-					var char, meaningsJSON string
-					if kRows.Scan(&kid, &char, &meaningsJSON) == nil {
-						var meanings []string
-						json.Unmarshal([]byte(meaningsJSON), &meanings) //nolint:errcheck
-						kanjiLookup[kid] = kanjiMeta{character: char, meanings: meanings}
-					}
-				}
-				kRows.Close()
-				for bw, info := range wordInfoMap {
-					patched := false
-					for i, ke := range info.kanjiData {
-						if ke.ID > 0 && ke.Character == "" {
-							if km, ok := kanjiLookup[ke.ID]; ok {
-								info.kanjiData[i].Character = km.character
-								info.kanjiData[i].Meanings = km.meanings
-								patched = true
-							}
-						}
-					}
-					if patched {
-						wordInfoMap[bw] = info
-					}
-				}
-			}
-		}
-
-		for i := range stories {
-			for c := range stories[i].Chunks {
-				for j := range stories[i].Chunks[c].Sentences {
-					for k := range stories[i].Chunks[c].Sentences[j].Words {
-						bw := stories[i].Chunks[c].Sentences[j].Words[k].BaseWord
-						if info, ok := wordInfoMap[bw]; ok {
-							stories[i].Chunks[c].Sentences[j].Words[k].Tracked = info.tracked == 1
-							stories[i].Chunks[c].Sentences[j].Words[k].WordID = info.id
-							stories[i].Chunks[c].Sentences[j].Words[k].DrillCount = info.drillCount
-							stories[i].Chunks[c].Sentences[j].Words[k].DrillTarget = info.drillTarget
-							stories[i].Chunks[c].Sentences[j].Words[k].English = info.meaning
-							stories[i].Chunks[c].Sentences[j].Words[k].Reading = info.reading
-							stories[i].Chunks[c].Sentences[j].Words[k].Type = info.partOfSpeech
-							stories[i].Chunks[c].Sentences[j].Words[k].KanjiData = info.kanjiData
-							stories[i].Chunks[c].Sentences[j].Words[k].PitchAccent = info.pitchAccent
-						}
-					}
-				}
-			}
-			for n := range stories[i].NotedWords {
-				if stories[i].NotedWords[n].English == "" {
-					if info, ok := wordInfoMap[stories[i].NotedWords[n].BaseWord]; ok {
-						stories[i].NotedWords[n].English = info.meaning
-					}
-				}
-			}
-		}
-	}
-
-	// Flatten chunk sentences into story.Sentences for callers that use the flat list.
-	for i := range stories {
-		for _, chunk := range stories[i].Chunks {
-			stories[i].Sentences = append(stories[i].Sentences, chunk.Sentences...)
-		}
 	}
 
 	return stories, nil
@@ -614,6 +409,7 @@ func querySentencesLite(db *sql.DB, storyID int64, chunkPosition int) ([]storySe
 		}
 		if wordsJSON.Valid {
 			json.Unmarshal([]byte(wordsJSON.String), &s.Words) //nolint:errcheck
+			fillMissingBaseWords(s.Words)
 		}
 		if s.Words == nil {
 			s.Words = []storyWordJSON{}
@@ -712,20 +508,9 @@ func addStoryNotedWord(db *sql.DB, storyID int64, word storyNotedWordJSON) error
 		word.CreatedAt = createdAt
 	}
 	if word.English == "" {
-		for _, sentence := range story.Sentences {
-			for _, token := range sentence.Words {
-				if token.BaseWord == word.BaseWord {
-					word.English = token.English
-					if word.DisplayWord == "" {
-						word.DisplayWord = token.DisplayWord
-					}
-					break
-				}
-			}
-			if word.English != "" {
-				break
-			}
-		}
+		var meaning string
+		db.QueryRow(`SELECT COALESCE(meaning,'') FROM words WHERE base_word = ?`, word.BaseWord).Scan(&meaning) //nolint:errcheck
+		word.English = meaning
 	}
 
 	story.NotedWords = append(story.NotedWords, word)
@@ -761,6 +546,16 @@ func storySentenceTextFromInput(sentence storySentenceInput) string {
 		b.WriteString(word.DisplayWord)
 	}
 	return b.String()
+}
+
+// fillMissingBaseWords sets BaseWord = DisplayWord for any word where BaseWord
+// was omitted during storage (i.e. they were equal and only "display" was stored).
+func fillMissingBaseWords(words []storyWordJSON) {
+	for i := range words {
+		if words[i].BaseWord == "" {
+			words[i].BaseWord = words[i].DisplayWord
+		}
+	}
 }
 
 func storyLexiconWordCount(sentences []storySentenceInput) int {

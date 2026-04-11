@@ -66,6 +66,10 @@ const state = {
   audioClauseIdx: 0,
   currentUtterance: null,
   hoveredWord: null,
+  wordInfoMap: new Map(),   // base -> wordInfoResponseJSON (or null if not in lexicon)
+  fetchingWords: new Set(), // bases currently in-flight
+  chunkObserver: null,      // IntersectionObserver for batch-fetching chunk word info
+  chunkFetchTimer: null,    // debounce timer for chunk word-info fetches
   notedWords: [],
   notedWordsOpen: false,
   providers: null,
@@ -117,16 +121,17 @@ function isWordNoted(baseWord) {
   return state.notedWords.some(word => word.baseWord === baseWord);
 }
 
-function buildWordTooltipHtml(word, sentenceEnglish, isStoryWord, isNoted = isWordNoted(word.baseWord)) {
-  if (!isStoryWord) return sentenceEnglish ? escapeTooltipText(sentenceEnglish) : '';
+// wordInfo is the object returned by GET /api/word-info?base=... (or null if not in lexicon).
+function buildWordTooltipHtml(word, sentenceEnglish, wordInfo, isNoted = isWordNoted(word.base)) {
+  if (!wordInfo) return sentenceEnglish ? escapeTooltipText(sentenceEnglish) : '';
 
-  const wordDisplay = word.baseWord || word.displayWord;
-  const wordReading = word.reading
-    ? renderReading(word.reading, wordDisplay, word.kanjiData, word.pitchAccent)
+  const wordDisplay = word.base || word.display;
+  const wordReading = wordInfo.reading
+    ? renderReading(wordInfo.reading, wordDisplay, wordInfo.kanjiData, wordInfo.pitchAccent)
     : '';
 
-  // Kanji panel — mirrors renderWordTooltipKanji but as an HTML string
-  const kanjiEntries = (word.kanjiData || []).map(entry => {
+  // Kanji panel
+  const kanjiEntries = (wordInfo.kanjiData || []).map(entry => {
     if (!entry.character) return '';
     const isOn = /[\u30A0-\u30FF]/.test(entry.reading);
     return '<div class="kanji-entry">' +
@@ -141,10 +146,9 @@ function buildWordTooltipHtml(word, sentenceEnglish, isStoryWord, isNoted = isWo
     ? '<div class="word-tooltip-kanji">' + kanjiEntries + '</div>'
     : '';
 
-  // Story-specific footer
   let footerHtml;
-  if (word.tracked) {
-    const remaining = Math.max(0, (word.drillTarget || 0) - (word.drillCount || 0));
+  if (wordInfo.tracked) {
+    const remaining = Math.max(0, (wordInfo.drillTarget || 0) - (wordInfo.drillCount || 0));
     footerHtml = '<div class="tooltip-word-note"><span>Word in lexicon: <span class="tooltip-drill-remaining">' +
       esc(String(remaining)) + '</span> drill' + (remaining === 1 ? '' : 's') + ' remaining</span>' +
       '<span class="tooltip-hotkey-hint">(- / + to adjust)</span></div>';
@@ -159,20 +163,60 @@ function buildWordTooltipHtml(word, sentenceEnglish, isStoryWord, isNoted = isWo
       '<div class="tooltip-main">' +
         '<div class="tooltip-word">' + esc(wordDisplay) + '</div>' +
         (wordReading ? '<div class="tooltip-reading">' + wordReading + '</div>' : '') +
-        (word.type ? '<div class="tooltip-pos">' + esc(word.type) + '</div>' : '') +
-        (word.english ? '<div class="tooltip-meaning">' + esc(word.english) + '</div>' : '') +
+        (wordInfo.type ? '<div class="tooltip-pos">' + esc(wordInfo.type) + '</div>' : '') +
+        (wordInfo.english ? '<div class="tooltip-meaning">' + esc(wordInfo.english) + '</div>' : '') +
       '</div>' +
       kanjiHtml +
     '</div>' +
     footerHtml;
 }
 
+function updateWordTokensForBase(base) {
+  const wordInfo = state.wordInfoMap.get(base) || null;
+  for (const meta of state.wordTokenMetas) {
+    if (meta.word.base !== base) continue;
+    const isStoryWord = !!wordInfo;
+    meta.el.dataset.tooltipHtml = buildWordTooltipHtml(meta.word, meta.sentenceEnglishText, wordInfo);
+    meta.el.dataset.tooltipClass = isStoryWord ? 'story-word-tooltip' : (meta.sentenceEnglishText ? 'tooltip-translation' : '');
+    meta.el.classList.toggle('story-word--translated', isStoryWord && !!wordInfo.english);
+    meta.el.classList.toggle('story-word--in-lexicon', isStoryWord && !!wordInfo.tracked);
+    meta.el.classList.toggle('story-word--noted', isStoryWord && isWordNoted(base) && !wordInfo.tracked);
+  }
+}
+
 function updateWordTokenUI() {
   for (const meta of state.wordTokenMetas) {
-    meta.el.dataset.tooltipHtml = buildWordTooltipHtml(meta.word, meta.sentenceEnglishText, meta.isStoryWord);
-    meta.el.dataset.tooltipClass = meta.isStoryWord ? 'story-word-tooltip' : 'tooltip-translation';
-    meta.el.classList.toggle('story-word--noted', meta.isStoryWord && isWordNoted(meta.word.baseWord) && !meta.word.tracked);
-    meta.el.classList.toggle('story-word--in-lexicon', meta.isStoryWord && !!meta.word.tracked);
+    const wordInfo = state.wordInfoMap.get(meta.word.base) || null;
+    const isStoryWord = !!wordInfo;
+    meta.el.dataset.tooltipHtml = buildWordTooltipHtml(meta.word, meta.sentenceEnglishText, wordInfo);
+    meta.el.dataset.tooltipClass = isStoryWord ? 'story-word-tooltip' : (meta.sentenceEnglishText ? 'tooltip-translation' : '');
+    meta.el.classList.toggle('story-word--noted', isStoryWord && isWordNoted(meta.word.base) && !wordInfo.tracked);
+    meta.el.classList.toggle('story-word--in-lexicon', isStoryWord && !!wordInfo.tracked);
+  }
+}
+
+async function fetchWordInfoBatch(bases) {
+  const toFetch = bases.filter(b => b && !state.wordInfoMap.has(b) && !state.fetchingWords.has(b));
+  if (toFetch.length === 0) return;
+  for (const b of toFetch) state.fetchingWords.add(b);
+  try {
+    const res = await fetch('/api/word-info-batch', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ bases: toFetch }),
+    });
+    if (!res.ok) return; // leave out of map so next scroll retries
+    const data = await res.json();
+    const words = data.words || {};
+    for (const base of toFetch) {
+      const info = words[base];
+      state.wordInfoMap.set(base, info?.wordId ? info : null);
+      updateWordTokensForBase(base);
+    }
+  } catch (_) {
+    // leave out of map for retry
+  } finally {
+    for (const b of toFetch) state.fetchingWords.delete(b);
   }
 }
 
@@ -204,15 +248,15 @@ function renderNotedWords(autoOpen = false) {
 }
 
 async function addHoveredWordToNotedWords() {
-  if (!state.hoveredWord || state.updatingNotedWords || isWordNoted(state.hoveredWord.baseWord)) return;
+  if (!state.hoveredWord || state.updatingNotedWords || isWordNoted(state.hoveredWord.base)) return;
   state.updatingNotedWords = true;
   try {
     const res = await fetch(`/api/stories/${STORY_ID}/noted-words`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        baseWord: state.hoveredWord.baseWord,
-        displayWord: state.hoveredWord.displayWord,
+        baseWord: state.hoveredWord.base,
+        displayWord: state.hoveredWord.display,
       }),
     });
     if (!res.ok) throw new Error('failed to add noted word');
@@ -245,20 +289,22 @@ async function removeNotedWord(baseWord) {
 document.addEventListener('keydown', e => {
   if (e.target.closest('input, textarea, select, [contenteditable]')) return;
   const word = state.hoveredWord;
-  if (!word?.tracked || !word.wordId) return;
+  if (!word?.base) return;
+  const wordInfo = state.wordInfoMap.get(word.base);
+  if (!wordInfo?.tracked || !wordInfo.wordId) return;
   const delta = (e.key === '-') ? -1 : (e.key === '+' || e.key === '=') ? 1 : 0;
   if (delta === 0) return;
   e.preventDefault();
-  const newTarget = Math.min(999, Math.max(word.drillCount || 0, (word.drillTarget || 0) + delta));
-  if (newTarget === word.drillTarget) return;
-  word.drillTarget = newTarget;
+  const newTarget = Math.min(999, Math.max(wordInfo.drillCount || 0, (wordInfo.drillTarget || 0) + delta));
+  if (newTarget === wordInfo.drillTarget) return;
+  wordInfo.drillTarget = newTarget;
   // Refresh tooltip on the hovered span.
   const meta = state.wordTokenMetas.find(m => m.word === word);
   if (meta) {
-    meta.el.dataset.tooltipHtml = buildWordTooltipHtml(word, meta.sentenceEnglishText);
+    meta.el.dataset.tooltipHtml = buildWordTooltipHtml(word, meta.sentenceEnglishText, wordInfo);
     refreshTooltip(meta.el);
   }
-  fetch('/api/words/' + word.wordId + '/target', {
+  fetch('/api/words/' + wordInfo.wordId + '/target', {
     method: 'PATCH',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ target: newTarget }),
@@ -290,17 +336,12 @@ els.storyNotedAddAll.addEventListener('click', async () => {
   }
   // Re-fetch story to get updated inLexicon flags and remove newly-lexiconed noted words.
   try {
+    // Evict cached info for the noted words before fetching — their tracked status just changed.
+    const notedBases = state.notedWords.map(w => w.baseWord).filter(Boolean);
+    for (const base of notedBases) state.wordInfoMap.delete(base);
     const updated = await loadStory(STORY_ID);
     state.notedWords = Array.isArray(updated.notedWords) ? updated.notedWords : [];
-    const lexiconSet = new Set();
-    for (const sentence of (updated.sentences || [])) {
-      for (const word of (sentence.words || [])) {
-        if (word.tracked) lexiconSet.add(word.baseWord);
-      }
-    }
-    for (const meta of state.wordTokenMetas) {
-      meta.word.tracked = lexiconSet.has(meta.word.baseWord);
-    }
+    fetchWordInfoBatch(notedBases).catch(() => {});
   } catch (_) {}
   renderNotedWords();
 });
@@ -319,14 +360,16 @@ async function loadStory(id) {
 }
 
 function sentenceText(sentence) {
-  return sentence.words.map(word => word.displayWord).join('');
-}
-
-function isChunkTranslated(chunk) {
-  return (chunk.sentences || []).some(sentence => !!sentence.englishText);
+  return sentence.words.map(word => word.display).join('');
 }
 
 function renderStory(story) {
+  if (state.chunkObserver) {
+    state.chunkObserver.disconnect();
+    state.chunkObserver = null;
+  }
+  clearTimeout(state.chunkFetchTimer);
+  state.chunkFetchTimer = null;
   state.story = story;
   state.hoveredWord = null;
   state.notedWords = Array.isArray(story.notedWords) ? story.notedWords : [];
@@ -354,27 +397,27 @@ function renderStory(story) {
   els.storyContent.innerHTML = '';
   state.wordTokenMetas = [];
   let globalSentenceIdx = 0;
-  const chunks = Array.isArray(story.chunks) && story.chunks.length ? story.chunks : [{ id: 0, position: 1, storyWords: story.storyWords || [], sentences: story.sentences || [] }];
-  for (const chunk of chunks) {
-    const translated = isChunkTranslated(chunk);
+  const chunkPositions = [...new Set((story.sentences || []).map(s => s.chunkPosition))].sort((a, b) => a - b);
+  for (const chunkPos of chunkPositions) {
+    const chunkSentences = (story.sentences || []).filter(s => s.chunkPosition === chunkPos);
+    const translated = chunkSentences.some(s => !!s.englishText);
     const translateTooltip = translated ? 'Retranslate section' : 'Translate section';
     const chunkSection = document.createElement('section');
     chunkSection.className = 'story-chunk';
-    chunkSection.dataset.chunkPosition = String(chunk.position || 0);
+    chunkSection.dataset.chunkPosition = String(chunkPos);
 
     const chunkHeader = document.createElement('div');
     chunkHeader.className = 'story-chunk-header';
     chunkHeader.innerHTML = `
       <div class="story-chunk-header-spacer" aria-hidden="true"></div>
-      <button class="btn-save story-gen-btn story-chunk-translate-btn" type="button" data-chunk-position="${chunk.position || 0}" data-chunk-label="this section" data-tooltip="${translateTooltip}" aria-label="${translateTooltip}" ${hasProviders ? '' : 'disabled'}>文A</button>
+      <button class="btn-save story-gen-btn story-chunk-translate-btn" type="button" data-chunk-position="${chunkPos}" data-chunk-label="this section" data-tooltip="${translateTooltip}" aria-label="${translateTooltip}" ${hasProviders ? '' : 'disabled'}>文A</button>
     `;
     chunkSection.appendChild(chunkHeader);
 
     const chunkBody = document.createElement('div');
     chunkBody.className = 'story-chunk-body';
-    const chunkWordSet = new Set(Array.isArray(chunk.storyWords) ? chunk.storyWords : []);
     let currentParagraph = null;
-    for (const sentence of (chunk.sentences || [])) {
+    for (const sentence of chunkSentences) {
       const sentenceIdx = globalSentenceIdx;
       if (!currentParagraph || sentence.isParagraphStart) {
         currentParagraph = document.createElement('p');
@@ -391,15 +434,16 @@ function renderStory(story) {
       for (const word of sentence.words) {
         const wordSpan = document.createElement('span');
         wordSpan.className = 'story-word';
-        wordSpan.textContent = word.displayWord;
-        const isStoryWord = chunkWordSet.has(word.baseWord);
-        if (isStoryWord || sentence.englishText) {
-          wordSpan.dataset.tooltipHtml = buildWordTooltipHtml(word, sentence.englishText, isStoryWord);
-          wordSpan.dataset.tooltipClass = isStoryWord ? 'story-word-tooltip' : 'tooltip-translation';
+        wordSpan.textContent = word.display;
+        const wordInfo = state.wordInfoMap.get(word.base) || null;
+        const isStoryWord = !!wordInfo;
+        if (word.base || sentence.englishText) {
+          wordSpan.dataset.tooltipHtml = buildWordTooltipHtml(word, sentence.englishText, wordInfo);
+          wordSpan.dataset.tooltipClass = isStoryWord ? 'story-word-tooltip' : (sentence.englishText ? 'tooltip-translation' : '');
         }
-        if (isStoryWord && word.english) wordSpan.classList.add('story-word--translated');
-        if (isStoryWord && word.tracked) wordSpan.classList.add('story-word--in-lexicon');
-        if (isStoryWord) {
+        if (isStoryWord && wordInfo.english) wordSpan.classList.add('story-word--translated');
+        if (isStoryWord && wordInfo.tracked) wordSpan.classList.add('story-word--in-lexicon');
+        if (word.base) {
           wordSpan.addEventListener('mouseenter', () => {
             state.hoveredWord = word;
           });
@@ -408,12 +452,13 @@ function renderStory(story) {
           });
           wordSpan.addEventListener('click', () => {
             state.hoveredWord = word;
-            if (word.tracked) return;
-            const currentlyNoted = isWordNoted(word.baseWord);
-            wordSpan.dataset.tooltipHtml = buildWordTooltipHtml(word, sentence.englishText, true, !currentlyNoted);
+            const wi = state.wordInfoMap.get(word.base) || null;
+            if (wi?.tracked) return;
+            const currentlyNoted = isWordNoted(word.base);
+            wordSpan.dataset.tooltipHtml = buildWordTooltipHtml(word, sentence.englishText, wi, !currentlyNoted);
             refreshTooltip(wordSpan);
             if (currentlyNoted) {
-              removeNotedWord(word.baseWord).catch(() => {});
+              removeNotedWord(word.base).catch(() => {});
             } else {
               addHoveredWordToNotedWords().catch(() => {});
             }
@@ -423,7 +468,6 @@ function renderStory(story) {
           el: wordSpan,
           sentenceEnglishText: sentence.englishText || '',
           word,
-          isStoryWord,
         });
         sentenceSpan.appendChild(wordSpan);
       }
@@ -442,6 +486,49 @@ function renderStory(story) {
   endMark.className = 'story-end-mark';
   endMark.textContent = '※';
   els.storyContent.appendChild(endMark);
+
+  const intersectingChunks = new Set();
+  state.chunkObserver = new IntersectionObserver(entries => {
+    for (const entry of entries) {
+      const chunkPos = Number(entry.target.dataset.chunkPosition);
+      if (entry.isIntersecting) {
+        intersectingChunks.add(chunkPos);
+      } else {
+        intersectingChunks.delete(chunkPos);
+      }
+    }
+    clearTimeout(state.chunkFetchTimer);
+    state.chunkFetchTimer = setTimeout(() => {
+      // Only fetch bases for chunks still in view when the timer fires.
+      const bases = [...new Set(
+        [...intersectingChunks].flatMap(chunkPos =>
+          (story.sentences || []).filter(s => s.chunkPosition === chunkPos)
+            .flatMap(s => (s.words || []).map(w => w.base).filter(Boolean))
+        )
+      )];
+      for (const section of chunkSections) {
+        if (intersectingChunks.has(Number(section.dataset.chunkPosition))) {
+          state.chunkObserver.unobserve(section);
+        }
+      }
+      intersectingChunks.clear();
+      fetchWordInfoBatch(bases).catch(() => {});
+    }, 150);
+  }, { rootMargin: '300px' });
+  const chunkSections = [...els.storyContent.querySelectorAll('.story-chunk')];
+  for (const section of chunkSections) {
+    state.chunkObserver.observe(section);
+  }
+  // Eagerly fetch the first few chunks without waiting for the observer.
+  const EAGER_CHUNK_COUNT = 3;
+  const eagerBases = [...new Set(
+    chunkPositions.slice(0, EAGER_CHUNK_COUNT).flatMap(chunkPos =>
+      (story.sentences || []).filter(s => s.chunkPosition === chunkPos)
+        .flatMap(s => (s.words || []).map(w => w.base).filter(Boolean))
+    )
+  )];
+  fetchWordInfoBatch(eagerBases).catch(() => {});
+
   renderNotedWords();
 
   // Enable synth-mode playback if VoiceVox is available.
@@ -466,7 +553,14 @@ initStoryAddToLexicon().catch(() => {});
 
 initGenerateModals(els, state, {
   storyId: STORY_ID,
-  onTranslationDone: renderStory,
+  onTranslationDone: (story, chunkPosition) => {
+    renderStory(story);
+    if (chunkPosition != null) {
+      const chunkSentences = (story.sentences || []).filter(s => s.chunkPosition === chunkPosition);
+      const bases = [...new Set(chunkSentences.flatMap(s => (s.words || []).map(w => w.base).filter(Boolean)))];
+      fetchWordInfoBatch(bases).catch(() => {});
+    }
+  },
   stopPlayback,
 });
 

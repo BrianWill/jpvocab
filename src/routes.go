@@ -98,6 +98,8 @@ func serverInit(db *sql.DB) {
 	r.Get("/api/wordlists/{slug}/words", apiGetWordListWords(db))
 
 	r.Get("/api/words", apiGetWords(db))
+	r.Get("/api/word-info", apiGetWordInfo(db))
+	r.Post("/api/word-info-batch", apiGetWordInfoBatch(db))
 	r.Patch("/api/words/{id}", apiUpdateWord(db))
 	r.Patch("/api/words/{id}/target", apiUpdateWordTarget(db))
 	r.Delete("/api/words/{id}", apiDeleteWord(db))

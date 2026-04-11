@@ -1051,22 +1051,19 @@ func TestInsertStory_AndListStories(t *testing.T) {
 	title := "足立美術館の庭園"
 	en1 := "Good morning."
 	en2 := "Let's do our best today too."
-	ts1 := int64(0)
-	ts2 := int64(700)
-	ts3 := int64(2450)
 
 	id, err := insertStory(db, title, []storySentenceInput{
 		{
 			Words: []storyWordInput{
-				{DisplayWord: "おはよう", BaseWord: "おはよう", AudioTimestampMs: &ts1},
-				{DisplayWord: "。", BaseWord: "。", AudioTimestampMs: &ts2},
+				{DisplayWord: "おはよう", BaseWord: "おはよう"},
+				{DisplayWord: "。", BaseWord: "。"},
 			},
 			EnglishText:      &en1,
 			IsParagraphStart: true,
 		},
 		{
 			Words: []storyWordInput{
-				{DisplayWord: "今日", BaseWord: "今日", AudioTimestampMs: &ts3},
+				{DisplayWord: "今日", BaseWord: "今日"},
 				{DisplayWord: "も", BaseWord: "も"},
 				{DisplayWord: "頑張ろう", BaseWord: "頑張る"},
 				{DisplayWord: "。", BaseWord: "。"},
@@ -1105,11 +1102,8 @@ func TestInsertStory_AndListStories(t *testing.T) {
 	if len(story.Sentences) != 2 {
 		t.Fatalf("expected 2 sentences, got %d", len(story.Sentences))
 	}
-	if len(story.Chunks) != 1 {
-		t.Fatalf("expected 1 chunk, got %d", len(story.Chunks))
-	}
-	if len(story.Chunks[0].Sentences) != 2 {
-		t.Fatalf("expected chunk to contain 2 sentences, got %d", len(story.Chunks[0].Sentences))
+	if story.Sentences[0].ChunkPosition != 1 || story.Sentences[1].ChunkPosition != 1 {
+		t.Errorf("chunk positions: got %d, %d; want 1, 1", story.Sentences[0].ChunkPosition, story.Sentences[1].ChunkPosition)
 	}
 	if story.Sentences[0].Position != 1 || story.Sentences[1].Position != 2 {
 		t.Errorf("positions: got %+v", story.Sentences)
@@ -1119,9 +1113,6 @@ func TestInsertStory_AndListStories(t *testing.T) {
 	}
 	if story.Sentences[1].Words[2].BaseWord != "頑張る" {
 		t.Errorf("base word: got %q, want 頑張る", story.Sentences[1].Words[2].BaseWord)
-	}
-	if story.Sentences[0].Words[0].AudioTimestampMs == nil || *story.Sentences[0].Words[0].AudioTimestampMs != ts1 {
-		t.Errorf("word audio timestamp: got %+v", story.Sentences[0].Words[0].AudioTimestampMs)
 	}
 	if story.Sentences[0].EnglishText == nil || *story.Sentences[0].EnglishText != en1 {
 		t.Errorf("sentence 1 english: got %+v", story.Sentences[0].EnglishText)
@@ -1146,24 +1137,6 @@ func TestInsertStory_RequiresAtLeastOneSentence(t *testing.T) {
 	}
 }
 
-func TestInsertStory_RejectsNegativeAudioTimestamp(t *testing.T) {
-	db := testDB(t)
-	badTs := int64(-1)
-
-	_, err := insertStory(db, "Bad timestamps", []storySentenceInput{
-		{
-			Words: []storyWordInput{
-				{DisplayWord: "文", BaseWord: "文", AudioTimestampMs: &badTs},
-			},
-		},
-	})
-	if err == nil {
-		t.Fatal("expected error for negative audio timestamp")
-	}
-	if !strings.Contains(err.Error(), "non-negative") {
-		t.Errorf("unexpected error: %v", err)
-	}
-}
 
 func TestInsertStory_RequiresAtLeastOneWordPerSentence(t *testing.T) {
 	db := testDB(t)
@@ -1246,41 +1219,6 @@ func TestStoryNotedWords_PersistOnStory(t *testing.T) {
 	}
 }
 
-func TestGetStoryByID_PopulatesWordInfoFromWordsTable(t *testing.T) {
-	db := testDB(t)
-	// insertStory auto-adds 猫 to words with tracked=0 and empty meaning/reading.
-	id, err := insertStory(db, "Reading Story", []storySentenceInput{
-		{
-			Words: []storyWordInput{
-				{DisplayWord: "猫", BaseWord: "猫"},
-				{DisplayWord: "が", BaseWord: "が"},
-			},
-			IsParagraphStart: true,
-		},
-	})
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	// Populate meaning and reading directly on the words row.
-	if _, err := db.Exec(`UPDATE words SET meaning = 'cat', reading = 'ねこ' WHERE base_word = '猫'`); err != nil {
-		t.Fatalf("update word: %v", err)
-	}
-
-	story, err := getStoryByID(db, id)
-	if err != nil {
-		t.Fatalf("getStoryByID: %v", err)
-	}
-	if story == nil || len(story.Sentences) == 0 || len(story.Sentences[0].Words) == 0 {
-		t.Fatalf("unexpected story payload: %+v", story)
-	}
-	if story.Sentences[0].Words[0].English != "cat" {
-		t.Errorf("english: got %q, want %q", story.Sentences[0].Words[0].English, "cat")
-	}
-	if story.Sentences[0].Words[0].Reading != "ねこ" {
-		t.Errorf("reading: got %q, want %q", story.Sentences[0].Words[0].Reading, "ねこ")
-	}
-}
 
 func TestBuildStorySentenceWords_TokenizesDisplayAndBaseForms(t *testing.T) {
 	words := buildStorySentenceWords("庭園は庭のことですね。")
@@ -1331,7 +1269,7 @@ func TestStoryLexiconWordCount_FiltersNonLexiconTokens(t *testing.T) {
 }
 
 func TestBuildStoryChunks_SplitsAfterMinimumChars(t *testing.T) {
-	longWord := strings.Repeat("あ", 260)
+	longWord := strings.Repeat("あ", 100)
 	sentences := []storySentenceInput{
 		{Words: []storyWordInput{{DisplayWord: longWord + "。", BaseWord: longWord + "。"}}, IsParagraphStart: true},
 		{Words: []storyWordInput{{DisplayWord: longWord + "。", BaseWord: longWord + "。"}}},

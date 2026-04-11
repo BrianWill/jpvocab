@@ -221,6 +221,35 @@ func listStories(db *sql.DB) ([]storyJSON, error) {
 	return queryStories(db, "")
 }
 
+type storyMetaJSON struct {
+	ID               int64  `json:"id"`
+	Title            string `json:"title"`
+	CreatedAt        string `json:"createdAt"`
+	SentenceCount    int    `json:"sentenceCount"`
+	LexiconWordCount int    `json:"lexiconWordCount"`
+}
+
+func listStoriesMeta(db *sql.DB) ([]storyMetaJSON, error) {
+	rows, err := db.Query(`
+		SELECT id, title, created_at, sentence_count, lexicon_word_count
+		FROM stories
+		ORDER BY created_at DESC, id DESC
+	`)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var stories []storyMetaJSON
+	for rows.Next() {
+		var s storyMetaJSON
+		if err := rows.Scan(&s.ID, &s.Title, &s.CreatedAt, &s.SentenceCount, &s.LexiconWordCount); err != nil {
+			return nil, err
+		}
+		stories = append(stories, s)
+	}
+	return stories, rows.Err()
+}
+
 func getStoryByID(db *sql.DB, id int64) (*storyJSON, error) {
 	stories, err := queryStories(db, `WHERE s.id = ?`, id)
 	if err != nil {

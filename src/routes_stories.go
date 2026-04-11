@@ -40,13 +40,13 @@ func findStoryWord(story *storyJSON, baseWord, displayWord string) *storyWordJSO
 
 func apiGetStories(db *sql.DB) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		stories, err := listStories(db)
+		stories, err := listStoriesMeta(db)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
 		if stories == nil {
-			stories = []storyJSON{}
+			stories = []storyMetaJSON{}
 		}
 		writeJSON(w, stories)
 	}

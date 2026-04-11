@@ -38,8 +38,11 @@
   <div id="tutor-messages" class="tutor-messages"></div>
   <form id="tutor-form" class="tutor-input-row">
     <textarea id="tutor-input" class="tutor-input" placeholder="Type a message…" rows="1"></textarea>
-    <button type="button" id="btn-tutor-mic" class="btn-tutor-mic" aria-label="Voice input">🎤</button>
-    <button type="submit" id="btn-tutor-send" class="btn-tutor-send">Send <span class="btn-hotkey">⇧↵</span></button>
+    <div class="tutor-mic-buttons" aria-label="Voice input language">
+      <button type="button" id="btn-tutor-mic-ja" class="btn-tutor-mic" data-tooltip="Japanese voice input (Alt+J)" aria-label="Japanese voice input (Alt+J)" accesskey="j">あ🎤</button>
+      <button type="button" id="btn-tutor-mic-en" class="btn-tutor-mic" data-tooltip="English voice input (Alt+E)" aria-label="English voice input (Alt+E)" accesskey="e">A🎤</button>
+    </div>
+    <button type="submit" id="btn-tutor-send" class="btn-tutor-send" data-tooltip="Send message (Shift+Enter)" aria-label="Send message (Shift+Enter)">Send <span class="btn-hotkey">⇧↵</span></button>
   </form>
 </main>
 

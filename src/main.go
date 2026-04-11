@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"path/filepath"
 	"time"
 
 	"github.com/wailsapp/wails/v3/pkg/application"
@@ -17,6 +18,39 @@ const (
 	dbPath = "jpvocab.db"
 )
 
+var (
+	isDesktopApp          bool
+	webviewUserDataPath   string
+	clearWebviewCacheFlag string
+)
+
+func defaultWebviewUserDataPath() (string, error) {
+	cacheRoot, err := os.UserCacheDir()
+	if err != nil {
+		return "", err
+	}
+	return filepath.Join(cacheRoot, "jpvocab", "wails-webview2"), nil
+}
+
+func clearPendingWebviewCache() error {
+	if clearWebviewCacheFlag == "" || webviewUserDataPath == "" {
+		return nil
+	}
+	if _, err := os.Stat(clearWebviewCacheFlag); err != nil {
+		if os.IsNotExist(err) {
+			return nil
+		}
+		return err
+	}
+	if err := os.RemoveAll(webviewUserDataPath); err != nil {
+		return err
+	}
+	if err := os.Remove(clearWebviewCacheFlag); err != nil && !os.IsNotExist(err) {
+		return err
+	}
+	return nil
+}
+
 func main() {
 	serverOnly := flag.Bool("server-only", false, "run the web server without opening the Wails desktop window")
 	skipLargeStories := flag.Bool("skip-large-seed-stories", false, "skip large stories during DB seeding")
@@ -28,6 +62,16 @@ func main() {
 		*skipLargeStories = true
 	}
 	skipLargeSeedStories = *skipLargeStories
+
+	var err error
+	webviewUserDataPath, err = defaultWebviewUserDataPath()
+	if err != nil {
+		log.Fatal(err)
+	}
+	clearWebviewCacheFlag = webviewUserDataPath + ".clear"
+	if err := clearPendingWebviewCache(); err != nil {
+		log.Printf("warning: unable to clear pending webview cache: %v", err)
+	}
 
 	initDictAsync() // decompress jdict.db.gz in background; overlaps with tokenizer + DB init
 
@@ -54,7 +98,11 @@ func main() {
 	// loads our locally-served welcome page directly.
 	app := application.New(application.Options{
 		Name: "jpvocab",
+		Windows: application.WindowsOptions{
+			WebviewUserDataPath: webviewUserDataPath,
+		},
 	})
+	isDesktopApp = true
 
 	app.Window.NewWithOptions(application.WebviewWindowOptions{
 		Title:  "jpvocab",

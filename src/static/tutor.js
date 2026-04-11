@@ -48,7 +48,9 @@ const els = {
   messages:          document.getElementById('tutor-messages'),
   form:              document.getElementById('tutor-form'),
   input:             document.getElementById('tutor-input'),
-  btnMic:            document.getElementById('btn-tutor-mic'),
+  btnMicLegacy:      document.getElementById('btn-tutor-mic'),
+  btnMicJa:          document.getElementById('btn-tutor-mic-ja'),
+  btnMicEn:          document.getElementById('btn-tutor-mic-en'),
   btnSend:           document.getElementById('btn-tutor-send'),
   promptModal:       document.getElementById('prompt-modal'),
   promptModalTitle:  document.getElementById('prompt-modal-title'),
@@ -70,6 +72,7 @@ const state = {
   debugMode:        false,
   systemPrompt:     null,   // cached for the current mode
   listening:        false,
+  listeningLang:    null,   // 'ja-JP' | 'en-US' for the active STT session
   waitingForStart:  false,  // true after startNewChat; cleared once the bot sends its first real message
   pendingGreeting:  null,   // greeting string shown while waitingForStart, never sent to AI
   editingPromptId:  null,   // id of the prompt being edited; null when creating a new one
@@ -442,18 +445,30 @@ async function sendMessage(text) {
 
 // ── Voice input ────────────────────────────────────────────────────────────
 
-// Returns the STT recognition language for the current prompt's lang_input value.
-// "ja" and "mix" use Japanese; "en" uses English.
-function sttLangForCurrentPrompt() {
-  const lang = currentPrompt()?.lang_input;
-  return (lang === 'en') ? 'en-US' : 'ja-JP';
+function micButtonForLang(lang) {
+  if (lang === 'en-US') return els.btnMicEn || els.btnMicLegacy;
+  return els.btnMicJa || els.btnMicLegacy;
+}
+
+function setMicButtonsVisible(visible) {
+  const display = visible ? '' : 'none';
+  if (els.btnMicLegacy) els.btnMicLegacy.style.display = display;
+  if (els.btnMicJa) els.btnMicJa.style.display = display;
+  if (els.btnMicEn) els.btnMicEn.style.display = display;
+}
+
+function clearMicActiveState() {
+  if (els.btnMicLegacy) els.btnMicLegacy.classList.remove('btn-tutor-mic--active');
+  if (els.btnMicJa) els.btnMicJa.classList.remove('btn-tutor-mic--active');
+  if (els.btnMicEn) els.btnMicEn.classList.remove('btn-tutor-mic--active');
 }
 
 function initMic() {
   const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
-  if (!SR) { els.btnMic.style.display = 'none'; return; }
+  if (!SR) { setMicButtonsVisible(false); return; }
 
   let recognition = null;
+  let pendingStartLang = null;
   // Tracks text already in the input before listening started, so interim
   // results can be appended cleanly without doubling up committed text.
   let baseText = '';
@@ -462,16 +477,40 @@ function initMic() {
     recognition?.stop();
   }
 
-  function startListening() {
-    baseText = els.input.value;
-    recognition = new SR();
-    recognition.lang = sttLangForCurrentPrompt();
-    recognition.interimResults = true;
-    recognition.maxAlternatives = 1;
+  function startListening(lang) {
+    try {
+      baseText = els.input.value;
+      recognition = new SR();
+      if (!recognition) throw new Error('Speech recognition instance unavailable');
+      recognition.lang = lang;
+      recognition.interimResults = true;
+      recognition.maxAlternatives = 1;
+    } catch (err) {
+      recognition = null;
+      pendingStartLang = null;
+      state.listening = false;
+      state.listeningLang = null;
+      clearMicActiveState();
+      console.warn('Speech recognition unavailable:', err);
+      return;
+    }
+
+    if (typeof recognition.addEventListener !== 'function') {
+      recognition = null;
+      pendingStartLang = null;
+      state.listening = false;
+      state.listeningLang = null;
+      clearMicActiveState();
+      console.warn('Speech recognition does not support addEventListener.');
+      return;
+    }
 
     recognition.addEventListener('start', () => {
       state.listening = true;
-      els.btnMic.classList.add('btn-tutor-mic--active');
+      state.listeningLang = lang;
+      clearMicActiveState();
+      const btn = micButtonForLang(lang);
+      if (btn) btn.classList.add('btn-tutor-mic--active');
     });
 
     recognition.addEventListener('result', e => {
@@ -489,21 +528,59 @@ function initMic() {
 
     recognition.addEventListener('end', () => {
       state.listening = false;
-      els.btnMic.classList.remove('btn-tutor-mic--active');
+      state.listeningLang = null;
+      clearMicActiveState();
       recognition = null;
+      if (pendingStartLang) {
+        const nextLang = pendingStartLang;
+        pendingStartLang = null;
+        startListening(nextLang);
+      }
     });
 
     recognition.addEventListener('error', e => {
       if (e.error !== 'aborted') console.warn('Speech recognition error:', e.error);
     });
 
-    recognition.start();
+    try {
+      recognition.start();
+    } catch (err) {
+      recognition = null;
+      pendingStartLang = null;
+      state.listening = false;
+      state.listeningLang = null;
+      clearMicActiveState();
+      console.warn('Unable to start speech recognition:', err);
+    }
   }
 
-  els.btnMic.addEventListener('click', () => {
-    if (state.listening) stopListening();
-    else startListening();
-  });
+  function toggleListening(lang) {
+    if (state.listening) {
+      if (state.listeningLang === lang) {
+        pendingStartLang = null;
+        stopListening();
+      }
+      else {
+        pendingStartLang = lang;
+        clearMicActiveState();
+        const btn = micButtonForLang(lang);
+        if (btn) btn.classList.add('btn-tutor-mic--active');
+        stopListening();
+      }
+      return;
+    }
+    pendingStartLang = null;
+    startListening(lang);
+  }
+
+  function bindMicButton(btn, lang) {
+    if (!btn || typeof btn.addEventListener !== 'function') return;
+    btn.addEventListener('click', () => toggleListening(lang));
+  }
+
+  bindMicButton(els.btnMicLegacy, 'ja-JP');
+  bindMicButton(els.btnMicJa, 'ja-JP');
+  bindMicButton(els.btnMicEn, 'en-US');
 }
 
 // ── Input auto-resize ──────────────────────────────────────────────────────
@@ -732,10 +809,22 @@ async function init() {
 
   els.input.addEventListener('input', () => autoResize(els.input));
 
-  // Alt+P: replay the last assistant message's Japanese audio from anywhere on the page.
-  document.addEventListener('keydown', e => {
+  function handleGlobalTutorHotkeys(e) {
+    if (e.altKey && !e.shiftKey && !e.ctrlKey && !e.metaKey && e.key.toLowerCase() === 'j') {
+      e.preventDefault();
+      e.stopPropagation();
+      (els.btnMicJa || els.btnMicLegacy)?.click();
+      return;
+    }
+    if (e.altKey && !e.shiftKey && !e.ctrlKey && !e.metaKey && e.key.toLowerCase() === 'e') {
+      e.preventDefault();
+      e.stopPropagation();
+      (els.btnMicEn || els.btnMicLegacy)?.click();
+      return;
+    }
     if (e.altKey && e.key === 'p') {
       e.preventDefault();
+      e.stopPropagation();
       const last = [...state.history].reverse().find(m => m.role === 'assistant');
       if (!last) return;
       const resp = parseResponse(last.content);
@@ -744,7 +833,11 @@ async function init() {
       const bubble = lastRow?.querySelector('.tutor-bubble') || null;
       playJp(resp.jp, bubble);
     }
-  });
+  }
+
+  // Capture phase helps in environments where Alt+key is intercepted early.
+  window.addEventListener('keydown', handleGlobalTutorHotkeys, true);
+  document.addEventListener('keydown', handleGlobalTutorHotkeys);
 
   initMic();
   els.input.focus();

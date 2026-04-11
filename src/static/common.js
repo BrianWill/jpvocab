@@ -153,6 +153,16 @@ function injectSettingsModal() {
               <button type="button" id="settings-vv-preview" class="btn-cancel" style="white-space:nowrap">▶ Preview</button>
             </div>
           </div>
+          <div id="settings-dev-tools" class="settings-dev-tools hidden">
+            <div class="settings-section-label settings-section-label--spaced">Developer</div>
+            <div class="restart-field restart-field-dev">
+              <label>Desktop cache</label>
+              <div class="settings-dev-action">
+                <button type="button" id="settings-clear-wails-cache" class="btn-danger">Clear Wails cache on next launch</button>
+                <div id="settings-clear-wails-cache-hint" class="settings-dev-hint">Closes the desktop app so the next launch starts with a fresh WebView cache.</div>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
       <div class="modal-footer">
@@ -537,6 +547,11 @@ function initializeSettings() {
   if (!settingsBtn || !settingsModal) return;
 
   const saveBtn = document.getElementById('settings-save-btn');
+  const clearWailsCacheBtn = document.getElementById('settings-clear-wails-cache');
+  const clearWailsCacheHint = document.getElementById('settings-clear-wails-cache-hint');
+  const devToolsSection = document.getElementById('settings-dev-tools');
+  const isProbablyWailsDesktop = !!window.chrome?.webview;
+  if (devToolsSection && isProbablyWailsDesktop) devToolsSection.classList.remove('hidden');
   const closeModal = () => {
     if (_vvGenController) return;
     settingsModal.classList.add('hidden');
@@ -717,6 +732,24 @@ function initializeSettings() {
       _currentAudio.play();
     } finally {
       btn.disabled = false;
+    }
+  });
+
+  clearWailsCacheBtn?.addEventListener('click', async () => {
+    if (!confirm('Clear the Wails desktop cache on next launch and close the app now?')) return;
+    clearWailsCacheBtn.disabled = true;
+    if (clearWailsCacheHint) clearWailsCacheHint.textContent = 'Preparing cache clear...';
+    try {
+      const resp = await fetch('/api/dev/wails/clear-cache', { method: 'POST' });
+      if (!resp.ok) throw new Error(await resp.text());
+      if (clearWailsCacheHint) {
+        clearWailsCacheHint.textContent = 'Cache clear queued. The desktop app should close in a moment.';
+      }
+    } catch (err) {
+      clearWailsCacheBtn.disabled = false;
+      if (clearWailsCacheHint) {
+        clearWailsCacheHint.textContent = err?.message || 'Unable to queue cache clear.';
+      }
     }
   });
 }

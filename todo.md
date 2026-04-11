@@ -13,6 +13,9 @@ This file is random notes of possible features and bug fixes.
                     if no translation, teh hover tooltip says "no translation available"
     chunks where all sentences already have a translation should show translation button faded
 
+- the wails zoom override is interferring with layout
+    not full equivalent of browser zoom
+
 - activity page
     - story activity?
         add story
@@ -37,12 +40,9 @@ This file is random notes of possible features and bug fixes.
             if so, need to also translate back to English sentence-by-sentence to get gloss of each Japanese sentence
     
 - tutor:
-    - hotkey to repeat audio of last prompt
-    - button on each AI message to play audio
-    - words from every AI message are added to lexicon (as tracked=0)
-    - maybe your own prompts are spoken by voicevox? or just use TTS for own?
-        - use a different voice
-        - play the AI's correction?
+    - prompts should all be tolerant of swapping between English and Japanese. If English, don't provide critque of their languge, but otherwise just procede whether they answer in Japanese or English.
+    - words from every AI message are added to lexicon (as tracked=0) ?
+    - maybe play the AI's correction? use different voice?
     - if AI provides a correction, your last message is faded and teh correction placed below it with new color
     - should warn users somehow about conversation getting too long (context collapse)
     - button to suggest topics, sentences? 

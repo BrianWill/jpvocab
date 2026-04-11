@@ -263,6 +263,43 @@ func storySentenceText(s storySentenceJSON) string {
 	return strings.Join(parts, "")
 }
 
+func writeStoryJobSuccess(streamEvent func(v any), usage tokenUsage) {
+	streamEvent(map[string]any{
+		"allDone":      true,
+		"inputTokens":  usage.InputTokens,
+		"outputTokens": usage.OutputTokens,
+		"totalTokens":  usage.InputTokens + usage.OutputTokens,
+	})
+}
+
+func runStoryNDJSONJob(w http.ResponseWriter, initialEvent map[string]any, work func() (tokenUsage, error)) {
+	streamEvent := newNDJSONStreamer(w)
+	streamEvent(initialEvent)
+
+	done := make(chan struct{})
+	go func() {
+		ticker := time.NewTicker(3 * time.Second)
+		defer ticker.Stop()
+		for {
+			select {
+			case <-ticker.C:
+				streamEvent(map[string]string{"status": "working"})
+			case <-done:
+				return
+			}
+		}
+	}()
+
+	usage, err := work()
+	close(done)
+	if err != nil {
+		streamEvent(map[string]string{"error": err.Error()})
+		return
+	}
+
+	writeStoryJobSuccess(streamEvent, usage)
+}
+
 // apiGenerateStoryTranslation calls an AI provider to translate all sentences in the
 // story. Streams NDJSON:
 //
@@ -306,49 +343,26 @@ func apiGenerateStoryTranslation(db *sql.DB) http.HandlerFunc {
 			sentenceIDs = append(sentenceIDs, s.ID)
 		}
 
-		streamEvent := newNDJSONStreamer(w)
-		streamEvent(map[string]any{
+		runStoryNDJSONJob(w, map[string]any{
 			"status":        "translating",
 			"sentenceCount": len(sentenceTexts),
 			"chunkPosition": body.ChunkPosition,
-		})
+		}, func() (tokenUsage, error) {
+			result, usage, err := translateStory(db, sentenceTexts, body.AIModel)
+			if err != nil {
+				return tokenUsage{}, err
+			}
 
-		done := make(chan struct{})
-		go func() {
-			ticker := time.NewTicker(3 * time.Second)
-			defer ticker.Stop()
-			for {
-				select {
-				case <-ticker.C:
-					streamEvent(map[string]string{"status": "working"})
-				case <-done:
-					return
+			for i, translation := range result.Sentences {
+				if i >= len(sentenceIDs) || translation == "" {
+					break
+				}
+				if err := setSentenceEnglishText(db, sentenceIDs[i], translation); err != nil {
+					return tokenUsage{}, err
 				}
 			}
-		}()
 
-		result, usage, err := translateStory(db, sentenceTexts, body.AIModel)
-		close(done)
-		if err != nil {
-			streamEvent(map[string]string{"error": err.Error()})
-			return
-		}
-
-		for i, translation := range result.Sentences {
-			if i >= len(sentenceIDs) || translation == "" {
-				break
-			}
-			if err := setSentenceEnglishText(db, sentenceIDs[i], translation); err != nil {
-				streamEvent(map[string]string{"error": "db error: " + err.Error()})
-				return
-			}
-		}
-
-		streamEvent(map[string]any{
-			"allDone":      true,
-			"inputTokens":  usage.InputTokens,
-			"outputTokens": usage.OutputTokens,
-			"totalTokens":  usage.InputTokens + usage.OutputTokens,
+			return usage, nil
 		})
 	}
 }
@@ -375,8 +389,6 @@ func apiGenerateStoryWordInfo(db *sql.DB) http.HandlerFunc {
 			return
 		}
 
-		streamEvent := newNDJSONStreamer(w)
-
 		targetStoryWords, err := queryTargetBaseWords(db, id, body.ChunkPosition)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -384,12 +396,7 @@ func apiGenerateStoryWordInfo(db *sql.DB) http.HandlerFunc {
 		}
 
 		if len(targetStoryWords) == 0 {
-			streamEvent(map[string]any{
-				"allDone":      true,
-				"inputTokens":  0,
-				"outputTokens": 0,
-				"totalTokens":  0,
-			})
+			writeStoryJobSuccess(newNDJSONStreamer(w), tokenUsage{})
 			return
 		}
 
@@ -431,61 +438,34 @@ func apiGenerateStoryWordInfo(db *sql.DB) http.HandlerFunc {
 		rows.Close()
 
 		if len(wordsToFill) == 0 {
-			streamEvent(map[string]any{
-				"allDone":      true,
-				"inputTokens":  0,
-				"outputTokens": 0,
-				"totalTokens":  0,
-			})
+			writeStoryJobSuccess(newNDJSONStreamer(w), tokenUsage{})
 			return
 		}
 
-		streamEvent(map[string]any{
+		runStoryNDJSONJob(w, map[string]any{
 			"status":        "autofilling",
 			"wordCount":     len(wordsToFill),
 			"chunkPosition": body.ChunkPosition,
-		})
+		}, func() (tokenUsage, error) {
+			wordStrings := make([]string, len(wordsToFill))
+			for i, e := range wordsToFill {
+				wordStrings[i] = e.Word
+			}
+			fills, usage, err := autoFillWordsBatchWithUsage(db, wordStrings, body.AIModel)
+			if err != nil {
+				return tokenUsage{}, err
+			}
 
-		done := make(chan struct{})
-		go func() {
-			ticker := time.NewTicker(3 * time.Second)
-			defer ticker.Stop()
-			for {
-				select {
-				case <-ticker.C:
-					streamEvent(map[string]string{"status": "working"})
-				case <-done:
-					return
+			for i, e := range wordsToFill {
+				if fills[i] == nil {
+					continue
+				}
+				if _, err := persistWordAutoFill(db, e.ID, fills[i]); err != nil {
+					return tokenUsage{}, err
 				}
 			}
-		}()
 
-		wordStrings := make([]string, len(wordsToFill))
-		for i, e := range wordsToFill {
-			wordStrings[i] = e.Word
-		}
-		fills, usage, err := autoFillWordsBatchWithUsage(db, wordStrings, body.AIModel)
-		close(done)
-		if err != nil {
-			streamEvent(map[string]string{"error": err.Error()})
-			return
-		}
-
-		for i, e := range wordsToFill {
-			if fills[i] == nil {
-				continue
-			}
-			if _, err := persistWordAutoFill(db, e.ID, fills[i]); err != nil {
-				streamEvent(map[string]string{"error": "db error: " + err.Error()})
-				return
-			}
-		}
-
-		streamEvent(map[string]any{
-			"allDone":      true,
-			"inputTokens":  usage.InputTokens,
-			"outputTokens": usage.OutputTokens,
-			"totalTokens":  usage.InputTokens + usage.OutputTokens,
+			return usage, nil
 		})
 	}
 }

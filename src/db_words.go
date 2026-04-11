@@ -60,6 +60,76 @@ type wordJSON struct {
 	Tracked          int              `json:"tracked"`
 }
 
+func decodeKanjiDataEntries(kanjiData string) []kanjiDataEntry {
+	var entries []kanjiDataEntry
+	if strings.TrimSpace(kanjiData) != "" {
+		json.Unmarshal([]byte(kanjiData), &entries) //nolint:errcheck
+	}
+	if entries == nil {
+		entries = []kanjiDataEntry{}
+	}
+	return entries
+}
+
+func enrichKanjiDataEntries(db *sql.DB, entries []kanjiDataEntry) error {
+	if len(entries) == 0 {
+		return nil
+	}
+
+	missingIDs := make(map[int64]struct{})
+	for _, entry := range entries {
+		if entry.ID > 0 && entry.Character == "" {
+			missingIDs[entry.ID] = struct{}{}
+		}
+	}
+	if len(missingIDs) == 0 {
+		return nil
+	}
+
+	placeholders := make([]string, 0, len(missingIDs))
+	args := make([]any, 0, len(missingIDs))
+	for id := range missingIDs {
+		placeholders = append(placeholders, "?")
+		args = append(args, id)
+	}
+
+	rows, err := db.Query(
+		`SELECT id, character, meanings FROM kanji WHERE id IN (`+strings.Join(placeholders, ",")+`)`,
+		args...,
+	)
+	if err != nil {
+		return err
+	}
+	defer rows.Close()
+
+	kanjiByID := make(map[int64]kanjiJSON, len(missingIDs))
+	for rows.Next() {
+		var (
+			info         kanjiJSON
+			meaningsJSON string
+		)
+		if err := rows.Scan(&info.ID, &info.Character, &meaningsJSON); err != nil {
+			return err
+		}
+		json.Unmarshal([]byte(meaningsJSON), &info.Meanings) //nolint:errcheck
+		if info.Meanings == nil {
+			info.Meanings = []string{}
+		}
+		kanjiByID[info.ID] = info
+	}
+	if err := rows.Err(); err != nil {
+		return err
+	}
+
+	for i := range entries {
+		if info, ok := kanjiByID[entries[i].ID]; ok {
+			entries[i].Character = info.Character
+			entries[i].Meanings = info.Meanings
+		}
+	}
+	return nil
+}
+
 func fillWordInfoFromDictionary(
 	word, reading, partOfSpeech, meaning, kanjiData string,
 	upsertKanjiFn func(character string, meanings []string) (int64, error),
@@ -326,7 +396,7 @@ func listWords(db *sql.DB) ([]wordJSON, error) {
 		SELECT id, base_word, COALESCE(reading,''), pitch_accent, COALESCE(part_of_speech,''), COALESCE(meaning,''),
 		       COALESCE(example_jp,''), COALESCE(example_en,''),
 		       drill_count, incorrect_count, drill_target, created_at, last_drilled_at,
-		       image_path, kanji_data, tracked
+		       image_path, COALESCE(kanji_data,'[]'), tracked
 		FROM words
 		WHERE tracked = 1
 		ORDER BY created_at DESC
@@ -334,58 +404,33 @@ func listWords(db *sql.DB) ([]wordJSON, error) {
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
 
 	var words []wordJSON
 	for rows.Next() {
 		var w wordJSON
-		var kanjiDataStr *string
+		var kanjiDataStr string
 		if err := rows.Scan(
 			&w.ID, &w.Word, &w.Reading, &w.PitchAccent, &w.Type, &w.Meaning, &w.ExampleJp, &w.ExampleEn,
 			&w.Correct, &w.Incorrect, &w.Target, &w.CreatedAt, &w.LastDrilled,
 			&w.ImagePath, &kanjiDataStr, &w.Tracked,
 		); err != nil {
+			rows.Close()
 			return nil, err
 		}
-		if kanjiDataStr != nil {
-			json.Unmarshal([]byte(*kanjiDataStr), &w.KanjiData)
-		}
-		if w.KanjiData == nil {
-			w.KanjiData = []kanjiDataEntry{}
-		}
+		w.KanjiData = decodeKanjiDataEntries(kanjiDataStr)
 		words = append(words, w)
 	}
 	if err := rows.Err(); err != nil {
+		rows.Close()
 		return nil, err
 	}
-
-	// Enrich kanji entries with character and meanings from the kanji table.
-	km, err := loadKanjiMap(db)
-	if err != nil {
-		return nil, err
-	}
+	rows.Close()
 	for i := range words {
-		for j := range words[i].KanjiData {
-			if k, ok := km[words[i].KanjiData[j].ID]; ok {
-				words[i].KanjiData[j].Character = k.Character
-				words[i].KanjiData[j].Meanings = k.Meanings
-			}
+		if err := enrichKanjiDataEntries(db, words[i].KanjiData); err != nil {
+			return nil, err
 		}
 	}
 	return words, nil
-}
-
-// loadKanjiMap returns all kanji rows keyed by ID.
-func loadKanjiMap(db *sql.DB) (map[int64]kanjiJSON, error) {
-	kanji, err := listKanji(db)
-	if err != nil {
-		return nil, err
-	}
-	m := make(map[int64]kanjiJSON, len(kanji))
-	for _, k := range kanji {
-		m[k.ID] = k
-	}
-	return m, nil
 }
 
 // updateWord saves editable fields for an existing word by ID.

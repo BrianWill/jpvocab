@@ -2,6 +2,7 @@ package main
 
 import (
 	"database/sql"
+	"fmt"
 	"strings"
 	"testing"
 	"time"
@@ -942,6 +943,34 @@ func TestListWords_OrderNewestFirst(t *testing.T) {
 	}
 	if words[0].Word != "新" {
 		t.Errorf("first word: got %q, want 新 (newest first)", words[0].Word)
+	}
+}
+
+func TestListWords_EnrichesKanjiDataFromKanjiTable(t *testing.T) {
+	db := testDB(t)
+	kanjiID, err := upsertKanji(db, "猫", []string{"cat", "feline"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := db.Exec(`INSERT INTO words (base_word, reading, kanji_data, tracked) VALUES (?, ?, ?, 1)`, "猫", "ねこ", fmt.Sprintf(`[{"id":%d,"reading":"ねこ"}]`, kanjiID)); err != nil {
+		t.Fatal(err)
+	}
+
+	words, err := listWords(db)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(words) != 1 {
+		t.Fatalf("expected 1 word, got %d", len(words))
+	}
+	if len(words[0].KanjiData) != 1 {
+		t.Fatalf("expected 1 kanji entry, got %d", len(words[0].KanjiData))
+	}
+	if words[0].KanjiData[0].Character != "猫" {
+		t.Errorf("character: got %q, want 猫", words[0].KanjiData[0].Character)
+	}
+	if len(words[0].KanjiData[0].Meanings) != 2 {
+		t.Errorf("meanings: got %v, want two meanings", words[0].KanjiData[0].Meanings)
 	}
 }
 

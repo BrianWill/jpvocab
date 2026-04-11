@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"fmt"
 	"mime/multipart"
 	"net/http"
 	"net/http/httptest"
@@ -818,6 +819,38 @@ func TestAPIGetWordInfo_ReturnsWordInfo(t *testing.T) {
 	}
 }
 
+func TestAPIGetWordInfo_EnrichesKanjiData(t *testing.T) {
+	db := testDB(t)
+	kanjiID, err := upsertKanji(db, "猫", []string{"cat", "feline"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := db.Exec(`INSERT INTO words (base_word, meaning, reading, kanji_data, tracked) VALUES (?, ?, ?, ?, 1)`, "猫", "cat", "ねこ", fmt.Sprintf(`[{"id":%d,"reading":"ねこ"}]`, kanjiID)); err != nil {
+		t.Fatal(err)
+	}
+
+	req := httptest.NewRequest(http.MethodGet, "/api/word-info?base=%E7%8C%AB", nil)
+	rec := httptest.NewRecorder()
+	apiGetWordInfo(db).ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status: got %d, want %d", rec.Code, http.StatusOK)
+	}
+	var info wordInfoResponseJSON
+	if err := json.NewDecoder(rec.Body).Decode(&info); err != nil {
+		t.Fatal(err)
+	}
+	if len(info.KanjiData) != 1 {
+		t.Fatalf("expected 1 kanji entry, got %d", len(info.KanjiData))
+	}
+	if info.KanjiData[0].Character != "猫" {
+		t.Errorf("character: got %q, want 猫", info.KanjiData[0].Character)
+	}
+	if len(info.KanjiData[0].Meanings) != 2 {
+		t.Errorf("meanings: got %v, want two meanings", info.KanjiData[0].Meanings)
+	}
+}
+
 func TestAPIGetWordInfoBatch(t *testing.T) {
 	db := testDB(t)
 	if _, err := db.Exec(`INSERT INTO words (base_word, meaning, reading, tracked) VALUES ('猫', 'cat', 'ねこ', 1)`); err != nil {
@@ -844,6 +877,41 @@ func TestAPIGetWordInfoBatch(t *testing.T) {
 	}
 	if _, ok := result.Words["未知"]; ok {
 		t.Error("expected 未知 to be absent from result (not in DB)")
+	}
+}
+
+func TestAPIGetWordInfoBatch_EnrichesKanjiData(t *testing.T) {
+	db := testDB(t)
+	kanjiID, err := upsertKanji(db, "猫", []string{"cat", "feline"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := db.Exec(`INSERT INTO words (base_word, meaning, reading, kanji_data, tracked) VALUES (?, ?, ?, ?, 1)`, "猫", "cat", "ねこ", fmt.Sprintf(`[{"id":%d,"reading":"ねこ"}]`, kanjiID)); err != nil {
+		t.Fatal(err)
+	}
+
+	body, _ := json.Marshal(map[string]any{"bases": []string{"猫"}})
+	req := httptest.NewRequest(http.MethodPost, "/api/word-info-batch", bytes.NewReader(body))
+	req.Header.Set("Content-Type", "application/json")
+	rec := httptest.NewRecorder()
+	apiGetWordInfoBatch(db).ServeHTTP(rec, req)
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status: got %d, want %d", rec.Code, http.StatusOK)
+	}
+
+	var result wordInfoBatchResponseJSON
+	if err := json.NewDecoder(rec.Body).Decode(&result); err != nil {
+		t.Fatal(err)
+	}
+	cat := result.Words["猫"]
+	if len(cat.KanjiData) != 1 {
+		t.Fatalf("expected 1 kanji entry, got %d", len(cat.KanjiData))
+	}
+	if cat.KanjiData[0].Character != "猫" {
+		t.Errorf("character: got %q, want 猫", cat.KanjiData[0].Character)
+	}
+	if len(cat.KanjiData[0].Meanings) != 2 {
+		t.Errorf("meanings: got %v, want two meanings", cat.KanjiData[0].Meanings)
 	}
 }
 

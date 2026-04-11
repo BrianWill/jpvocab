@@ -2,25 +2,52 @@ package main
 
 import (
 	"compress/gzip"
+	"database/sql"
 	"io"
 	"log"
 	"os"
+	"path/filepath"
+	"sync"
+
+	_ "modernc.org/sqlite"
 )
 
 const (
-	dictGzPath = "jdict.db.gz"
-	dictDBPath = "jdict.db"
+	dictGzName = "jdict.db.gz"
+	dictDBName = "jdict.db"
 )
 
 // dictReady is closed when jdict.db is confirmed present and usable.
 // Any code that needs the dictionary should select/receive on this channel.
 var dictReady = make(chan struct{})
 
+var (
+	dictOpenOnce sync.Once
+	dictOpenDB   *sql.DB
+	dictOpenErr  error
+)
+
+func resolveDictPath(name string) string {
+	candidates := []string{
+		name,
+		filepath.Join("dict", name),
+		filepath.Join("..", "dict", name),
+	}
+	for _, p := range candidates {
+		if _, err := os.Stat(p); err == nil {
+			return p
+		}
+	}
+	return filepath.Join("..", "dict", name)
+}
+
 // initDictAsync checks whether jdict.db already exists; if not, decompresses
 // jdict.db.gz in a background goroutine and closes dictReady when done.
 // Safe to call multiple times — only the first call does work.
 func initDictAsync() {
 	go func() {
+		dictDBPath := resolveDictPath(dictDBName)
+		dictGzPath := resolveDictPath(dictGzName)
 		if _, err := os.Stat(dictDBPath); err == nil {
 			// Already decompressed from a prior launch.
 			close(dictReady)
@@ -92,4 +119,27 @@ func decompressGz(src, dst string) error {
 	}
 
 	return os.Rename(tmp, dst)
+}
+
+func openDictDB() (*sql.DB, error) {
+	dictOpenOnce.Do(func() {
+		dictPath := resolveDictPath(dictDBName)
+		if _, err := os.Stat(dictPath); err != nil {
+			dictOpenErr = err
+			return
+		}
+		db, err := sql.Open("sqlite", "file:"+filepath.ToSlash(dictPath)+"?mode=ro")
+		if err != nil {
+			dictOpenErr = err
+			return
+		}
+		db.SetMaxOpenConns(1)
+		if err := db.Ping(); err != nil {
+			db.Close()
+			dictOpenErr = err
+			return
+		}
+		dictOpenDB = db
+	})
+	return dictOpenDB, dictOpenErr
 }

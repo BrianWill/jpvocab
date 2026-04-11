@@ -60,6 +60,55 @@ type wordJSON struct {
 	Tracked          int              `json:"tracked"`
 }
 
+func fillWordInfoFromDictionary(
+	word, reading, partOfSpeech, meaning, kanjiData string,
+	upsertKanjiFn func(character string, meanings []string) (int64, error),
+) (string, string, string, string, error) {
+	if kanjiData == "" {
+		kanjiData = "[]"
+	}
+	if !dictIsReady() {
+		return reading, partOfSpeech, meaning, kanjiData, nil
+	}
+
+	info, err := lookupDictionaryWord(word)
+	if err != nil || info == nil {
+		return reading, partOfSpeech, meaning, kanjiData, nil
+	}
+
+	if strings.TrimSpace(reading) == "" {
+		reading = info.Reading
+	}
+	if strings.TrimSpace(partOfSpeech) == "" {
+		partOfSpeech = info.PartOfSpeech
+	}
+	if strings.TrimSpace(meaning) == "" {
+		meaning = info.Meaning
+	}
+	if kanjiData != "[]" {
+		return reading, partOfSpeech, meaning, kanjiData, nil
+	}
+
+	kd := make([]kanjiDataEntry, 0, len(info.Kanji))
+	for _, k := range info.Kanji {
+		kID, err := upsertKanjiFn(k.Character, k.Meanings)
+		if err != nil {
+			return reading, partOfSpeech, meaning, kanjiData, err
+		}
+		kd = append(kd, kanjiDataEntry{
+			ID:        kID,
+			Character: k.Character,
+			Reading:   k.Reading,
+			Meanings:  k.Meanings,
+		})
+	}
+	b, err := json.Marshal(kd)
+	if err != nil {
+		return reading, partOfSpeech, meaning, kanjiData, err
+	}
+	return reading, partOfSpeech, meaning, string(b), nil
+}
+
 // insertWord adds a single word to the lexicon. Only the word itself is
 // required; all other fields are optional and default to empty / zero.
 // kanjiData should be a JSON string like `[{"id":1,"reading":"はし"}]` or empty.
@@ -71,10 +120,15 @@ func insertWord(db *sql.DB, word, reading, partOfSpeech, meaning, exampleJP, exa
 	if containsKatakana(word) {
 		kat = 1
 	}
-	if kanjiData == "" {
-		kanjiData = "[]"
+	var err error
+	reading, partOfSpeech, meaning, kanjiData, err = fillWordInfoFromDictionary(
+		word, reading, partOfSpeech, meaning, kanjiData,
+		func(character string, meanings []string) (int64, error) { return upsertKanji(db, character, meanings) },
+	)
+	if err != nil {
+		return err
 	}
-	_, err := db.Exec(`
+	_, err = db.Exec(`
 		INSERT INTO words (base_word, reading, part_of_speech, meaning, example_jp, example_en, drill_target, is_katakana, kanji_data)
 		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
 	`, word, reading, partOfSpeech, meaning, exampleJP, exampleEN, drillTarget, kat, kanjiData)
@@ -93,8 +147,13 @@ func insertWordReturningID(db *sql.DB, word, reading, partOfSpeech, meaning, exa
 	if containsKatakana(word) {
 		kat = 1
 	}
-	if kanjiData == "" {
-		kanjiData = "[]"
+	var err error
+	reading, partOfSpeech, meaning, kanjiData, err = fillWordInfoFromDictionary(
+		word, reading, partOfSpeech, meaning, kanjiData,
+		func(character string, meanings []string) (int64, error) { return upsertKanji(db, character, meanings) },
+	)
+	if err != nil {
+		return 0, err
 	}
 	res, err := db.Exec(`
 		INSERT INTO words (base_word, reading, part_of_speech, meaning, example_jp, example_en, drill_target, is_katakana, kanji_data)
@@ -242,6 +301,22 @@ func upsertKanji(db *sql.DB, character string, meanings []string) (int64, error)
 	}
 	var id int64
 	err = db.QueryRow(`SELECT id FROM kanji WHERE character = ?`, character).Scan(&id)
+	return id, err
+}
+
+func upsertKanjiTx(tx *sql.Tx, character string, meanings []string) (int64, error) {
+	meaningsJSON, err := json.Marshal(meanings)
+	if err != nil {
+		return 0, err
+	}
+	if _, err := tx.Exec(`
+		INSERT INTO kanji (character, meanings) VALUES (?, ?)
+		ON CONFLICT(character) DO UPDATE SET meanings = excluded.meanings
+	`, character, string(meaningsJSON)); err != nil {
+		return 0, err
+	}
+	var id int64
+	err = tx.QueryRow(`SELECT id FROM kanji WHERE character = ?`, character).Scan(&id)
 	return id, err
 }
 
@@ -477,10 +552,17 @@ func insertWordsIfAbsent(tx *sql.Tx, baseWords []string) ([]string, error) {
 		if containsKatakana(word) {
 			kat = 1
 		}
+		reading, partOfSpeech, meaning, kanjiData, err := fillWordInfoFromDictionary(
+			word, "", "", "", "",
+			func(character string, meanings []string) (int64, error) { return upsertKanjiTx(tx, character, meanings) },
+		)
+		if err != nil {
+			return nil, err
+		}
 		if _, err := tx.Exec(`
-			INSERT OR IGNORE INTO words (base_word, is_katakana, tracked)
-			VALUES (?, ?, 0)
-		`, word, kat); err != nil {
+			INSERT OR IGNORE INTO words (base_word, reading, part_of_speech, meaning, is_katakana, kanji_data, tracked)
+			VALUES (?, ?, ?, ?, ?, ?, 0)
+		`, word, reading, partOfSpeech, meaning, kat, kanjiData); err != nil {
 			return nil, err
 		}
 		accepted = append(accepted, word)

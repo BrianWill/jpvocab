@@ -93,3 +93,5 @@ src/jpvocab-backend
 dict/*.json
 dict/*.db
 dict/build-db/
+dict/jdict.db-wal
+dict/jdict.db-shm

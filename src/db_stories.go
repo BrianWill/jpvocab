@@ -109,6 +109,9 @@ func insertStoryTx(tx *sql.Tx, title string, sentences []storySentenceInput) (in
 	if err != nil {
 		return 0, err
 	}
+	if err := insertActivityEventTx(tx, activityEventStoryCreated, &storyID, title, nil); err != nil {
+		return 0, err
+	}
 
 	// Insert all unique words into the lexicon once for the whole story.
 	storyWords, err := insertWordsIfAbsent(tx, storySentenceBaseWords(sentences))

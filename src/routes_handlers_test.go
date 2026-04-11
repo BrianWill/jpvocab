@@ -3,6 +3,7 @@ package main
 import (
 	"bytes"
 	"context"
+	"database/sql"
 	"encoding/json"
 	"fmt"
 	"mime/multipart"
@@ -569,6 +570,14 @@ func TestAPICreateStory_Success(t *testing.T) {
 	if !story.Sentences[2].IsParagraphStart {
 		t.Fatal("sentence 3 should start a new paragraph")
 	}
+
+	var activityCount int
+	if err := db.QueryRow(`SELECT COUNT(*) FROM activity_events WHERE event_type = ? AND entity_id = ? AND summary = ?`, activityEventStoryCreated, story.ID, "New Story").Scan(&activityCount); err != nil {
+		t.Fatal(err)
+	}
+	if activityCount != 1 {
+		t.Fatalf("expected 1 story activity event, got %d", activityCount)
+	}
 }
 
 func TestAPIGetStory_ReturnsStoryByID(t *testing.T) {
@@ -689,6 +698,79 @@ func TestAPIDeleteStory_Success(t *testing.T) {
 	}
 	if sentenceCount != 0 {
 		t.Fatalf("story sentences should be deleted after successful DELETE, got count %d", sentenceCount)
+	}
+
+	var activityCount int
+	if err := db.QueryRow(`SELECT COUNT(*) FROM activity_events WHERE event_type = ? AND entity_id = ?`, activityEventStoryCreated, id).Scan(&activityCount); err != nil {
+		t.Fatal(err)
+	}
+	if activityCount != 1 {
+		t.Fatalf("story activity history should remain after delete, got count %d", activityCount)
+	}
+}
+
+func TestAPITutorChat_LogsUserMessageActivity(t *testing.T) {
+	db := testDB(t)
+	id, err := insertTutorPrompt(db, "Free Conversation", "prompt", "", "ja")
+	if err != nil {
+		t.Fatal(err)
+	}
+	origTutorChatFn := tutorChatFn
+	tutorChatFn = func(_ *sql.DB, _ []message, _ string, _ string) (string, error) {
+		return `{"jp":"はい","en":"Yes"}`, nil
+	}
+	t.Cleanup(func() { tutorChatFn = origTutorChatFn })
+
+	body := fmt.Sprintf(`{"ai_model":"openai:gpt","tutor_mode":"%d","messages":[{"role":"user","content":"こんにちは"}]}`, id)
+	req := httptest.NewRequest(http.MethodPost, "/api/tutor/chat", bytes.NewBufferString(body))
+	rec := httptest.NewRecorder()
+
+	apiTutorChat(db).ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status: got %d, want %d", rec.Code, http.StatusOK)
+	}
+
+	cal, err := getActivityCalendar(db)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(cal.Days[cal.Today].TutorMessages) != 1 {
+		t.Fatalf("expected 1 tutor activity entry, got %d", len(cal.Days[cal.Today].TutorMessages))
+	}
+	if cal.Days[cal.Today].TutorMessages[0].Mode != "Free Conversation" {
+		t.Fatalf("mode: got %q, want %q", cal.Days[cal.Today].TutorMessages[0].Mode, "Free Conversation")
+	}
+}
+
+func TestAPITutorChat_DoesNotLogOpeningTurn(t *testing.T) {
+	db := testDB(t)
+	id, err := insertTutorPrompt(db, "Free Conversation", "prompt", "", "ja")
+	if err != nil {
+		t.Fatal(err)
+	}
+	origTutorChatFn := tutorChatFn
+	tutorChatFn = func(_ *sql.DB, _ []message, _ string, _ string) (string, error) {
+		return `{"jp":"はじめまして","en":"Nice to meet you"}`, nil
+	}
+	t.Cleanup(func() { tutorChatFn = origTutorChatFn })
+
+	body := fmt.Sprintf(`{"ai_model":"openai:gpt","tutor_mode":"%d","messages":[]}`, id)
+	req := httptest.NewRequest(http.MethodPost, "/api/tutor/chat", bytes.NewBufferString(body))
+	rec := httptest.NewRecorder()
+
+	apiTutorChat(db).ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status: got %d, want %d", rec.Code, http.StatusOK)
+	}
+
+	var count int
+	if err := db.QueryRow(`SELECT COUNT(*) FROM activity_events WHERE event_type = ?`, activityEventTutorUserMessage).Scan(&count); err != nil {
+		t.Fatal(err)
+	}
+	if count != 0 {
+		t.Fatalf("expected no tutor activity events, got %d", count)
 	}
 }
 

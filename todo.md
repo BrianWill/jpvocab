@@ -25,13 +25,13 @@ This file is random notes of possible features and bug fixes.
                     if no translation, teh hover tooltip says "no translation available"
     
 
+- video stories with subtitles
+    either local video file or embedded youtube 
+
 - the wails zoom override is interferring with layout
     not full equivalent of browser zoom
 
 - activity page
-    - story activity?
-        add story
-        read story?
     - stats on number of tracked words in lexicon vs untracked
 
 - integrate a free dictionary for word info

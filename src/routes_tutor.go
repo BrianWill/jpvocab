@@ -21,6 +21,8 @@ var tutorSession struct {
 	Messages  []message `json:"messages"`
 }
 
+var tutorChatFn = tutorChat
+
 func apiGetTutorPrompts(db *sql.DB) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		prompts, err := listTutorPrompts(db)
@@ -177,7 +179,7 @@ func apiTutorChat(db *sql.DB) http.HandlerFunc {
 			level = "N5"
 		}
 		system := strings.ReplaceAll(tutorSystemPromptByID(db, modeID), "{{level}}", level)
-		reply, err := tutorChat(db, req.Messages, system, req.AIModel)
+		reply, err := tutorChatFn(db, req.Messages, system, req.AIModel)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
@@ -192,7 +194,7 @@ func apiTutorChat(db *sql.DB) http.HandlerFunc {
 				message{Role: "assistant", Content: reply},
 				message{Role: "user", Content: "Your last response was not a valid JSON object. Respond again as a single JSON object with string fields (jp, en, note, correction, etc.) — no array, no markdown, no code fences."},
 			)
-			if retryReply, retryErr := tutorChat(db, retryMsgs, system, req.AIModel); retryErr == nil {
+			if retryReply, retryErr := tutorChatFn(db, retryMsgs, system, req.AIModel); retryErr == nil {
 				if jsonErr2 := json.Unmarshal([]byte(retryReply), &response); jsonErr2 == nil && len(response) > 0 {
 					reply = retryReply
 				}
@@ -203,10 +205,19 @@ func apiTutorChat(db *sql.DB) http.HandlerFunc {
 		}
 
 		// Persist the full conversation (including the new reply) so it survives navigation.
-		tutorSession.AIModel   = req.AIModel
+		tutorSession.AIModel = req.AIModel
 		tutorSession.TutorMode = req.TutorMode
 		tutorSession.JLPTLevel = level
-		tutorSession.Messages  = append(req.Messages, message{Role: "assistant", Content: reply})
+		tutorSession.Messages = append(req.Messages, message{Role: "assistant", Content: reply})
+
+		if len(req.Messages) > 0 {
+			last := req.Messages[len(req.Messages)-1]
+			if last.Role == "user" && strings.TrimSpace(last.Content) != "" {
+				insertActivityEvent(db, activityEventTutorUserMessage, nil, "", activityEventMeta{
+					Mode: tutorPromptLabelByID(db, modeID),
+				}) //nolint:errcheck
+			}
+		}
 
 		writeJSON(w, map[string]any{"response": response})
 	}

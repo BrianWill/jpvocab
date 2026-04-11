@@ -112,6 +112,14 @@ func migrate(db *sql.DB) {
 			can_remove    INTEGER  NOT NULL DEFAULT 1,
 			created_at    DATETIME NOT NULL DEFAULT (datetime('now'))
 		)`,
+		`CREATE TABLE IF NOT EXISTS activity_events (
+			id         INTEGER  PRIMARY KEY AUTOINCREMENT,
+			event_type TEXT     NOT NULL,
+			entity_id  INTEGER,
+			summary    TEXT     NOT NULL DEFAULT '',
+			meta_json  TEXT     NOT NULL DEFAULT '{}',
+			created_at DATETIME NOT NULL DEFAULT (datetime('now'))
+		)`,
 	}
 
 	var version int

@@ -1135,7 +1135,6 @@ func TestInsertStory_RequiresAtLeastOneSentence(t *testing.T) {
 	}
 }
 
-
 func TestInsertStory_RequiresAtLeastOneWordPerSentence(t *testing.T) {
 	db := testDB(t)
 
@@ -1159,6 +1158,40 @@ func TestInsertStory_RequiresTitle(t *testing.T) {
 	}
 	if !strings.Contains(err.Error(), "title is required") {
 		t.Errorf("unexpected error: %v", err)
+	}
+}
+
+func TestInsertStory_RollsBackActivityEventOnFailure(t *testing.T) {
+	db := testDB(t)
+	if _, err := db.Exec(`
+		CREATE TRIGGER fail_words_insert
+		BEFORE INSERT ON words
+		BEGIN
+			SELECT RAISE(ABORT, 'forced word insert failure');
+		END;
+	`); err != nil {
+		t.Fatal(err)
+	}
+
+	_, err := insertStory(db, "Broken Story", []storySentenceInput{
+		{
+			Words:            []storyWordInput{{DisplayWord: "庭園", BaseWord: "庭園"}},
+			IsParagraphStart: true,
+		},
+	})
+	if err == nil {
+		t.Fatal("expected insertStory to fail")
+	}
+	if !strings.Contains(err.Error(), "forced word insert failure") {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	var count int
+	if err := db.QueryRow(`SELECT COUNT(*) FROM activity_events WHERE event_type = ? AND summary = ?`, activityEventStoryCreated, "Broken Story").Scan(&count); err != nil {
+		t.Fatal(err)
+	}
+	if count != 0 {
+		t.Fatalf("expected no rolled-back story activity event, got %d", count)
 	}
 }
 
@@ -1216,7 +1249,6 @@ func TestStoryNotedWords_PersistOnStory(t *testing.T) {
 		t.Fatalf("unexpected noted words after remove: %+v", story.NotedWords)
 	}
 }
-
 
 func TestBuildStorySentenceWords_TokenizesDisplayAndBaseForms(t *testing.T) {
 	words := buildStorySentenceWords("庭園は庭のことですね。")
@@ -1366,6 +1398,56 @@ func TestGetActivityCalendar_DrilledAddedCleared(t *testing.T) {
 	}
 }
 
+func TestGetActivityCalendar_IncludesStoryEvents(t *testing.T) {
+	db := testDB(t)
+	storyID := int64(7)
+	db.Exec(`
+		INSERT INTO activity_events (event_type, entity_id, summary, created_at)
+		VALUES (?, ?, ?, ?)
+	`, activityEventStoryCreated, storyID, "Rainy Day", "2024-05-02 09:00:00")
+
+	cal, err := getActivityCalendar(db)
+	if err != nil {
+		t.Fatal(err)
+	}
+	day, ok := cal.Days["2024-05-02"]
+	if !ok {
+		t.Fatal("expected calendar entry for 2024-05-02")
+	}
+	if len(day.Stories) != 1 {
+		t.Fatalf("Stories: got %d entries, want 1", len(day.Stories))
+	}
+	if day.Stories[0].StoryID != storyID {
+		t.Errorf("Stories[0].StoryID: got %d, want %d", day.Stories[0].StoryID, storyID)
+	}
+	if day.Stories[0].Title != "Rainy Day" {
+		t.Errorf("Stories[0].Title: got %q, want %q", day.Stories[0].Title, "Rainy Day")
+	}
+}
+
+func TestGetActivityCalendar_IncludesTutorEvents(t *testing.T) {
+	db := testDB(t)
+	db.Exec(`
+		INSERT INTO activity_events (event_type, summary, meta_json, created_at)
+		VALUES (?, '', ?, ?)
+	`, activityEventTutorUserMessage, `{"mode":"Free Conversation"}`, "2024-05-03 12:00:00")
+
+	cal, err := getActivityCalendar(db)
+	if err != nil {
+		t.Fatal(err)
+	}
+	day, ok := cal.Days["2024-05-03"]
+	if !ok {
+		t.Fatal("expected calendar entry for 2024-05-03")
+	}
+	if len(day.TutorMessages) != 1 {
+		t.Fatalf("TutorMessages: got %d entries, want 1", len(day.TutorMessages))
+	}
+	if day.TutorMessages[0].Mode != "Free Conversation" {
+		t.Errorf("TutorMessages[0].Mode: got %q, want %q", day.TutorMessages[0].Mode, "Free Conversation")
+	}
+}
+
 func TestGetActivityCalendar_KnewFalseWhenAnyIncorrect(t *testing.T) {
 	db := testDB(t)
 	db.Exec(`INSERT INTO words (base_word, created_at) VALUES ('風', datetime('now'))`)
@@ -1407,6 +1489,12 @@ func TestGetActivityCalendar_NonNilSlices(t *testing.T) {
 	}
 	if day.Cleared == nil {
 		t.Error("Cleared should be [] not nil")
+	}
+	if day.Stories == nil {
+		t.Error("Stories should be [] not nil")
+	}
+	if day.TutorMessages == nil {
+		t.Error("TutorMessages should be [] not nil")
 	}
 }
 
@@ -1522,7 +1610,7 @@ func TestGetActivityCalendar_ExcludesUntracked(t *testing.T) {
 	// One manually-added word on 2024-05-01.
 	db.Exec(`INSERT INTO words (base_word, created_at) VALUES ('星', '2024-05-01 00:00:00')`)
 	// One story-sourced word on the same date — must not appear in Added.
-	db.Exec(`INSERT INTO words (word, created_at, tracked) VALUES ('月', '2024-05-01 00:00:00', 0)`)
+	db.Exec(`INSERT INTO words (base_word, created_at, tracked) VALUES ('月', '2024-05-01 00:00:00', 0)`)
 
 	cal, err := getActivityCalendar(db)
 	if err != nil {
@@ -1633,5 +1721,3 @@ func TestGetTokenUsageTotals_EmptyReturnsZeros(t *testing.T) {
 		t.Errorf("expected all zeros for empty table, got calls=%d input=%d output=%d", calls, input, output)
 	}
 }
-
-

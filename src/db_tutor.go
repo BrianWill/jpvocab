@@ -96,3 +96,12 @@ func tutorSystemPromptByID(db *sql.DB, id int64) string {
 	}
 	return prompt
 }
+
+func tutorPromptLabelByID(db *sql.DB, id int64) string {
+	var label string
+	err := db.QueryRow(`SELECT label FROM tutor_prompts WHERE id = ?`, id).Scan(&label)
+	if err != nil {
+		db.QueryRow(`SELECT label FROM tutor_prompts ORDER BY id LIMIT 1`).Scan(&label)
+	}
+	return label
+}

@@ -29,6 +29,8 @@ func main() {
 	}
 	skipLargeSeedStories = *skipLargeStories
 
+	initDictAsync() // decompress jdict.db.gz in background; overlaps with tokenizer + DB init
+
 	initTokenizer()
 
 	db := initDB(dbPath)

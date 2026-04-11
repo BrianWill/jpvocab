@@ -4,6 +4,15 @@ This file is random notes of possible features and bug fixes.
 
 - add more common Japanese words to the word insertion blacklist
 
+- story
+    word info retrieval and presentation still needs work
+        filter out more noise words
+            have the server mark words that should show work info in the json
+                frontend should only request wordinfo for words that might have it
+                frontend shows nothing for words that cannot have word info
+                    if no translation, teh hover tooltip says "no translation available"
+    chunks where all sentences already have a translation should show translation button faded
+
 - activity page
     - story activity?
         add story
@@ -23,7 +32,6 @@ This file is random notes of possible features and bug fixes.
         - sidebar, edit button appears when hovered
 
 - stories:
-    - load chunks progressively as you scroll
     - support English stories that get translated into Japanese (sentence by sentence)
         in this setup, going for decent natural translations by chunk rather than by sentence?
             if so, need to also translate back to English sentence-by-sentence to get gloss of each Japanese sentence

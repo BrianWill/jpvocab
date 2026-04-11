@@ -49,7 +49,18 @@
       "Bash(where py:*)",
       "Bash(curl -s \"https://raw.githubusercontent.com/levelevel/AozoraTxt/master/person_utf8/000148/752_ruby_utf8_bocchan.txt\" -o \"C:/Users/Brian/AppData/Local/Temp/botchan_raw.txt\")",
       "Read(//c/Users/Brian/AppData/Local/Temp/**)",
-      "Bash(python:*)"
+      "Bash(python:*)",
+      "Bash(curl -s \"https://api.github.com/repos/scriptin/jmdict-simplified/releases/latest\")",
+      "Bash(python3 -c \"import sys,json; r=json.load\\(sys.stdin\\); print\\(r['tag_name']\\); [print\\(a['name'], a['browser_download_url']\\) for a in r['assets']]\")",
+      "Bash(mkdir -p D:/code/projects/jpvocab/dict)",
+      "Bash(curl -L -o jmdict-eng.json.zip \"https://github.com/scriptin/jmdict-simplified/releases/download/3.6.2%2B20260406125001/jmdict-eng-3.6.2%2B20260406125001.json.zip\")",
+      "Bash(curl -L -o kanjidic2-en.json.zip \"https://github.com/scriptin/jmdict-simplified/releases/download/3.6.2%2B20260406125001/kanjidic2-en-3.6.2%2B20260406125001.json.zip\")",
+      "Bash(unzip -o jmdict-eng.json.zip)",
+      "Bash(unzip -o kanjidic2-en.json.zip)",
+      "Bash(mv jmdict-eng-3.6.2.json jmdict-eng.json)",
+      "Bash(mv kanjidic2-en-3.6.2.json kanjidic2-en.json)",
+      "Bash(rm jmdict-eng.json.zip kanjidic2-en.json.zip)",
+      "Bash(powershell.exe:*)"
     ]
   },
   "outputStyle": "Explanatory"

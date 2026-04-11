@@ -1,0 +1,101 @@
+{
+  "name": "Food and Drink",
+  "entries": [
+    {
+      "word": "ご飯",
+      "reading": "ごはん",
+      "part_of_speech": "noun",
+      "meaning": "cooked rice; meal",
+      "example_jp": "晩ご飯は七時に食べる。",
+      "example_en": "I eat dinner at seven."
+    },
+    {
+      "word": "水",
+      "reading": "みず",
+      "part_of_speech": "noun",
+      "meaning": "water",
+      "example_jp": "朝に冷たい水を飲む。",
+      "example_en": "I drink cold water in the morning."
+    },
+    {
+      "word": "お茶",
+      "reading": "おちゃ",
+      "part_of_speech": "noun",
+      "meaning": "tea",
+      "example_jp": "食後に温かいお茶を飲んだ。",
+      "example_en": "I drank hot tea after the meal."
+    },
+    {
+      "word": "牛乳",
+      "reading": "ぎゅうにゅう",
+      "part_of_speech": "noun",
+      "meaning": "milk",
+      "example_jp": "牛乳をコップに入れる。",
+      "example_en": "I pour milk into a glass."
+    },
+    {
+      "word": "パン",
+      "reading": "パン",
+      "part_of_speech": "noun",
+      "meaning": "bread",
+      "example_jp": "朝ご飯にパンを一枚食べた。",
+      "example_en": "I ate a slice of bread for breakfast."
+    },
+    {
+      "word": "卵",
+      "reading": "たまご",
+      "part_of_speech": "noun",
+      "meaning": "egg",
+      "example_jp": "卵を二つ買った。",
+      "example_en": "I bought two eggs."
+    },
+    {
+      "word": "野菜",
+      "reading": "やさい",
+      "part_of_speech": "noun",
+      "meaning": "vegetables",
+      "example_jp": "毎日野菜を食べるようにしている。",
+      "example_en": "I try to eat vegetables every day."
+    },
+    {
+      "word": "果物",
+      "reading": "くだもの",
+      "part_of_speech": "noun",
+      "meaning": "fruit",
+      "example_jp": "食後に果物を少し食べた。",
+      "example_en": "I ate a little fruit after the meal."
+    },
+    {
+      "word": "肉",
+      "reading": "にく",
+      "part_of_speech": "noun",
+      "meaning": "meat",
+      "example_jp": "今日は肉を使った料理を作る。",
+      "example_en": "I am making a meat dish today."
+    },
+    {
+      "word": "魚",
+      "reading": "さかな",
+      "part_of_speech": "noun",
+      "meaning": "fish",
+      "example_jp": "父は魚が好きだ。",
+      "example_en": "My father likes fish."
+    },
+    {
+      "word": "甘い",
+      "reading": "あまい",
+      "part_of_speech": "i-adjective",
+      "meaning": "sweet",
+      "example_jp": "このケーキはとても甘い。",
+      "example_en": "This cake is very sweet."
+    },
+    {
+      "word": "辛い",
+      "reading": "からい",
+      "part_of_speech": "i-adjective",
+      "meaning": "spicy",
+      "example_jp": "このカレーは少し辛い。",
+      "example_en": "This curry is a little spicy."
+    }
+  ]
+}

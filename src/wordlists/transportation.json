@@ -1,0 +1,101 @@
+{
+  "name": "Transportation",
+  "entries": [
+    {
+      "word": "電車",
+      "reading": "でんしゃ",
+      "part_of_speech": "noun",
+      "meaning": "train",
+      "example_jp": "毎朝電車で通勤する。",
+      "example_en": "I commute by train every morning."
+    },
+    {
+      "word": "バス",
+      "reading": "バス",
+      "part_of_speech": "noun",
+      "meaning": "bus",
+      "example_jp": "雨の日はバスに乗る。",
+      "example_en": "I take the bus on rainy days."
+    },
+    {
+      "word": "自転車",
+      "reading": "じてんしゃ",
+      "part_of_speech": "noun",
+      "meaning": "bicycle",
+      "example_jp": "近い場所へは自転車で行く。",
+      "example_en": "I go by bicycle to nearby places."
+    },
+    {
+      "word": "車",
+      "reading": "くるま",
+      "part_of_speech": "noun",
+      "meaning": "car",
+      "example_jp": "父は車で会社へ行く。",
+      "example_en": "My father goes to work by car."
+    },
+    {
+      "word": "乗る",
+      "reading": "のる",
+      "part_of_speech": "godan-verb",
+      "meaning": "to ride; to board",
+      "example_jp": "次の駅で電車に乗る。",
+      "example_en": "I board the train at the next station."
+    },
+    {
+      "word": "降りる",
+      "reading": "おりる",
+      "part_of_speech": "ichidan-verb",
+      "meaning": "to get off",
+      "example_jp": "二つ目の駅で降りる。",
+      "example_en": "I get off at the second station."
+    },
+    {
+      "word": "切符",
+      "reading": "きっぷ",
+      "part_of_speech": "noun",
+      "meaning": "ticket",
+      "example_jp": "切符をなくさないように気をつける。",
+      "example_en": "I am careful not to lose my ticket."
+    },
+    {
+      "word": "道",
+      "reading": "みち",
+      "part_of_speech": "noun",
+      "meaning": "road; route",
+      "example_jp": "駅までの道を友だちに聞いた。",
+      "example_en": "I asked my friend the way to the station."
+    },
+    {
+      "word": "着く",
+      "reading": "つく",
+      "part_of_speech": "godan-verb",
+      "meaning": "to arrive",
+      "example_jp": "学校に八時前に着く。",
+      "example_en": "I arrive at school before eight."
+    },
+    {
+      "word": "出発",
+      "reading": "しゅっぱつ",
+      "part_of_speech": "noun",
+      "meaning": "departure",
+      "example_jp": "出発の時間を確認した。",
+      "example_en": "I checked the departure time."
+    },
+    {
+      "word": "速い",
+      "reading": "はやい",
+      "part_of_speech": "i-adjective",
+      "meaning": "fast",
+      "example_jp": "この電車はとても速い。",
+      "example_en": "This train is very fast."
+    },
+    {
+      "word": "遅い",
+      "reading": "おそい",
+      "part_of_speech": "i-adjective",
+      "meaning": "slow; late",
+      "example_jp": "今日はバスが少し遅い。",
+      "example_en": "The bus is a little late today."
+    }
+  ]
+}

@@ -1,0 +1,101 @@
+{
+  "name": "Shopping",
+  "entries": [
+    {
+      "word": "買う",
+      "reading": "かう",
+      "part_of_speech": "godan-verb",
+      "meaning": "to buy",
+      "example_jp": "駅前で本を買う。",
+      "example_en": "I buy a book in front of the station."
+    },
+    {
+      "word": "売る",
+      "reading": "うる",
+      "part_of_speech": "godan-verb",
+      "meaning": "to sell",
+      "example_jp": "この店は新鮮な野菜を売っている。",
+      "example_en": "This shop sells fresh vegetables."
+    },
+    {
+      "word": "値段",
+      "reading": "ねだん",
+      "part_of_speech": "noun",
+      "meaning": "price",
+      "example_jp": "この靴の値段は少し高い。",
+      "example_en": "The price of these shoes is a little high."
+    },
+    {
+      "word": "安い",
+      "reading": "やすい",
+      "part_of_speech": "i-adjective",
+      "meaning": "cheap; inexpensive",
+      "example_jp": "この店の野菜は安い。",
+      "example_en": "The vegetables at this store are cheap."
+    },
+    {
+      "word": "高い",
+      "reading": "たかい",
+      "part_of_speech": "i-adjective",
+      "meaning": "expensive; high",
+      "example_jp": "そのかばんは少し高い。",
+      "example_en": "That bag is a little expensive."
+    },
+    {
+      "word": "現金",
+      "reading": "げんきん",
+      "part_of_speech": "noun",
+      "meaning": "cash",
+      "example_jp": "今日は現金しか持っていない。",
+      "example_en": "I only have cash today."
+    },
+    {
+      "word": "カード",
+      "reading": "カード",
+      "part_of_speech": "noun",
+      "meaning": "card",
+      "example_jp": "支払いはカードでお願いします。",
+      "example_en": "Please let me pay by card."
+    },
+    {
+      "word": "袋",
+      "reading": "ふくろ",
+      "part_of_speech": "noun",
+      "meaning": "bag",
+      "example_jp": "袋は一枚で大丈夫です。",
+      "example_en": "One bag is enough."
+    },
+    {
+      "word": "服",
+      "reading": "ふく",
+      "part_of_speech": "noun",
+      "meaning": "clothes",
+      "example_jp": "週末に新しい服を買いたい。",
+      "example_en": "I want to buy new clothes this weekend."
+    },
+    {
+      "word": "靴",
+      "reading": "くつ",
+      "part_of_speech": "noun",
+      "meaning": "shoes",
+      "example_jp": "歩きやすい靴を探している。",
+      "example_en": "I am looking for comfortable shoes."
+    },
+    {
+      "word": "店員",
+      "reading": "てんいん",
+      "part_of_speech": "noun",
+      "meaning": "shop clerk",
+      "example_jp": "店員におすすめを聞いた。",
+      "example_en": "I asked the clerk for a recommendation."
+    },
+    {
+      "word": "サイズ",
+      "reading": "サイズ",
+      "part_of_speech": "noun",
+      "meaning": "size",
+      "example_jp": "このシャツはサイズが少し大きい。",
+      "example_en": "This shirt is a little large in size."
+    }
+  ]
+}

@@ -1,0 +1,101 @@
+{
+  "name": "Numbers and Counters",
+  "entries": [
+    {
+      "word": "一つ",
+      "reading": "ひとつ",
+      "part_of_speech": "noun",
+      "meaning": "one thing",
+      "example_jp": "りんごを一つください。",
+      "example_en": "Please give me one apple."
+    },
+    {
+      "word": "二つ",
+      "reading": "ふたつ",
+      "part_of_speech": "noun",
+      "meaning": "two things",
+      "example_jp": "パンを二つ買った。",
+      "example_en": "I bought two pieces of bread."
+    },
+    {
+      "word": "三つ",
+      "reading": "みっつ",
+      "part_of_speech": "noun",
+      "meaning": "three things",
+      "example_jp": "質問が三つある。",
+      "example_en": "I have three questions."
+    },
+    {
+      "word": "人",
+      "reading": "にん",
+      "part_of_speech": "noun",
+      "meaning": "counter for people",
+      "example_jp": "この部屋には三人いる。",
+      "example_en": "There are three people in this room."
+    },
+    {
+      "word": "枚",
+      "reading": "まい",
+      "part_of_speech": "noun",
+      "meaning": "counter for flat objects",
+      "example_jp": "紙を二枚使った。",
+      "example_en": "I used two sheets of paper."
+    },
+    {
+      "word": "本",
+      "reading": "ほん",
+      "part_of_speech": "noun",
+      "meaning": "counter for long objects",
+      "example_jp": "えんぴつを三本持っている。",
+      "example_en": "I have three pencils."
+    },
+    {
+      "word": "回",
+      "reading": "かい",
+      "part_of_speech": "noun",
+      "meaning": "counter for times",
+      "example_jp": "その映画を二回見た。",
+      "example_en": "I watched that movie twice."
+    },
+    {
+      "word": "個",
+      "reading": "こ",
+      "part_of_speech": "noun",
+      "meaning": "counter for small objects",
+      "example_jp": "たまごを六個買った。",
+      "example_en": "I bought six eggs."
+    },
+    {
+      "word": "匹",
+      "reading": "ひき",
+      "part_of_speech": "noun",
+      "meaning": "counter for small animals",
+      "example_jp": "犬が二匹いる。",
+      "example_en": "There are two dogs."
+    },
+    {
+      "word": "円",
+      "reading": "えん",
+      "part_of_speech": "noun",
+      "meaning": "yen",
+      "example_jp": "このノートは百円だ。",
+      "example_en": "This notebook is one hundred yen."
+    },
+    {
+      "word": "半分",
+      "reading": "はんぶん",
+      "part_of_speech": "noun",
+      "meaning": "half",
+      "example_jp": "ケーキを半分食べた。",
+      "example_en": "I ate half of the cake."
+    },
+    {
+      "word": "全部",
+      "reading": "ぜんぶ",
+      "part_of_speech": "noun",
+      "meaning": "all; everything",
+      "example_jp": "宿題は全部終わった。",
+      "example_en": "All of my homework is finished."
+    }
+  ]
+}

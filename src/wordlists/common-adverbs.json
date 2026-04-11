@@ -1,0 +1,101 @@
+{
+  "name": "Common Adverbs",
+  "entries": [
+    {
+      "word": "いつも",
+      "reading": "いつも",
+      "part_of_speech": "adverb",
+      "meaning": "always",
+      "example_jp": "彼はいつも早く来る。",
+      "example_en": "He always comes early."
+    },
+    {
+      "word": "よく",
+      "reading": "よく",
+      "part_of_speech": "adverb",
+      "meaning": "often; well",
+      "example_jp": "その店にはよく行く。",
+      "example_en": "I often go to that store."
+    },
+    {
+      "word": "時々",
+      "reading": "ときどき",
+      "part_of_speech": "adverb",
+      "meaning": "sometimes",
+      "example_jp": "時々家で映画を見る。",
+      "example_en": "I sometimes watch movies at home."
+    },
+    {
+      "word": "たぶん",
+      "reading": "たぶん",
+      "part_of_speech": "adverb",
+      "meaning": "probably",
+      "example_jp": "たぶん明日は雨が降る。",
+      "example_en": "It will probably rain tomorrow."
+    },
+    {
+      "word": "もう",
+      "reading": "もう",
+      "part_of_speech": "adverb",
+      "meaning": "already; soon",
+      "example_jp": "宿題はもう終わった。",
+      "example_en": "The homework is already finished."
+    },
+    {
+      "word": "まだ",
+      "reading": "まだ",
+      "part_of_speech": "adverb",
+      "meaning": "still; not yet",
+      "example_jp": "ご飯はまだできていない。",
+      "example_en": "The meal is not ready yet."
+    },
+    {
+      "word": "すぐ",
+      "reading": "すぐ",
+      "part_of_speech": "adverb",
+      "meaning": "right away; soon",
+      "example_jp": "駅はここからすぐだ。",
+      "example_en": "The station is very close from here."
+    },
+    {
+      "word": "ゆっくり",
+      "reading": "ゆっくり",
+      "part_of_speech": "adverb",
+      "meaning": "slowly; leisurely",
+      "example_jp": "今日は家でゆっくり休む。",
+      "example_en": "I will rest at home leisurely today."
+    },
+    {
+      "word": "たくさん",
+      "reading": "たくさん",
+      "part_of_speech": "adverb",
+      "meaning": "a lot; many",
+      "example_jp": "昨日たくさん歩いた。",
+      "example_en": "I walked a lot yesterday."
+    },
+    {
+      "word": "少し",
+      "reading": "すこし",
+      "part_of_speech": "adverb",
+      "meaning": "a little",
+      "example_jp": "このスープは少し熱い。",
+      "example_en": "This soup is a little hot."
+    },
+    {
+      "word": "一緒に",
+      "reading": "いっしょに",
+      "part_of_speech": "adverb",
+      "meaning": "together",
+      "example_jp": "明日は友だちと一緒に勉強する。",
+      "example_en": "Tomorrow I will study together with my friend."
+    },
+    {
+      "word": "特に",
+      "reading": "とくに",
+      "part_of_speech": "adverb",
+      "meaning": "especially",
+      "example_jp": "私は特に春が好きだ。",
+      "example_en": "I especially like spring."
+    }
+  ]
+}

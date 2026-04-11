@@ -423,45 +423,6 @@ func querySentencesLite(db *sql.DB, storyID int64, chunkPosition int) ([]storySe
 	return sentences, rows.Err()
 }
 
-// querySentenceBaseWords returns the unique base_words found in the sentences
-// belonging to the given chunk (or all sentences if chunkPosition == 0).
-// For whole-story requests the pre-computed story_words_json is used.
-func queryTargetBaseWords(db *sql.DB, storyID int64, chunkPosition int) ([]string, error) {
-	if chunkPosition == 0 {
-		var storyWordsJSON sql.NullString
-		if err := db.QueryRow(`SELECT story_words_json FROM stories WHERE id = ?`, storyID).Scan(&storyWordsJSON); err != nil {
-			return nil, err
-		}
-		if !storyWordsJSON.Valid || storyWordsJSON.String == "" {
-			return nil, nil
-		}
-		var words []string
-		if err := json.Unmarshal([]byte(storyWordsJSON.String), &words); err != nil {
-			return nil, err
-		}
-		return words, nil
-	}
-
-	sentences, err := querySentencesLite(db, storyID, chunkPosition)
-	if err != nil {
-		return nil, err
-	}
-	seen := map[string]struct{}{}
-	var baseWords []string
-	for _, s := range sentences {
-		for _, w := range s.Words {
-			if w.BaseWord == "" {
-				continue
-			}
-			if _, ok := seen[w.BaseWord]; !ok {
-				seen[w.BaseWord] = struct{}{}
-				baseWords = append(baseWords, w.BaseWord)
-			}
-		}
-	}
-	return baseWords, nil
-}
-
 func setSentenceEnglishText(db *sql.DB, sentenceID int64, text string) error {
 	_, err := db.Exec(`UPDATE story_sentences SET english_text = ? WHERE id = ?`, text, sentenceID)
 	return err

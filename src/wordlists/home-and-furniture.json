@@ -1,0 +1,101 @@
+{
+  "name": "Home and Furniture",
+  "entries": [
+    {
+      "word": "家",
+      "reading": "いえ",
+      "part_of_speech": "noun",
+      "meaning": "house; home",
+      "example_jp": "今日は一日中家にいた。",
+      "example_en": "I stayed home all day today."
+    },
+    {
+      "word": "台所",
+      "reading": "だいどころ",
+      "part_of_speech": "noun",
+      "meaning": "kitchen",
+      "example_jp": "母は台所で料理している。",
+      "example_en": "My mother is cooking in the kitchen."
+    },
+    {
+      "word": "玄関",
+      "reading": "げんかん",
+      "part_of_speech": "noun",
+      "meaning": "entrance",
+      "example_jp": "玄関に靴が並んでいる。",
+      "example_en": "Shoes are lined up at the entrance."
+    },
+    {
+      "word": "窓",
+      "reading": "まど",
+      "part_of_speech": "noun",
+      "meaning": "window",
+      "example_jp": "朝、窓を開けて空気を入れた。",
+      "example_en": "I opened the window in the morning to let fresh air in."
+    },
+    {
+      "word": "ドア",
+      "reading": "ドア",
+      "part_of_speech": "noun",
+      "meaning": "door",
+      "example_jp": "出かける前にドアを閉めた。",
+      "example_en": "I closed the door before going out."
+    },
+    {
+      "word": "机",
+      "reading": "つくえ",
+      "part_of_speech": "noun",
+      "meaning": "desk",
+      "example_jp": "机の上で宿題をした。",
+      "example_en": "I did my homework at the desk."
+    },
+    {
+      "word": "椅子",
+      "reading": "いす",
+      "part_of_speech": "noun",
+      "meaning": "chair",
+      "example_jp": "新しい椅子は座りやすい。",
+      "example_en": "The new chair is comfortable to sit on."
+    },
+    {
+      "word": "ベッド",
+      "reading": "ベッド",
+      "part_of_speech": "noun",
+      "meaning": "bed",
+      "example_jp": "疲れたのでベッドで休んだ。",
+      "example_en": "I rested on the bed because I was tired."
+    },
+    {
+      "word": "冷蔵庫",
+      "reading": "れいぞうこ",
+      "part_of_speech": "noun",
+      "meaning": "refrigerator",
+      "example_jp": "冷蔵庫に牛乳が入っている。",
+      "example_en": "There is milk in the refrigerator."
+    },
+    {
+      "word": "電気",
+      "reading": "でんき",
+      "part_of_speech": "noun",
+      "meaning": "electricity; light",
+      "example_jp": "部屋の電気を消した。",
+      "example_en": "I turned off the room light."
+    },
+    {
+      "word": "開ける",
+      "reading": "あける",
+      "part_of_speech": "ichidan-verb",
+      "meaning": "to open",
+      "example_jp": "暑いので窓を開ける。",
+      "example_en": "I open the window because it is hot."
+    },
+    {
+      "word": "閉める",
+      "reading": "しめる",
+      "part_of_speech": "ichidan-verb",
+      "meaning": "to close; to shut",
+      "example_jp": "寝る前にドアを閉める。",
+      "example_en": "I close the door before going to bed."
+    }
+  ]
+}

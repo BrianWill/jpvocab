@@ -1,0 +1,101 @@
+{
+  "name": "Places and Directions",
+  "entries": [
+    {
+      "word": "駅",
+      "reading": "えき",
+      "part_of_speech": "noun",
+      "meaning": "station",
+      "example_jp": "駅まで歩いて十分かかる。",
+      "example_en": "It takes ten minutes to walk to the station."
+    },
+    {
+      "word": "学校",
+      "reading": "がっこう",
+      "part_of_speech": "noun",
+      "meaning": "school",
+      "example_jp": "弟は学校で勉強している。",
+      "example_en": "My younger brother is studying at school."
+    },
+    {
+      "word": "店",
+      "reading": "みせ",
+      "part_of_speech": "noun",
+      "meaning": "shop; store",
+      "example_jp": "駅の前に新しい店ができた。",
+      "example_en": "A new shop opened in front of the station."
+    },
+    {
+      "word": "公園",
+      "reading": "こうえん",
+      "part_of_speech": "noun",
+      "meaning": "park",
+      "example_jp": "夕方に公園を散歩した。",
+      "example_en": "I took a walk in the park in the evening."
+    },
+    {
+      "word": "道",
+      "reading": "みち",
+      "part_of_speech": "noun",
+      "meaning": "road; way",
+      "example_jp": "この道をまっすぐ行く。",
+      "example_en": "Go straight along this road."
+    },
+    {
+      "word": "右",
+      "reading": "みぎ",
+      "part_of_speech": "noun",
+      "meaning": "right",
+      "example_jp": "次の角を右に曲がる。",
+      "example_en": "Turn right at the next corner."
+    },
+    {
+      "word": "左",
+      "reading": "ひだり",
+      "part_of_speech": "noun",
+      "meaning": "left",
+      "example_jp": "銀行は左に見える。",
+      "example_en": "You can see the bank on the left."
+    },
+    {
+      "word": "前",
+      "reading": "まえ",
+      "part_of_speech": "noun",
+      "meaning": "front; before",
+      "example_jp": "家の前に車が止まっている。",
+      "example_en": "A car is parked in front of the house."
+    },
+    {
+      "word": "後ろ",
+      "reading": "うしろ",
+      "part_of_speech": "noun",
+      "meaning": "behind; back",
+      "example_jp": "後ろの席に友だちが座った。",
+      "example_en": "My friend sat in the seat behind me."
+    },
+    {
+      "word": "中",
+      "reading": "なか",
+      "part_of_speech": "noun",
+      "meaning": "inside; middle",
+      "example_jp": "かばんの中に財布がある。",
+      "example_en": "My wallet is inside the bag."
+    },
+    {
+      "word": "近い",
+      "reading": "ちかい",
+      "part_of_speech": "i-adjective",
+      "meaning": "near",
+      "example_jp": "駅はここから近い。",
+      "example_en": "The station is near here."
+    },
+    {
+      "word": "遠い",
+      "reading": "とおい",
+      "part_of_speech": "i-adjective",
+      "meaning": "far",
+      "example_jp": "学校は家から少し遠い。",
+      "example_en": "School is a little far from home."
+    }
+  ]
+}

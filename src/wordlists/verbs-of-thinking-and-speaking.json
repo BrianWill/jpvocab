@@ -1,0 +1,101 @@
+{
+  "name": "Thinking and Speaking Verbs",
+  "entries": [
+    {
+      "word": "考える",
+      "reading": "かんがえる",
+      "part_of_speech": "ichidan-verb",
+      "meaning": "to think; to consider",
+      "example_jp": "次の予定について考える。",
+      "example_en": "I think about the next plan."
+    },
+    {
+      "word": "思う",
+      "reading": "おもう",
+      "part_of_speech": "godan-verb",
+      "meaning": "to think; to feel",
+      "example_jp": "それはいい考えだと思う。",
+      "example_en": "I think that is a good idea."
+    },
+    {
+      "word": "言う",
+      "reading": "いう",
+      "part_of_speech": "godan-verb",
+      "meaning": "to say",
+      "example_jp": "先生は大事なことを二回言った。",
+      "example_en": "The teacher said the important point twice."
+    },
+    {
+      "word": "話す",
+      "reading": "はなす",
+      "part_of_speech": "godan-verb",
+      "meaning": "to talk; to speak",
+      "example_jp": "休み時間に友だちと話す。",
+      "example_en": "I talk with my friend during break."
+    },
+    {
+      "word": "聞く",
+      "reading": "きく",
+      "part_of_speech": "godan-verb",
+      "meaning": "to hear; to ask",
+      "example_jp": "わからないことを先生に聞く。",
+      "example_en": "I ask the teacher about things I do not understand."
+    },
+    {
+      "word": "説明",
+      "reading": "せつめい",
+      "part_of_speech": "noun",
+      "meaning": "explanation",
+      "example_jp": "使い方の説明を読んだ。",
+      "example_en": "I read the explanation of how to use it."
+    },
+    {
+      "word": "伝える",
+      "reading": "つたえる",
+      "part_of_speech": "ichidan-verb",
+      "meaning": "to convey; to tell",
+      "example_jp": "その予定を家族に伝えた。",
+      "example_en": "I told my family that schedule."
+    },
+    {
+      "word": "相談",
+      "reading": "そうだん",
+      "part_of_speech": "noun",
+      "meaning": "consultation; discussion",
+      "example_jp": "先生に進路の相談をした。",
+      "example_en": "I consulted my teacher about my future plans."
+    },
+    {
+      "word": "答える",
+      "reading": "こたえる",
+      "part_of_speech": "ichidan-verb",
+      "meaning": "to answer",
+      "example_jp": "質問にすぐ答えた。",
+      "example_en": "I answered the question right away."
+    },
+    {
+      "word": "選ぶ",
+      "reading": "えらぶ",
+      "part_of_speech": "godan-verb",
+      "meaning": "to choose",
+      "example_jp": "三つの中から一つを選ぶ。",
+      "example_en": "I choose one from the three."
+    },
+    {
+      "word": "決める",
+      "reading": "きめる",
+      "part_of_speech": "ichidan-verb",
+      "meaning": "to decide",
+      "example_jp": "旅行の日を今日決める。",
+      "example_en": "We decide the trip date today."
+    },
+    {
+      "word": "覚える",
+      "reading": "おぼえる",
+      "part_of_speech": "ichidan-verb",
+      "meaning": "to memorize",
+      "example_jp": "新しい表現を一つ覚えた。",
+      "example_en": "I memorized one new expression."
+    }
+  ]
+}

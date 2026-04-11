@@ -1,0 +1,101 @@
+{
+  "name": "Clothing and Appearance",
+  "entries": [
+    {
+      "word": "服",
+      "reading": "ふく",
+      "part_of_speech": "noun",
+      "meaning": "clothes",
+      "example_jp": "旅行のために新しい服を買った。",
+      "example_en": "I bought new clothes for the trip."
+    },
+    {
+      "word": "シャツ",
+      "reading": "シャツ",
+      "part_of_speech": "noun",
+      "meaning": "shirt",
+      "example_jp": "白いシャツを着ている。",
+      "example_en": "I am wearing a white shirt."
+    },
+    {
+      "word": "ズボン",
+      "reading": "ズボン",
+      "part_of_speech": "noun",
+      "meaning": "trousers; pants",
+      "example_jp": "このズボンは動きやすい。",
+      "example_en": "These pants are easy to move in."
+    },
+    {
+      "word": "上着",
+      "reading": "うわぎ",
+      "part_of_speech": "noun",
+      "meaning": "jacket; outerwear",
+      "example_jp": "寒いので上着を持って行く。",
+      "example_en": "I will take a jacket because it is cold."
+    },
+    {
+      "word": "帽子",
+      "reading": "ぼうし",
+      "part_of_speech": "noun",
+      "meaning": "hat; cap",
+      "example_jp": "日差しが強いので帽子をかぶる。",
+      "example_en": "I wear a hat because the sun is strong."
+    },
+    {
+      "word": "靴",
+      "reading": "くつ",
+      "part_of_speech": "noun",
+      "meaning": "shoes",
+      "example_jp": "歩きやすい靴が欲しい。",
+      "example_en": "I want shoes that are easy to walk in."
+    },
+    {
+      "word": "かばん",
+      "reading": "かばん",
+      "part_of_speech": "noun",
+      "meaning": "bag",
+      "example_jp": "かばんにノートを入れた。",
+      "example_en": "I put my notebook in my bag."
+    },
+    {
+      "word": "着る",
+      "reading": "きる",
+      "part_of_speech": "ichidan-verb",
+      "meaning": "to wear; to put on",
+      "example_jp": "今日は厚いコートを着る。",
+      "example_en": "I am wearing a thick coat today."
+    },
+    {
+      "word": "脱ぐ",
+      "reading": "ぬぐ",
+      "part_of_speech": "godan-verb",
+      "meaning": "to take off",
+      "example_jp": "家に入る前に靴を脱ぐ。",
+      "example_en": "I take off my shoes before entering the house."
+    },
+    {
+      "word": "きれい",
+      "reading": "きれい",
+      "part_of_speech": "na-adjective",
+      "meaning": "pretty; clean",
+      "example_jp": "その人はきれいな服を着ている。",
+      "example_en": "That person is wearing nice clothes."
+    },
+    {
+      "word": "若い",
+      "reading": "わかい",
+      "part_of_speech": "i-adjective",
+      "meaning": "young",
+      "example_jp": "彼はまだ若く見える。",
+      "example_en": "He still looks young."
+    },
+    {
+      "word": "似合う",
+      "reading": "にあう",
+      "part_of_speech": "godan-verb",
+      "meaning": "to suit; to look good on",
+      "example_jp": "その青い服はあなたによく似合う。",
+      "example_en": "Those blue clothes suit you well."
+    }
+  ]
+}

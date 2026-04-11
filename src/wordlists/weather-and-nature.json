@@ -1,0 +1,101 @@
+{
+  "name": "Weather and Nature",
+  "entries": [
+    {
+      "word": "天気",
+      "reading": "てんき",
+      "part_of_speech": "noun",
+      "meaning": "weather",
+      "example_jp": "今日は天気がとてもいい。",
+      "example_en": "The weather is very good today."
+    },
+    {
+      "word": "雨",
+      "reading": "あめ",
+      "part_of_speech": "noun",
+      "meaning": "rain",
+      "example_jp": "午後から雨が降りそうだ。",
+      "example_en": "It looks like it will rain this afternoon."
+    },
+    {
+      "word": "雪",
+      "reading": "ゆき",
+      "part_of_speech": "noun",
+      "meaning": "snow",
+      "example_jp": "冬になると山に雪が積もる。",
+      "example_en": "Snow piles up in the mountains in winter."
+    },
+    {
+      "word": "風",
+      "reading": "かぜ",
+      "part_of_speech": "noun",
+      "meaning": "wind",
+      "example_jp": "今日は風が強い。",
+      "example_en": "The wind is strong today."
+    },
+    {
+      "word": "空",
+      "reading": "そら",
+      "part_of_speech": "noun",
+      "meaning": "sky",
+      "example_jp": "夕方の空がきれいだ。",
+      "example_en": "The evening sky is beautiful."
+    },
+    {
+      "word": "山",
+      "reading": "やま",
+      "part_of_speech": "noun",
+      "meaning": "mountain",
+      "example_jp": "遠くに高い山が見える。",
+      "example_en": "You can see a tall mountain in the distance."
+    },
+    {
+      "word": "川",
+      "reading": "かわ",
+      "part_of_speech": "noun",
+      "meaning": "river",
+      "example_jp": "川の近くを散歩した。",
+      "example_en": "I took a walk near the river."
+    },
+    {
+      "word": "海",
+      "reading": "うみ",
+      "part_of_speech": "noun",
+      "meaning": "sea",
+      "example_jp": "夏に海へ行きたい。",
+      "example_en": "I want to go to the sea in summer."
+    },
+    {
+      "word": "花",
+      "reading": "はな",
+      "part_of_speech": "noun",
+      "meaning": "flower",
+      "example_jp": "庭に花がたくさん咲いている。",
+      "example_en": "Many flowers are blooming in the garden."
+    },
+    {
+      "word": "木",
+      "reading": "き",
+      "part_of_speech": "noun",
+      "meaning": "tree",
+      "example_jp": "大きい木の下で休んだ。",
+      "example_en": "I rested under a big tree."
+    },
+    {
+      "word": "晴れ",
+      "reading": "はれ",
+      "part_of_speech": "noun",
+      "meaning": "clear weather",
+      "example_jp": "明日は晴れの予報だ。",
+      "example_en": "Tomorrow's forecast says clear weather."
+    },
+    {
+      "word": "曇り",
+      "reading": "くもり",
+      "part_of_speech": "noun",
+      "meaning": "cloudy weather",
+      "example_jp": "今日は一日中曇りだった。",
+      "example_en": "It was cloudy all day today."
+    }
+  ]
+}

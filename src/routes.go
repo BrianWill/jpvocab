@@ -70,7 +70,6 @@ func serverInit(db *sql.DB) {
 	r.Post("/api/stories/{id}/noted-words", apiAddStoryNotedWord(db))
 	r.Delete("/api/stories/{id}/noted-words", apiDeleteStoryNotedWord(db))
 	r.Post("/api/stories/{id}/generate-translation", apiGenerateStoryTranslation(db))
-	r.Post("/api/stories/{id}/generate-word-info", apiGenerateStoryWordInfo(db))
 
 	r.Get("/api/providers", func(w http.ResponseWriter, r *http.Request) {
 		p := checkAIProviders()
@@ -490,8 +489,7 @@ func adminAddWordsBatch(db *sql.DB) http.HandlerFunc {
 				send(batchWordResult{Input: e.input, Word: e.norm, Added: false, Reason: reason})
 				continue
 			}
-			// Read back from DB so we reflect any info already present on the row
-			// (e.g. autofilled by generate-word-info while tracked=0).
+			// Read back from DB so we reflect any info already present on the row.
 			var actualReading, actualPOS, actualMeaning, actualExJP, actualExEN string
 			db.QueryRowContext(r.Context(),
 				`SELECT COALESCE(reading,''), COALESCE(part_of_speech,''), COALESCE(meaning,''),

@@ -1,0 +1,101 @@
+{
+  "name": "School and Study",
+  "entries": [
+    {
+      "word": "勉強",
+      "reading": "べんきょう",
+      "part_of_speech": "noun",
+      "meaning": "study",
+      "example_jp": "毎晩一時間勉強する。",
+      "example_en": "I study for an hour every night."
+    },
+    {
+      "word": "授業",
+      "reading": "じゅぎょう",
+      "part_of_speech": "noun",
+      "meaning": "class; lesson",
+      "example_jp": "午後に日本語の授業がある。",
+      "example_en": "I have Japanese class in the afternoon."
+    },
+    {
+      "word": "宿題",
+      "reading": "しゅくだい",
+      "part_of_speech": "noun",
+      "meaning": "homework",
+      "example_jp": "宿題はもう終わった。",
+      "example_en": "My homework is already finished."
+    },
+    {
+      "word": "試験",
+      "reading": "しけん",
+      "part_of_speech": "noun",
+      "meaning": "exam",
+      "example_jp": "来週、数学の試験がある。",
+      "example_en": "There is a math exam next week."
+    },
+    {
+      "word": "質問",
+      "reading": "しつもん",
+      "part_of_speech": "noun",
+      "meaning": "question",
+      "example_jp": "授業のあとで質問をした。",
+      "example_en": "I asked a question after class."
+    },
+    {
+      "word": "答え",
+      "reading": "こたえ",
+      "part_of_speech": "noun",
+      "meaning": "answer",
+      "example_jp": "答えを紙に書いた。",
+      "example_en": "I wrote the answer on the paper."
+    },
+    {
+      "word": "教科書",
+      "reading": "きょうかしょ",
+      "part_of_speech": "noun",
+      "meaning": "textbook",
+      "example_jp": "新しい教科書を持ってきた。",
+      "example_en": "I brought the new textbook."
+    },
+    {
+      "word": "ノート",
+      "reading": "ノート",
+      "part_of_speech": "noun",
+      "meaning": "notebook",
+      "example_jp": "大事なことをノートに書く。",
+      "example_en": "I write important things in my notebook."
+    },
+    {
+      "word": "辞書",
+      "reading": "じしょ",
+      "part_of_speech": "noun",
+      "meaning": "dictionary",
+      "example_jp": "わからない言葉を辞書で調べる。",
+      "example_en": "I look up unknown words in a dictionary."
+    },
+    {
+      "word": "覚える",
+      "reading": "おぼえる",
+      "part_of_speech": "ichidan-verb",
+      "meaning": "to memorize; to learn",
+      "example_jp": "新しい漢字を五つ覚える。",
+      "example_en": "I memorize five new kanji."
+    },
+    {
+      "word": "教える",
+      "reading": "おしえる",
+      "part_of_speech": "ichidan-verb",
+      "meaning": "to teach; to tell",
+      "example_jp": "先生が文法を教える。",
+      "example_en": "The teacher teaches grammar."
+    },
+    {
+      "word": "難しい",
+      "reading": "むずかしい",
+      "part_of_speech": "i-adjective",
+      "meaning": "difficult",
+      "example_jp": "この問題は少し難しい。",
+      "example_en": "This problem is a little difficult."
+    }
+  ]
+}

@@ -1,0 +1,101 @@
+{
+  "name": "Hobbies and Entertainment",
+  "entries": [
+    {
+      "word": "趣味",
+      "reading": "しゅみ",
+      "part_of_speech": "noun",
+      "meaning": "hobby",
+      "example_jp": "私の趣味は写真を撮ることだ。",
+      "example_en": "My hobby is taking photos."
+    },
+    {
+      "word": "映画",
+      "reading": "えいが",
+      "part_of_speech": "noun",
+      "meaning": "movie",
+      "example_jp": "週末に映画を見に行く。",
+      "example_en": "I am going to see a movie this weekend."
+    },
+    {
+      "word": "音楽",
+      "reading": "おんがく",
+      "part_of_speech": "noun",
+      "meaning": "music",
+      "example_jp": "夜に静かな音楽を聞く。",
+      "example_en": "I listen to quiet music at night."
+    },
+    {
+      "word": "本",
+      "reading": "ほん",
+      "part_of_speech": "noun",
+      "meaning": "book",
+      "example_jp": "最近おもしろい本を読んでいる。",
+      "example_en": "I have been reading an interesting book lately."
+    },
+    {
+      "word": "ゲーム",
+      "reading": "ゲーム",
+      "part_of_speech": "noun",
+      "meaning": "game",
+      "example_jp": "弟は友だちとゲームをしている。",
+      "example_en": "My younger brother is playing a game with his friend."
+    },
+    {
+      "word": "歌",
+      "reading": "うた",
+      "part_of_speech": "noun",
+      "meaning": "song",
+      "example_jp": "好きな歌を何度も聞いた。",
+      "example_en": "I listened to my favorite song many times."
+    },
+    {
+      "word": "写真",
+      "reading": "しゃしん",
+      "part_of_speech": "noun",
+      "meaning": "photograph",
+      "example_jp": "公園でたくさん写真を撮った。",
+      "example_en": "I took many photos in the park."
+    },
+    {
+      "word": "絵",
+      "reading": "え",
+      "part_of_speech": "noun",
+      "meaning": "picture; drawing",
+      "example_jp": "妹は絵を描くのが好きだ。",
+      "example_en": "My younger sister likes drawing pictures."
+    },
+    {
+      "word": "描く",
+      "reading": "かく",
+      "part_of_speech": "godan-verb",
+      "meaning": "to draw",
+      "example_jp": "休みの日に絵を描く。",
+      "example_en": "I draw pictures on my days off."
+    },
+    {
+      "word": "歌う",
+      "reading": "うたう",
+      "part_of_speech": "godan-verb",
+      "meaning": "to sing",
+      "example_jp": "カラオケで好きな歌を歌った。",
+      "example_en": "I sang my favorite song at karaoke."
+    },
+    {
+      "word": "踊る",
+      "reading": "おどる",
+      "part_of_speech": "godan-verb",
+      "meaning": "to dance",
+      "example_jp": "子どもたちが音楽に合わせて踊った。",
+      "example_en": "The children danced to the music."
+    },
+    {
+      "word": "楽しむ",
+      "reading": "たのしむ",
+      "part_of_speech": "godan-verb",
+      "meaning": "to enjoy",
+      "example_jp": "休日を家族と楽しんだ。",
+      "example_en": "I enjoyed the holiday with my family."
+    }
+  ]
+}

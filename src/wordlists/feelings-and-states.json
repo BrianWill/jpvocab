@@ -1,0 +1,101 @@
+{
+  "name": "Feelings and States",
+  "entries": [
+    {
+      "word": "嬉しい",
+      "reading": "うれしい",
+      "part_of_speech": "i-adjective",
+      "meaning": "happy; glad",
+      "example_jp": "友だちに会えて嬉しい。",
+      "example_en": "I am happy to see my friend."
+    },
+    {
+      "word": "悲しい",
+      "reading": "かなしい",
+      "part_of_speech": "i-adjective",
+      "meaning": "sad",
+      "example_jp": "その話を聞いて悲しくなった。",
+      "example_en": "I felt sad after hearing that story."
+    },
+    {
+      "word": "楽しい",
+      "reading": "たのしい",
+      "part_of_speech": "i-adjective",
+      "meaning": "fun; enjoyable",
+      "example_jp": "昨日の旅行はとても楽しかった。",
+      "example_en": "Yesterday's trip was very fun."
+    },
+    {
+      "word": "寂しい",
+      "reading": "さびしい",
+      "part_of_speech": "i-adjective",
+      "meaning": "lonely",
+      "example_jp": "一人で食事をすると少し寂しい。",
+      "example_en": "I feel a little lonely when I eat alone."
+    },
+    {
+      "word": "不安",
+      "reading": "ふあん",
+      "part_of_speech": "na-adjective",
+      "meaning": "anxious; uneasy",
+      "example_jp": "明日の試験が少し不安だ。",
+      "example_en": "I am a little anxious about tomorrow's exam."
+    },
+    {
+      "word": "安心",
+      "reading": "あんしん",
+      "part_of_speech": "noun",
+      "meaning": "relief; peace of mind",
+      "example_jp": "無事に着いたと聞いて安心した。",
+      "example_en": "I felt relieved to hear that they arrived safely."
+    },
+    {
+      "word": "疲れる",
+      "reading": "つかれる",
+      "part_of_speech": "ichidan-verb",
+      "meaning": "to get tired",
+      "example_jp": "今日は仕事でとても疲れた。",
+      "example_en": "I got very tired from work today."
+    },
+    {
+      "word": "眠い",
+      "reading": "ねむい",
+      "part_of_speech": "i-adjective",
+      "meaning": "sleepy",
+      "example_jp": "昼ご飯のあとで眠い。",
+      "example_en": "I am sleepy after lunch."
+    },
+    {
+      "word": "心配",
+      "reading": "しんぱい",
+      "part_of_speech": "na-adjective",
+      "meaning": "worried",
+      "example_jp": "母は天気を心配している。",
+      "example_en": "My mother is worried about the weather."
+    },
+    {
+      "word": "驚く",
+      "reading": "おどろく",
+      "part_of_speech": "godan-verb",
+      "meaning": "to be surprised",
+      "example_jp": "そのニュースを聞いて驚いた。",
+      "example_en": "I was surprised to hear that news."
+    },
+    {
+      "word": "怒る",
+      "reading": "おこる",
+      "part_of_speech": "godan-verb",
+      "meaning": "to get angry",
+      "example_jp": "小さなことで怒らないでください。",
+      "example_en": "Please do not get angry over small things."
+    },
+    {
+      "word": "元気",
+      "reading": "げんき",
+      "part_of_speech": "na-adjective",
+      "meaning": "well; energetic",
+      "example_jp": "今日はみんな元気そうだ。",
+      "example_en": "Everyone looks energetic today."
+    }
+  ]
+}

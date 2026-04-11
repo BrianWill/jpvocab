@@ -1,0 +1,101 @@
+{
+  "name": "Body and Health",
+  "entries": [
+    {
+      "word": "頭",
+      "reading": "あたま",
+      "part_of_speech": "noun",
+      "meaning": "head",
+      "example_jp": "今日は少し頭が痛い。",
+      "example_en": "My head hurts a little today."
+    },
+    {
+      "word": "目",
+      "reading": "め",
+      "part_of_speech": "noun",
+      "meaning": "eye",
+      "example_jp": "長く画面を見ると目が疲れる。",
+      "example_en": "My eyes get tired when I look at a screen for a long time."
+    },
+    {
+      "word": "口",
+      "reading": "くち",
+      "part_of_speech": "noun",
+      "meaning": "mouth",
+      "example_jp": "熱いので口をやけどしそうだ。",
+      "example_en": "It is so hot that I might burn my mouth."
+    },
+    {
+      "word": "手",
+      "reading": "て",
+      "part_of_speech": "noun",
+      "meaning": "hand",
+      "example_jp": "外から帰ったら手を洗う。",
+      "example_en": "I wash my hands when I come home."
+    },
+    {
+      "word": "足",
+      "reading": "あし",
+      "part_of_speech": "noun",
+      "meaning": "foot; leg",
+      "example_jp": "たくさん歩いて足が疲れた。",
+      "example_en": "My legs got tired from walking a lot."
+    },
+    {
+      "word": "病院",
+      "reading": "びょういん",
+      "part_of_speech": "noun",
+      "meaning": "hospital",
+      "example_jp": "熱が高いので病院へ行った。",
+      "example_en": "I went to the hospital because I had a high fever."
+    },
+    {
+      "word": "薬",
+      "reading": "くすり",
+      "part_of_speech": "noun",
+      "meaning": "medicine",
+      "example_jp": "食後に薬を飲んでください。",
+      "example_en": "Please take the medicine after meals."
+    },
+    {
+      "word": "元気",
+      "reading": "げんき",
+      "part_of_speech": "na-adjective",
+      "meaning": "well; healthy; energetic",
+      "example_jp": "今日はとても元気だ。",
+      "example_en": "I feel very well today."
+    },
+    {
+      "word": "痛い",
+      "reading": "いたい",
+      "part_of_speech": "i-adjective",
+      "meaning": "painful; sore",
+      "example_jp": "のどが痛いので話したくない。",
+      "example_en": "My throat hurts, so I do not want to talk."
+    },
+    {
+      "word": "熱",
+      "reading": "ねつ",
+      "part_of_speech": "noun",
+      "meaning": "fever",
+      "example_jp": "昨日の夜から熱がある。",
+      "example_en": "I have had a fever since last night."
+    },
+    {
+      "word": "休む",
+      "reading": "やすむ",
+      "part_of_speech": "godan-verb",
+      "meaning": "to rest; to take time off",
+      "example_jp": "今日は家でゆっくり休む。",
+      "example_en": "I will rest at home today."
+    },
+    {
+      "word": "運動",
+      "reading": "うんどう",
+      "part_of_speech": "noun",
+      "meaning": "exercise",
+      "example_jp": "健康のために毎日運動する。",
+      "example_en": "I exercise every day for my health."
+    }
+  ]
+}

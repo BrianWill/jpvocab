@@ -1,0 +1,101 @@
+{
+  "name": "Technology and Media",
+  "entries": [
+    {
+      "word": "スマホ",
+      "reading": "スマホ",
+      "part_of_speech": "noun",
+      "meaning": "smartphone",
+      "example_jp": "新しいスマホを買った。",
+      "example_en": "I bought a new smartphone."
+    },
+    {
+      "word": "パソコン",
+      "reading": "パソコン",
+      "part_of_speech": "noun",
+      "meaning": "computer",
+      "example_jp": "家でパソコンを使って勉強する。",
+      "example_en": "I study using a computer at home."
+    },
+    {
+      "word": "画面",
+      "reading": "がめん",
+      "part_of_speech": "noun",
+      "meaning": "screen",
+      "example_jp": "画面が少し暗い。",
+      "example_en": "The screen is a little dark."
+    },
+    {
+      "word": "アプリ",
+      "reading": "アプリ",
+      "part_of_speech": "noun",
+      "meaning": "app",
+      "example_jp": "便利なアプリを見つけた。",
+      "example_en": "I found a useful app."
+    },
+    {
+      "word": "インターネット",
+      "reading": "インターネット",
+      "part_of_speech": "noun",
+      "meaning": "internet",
+      "example_jp": "この部屋ではインターネットが速い。",
+      "example_en": "The internet is fast in this room."
+    },
+    {
+      "word": "メール",
+      "reading": "メール",
+      "part_of_speech": "noun",
+      "meaning": "email",
+      "example_jp": "先生にメールを送った。",
+      "example_en": "I sent an email to the teacher."
+    },
+    {
+      "word": "動画",
+      "reading": "どうが",
+      "part_of_speech": "noun",
+      "meaning": "video",
+      "example_jp": "日本語の動画を毎日見る。",
+      "example_en": "I watch Japanese videos every day."
+    },
+    {
+      "word": "音楽",
+      "reading": "おんがく",
+      "part_of_speech": "noun",
+      "meaning": "music",
+      "example_jp": "通学中によく音楽を聞く。",
+      "example_en": "I often listen to music on the way to school."
+    },
+    {
+      "word": "検索",
+      "reading": "けんさく",
+      "part_of_speech": "noun",
+      "meaning": "search",
+      "example_jp": "意味をインターネットで検索した。",
+      "example_en": "I searched the meaning on the internet."
+    },
+    {
+      "word": "開く",
+      "reading": "ひらく",
+      "part_of_speech": "godan-verb",
+      "meaning": "to open",
+      "example_jp": "アプリを開いて予定を見た。",
+      "example_en": "I opened the app and checked my schedule."
+    },
+    {
+      "word": "保存",
+      "reading": "ほぞん",
+      "part_of_speech": "noun",
+      "meaning": "saving; storage",
+      "example_jp": "大事な写真を保存した。",
+      "example_en": "I saved the important photo."
+    },
+    {
+      "word": "充電",
+      "reading": "じゅうでん",
+      "part_of_speech": "noun",
+      "meaning": "charging",
+      "example_jp": "寝る前にスマホを充電する。",
+      "example_en": "I charge my phone before going to bed."
+    }
+  ]
+}

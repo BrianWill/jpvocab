@@ -80,7 +80,6 @@ const state = {
   translationController: null,
   translationElapsedTimer: null,
   translationStartedAt: 0,
-  translationWordInfoCount: null,
   updatingNotedWords: false,
   lastWordAbsPos: 0,
   resumeOffset: 0,

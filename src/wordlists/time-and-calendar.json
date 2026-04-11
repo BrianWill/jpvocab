@@ -1,0 +1,101 @@
+{
+  "name": "Time and Calendar",
+  "entries": [
+    {
+      "word": "今日",
+      "reading": "きょう",
+      "part_of_speech": "noun",
+      "meaning": "today",
+      "example_jp": "今日は天気がいい。",
+      "example_en": "The weather is good today."
+    },
+    {
+      "word": "明日",
+      "reading": "あした",
+      "part_of_speech": "noun",
+      "meaning": "tomorrow",
+      "example_jp": "明日は朝から出かける。",
+      "example_en": "I am going out from the morning tomorrow."
+    },
+    {
+      "word": "昨日",
+      "reading": "きのう",
+      "part_of_speech": "noun",
+      "meaning": "yesterday",
+      "example_jp": "昨日は家で映画を見た。",
+      "example_en": "I watched a movie at home yesterday."
+    },
+    {
+      "word": "今週",
+      "reading": "こんしゅう",
+      "part_of_speech": "noun",
+      "meaning": "this week",
+      "example_jp": "今週は忙しい。",
+      "example_en": "This week is busy."
+    },
+    {
+      "word": "来週",
+      "reading": "らいしゅう",
+      "part_of_speech": "noun",
+      "meaning": "next week",
+      "example_jp": "来週、友だちに会う。",
+      "example_en": "I will meet my friend next week."
+    },
+    {
+      "word": "毎日",
+      "reading": "まいにち",
+      "part_of_speech": "adverb",
+      "meaning": "every day",
+      "example_jp": "毎日日本語を勉強する。",
+      "example_en": "I study Japanese every day."
+    },
+    {
+      "word": "朝",
+      "reading": "あさ",
+      "part_of_speech": "noun",
+      "meaning": "morning",
+      "example_jp": "朝は少し寒い。",
+      "example_en": "It is a little cold in the morning."
+    },
+    {
+      "word": "昼",
+      "reading": "ひる",
+      "part_of_speech": "noun",
+      "meaning": "daytime; noon",
+      "example_jp": "昼に駅の近くで昼ご飯を食べた。",
+      "example_en": "I ate lunch near the station at noon."
+    },
+    {
+      "word": "夜",
+      "reading": "よる",
+      "part_of_speech": "noun",
+      "meaning": "night; evening",
+      "example_jp": "夜は本を読むことが多い。",
+      "example_en": "I often read books at night."
+    },
+    {
+      "word": "春",
+      "reading": "はる",
+      "part_of_speech": "noun",
+      "meaning": "spring",
+      "example_jp": "春になると花が咲く。",
+      "example_en": "Flowers bloom in spring."
+    },
+    {
+      "word": "夏",
+      "reading": "なつ",
+      "part_of_speech": "noun",
+      "meaning": "summer",
+      "example_jp": "夏は海に行きたい。",
+      "example_en": "I want to go to the sea in summer."
+    },
+    {
+      "word": "時間",
+      "reading": "じかん",
+      "part_of_speech": "noun",
+      "meaning": "time; hour",
+      "example_jp": "宿題をする時間がない。",
+      "example_en": "I do not have time to do homework."
+    }
+  ]
+}

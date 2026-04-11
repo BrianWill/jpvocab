@@ -7,6 +7,13 @@ This file is random notes of possible features and bug fixes.
 - still have AI fallback?
     - yes, because simpler more concise meanings and can generate example sentences
 
+- on story import, can we detect if a sentence is Japanese or English (mixed cases default to Japanese)?
+
+- video stories with subtitles
+    first import subtitle files
+
+    either local video file or embedded youtube 
+
 
 
 - create more word lists
@@ -14,9 +21,7 @@ This file is random notes of possible features and bug fixes.
 
 - add more common Japanese words to the word insertion blacklist
 
-- story
-    - how to load faster?
-        
+- story       
     - word info retrieval and presentation still needs work
         filter out more noise words
             have the server mark words that should show work info in the json
@@ -25,8 +30,11 @@ This file is random notes of possible features and bug fixes.
                     if no translation, teh hover tooltip says "no translation available"
     
 
-- video stories with subtitles
-    either local video file or embedded youtube 
+- memory usage
+    nearly 300mb
+        mainly the dict?
+
+
 
 - the wails zoom override is interferring with layout
     not full equivalent of browser zoom

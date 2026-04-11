@@ -1,0 +1,101 @@
+{
+  "name": "Travel",
+  "entries": [
+    {
+      "word": "旅行",
+      "reading": "りょこう",
+      "part_of_speech": "noun",
+      "meaning": "travel; trip",
+      "example_jp": "夏休みに京都へ旅行する。",
+      "example_en": "I will travel to Kyoto during summer vacation."
+    },
+    {
+      "word": "ホテル",
+      "reading": "ホテル",
+      "part_of_speech": "noun",
+      "meaning": "hotel",
+      "example_jp": "駅の近くのホテルに泊まった。",
+      "example_en": "I stayed at a hotel near the station."
+    },
+    {
+      "word": "予約",
+      "reading": "よやく",
+      "part_of_speech": "noun",
+      "meaning": "reservation",
+      "example_jp": "昨日ホテルを予約した。",
+      "example_en": "I made a hotel reservation yesterday."
+    },
+    {
+      "word": "空港",
+      "reading": "くうこう",
+      "part_of_speech": "noun",
+      "meaning": "airport",
+      "example_jp": "朝早く空港へ向かった。",
+      "example_en": "I headed to the airport early in the morning."
+    },
+    {
+      "word": "飛行機",
+      "reading": "ひこうき",
+      "part_of_speech": "noun",
+      "meaning": "airplane",
+      "example_jp": "飛行機で大阪へ行く。",
+      "example_en": "I am going to Osaka by airplane."
+    },
+    {
+      "word": "荷物",
+      "reading": "にもつ",
+      "part_of_speech": "noun",
+      "meaning": "luggage; baggage",
+      "example_jp": "荷物が少ないので楽だ。",
+      "example_en": "It is easy because I have little luggage."
+    },
+    {
+      "word": "地図",
+      "reading": "ちず",
+      "part_of_speech": "noun",
+      "meaning": "map",
+      "example_jp": "地図を見ながら歩いた。",
+      "example_en": "I walked while looking at the map."
+    },
+    {
+      "word": "写真",
+      "reading": "しゃしん",
+      "part_of_speech": "noun",
+      "meaning": "photograph",
+      "example_jp": "旅行中にたくさん写真を撮った。",
+      "example_en": "I took many photos during the trip."
+    },
+    {
+      "word": "泊まる",
+      "reading": "とまる",
+      "part_of_speech": "godan-verb",
+      "meaning": "to stay overnight",
+      "example_jp": "今夜は友だちの家に泊まる。",
+      "example_en": "I will stay at my friend's house tonight."
+    },
+    {
+      "word": "出発",
+      "reading": "しゅっぱつ",
+      "part_of_speech": "noun",
+      "meaning": "departure",
+      "example_jp": "出発の一時間前に着いた。",
+      "example_en": "I arrived one hour before departure."
+    },
+    {
+      "word": "到着",
+      "reading": "とうちゃく",
+      "part_of_speech": "noun",
+      "meaning": "arrival",
+      "example_jp": "到着の時間を家族に知らせた。",
+      "example_en": "I told my family the arrival time."
+    },
+    {
+      "word": "案内",
+      "reading": "あんない",
+      "part_of_speech": "noun",
+      "meaning": "guidance; information",
+      "example_jp": "駅で案内を見つけた。",
+      "example_en": "I found the information desk at the station."
+    }
+  ]
+}

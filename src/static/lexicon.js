@@ -336,7 +336,7 @@ async function addWordFromList(slug, name, total, inLexicon, btn, item) {
     const idx = Math.floor(Math.random() * c.remaining.length);
     const word = c.remaining.splice(idx, 1)[0];
 
-    const displayText = word + ' (from the ' + name + ' word list)';
+    const displayText = word + '  ' + name;
     els.addWordsInput.value = els.addWordsInput.value ? displayText + '\n' + els.addWordsInput.value : displayText;
     els.addWordsInput.scrollTop = 0;
     setAddModalStatus('One random word added from the ' + name + ' list.');

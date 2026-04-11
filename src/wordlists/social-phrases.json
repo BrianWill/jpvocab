@@ -1,0 +1,101 @@
+{
+  "name": "Social Phrases",
+  "entries": [
+    {
+      "word": "こんにちは",
+      "reading": "こんにちは",
+      "part_of_speech": "other",
+      "meaning": "hello; good afternoon",
+      "example_jp": "先生にこんにちはと言った。",
+      "example_en": "I said hello to the teacher."
+    },
+    {
+      "word": "おはよう",
+      "reading": "おはよう",
+      "part_of_speech": "other",
+      "meaning": "good morning",
+      "example_jp": "朝、友だちにおはようと言う。",
+      "example_en": "I say good morning to my friend in the morning."
+    },
+    {
+      "word": "こんばんは",
+      "reading": "こんばんは",
+      "part_of_speech": "other",
+      "meaning": "good evening",
+      "example_jp": "店に入る前にこんばんはと言った。",
+      "example_en": "I said good evening before entering the store."
+    },
+    {
+      "word": "ありがとう",
+      "reading": "ありがとう",
+      "part_of_speech": "other",
+      "meaning": "thank you",
+      "example_jp": "手伝ってくれてありがとう。",
+      "example_en": "Thank you for helping me."
+    },
+    {
+      "word": "すみません",
+      "reading": "すみません",
+      "part_of_speech": "other",
+      "meaning": "excuse me; I am sorry",
+      "example_jp": "すみません、駅はどこですか。",
+      "example_en": "Excuse me, where is the station?"
+    },
+    {
+      "word": "ごめんなさい",
+      "reading": "ごめんなさい",
+      "part_of_speech": "other",
+      "meaning": "I am sorry",
+      "example_jp": "遅れてごめんなさい。",
+      "example_en": "I am sorry for being late."
+    },
+    {
+      "word": "お願いします",
+      "reading": "おねがいします",
+      "part_of_speech": "other",
+      "meaning": "please",
+      "example_jp": "水を一杯お願いします。",
+      "example_en": "One glass of water, please."
+    },
+    {
+      "word": "どうぞ",
+      "reading": "どうぞ",
+      "part_of_speech": "other",
+      "meaning": "here you go; please",
+      "example_jp": "どうぞ、こちらに座ってください。",
+      "example_en": "Here, please sit here."
+    },
+    {
+      "word": "はじめまして",
+      "reading": "はじめまして",
+      "part_of_speech": "other",
+      "meaning": "nice to meet you",
+      "example_jp": "はじめまして、山田です。",
+      "example_en": "Nice to meet you, I am Yamada."
+    },
+    {
+      "word": "よろしく",
+      "reading": "よろしく",
+      "part_of_speech": "other",
+      "meaning": "please treat me well; best regards",
+      "example_jp": "これからよろしくお願いします。",
+      "example_en": "I look forward to working with you."
+    },
+    {
+      "word": "さようなら",
+      "reading": "さようなら",
+      "part_of_speech": "other",
+      "meaning": "goodbye",
+      "example_jp": "帰る前にさようならと言った。",
+      "example_en": "I said goodbye before leaving."
+    },
+    {
+      "word": "おめでとう",
+      "reading": "おめでとう",
+      "part_of_speech": "other",
+      "meaning": "congratulations",
+      "example_jp": "試験に合格しておめでとう。",
+      "example_en": "Congratulations on passing the exam."
+    }
+  ]
+}

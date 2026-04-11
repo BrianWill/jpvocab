@@ -1,0 +1,101 @@
+{
+  "name": "Onomatopoeia",
+  "entries": [
+    {
+      "word": "どきどき",
+      "reading": "どきどき",
+      "part_of_speech": "adverb",
+      "meaning": "heart pounding; nervously",
+      "example_jp": "試験の前でどきどきした。",
+      "example_en": "My heart was pounding before the exam."
+    },
+    {
+      "word": "わくわく",
+      "reading": "わくわく",
+      "part_of_speech": "adverb",
+      "meaning": "excitedly",
+      "example_jp": "旅行の前でわくわくしている。",
+      "example_en": "I am excited before the trip."
+    },
+    {
+      "word": "ゆっくり",
+      "reading": "ゆっくり",
+      "part_of_speech": "adverb",
+      "meaning": "slowly; leisurely",
+      "example_jp": "今日は家でゆっくりしたい。",
+      "example_en": "I want to relax at home today."
+    },
+    {
+      "word": "しっかり",
+      "reading": "しっかり",
+      "part_of_speech": "adverb",
+      "meaning": "firmly; properly",
+      "example_jp": "ドアをしっかり閉めてください。",
+      "example_en": "Please close the door firmly."
+    },
+    {
+      "word": "ぺらぺら",
+      "reading": "ぺらぺら",
+      "part_of_speech": "adverb",
+      "meaning": "fluently",
+      "example_jp": "彼は日本語をぺらぺら話す。",
+      "example_en": "He speaks Japanese fluently."
+    },
+    {
+      "word": "ぺこぺこ",
+      "reading": "ぺこぺこ",
+      "part_of_speech": "adverb",
+      "meaning": "very hungry",
+      "example_jp": "昼前でおなかがぺこぺこだ。",
+      "example_en": "I am very hungry before lunch."
+    },
+    {
+      "word": "にこにこ",
+      "reading": "にこにこ",
+      "part_of_speech": "adverb",
+      "meaning": "smilingly",
+      "example_jp": "子どもがにこにこ笑っている。",
+      "example_en": "The child is smiling happily."
+    },
+    {
+      "word": "すっきり",
+      "reading": "すっきり",
+      "part_of_speech": "adverb",
+      "meaning": "refreshed; neat and clear",
+      "example_jp": "部屋を掃除してすっきりした。",
+      "example_en": "I felt refreshed after cleaning the room."
+    },
+    {
+      "word": "ぎりぎり",
+      "reading": "ぎりぎり",
+      "part_of_speech": "adverb",
+      "meaning": "just barely; at the last minute",
+      "example_jp": "ぎりぎりで電車に間に合った。",
+      "example_en": "I barely made it to the train."
+    },
+    {
+      "word": "ばたばた",
+      "reading": "ばたばた",
+      "part_of_speech": "adverb",
+      "meaning": "busily; noisily",
+      "example_jp": "朝は家の中がばたばただ。",
+      "example_en": "The house is hectic in the morning."
+    },
+    {
+      "word": "きらきら",
+      "reading": "きらきら",
+      "part_of_speech": "adverb",
+      "meaning": "sparklingly",
+      "example_jp": "海が太陽の下できらきら光っている。",
+      "example_en": "The sea is sparkling under the sun."
+    },
+    {
+      "word": "ぐっすり",
+      "reading": "ぐっすり",
+      "part_of_speech": "adverb",
+      "meaning": "sound asleep",
+      "example_jp": "昨日はぐっすり眠れた。",
+      "example_en": "I slept soundly yesterday."
+    }
+  ]
+}

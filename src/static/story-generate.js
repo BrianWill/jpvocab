@@ -18,17 +18,14 @@ function getTranslationTarget() {
   return { sentences };
 }
 
-function updateTranslationCountsText(extraWordInfoCount = null) {
+function updateTranslationCountsText() {
   const target = getTranslationTarget();
   const sentenceCount = Array.isArray(target?.sentences) ? target.sentences.length : 0;
   const uniqueWordCount = new Set(
     (target?.sentences || []).flatMap(s => (s.words || []).filter(w => w.base).map(w => w.base))
   ).size;
-  let text = `${sentenceCount} sentence${sentenceCount === 1 ? '' : 's'}, ${uniqueWordCount} unique word${uniqueWordCount === 1 ? '' : 's'}`;
-  if (typeof extraWordInfoCount === 'number') {
-    text += ` (${extraWordInfoCount} need word info)`;
-  }
-  _els.genTranslationCounts.textContent = text;
+  _els.genTranslationCounts.textContent =
+    `${sentenceCount} sentence${sentenceCount === 1 ? '' : 's'}, ${uniqueWordCount} unique word${uniqueWordCount === 1 ? '' : 's'}`;
 }
 
 function stopTranslationTimer() {
@@ -51,7 +48,6 @@ function startTranslationTimer() {
 function resetTranslationProgressUi() {
   stopTranslationTimer();
   _state.translationStartedAt = 0;
-  _state.translationWordInfoCount = null;
   updateTranslationCountsText();
   _els.genTranslationElapsed.textContent = '0s elapsed';
   _els.genTranslationSummary.textContent = '';
@@ -203,24 +199,16 @@ export function initGenerateModals(els, state, { storyId, onTranslationDone, sto
       }
     };
 
-    const [phase1Done, phase2Done] = await Promise.all([
-      runPhase(`/api/stories/${_storyId}/generate-translation`, msg => {
-        if (typeof msg.sentenceCount === 'number') updateTranslationCountsText(_state.translationWordInfoCount);
-      }),
-      runPhase(`/api/stories/${_storyId}/generate-word-info`, msg => {
-        if (typeof msg.wordCount === 'number') {
-          _state.translationWordInfoCount = msg.wordCount;
-          updateTranslationCountsText(_state.translationWordInfoCount);
-        }
-      }),
-    ]);
+    const phaseDone = await runPhase(`/api/stories/${_storyId}/generate-translation`, msg => {
+      if (typeof msg.sentenceCount === 'number') updateTranslationCountsText();
+    });
 
     stopTranslationTimer();
     _state.translationController = null;
 
-    if (phase1Done && phase2Done) {
+    if (phaseDone) {
       const elapsedSeconds = _state.translationStartedAt ? (Date.now() - _state.translationStartedAt) / 1000 : 0;
-      const totalTokens = (phase1Done.totalTokens || 0) + (phase2Done.totalTokens || 0);
+      const totalTokens = phaseDone.totalTokens || 0;
       playDing();
       _state.translating = false;
       _els.genTranslationSpinner.classList.add('hidden');

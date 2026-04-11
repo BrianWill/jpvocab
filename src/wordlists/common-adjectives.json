@@ -1,0 +1,101 @@
+{
+  "name": "Common Adjectives",
+  "entries": [
+    {
+      "word": "大きい",
+      "reading": "おおきい",
+      "part_of_speech": "i-adjective",
+      "meaning": "big",
+      "example_jp": "あの犬はとても大きい。",
+      "example_en": "That dog is very big."
+    },
+    {
+      "word": "小さい",
+      "reading": "ちいさい",
+      "part_of_speech": "i-adjective",
+      "meaning": "small",
+      "example_jp": "この店は小さいけれど便利だ。",
+      "example_en": "This shop is small but convenient."
+    },
+    {
+      "word": "新しい",
+      "reading": "あたらしい",
+      "part_of_speech": "i-adjective",
+      "meaning": "new",
+      "example_jp": "新しいかばんを買った。",
+      "example_en": "I bought a new bag."
+    },
+    {
+      "word": "古い",
+      "reading": "ふるい",
+      "part_of_speech": "i-adjective",
+      "meaning": "old",
+      "example_jp": "その図書館はとても古い。",
+      "example_en": "That library is very old."
+    },
+    {
+      "word": "長い",
+      "reading": "ながい",
+      "part_of_speech": "i-adjective",
+      "meaning": "long",
+      "example_jp": "夏休みは長い。",
+      "example_en": "Summer vacation is long."
+    },
+    {
+      "word": "短い",
+      "reading": "みじかい",
+      "part_of_speech": "i-adjective",
+      "meaning": "short",
+      "example_jp": "会議は短かった。",
+      "example_en": "The meeting was short."
+    },
+    {
+      "word": "暑い",
+      "reading": "あつい",
+      "part_of_speech": "i-adjective",
+      "meaning": "hot (weather)",
+      "example_jp": "今日は少し暑い。",
+      "example_en": "It is a little hot today."
+    },
+    {
+      "word": "寒い",
+      "reading": "さむい",
+      "part_of_speech": "i-adjective",
+      "meaning": "cold (weather)",
+      "example_jp": "朝はまだ寒い。",
+      "example_en": "It is still cold in the morning."
+    },
+    {
+      "word": "忙しい",
+      "reading": "いそがしい",
+      "part_of_speech": "i-adjective",
+      "meaning": "busy",
+      "example_jp": "今週はとても忙しい。",
+      "example_en": "I am very busy this week."
+    },
+    {
+      "word": "楽しい",
+      "reading": "たのしい",
+      "part_of_speech": "i-adjective",
+      "meaning": "fun; enjoyable",
+      "example_jp": "友だちとの旅行は楽しい。",
+      "example_en": "Trips with friends are fun."
+    },
+    {
+      "word": "便利",
+      "reading": "べんり",
+      "part_of_speech": "na-adjective",
+      "meaning": "convenient",
+      "example_jp": "このアプリはとても便利だ。",
+      "example_en": "This app is very convenient."
+    },
+    {
+      "word": "大切",
+      "reading": "たいせつ",
+      "part_of_speech": "na-adjective",
+      "meaning": "important; precious",
+      "example_jp": "これは大切な本だ。",
+      "example_en": "This is an important book."
+    }
+  ]
+}

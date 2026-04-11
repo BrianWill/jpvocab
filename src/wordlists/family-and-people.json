@@ -1,0 +1,101 @@
+{
+  "name": "Family and People",
+  "entries": [
+    {
+      "word": "家族",
+      "reading": "かぞく",
+      "part_of_speech": "noun",
+      "meaning": "family",
+      "example_jp": "家族と一緒に夕食を食べる。",
+      "example_en": "I eat dinner with my family."
+    },
+    {
+      "word": "父",
+      "reading": "ちち",
+      "part_of_speech": "noun",
+      "meaning": "my father",
+      "example_jp": "父は毎朝早く起きる。",
+      "example_en": "My father gets up early every morning."
+    },
+    {
+      "word": "母",
+      "reading": "はは",
+      "part_of_speech": "noun",
+      "meaning": "my mother",
+      "example_jp": "母は料理が好きだ。",
+      "example_en": "My mother likes cooking."
+    },
+    {
+      "word": "兄",
+      "reading": "あに",
+      "part_of_speech": "noun",
+      "meaning": "older brother",
+      "example_jp": "兄は駅の近くで働いている。",
+      "example_en": "My older brother works near the station."
+    },
+    {
+      "word": "姉",
+      "reading": "あね",
+      "part_of_speech": "noun",
+      "meaning": "older sister",
+      "example_jp": "姉は本を読むのが好きだ。",
+      "example_en": "My older sister likes reading books."
+    },
+    {
+      "word": "弟",
+      "reading": "おとうと",
+      "part_of_speech": "noun",
+      "meaning": "younger brother",
+      "example_jp": "弟は毎日部活に行く。",
+      "example_en": "My younger brother goes to club activities every day."
+    },
+    {
+      "word": "妹",
+      "reading": "いもうと",
+      "part_of_speech": "noun",
+      "meaning": "younger sister",
+      "example_jp": "妹はまだ小学生だ。",
+      "example_en": "My younger sister is still in elementary school."
+    },
+    {
+      "word": "友だち",
+      "reading": "ともだち",
+      "part_of_speech": "noun",
+      "meaning": "friend",
+      "example_jp": "放課後に友だちと話した。",
+      "example_en": "I talked with my friend after school."
+    },
+    {
+      "word": "先生",
+      "reading": "せんせい",
+      "part_of_speech": "noun",
+      "meaning": "teacher",
+      "example_jp": "先生に質問をした。",
+      "example_en": "I asked the teacher a question."
+    },
+    {
+      "word": "子ども",
+      "reading": "こども",
+      "part_of_speech": "noun",
+      "meaning": "child",
+      "example_jp": "公園で子どもが遊んでいる。",
+      "example_en": "Children are playing in the park."
+    },
+    {
+      "word": "若い",
+      "reading": "わかい",
+      "part_of_speech": "i-adjective",
+      "meaning": "young",
+      "example_jp": "その先生はまだ若い。",
+      "example_en": "That teacher is still young."
+    },
+    {
+      "word": "親切",
+      "reading": "しんせつ",
+      "part_of_speech": "na-adjective",
+      "meaning": "kind",
+      "example_jp": "駅で親切な人に助けてもらった。",
+      "example_en": "A kind person helped me at the station."
+    }
+  ]
+}

@@ -128,21 +128,26 @@
 
 
 /* Add-words modal with sidebar */
-.modal--add { max-width: 680px; }
+.modal--add {
+  max-width: 860px;
+  max-height: min(78vh, 720px);
+}
 
 .add-modal-body {
   flex-direction: row;
   padding: 0;
   gap: 0;
+  min-height: 0;
 }
 .add-modal-sidebar {
-  width: 140px;
+  width: 220px;
   flex-shrink: 0;
   border-right: 1px solid #313244;
   padding: 0.75rem 0.4rem;
   display: flex;
   flex-direction: column;
   gap: 0.1rem;
+  overflow-y: auto;
 }
 .add-modal-sidebar-title {
   font-size: 0.65rem;
@@ -182,7 +187,18 @@
   text-overflow: ellipsis;
   cursor: pointer;
 }
-.add-modal-main { flex: 1; padding: 1.25rem; }
+.add-modal-main {
+  flex: 1;
+  min-width: 0;
+  padding: 1.25rem;
+}
+.add-modal-main .modal-field,
+.add-modal-main textarea {
+  height: 100%;
+}
+.add-modal-main textarea {
+  min-height: 280px;
+}
 .add-modal-status {
   margin-right: auto;
   font-size: 0.8rem;

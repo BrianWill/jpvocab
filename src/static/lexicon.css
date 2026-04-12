@@ -4,7 +4,7 @@
 }
 
 :root {
-  --lexicon-cols: 4rem minmax(7rem, 15%) minmax(9.5rem, 14%) minmax(8rem, 10%) minmax(9.5rem, 0.55fr) 2.4rem 2.4rem 3.4rem 0.2rem;
+  --lexicon-cols: 4rem minmax(7rem, 20%) minmax(9.5rem, 14%) minmax(8rem, 10%) minmax(9.5rem, 0.55fr) 2.4rem 2.4rem 3.4rem 0.2rem;
   --lexicon-row-height: 92px;
 }
 
@@ -44,6 +44,8 @@
   padding: 0.55rem 1rem;
   text-align: left;
   white-space: nowrap;
+  display: flex;
+  align-items: center;
 }
 .word-table-cell--num { text-align: center; }
 .word-table-cell--img { padding-right: 0; }
@@ -65,6 +67,7 @@
   height: var(--lexicon-row-height);
   border-bottom: 1px solid #181825;
   overflow: hidden;
+  margin-top: 0.25rem;
 }
 .word-group:hover { background: #181825; }
 .word-group.word-group--drop-target {

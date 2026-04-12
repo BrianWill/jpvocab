@@ -20,61 +20,64 @@
 </div>
 
 <div class="table-wrap">
-  <table class="word-table" id="word-table">
-    <thead>
-      <tr>
-        <th class="col-img"></th>
-        <th data-tooltip="Japanese word">
-          <div class="th-inner">
-            Word
-            <span class="th-sort-btns">
-              <button class="btn-sort btn-sort--active" data-sort="added" data-dir="desc" data-tooltip="Sort by date added">↓ added</button>
-              <button class="btn-sort" data-sort="drilled" data-dir="desc" data-tooltip="Sort by last drilled date">↓ drilled</button>
-            </span>
-          </div>
-        </th>
-        <th data-tooltip="Hiragana reading">
-          <div class="th-inner">
-            Reading
-            <span class="th-sort-btns">
-              <button class="btn-sort" data-sort="reading" data-dir="desc" data-tooltip="Sort by reading (あいうえお order)">↓</button>
-            </span>
-          </div>
-        </th>
-        <th data-tooltip="Part of speech">
-          <div class="th-inner">
-            Type
-            <span class="th-sort-btns">
-              <button class="btn-sort" data-sort="type" data-tooltip="Group by part of speech; within each group, words are ordered by last drilled date">≡ group</button>
-            </span>
-          </div>
-        </th>
-        <th data-tooltip="English meaning">Meaning</th>
-        <th class="col-num" data-tooltip="Times answered correctly">
-          <div class="th-inner center"><span class="th-correct">✓</span>
-            <span class="th-sort-btns">
-              <button class="btn-sort" data-sort="correct" data-dir="desc" data-tooltip="Sort by correct answer count">↓</button>
-            </span>
-          </div>
-        </th>
-        <th class="col-num" data-tooltip="Times answered incorrectly">
-          <div class="th-inner center"><span class="th-incorrect">✗</span>
-            <span class="th-sort-btns">
-              <button class="btn-sort" data-sort="incorrect" data-dir="desc" data-tooltip="Sort by incorrect answer count">↓</button>
-            </span>
-          </div>
-        </th>
-        <th class="col-num" data-tooltip="Target number of additional drills">
-          <div class="th-inner center"><span class="th-emoji-grey">🎯</span>
-            <span class="th-sort-btns">
-              <button class="btn-sort" data-sort="target" data-dir="desc" data-tooltip="Sort by target drill count">↓</button>
-            </span>
-          </div>
-        </th>
-        <th class="col-spacer"></th>
-      </tr>
-    </thead>
-  </table>
+  <div class="word-table" id="word-table">
+    <div class="word-table-header">
+      <div class="word-table-cell word-table-cell--img"></div>
+      <div class="word-table-cell" data-tooltip="Japanese word">
+        <div class="th-inner">
+          Word
+          <span class="th-sort-btns">
+            <button class="btn-sort btn-sort--active" data-sort="added" data-dir="desc" data-tooltip="Sort by date added">↓ added</button>
+            <button class="btn-sort" data-sort="drilled" data-dir="desc" data-tooltip="Sort by last drilled date">↓ drilled</button>
+          </span>
+        </div>
+      </div>
+      <div class="word-table-cell" data-tooltip="Hiragana reading">
+        <div class="th-inner">
+          Reading
+          <span class="th-sort-btns">
+            <button class="btn-sort" data-sort="reading" data-dir="desc" data-tooltip="Sort by reading (あいうえお order)">↓</button>
+          </span>
+        </div>
+      </div>
+      <div class="word-table-cell" data-tooltip="Part of speech">
+        <div class="th-inner">
+          Type
+          <span class="th-sort-btns">
+            <button class="btn-sort" data-sort="type" data-dir="asc" data-tooltip="Group by part of speech; within each group, words are ordered by last drilled date">≡ group</button>
+          </span>
+        </div>
+      </div>
+      <div class="word-table-cell" data-tooltip="English meaning">Meaning</div>
+      <div class="word-table-cell word-table-cell--num" data-tooltip="Times answered correctly">
+        <div class="th-inner center"><span class="th-correct">✓</span>
+          <span class="th-sort-btns">
+            <button class="btn-sort" data-sort="correct" data-dir="desc" data-tooltip="Sort by correct answer count">↓</button>
+          </span>
+        </div>
+      </div>
+      <div class="word-table-cell word-table-cell--num" data-tooltip="Times answered incorrectly">
+        <div class="th-inner center"><span class="th-incorrect">✗</span>
+          <span class="th-sort-btns">
+            <button class="btn-sort" data-sort="incorrect" data-dir="desc" data-tooltip="Sort by incorrect answer count">↓</button>
+          </span>
+        </div>
+      </div>
+      <div class="word-table-cell word-table-cell--num" data-tooltip="Target number of additional drills">
+        <div class="th-inner center"><span class="th-emoji-grey">🎯</span>
+          <span class="th-sort-btns">
+            <button class="btn-sort" data-sort="target" data-dir="desc" data-tooltip="Sort by target drill count">↓</button>
+          </span>
+        </div>
+      </div>
+      <div class="word-table-cell word-table-cell--spacer"></div>
+    </div>
+    <div class="word-table-scroll" id="word-table-scroll">
+      <div id="word-table-top-spacer"></div>
+      <div class="word-table-body" id="word-table-body"></div>
+      <div id="word-table-bottom-spacer"></div>
+    </div>
+  </div>
 </div>
 
 <div id="add-modal-backdrop" class="modal-backdrop hidden">

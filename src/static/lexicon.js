@@ -1,8 +1,12 @@
 import { openEditModal, closeAddResultModal, state as addEditState } from './lexicon-add-edit.js';
-import { timeAgo, getSortedWords as _getSortedWords, renderReading, getFirstImageFile } from './lexicon-utils.js';
-import { playTts, playWordAudio, playSentenceAudio, checkVoicevoxAvailable, checkFfmpegAvailable, refreshTooltip } from './common.js';
+import { timeAgo, getSortedWords as _getSortedWords, renderReading, getFirstImageFile, esc } from './lexicon-utils.js';
+import { playTts, playWordAudio, playSentenceAudio, checkVoicevoxAvailable, checkFfmpegAvailable } from './common.js';
+import { computeVisibleRange, mergeWordPage, removeWordAtIndex } from './lexicon-virtual.js';
 
 const LEXICON_AUDIO_OPTIONS = { preferSynthesis: true, fallbackToBrowserTts: true };
+const VIRTUAL_PAGE_SIZE = 80;
+const VIRTUAL_ITEM_HEIGHT = 118;
+const VIRTUAL_OVERSCAN = 6;
 
 const els = {
   addModalBackdrop: document.getElementById('add-modal-backdrop'),
@@ -16,7 +20,10 @@ const els = {
   headerAddBtn: document.querySelector('.btn-header'),
   sortBtns: Array.from(document.querySelectorAll('.btn-sort')),
   wordCount: document.getElementById('word-count'),
-  wordTable: document.getElementById('word-table'),
+  wordTableBody: document.getElementById('word-table-body'),
+  wordTableScroll: document.getElementById('word-table-scroll'),
+  wordTableTopSpacer: document.getElementById('word-table-top-spacer'),
+  wordTableBottomSpacer: document.getElementById('word-table-bottom-spacer'),
 };
 els.addModalCloseBtn = els.addModalBackdrop.querySelector('.modal-close');
 els.addModalCancelBtn = els.addModalBackdrop.querySelector('.btn-cancel');
@@ -24,17 +31,41 @@ els.deleteModalCloseBtn = els.deleteModalBackdrop.querySelector('.modal-close');
 els.deleteModalCancelBtn = els.deleteModalBackdrop.querySelector('.btn-cancel');
 
 export const state = {
-  defaultDrillTarget: 8, // updated from /api/providers at init
-  deleteTrMain: null,
+  activeWords: 0,
+  defaultDrillTarget: 8,
+  deleteRowEl: null,
   ffmpegAvailable: false,
   imageSources: null,
+  loadedPages: new Set(),
+  pendingPages: new Map(),
   providers: null,
+  requestVersion: 0,
+  totalWords: 0,
   voicevoxAvailable: false,
   wordListCache: new Map(),
+  wordSlots: [],
   words: [],
 };
 
 let activeDropGroup = null;
+
+function currentSort() {
+  const activeBtn = els.sortBtns.find(btn => btn.classList.contains('btn-sort--active'));
+  return {
+    sort: activeBtn?.dataset.sort || 'added',
+    dir: activeBtn?.dataset.dir || 'desc',
+  };
+}
+
+function syncCachedWords() {
+  state.words = state.wordSlots.filter(Boolean);
+}
+
+function updateWordCount() {
+  const total = state.totalWords || 0;
+  const active = state.activeWords || 0;
+  els.wordCount.textContent = total + ' words (' + active + ' active)';
+}
 
 function clearDropTarget() {
   if (!activeDropGroup?.isConnected) {
@@ -57,10 +88,9 @@ function clearFailedDropState(group) {
 }
 
 function getWordRowContext(group) {
-  const trMain = group?.querySelector('.row-main');
-  const wordId = parseInt(trMain?.dataset.wordId || '', 10);
-  const word = trMain?._word;
-  return { trMain, wordId, word };
+  const wordId = parseInt(group?.dataset.wordId || '', 10);
+  const word = group?._word || null;
+  return { group, wordId, word };
 }
 
 async function uploadWordImage(group, file, actionDescription = 'set image') {
@@ -81,9 +111,7 @@ async function uploadWordImage(group, file, actionDescription = 'set image') {
     const data = await res.json();
     updateWordImagePath(wordId, data.image_path);
   } catch (err) {
-    if (group.isConnected) {
-      group.classList.remove('word-group--uploading');
-    }
+    if (group.isConnected) group.classList.remove('word-group--uploading');
     console.error('Failed to ' + actionDescription + ' for "' + word.word + '":', err);
     return false;
   }
@@ -130,11 +158,6 @@ async function onWordTableDrop(event) {
   await uploadWordImage(group, file, 'set image');
 }
 
-function updateWordCount() {
-  const active = state.words.filter(w => w.correct < w.target).length;
-  els.wordCount.textContent = state.words.length + ' words (' + active + ' active)';
-}
-
 export const typeLabels = {
   'godan-verb':   'Godan verb — Group 1 (五段動詞)',
   'ichidan-verb': 'Ichidan verb — Group 2 (一段動詞)',
@@ -152,126 +175,226 @@ function fullDateTime(dateStr) {
   });
 }
 
-function renderRow(w, trMain, trEx) {
+function renderWordGroupHTML(w) {
   const imgCell = w.imagePath
-    ? '<td class="cell-img" rowspan="2"><img src="/static/' + w.imagePath + '" alt=""></td>'
-    : '<td class="cell-img" rowspan="2"></td>';
-  trMain.innerHTML =
+    ? '<div class="lex-cell lex-cell--img"><div class="cell-img"><img src="/static/' + w.imagePath + '" alt=""></div></div>'
+    : '<div class="lex-cell lex-cell--img"><div class="cell-img"></div></div>';
+  const exampleHtml = (w.exampleJp?.trim() || w.exampleEn?.trim())
+    ? '<span class="cell-meaning-example">' +
+        (w.exampleJp?.trim() ? '<span class="cell-ex-flag">🇯🇵</span> <span class="cell-ex-jp" data-tooltip="Example sentence">' + esc(w.exampleJp) + '</span>' : '') +
+        (w.exampleEn?.trim() ? '<span class="cell-ex-sep"></span><span class="cell-ex-flag cell-ex-flag--en">🇬🇧</span> <span class="cell-ex-en" data-tooltip="Example sentence">' + esc(w.exampleEn) + '</span>' : '') +
+      '</span>'
+    : '';
+
+  return (
     imgCell +
-    '<td><div class="cell-word">' + w.word +
-      '<button class="btn-edit" data-word-id="' + w.id + '" data-tooltip="Edit word">✎</button>' +
-      '<button class="btn-delete" data-tooltip="Delete word">✕</button>' +
-    '</div></td>' +
-    '<td class="cell-reading" data-tooltip="Reading (Pronunciation)">' + renderReading(w.reading, w.word, w.kanjiData, w.pitchAccent) + '</td>' +
-    '<td><span class="type-badge" data-tooltip="Part of Speech">' + w.type + '</span></td>' +
-    '<td class="cell-meaning"><div class="cell-meaning-inner" data-tooltip="Meaning">' + w.meaning + '</div></td>' +
-    '<td class="cell-correct" data-tooltip="Times answered correctly">' + w.correct + '</td>' +
-    '<td class="cell-incorrect" data-tooltip="Times answered incorrectly">' + w.incorrect + '</td>' +
-    '<td class="cell-target" data-tooltip="Remaining drills to target">' +
-      '<div class="target-stepper">' +
-        '<button class="btn-target-adj">−</button>' +
-        '<span>' + w.target + '</span>' +
-        '<button class="btn-target-adj">+</button>' +
+      '<div class="lex-cell lex-cell--word"><div class="cell-word">' +
+        '<span class="cell-word-label">' + esc(w.word) + '</span>' +
+        '<button class="btn-edit" data-word-id="' + w.id + '" data-tooltip="Edit word">✎</button>' +
+        '<button class="btn-delete" data-tooltip="Delete word">✕</button>' +
+      '</div></div>' +
+      '<div class="lex-cell lex-cell--reading cell-reading" data-tooltip="Reading (Pronunciation)">' + renderReading(w.reading, w.word, w.kanjiData, w.pitchAccent) + '</div>' +
+      '<div class="lex-cell lex-cell--type"><span class="type-badge" data-tooltip="Part of Speech">' + esc(w.type) + '</span></div>' +
+      '<div class="lex-cell lex-cell--meaning cell-meaning"><div class="cell-meaning-inner" data-tooltip="Meaning">' + esc(w.meaning) + '</div></div>' +
+      '<div class="lex-cell lex-cell--correct cell-correct" data-tooltip="Times answered correctly">' + w.correct + '</div>' +
+      '<div class="lex-cell lex-cell--incorrect cell-incorrect" data-tooltip="Times answered incorrectly">' + w.incorrect + '</div>' +
+      '<div class="lex-cell lex-cell--target cell-target" data-tooltip="Remaining drills to target">' +
+        '<div class="target-stepper">' +
+          '<button class="btn-target-adj" data-delta="-4">−</button>' +
+          '<span>' + w.target + '</span>' +
+          '<button class="btn-target-adj" data-delta="4">+</button>' +
+        '</div>' +
       '</div>' +
-    '</td>' +
-    '<td></td>';
-  trMain._word = w;
-  trMain._trEx  = trEx;
-  trMain.dataset.wordId = w.id;
-
-  trMain.querySelector('.cell-word').addEventListener('click', () => playWordAudio(w, 1, LEXICON_AUDIO_OPTIONS));
-  trMain.querySelector('.btn-edit').addEventListener('click', openEditModal);
-  trMain.querySelector('.btn-delete').addEventListener('click', openDeleteModal);
-  const [adjMinus, adjPlus] = trMain.querySelectorAll('.btn-target-adj');
-  adjMinus.addEventListener('mousedown', e => adjustTargetInline(e, -4));
-  adjPlus.addEventListener('mousedown', e => adjustTargetInline(e, 4));
-
-  trEx.innerHTML =
-    '<td colspan="2" class="cell-date">' +
-      '<span class="cell-date-added" data-tooltip="Date added: ' + fullDateTime(w.createdAt) + '">added ' + timeAgo(w.createdAt) + '</span>' +
-      '<span class="cell-date-sep"> · </span>' +
-      (w.lastDrilled
-        ? '<span class="cell-date-drilled" data-tooltip="Last drilled: ' + fullDateTime(w.lastDrilled) + '">drilled ' + timeAgo(w.lastDrilled) + '</span>'
-        : '<span class="cell-date-drilled cell-date-never">never drilled</span>') +
-    '</td>' +
-    '<td colspan="5" class="cell-ex">' +
-      (w.exampleJp?.trim() ? '<span class="cell-ex-flag">🇯🇵</span> <span class="cell-ex-jp" data-tooltip="Example sentence">' + w.exampleJp + '</span>' : '') +
-      (w.exampleEn?.trim() ? '<span class="cell-ex-sep">🏴󠁧󠁢󠁥󠁮󠁧󠁿</span><span class="cell-ex-en" data-tooltip="Example sentence">' + w.exampleEn + '</span>' : '') +
-    '</td>' +
-    '<td></td>';
-
-  const elJp = trEx.querySelector('.cell-ex-jp');
-  if (elJp) elJp.addEventListener('click', () => playSentenceAudio(w, 1, LEXICON_AUDIO_OPTIONS));
-  const elEn = trEx.querySelector('.cell-ex-en');
-  if (elEn) elEn.addEventListener('click', () => playTts(w.exampleEn, 'en-US'));
+      '<div class="lex-cell lex-cell--date cell-date">' +
+        '<span class="cell-date-added" data-tooltip="Date added: ' + fullDateTime(w.createdAt) + '">added ' + timeAgo(w.createdAt) + '</span>' +
+        '<span class="cell-date-sep"> · </span>' +
+        (w.lastDrilled
+          ? '<span class="cell-date-drilled" data-tooltip="Last drilled: ' + fullDateTime(w.lastDrilled) + '">drilled ' + timeAgo(w.lastDrilled) + '</span>'
+          : '<span class="cell-date-drilled cell-date-never">never drilled</span>') +
+      '</div>' +
+      '<div class="lex-cell lex-cell--example cell-ex">' +
+        exampleHtml +
+      '</div>'
+  );
 }
 
-export function getSortedWords(key, dir) {
-  return _getSortedWords(state.words, key, dir);
+function renderPlaceholderGroup() {
+  const group = document.createElement('div');
+  group.className = 'word-group word-group--placeholder';
+  group.innerHTML =
+    '<div class="lex-cell lex-cell--placeholder">' +
+      '<div class="placeholder-grid">' +
+        '<div class="lex-cell lex-cell--img"><div class="cell-img"></div></div>' +
+        '<div class="lex-cell lex-cell--word"><span class="row-skeleton row-skeleton--word"></span></div>' +
+        '<div class="lex-cell lex-cell--reading"><span class="row-skeleton row-skeleton--reading"></span></div>' +
+        '<div class="lex-cell lex-cell--type"><span class="row-skeleton row-skeleton--type"></span></div>' +
+        '<div class="lex-cell lex-cell--meaning"><span class="row-skeleton row-skeleton--meaning"></span></div>' +
+        '<div class="lex-cell lex-cell--correct"><span class="row-skeleton"></span></div>' +
+        '<div class="lex-cell lex-cell--incorrect"><span class="row-skeleton"></span></div>' +
+        '<div class="lex-cell lex-cell--target"><span class="row-skeleton"></span></div>' +
+        '<div class="lex-cell lex-cell--date"><span class="row-skeleton row-skeleton--meta"></span></div>' +
+        '<div class="lex-cell lex-cell--example"><span class="row-skeleton row-skeleton--example"></span></div>' +
+      '</div>' +
+    '</div>';
+  return group;
 }
 
-export function renderTable(sortedWords) {
-  els.wordTable.querySelectorAll('tbody').forEach(b => b.remove());
-  sortedWords.forEach(w => {
-    const group = document.createElement('tbody');
-    group.className = 'word-group';
-    const trMain = document.createElement('tr');
-    trMain.className = 'row-main';
-    const trEx = document.createElement('tr');
-    trEx.className = 'row-example';
-    renderRow(w, trMain, trEx);
-    group.appendChild(trMain);
-    group.appendChild(trEx);
-    els.wordTable.appendChild(group);
+function buildWordGroup(w, index) {
+  const group = document.createElement('div');
+  group.className = 'word-group';
+  group.dataset.wordId = w.id;
+  group.dataset.index = index;
+  group._word = w;
+  group.innerHTML = renderWordGroupHTML(w);
+  return group;
+}
+
+function visibleRange() {
+  return computeVisibleRange({
+    scrollTop: els.wordTableScroll.scrollTop,
+    viewportHeight: els.wordTableScroll.clientHeight || 1,
+    itemHeight: VIRTUAL_ITEM_HEIGHT,
+    totalItems: state.totalWords,
+    overscan: VIRTUAL_OVERSCAN,
   });
 }
 
-export async function reloadWords() {
-  state.words = await fetch('/api/words').then(r => r.json());
+function ensureVisiblePagesLoaded() {
+  if (state.totalWords === 0) return;
+  const { start, end } = visibleRange();
+  const firstPage = Math.floor(start / VIRTUAL_PAGE_SIZE) * VIRTUAL_PAGE_SIZE;
+  const lastPage = Math.floor(Math.max(0, end - 1) / VIRTUAL_PAGE_SIZE) * VIRTUAL_PAGE_SIZE;
+  for (let offset = firstPage; offset <= lastPage; offset += VIRTUAL_PAGE_SIZE) {
+    fetchWordPage(offset);
+  }
+}
+
+async function fetchWordPage(offset) {
+  if (state.loadedPages.has(offset) || state.pendingPages.has(offset)) return state.pendingPages.get(offset);
+  const version = state.requestVersion;
+  const { sort, dir } = currentSort();
+  const url = new URL('/api/words', window.location.origin);
+  url.searchParams.set('sort', sort);
+  url.searchParams.set('dir', dir);
+  url.searchParams.set('offset', String(offset));
+  url.searchParams.set('limit', String(VIRTUAL_PAGE_SIZE));
+
+  const pending = fetch(url)
+    .then(r => {
+      if (!r.ok) throw new Error('Failed to load words');
+      return r.json();
+    })
+    .then(page => {
+      if (version !== state.requestVersion) return;
+      state.totalWords = page.total || 0;
+      state.activeWords = page.activeTotal || 0;
+      state.wordSlots = mergeWordPage(state.wordSlots, offset, page.items || [], state.totalWords);
+      syncCachedWords();
+      state.loadedPages.add(offset);
+      updateWordCount();
+      renderTable();
+      ensureVisiblePagesLoaded();
+    })
+    .finally(() => {
+      state.pendingPages.delete(offset);
+    });
+
+  state.pendingPages.set(offset, pending);
+  return pending;
+}
+
+function findWordIndex(wordId) {
+  return state.wordSlots.findIndex(word => word && word.id === wordId);
+}
+
+function mutateCachedWord(wordId, mutateFn) {
+  let changedWord = null;
+  state.wordSlots = state.wordSlots.map(word => {
+    if (!word || word.id !== wordId) return word;
+    changedWord = mutateFn({ ...word });
+    return changedWord;
+  });
+  syncCachedWords();
+  return changedWord;
+}
+
+async function resetAndReload({ preserveScroll = false } = {}) {
+  const priorScrollTop = preserveScroll ? els.wordTableScroll.scrollTop : 0;
+  state.requestVersion++;
+  state.loadedPages = new Set();
+  state.pendingPages = new Map();
+  state.totalWords = 0;
+  state.activeWords = 0;
+  state.wordSlots = [];
+  syncCachedWords();
   updateWordCount();
+  els.wordTableScroll.scrollTop = preserveScroll ? priorScrollTop : 0;
+  renderTable();
+  await fetchWordPage(0);
+  ensureVisiblePagesLoaded();
+}
+
+export function getSortedWords() {
+  return _getSortedWords(state.words, currentSort().sort, currentSort().dir);
+}
+
+export function renderTable() {
+  const { start, end } = visibleRange();
+  els.wordTableTopSpacer.style.height = (start * VIRTUAL_ITEM_HEIGHT) + 'px';
+  els.wordTableBottomSpacer.style.height = (Math.max(0, state.totalWords - end) * VIRTUAL_ITEM_HEIGHT) + 'px';
+  els.wordTableBody.innerHTML = '';
+  const frag = document.createDocumentFragment();
+  for (let i = start; i < end; i++) {
+    const word = state.wordSlots[i];
+    frag.appendChild(word ? buildWordGroup(word, i) : renderPlaceholderGroup());
+  }
+  els.wordTableBody.appendChild(frag);
+}
+
+export async function reloadWords() {
+  await resetAndReload({ preserveScroll: true });
 }
 
 export function updateWordImagePath(wordId, imagePath) {
-  const word = state.words.find(w => w.id === wordId);
-  if (!word) return;
-  word.imagePath = imagePath;
-  const activeBtn = els.sortBtns.find(b => b.classList.contains('btn-sort--active'));
-  renderTable(getSortedWords(activeBtn.dataset.sort, activeBtn.dataset.dir || 'desc'));
+  const changedWord = mutateCachedWord(wordId, word => {
+    word.imagePath = imagePath;
+    return word;
+  });
+  if (!changedWord) return;
+  renderTable();
 }
 
 async function init() {
-  const [wordsData, providers] = await Promise.all([
-    fetch('/api/words').then(r => r.json()),
-    fetch('/api/providers').then(r => r.json()),
-  ]);
-  state.words = wordsData;
+  const providers = await fetch('/api/providers').then(r => r.json());
   if (providers.default_drill_target) state.defaultDrillTarget = providers.default_drill_target;
-  updateWordCount();
-  renderTable(getSortedWords('added', 'desc'));
   state.providers = providers.ai;
   state.imageSources = providers.image_sources;
   [state.voicevoxAvailable, state.ffmpegAvailable] = await Promise.all([
     checkVoicevoxAvailable(),
     checkFfmpegAvailable(),
   ]);
+  await resetAndReload();
 }
 
 init();
 
-els.wordTable.addEventListener('dragover', onWordTableDragOver);
-els.wordTable.addEventListener('dragleave', onWordTableDragLeave);
-els.wordTable.addEventListener('drop', onWordTableDrop);
+els.wordTableScroll.addEventListener('scroll', () => {
+  renderTable();
+  ensureVisiblePagesLoaded();
+});
+els.wordTableBody.addEventListener('dragover', onWordTableDragOver);
+els.wordTableBody.addEventListener('dragleave', onWordTableDragLeave);
+els.wordTableBody.addEventListener('drop', onWordTableDrop);
 
 function onBackdropClick(event, closeFn) {
   if (event.target === event.currentTarget) closeFn();
 }
 
-// --- Delete modal ---
-
 function openDeleteModal(event) {
   event.stopPropagation();
-  state.deleteTrMain = event.target.closest('tr');
-  const w = state.deleteTrMain._word;
+  state.deleteRowEl = event.target.closest('.word-group');
+  const w = state.deleteRowEl?._word;
+  if (!w) return;
   els.deleteModalLabel.textContent = w.word;
   els.deleteError.classList.add('hidden');
   els.deleteConfirmBtn.disabled = false;
@@ -284,7 +407,8 @@ function closeDeleteModal() {
 }
 
 async function confirmDelete() {
-  const w = state.deleteTrMain._word;
+  const w = state.deleteRowEl?._word;
+  if (!w) return;
   els.deleteConfirmBtn.disabled = true;
   els.deleteConfirmBtn.innerHTML = '<span class="spinner"></span>';
   els.deleteError.classList.add('hidden');
@@ -292,10 +416,17 @@ async function confirmDelete() {
   try {
     const res = await fetch('/api/words/' + w.id, { method: 'DELETE' });
     if (!res.ok) throw new Error((await res.text()).trim() || res.statusText);
-    state.words.splice(state.words.indexOf(w), 1);
-    state.deleteTrMain.closest('tbody').remove();
-    updateWordCount();
+    const idx = findWordIndex(w.id);
+    if (idx >= 0) {
+      state.wordSlots = removeWordAtIndex(state.wordSlots, idx);
+      state.totalWords = Math.max(0, state.totalWords - 1);
+      if (w.correct < w.target) state.activeWords = Math.max(0, state.activeWords - 1);
+      syncCachedWords();
+      updateWordCount();
+      renderTable();
+    }
     closeDeleteModal();
+    await resetAndReload({ preserveScroll: true });
   } catch (err) {
     els.deleteError.textContent = err.message;
     els.deleteError.classList.remove('hidden');
@@ -304,20 +435,35 @@ async function confirmDelete() {
   }
 }
 
-function adjustTargetInline(event, delta) {
+function adjustTargetInline(event) {
   event.stopPropagation();
-  const trMain = event.target.closest('tr');
-  const w = trMain._word;
+  const group = event.target.closest('.word-group');
+  const w = group?._word;
+  if (!w) return;
+  const delta = parseInt(event.target.dataset.delta || '', 10);
   const newTarget = Math.max(w.correct, w.target + delta);
   if (newTarget === w.target) return;
+
+  const wasActive = w.correct < w.target;
+  const willBeActive = w.correct < newTarget;
+  mutateCachedWord(w.id, word => {
+    word.target = newTarget;
+    return word;
+  });
   w.target = newTarget;
-  renderRow(w, trMain, trMain._trEx);
+  if (wasActive !== willBeActive) state.activeWords += willBeActive ? 1 : -1;
   updateWordCount();
+  renderTable();
+
   fetch('/api/words/' + w.id + '/target', {
     method: 'PATCH',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ target: newTarget }),
   });
+
+  if (currentSort().sort === 'target') {
+    resetAndReload({ preserveScroll: true });
+  }
 }
 
 document.addEventListener('keydown', e => {
@@ -328,9 +474,8 @@ document.addEventListener('keydown', e => {
   }
 });
 
-// Sort buttons: active state, direction toggle, and sorting
 els.sortBtns.forEach(btn => {
-  btn.addEventListener('click', e => {
+  btn.addEventListener('click', async e => {
     e.stopPropagation();
     const wasActive = btn.classList.contains('btn-sort--active');
     els.sortBtns.forEach(b => {
@@ -346,11 +491,10 @@ els.sortBtns.forEach(btn => {
       btn.dataset.dir = desc ? 'asc' : 'desc';
       btn.textContent = btn.textContent.replace(desc ? '↓' : '↑', desc ? '↑' : '↓');
     }
-    renderTable(getSortedWords(btn.dataset.sort, btn.dataset.dir));
+    await resetAndReload();
   });
 });
 
-// --- Static element event listeners ---
 els.headerAddBtn.addEventListener('click', openAddModal);
 
 els.addModalBackdrop.addEventListener('click', e => onBackdropClick(e, closeAddModal));
@@ -362,7 +506,35 @@ els.deleteModalCloseBtn.addEventListener('click', closeDeleteModal);
 els.deleteModalCancelBtn.addEventListener('click', closeDeleteModal);
 els.deleteConfirmBtn.addEventListener('click', confirmDelete);
 
-// --- Word list sidebar ---
+els.wordTableBody.addEventListener('click', event => {
+  const group = event.target.closest('.word-group');
+  const word = group?._word;
+  if (!word) return;
+
+  if (event.target.closest('.btn-edit')) {
+    openEditModal(event);
+    return;
+  }
+  if (event.target.closest('.btn-delete')) {
+    openDeleteModal(event);
+    return;
+  }
+  if (event.target.closest('.cell-word-label') || event.target.closest('.cell-word')) {
+    playWordAudio(word, 1, LEXICON_AUDIO_OPTIONS);
+    return;
+  }
+  if (event.target.closest('.cell-ex-jp')) {
+    playSentenceAudio(word, 1, LEXICON_AUDIO_OPTIONS);
+    return;
+  }
+  if (event.target.closest('.cell-ex-en')) {
+    playTts(word.exampleEn, 'en-US');
+  }
+});
+
+els.wordTableBody.addEventListener('mousedown', event => {
+  if (event.target.closest('.btn-target-adj')) adjustTargetInline(event);
+});
 
 function setAddModalStatus(msg) {
   els.addModalStatus.textContent = msg;
@@ -413,7 +585,6 @@ async function initWordListSidebar() {
 async function addWordFromList(slug, name, total, inLexicon, btn, item) {
   btn.disabled = true;
   try {
-    // Fetch and cache the available words on first click.
     if (!state.wordListCache.has(slug)) {
       const res = await fetch('/api/wordlists/' + encodeURIComponent(slug) + '/words');
       if (!res.ok) { setAddModalStatus('Failed to load the ' + name + ' list.'); return; }
@@ -441,7 +612,6 @@ async function addWordFromList(slug, name, total, inLexicon, btn, item) {
     els.addWordsInput.scrollTop = 0;
     setAddModalStatus('One random word added from the ' + name + ' list.');
     item.dataset.tooltip = listItemTooltip(slug, c.total, c.inLexicon);
-    refreshTooltip(item);
   } catch (_) {
     setAddModalStatus('Failed to load the ' + name + ' list.');
   } finally {
@@ -451,7 +621,6 @@ async function addWordFromList(slug, name, total, inLexicon, btn, item) {
 
 initWordListSidebar();
 
-// --- Add words modal ---
 function openAddModal() {
   els.addWordsInput.value = '';
   els.addModalStatus.textContent = '';

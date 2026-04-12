@@ -7,6 +7,16 @@ import (
 	"strings"
 )
 
+const (
+	wordSortAdded     = "added"
+	wordSortDrilled   = "drilled"
+	wordSortReading   = "reading"
+	wordSortType      = "type"
+	wordSortCorrect   = "correct"
+	wordSortIncorrect = "incorrect"
+	wordSortTarget    = "target"
+)
+
 // existingWordInfo holds data for a word already in the lexicon.
 type existingWordInfo struct {
 	ID             int64
@@ -42,22 +52,22 @@ type kanjiDataEntry struct {
 // wordJSON is the JSON shape returned by the /api/words endpoint.
 // Field names are chosen to match what lexicon.js already expects.
 type wordJSON struct {
-	ID               int64            `json:"id"`
-	Word             string           `json:"word"`
-	Reading          string           `json:"reading"`
-	PitchAccent      *int             `json:"pitchAccent"`
-	Type             string           `json:"type"`
-	Meaning          string           `json:"meaning"`
-	ExampleJp        string           `json:"exampleJp"`
-	ExampleEn        string           `json:"exampleEn"`
-	Correct          int              `json:"correct"`
-	Incorrect        int              `json:"incorrect"`
-	Target           int              `json:"target"`
-	CreatedAt        string           `json:"createdAt"`
-	LastDrilled      *string          `json:"lastDrilled"`
-	ImagePath        *string          `json:"imagePath"`
-	KanjiData        []kanjiDataEntry `json:"kanjiData"`
-	Tracked          int              `json:"tracked"`
+	ID          int64            `json:"id"`
+	Word        string           `json:"word"`
+	Reading     string           `json:"reading"`
+	PitchAccent *int             `json:"pitchAccent"`
+	Type        string           `json:"type"`
+	Meaning     string           `json:"meaning"`
+	ExampleJp   string           `json:"exampleJp"`
+	ExampleEn   string           `json:"exampleEn"`
+	Correct     int              `json:"correct"`
+	Incorrect   int              `json:"incorrect"`
+	Target      int              `json:"target"`
+	CreatedAt   string           `json:"createdAt"`
+	LastDrilled *string          `json:"lastDrilled"`
+	ImagePath   *string          `json:"imagePath"`
+	KanjiData   []kanjiDataEntry `json:"kanjiData"`
+	Tracked     int              `json:"tracked"`
 }
 
 func decodeKanjiDataEntries(kanjiData string) []kanjiDataEntry {
@@ -125,6 +135,69 @@ func enrichKanjiDataEntries(db *sql.DB, entries []kanjiDataEntry) error {
 		if info, ok := kanjiByID[entries[i].ID]; ok {
 			entries[i].Character = info.Character
 			entries[i].Meanings = info.Meanings
+		}
+	}
+	return nil
+}
+
+func enrichWordsKanjiDataEntries(db *sql.DB, words []wordJSON) error {
+	if len(words) == 0 {
+		return nil
+	}
+
+	missingIDs := make(map[int64]struct{})
+	for _, word := range words {
+		for _, entry := range word.KanjiData {
+			if entry.ID > 0 && entry.Character == "" {
+				missingIDs[entry.ID] = struct{}{}
+			}
+		}
+	}
+	if len(missingIDs) == 0 {
+		return nil
+	}
+
+	placeholders := make([]string, 0, len(missingIDs))
+	args := make([]any, 0, len(missingIDs))
+	for id := range missingIDs {
+		placeholders = append(placeholders, "?")
+		args = append(args, id)
+	}
+
+	rows, err := db.Query(
+		`SELECT id, character, meanings FROM kanji WHERE id IN (`+strings.Join(placeholders, ",")+`)`,
+		args...,
+	)
+	if err != nil {
+		return err
+	}
+	defer rows.Close()
+
+	kanjiByID := make(map[int64]kanjiJSON, len(missingIDs))
+	for rows.Next() {
+		var (
+			info         kanjiJSON
+			meaningsJSON string
+		)
+		if err := rows.Scan(&info.ID, &info.Character, &meaningsJSON); err != nil {
+			return err
+		}
+		json.Unmarshal([]byte(meaningsJSON), &info.Meanings) //nolint:errcheck
+		if info.Meanings == nil {
+			info.Meanings = []string{}
+		}
+		kanjiByID[info.ID] = info
+	}
+	if err := rows.Err(); err != nil {
+		return err
+	}
+
+	for i := range words {
+		for j := range words[i].KanjiData {
+			if info, ok := kanjiByID[words[i].KanjiData[j].ID]; ok {
+				words[i].KanjiData[j].Character = info.Character
+				words[i].KanjiData[j].Meanings = info.Meanings
+			}
 		}
 	}
 	return nil
@@ -388,6 +461,97 @@ func listKanji(db *sql.DB) ([]kanjiJSON, error) {
 	return out, rows.Err()
 }
 
+type wordListPage struct {
+	Items       []wordJSON `json:"items"`
+	Total       int        `json:"total"`
+	ActiveTotal int        `json:"activeTotal"`
+}
+
+func normalizeWordSort(sort string) string {
+	switch sort {
+	case wordSortAdded, wordSortDrilled, wordSortReading, wordSortType, wordSortCorrect, wordSortIncorrect, wordSortTarget:
+		return sort
+	default:
+		return wordSortAdded
+	}
+}
+
+func normalizeWordSortDir(dir string) string {
+	if strings.EqualFold(dir, "asc") {
+		return "asc"
+	}
+	return "desc"
+}
+
+func wordSortOrderClause(sort, dir string) string {
+	sort = normalizeWordSort(sort)
+	dir = normalizeWordSortDir(dir)
+
+	switch sort {
+	case wordSortAdded:
+		if dir == "asc" {
+			return "created_at ASC, id ASC"
+		}
+		return "created_at DESC, id DESC"
+	case wordSortDrilled:
+		if dir == "asc" {
+			return "last_drilled_at IS NOT NULL ASC, last_drilled_at ASC, created_at DESC, id DESC"
+		}
+		return "last_drilled_at IS NULL ASC, last_drilled_at DESC, created_at DESC, id DESC"
+	case wordSortReading:
+		if dir == "asc" {
+			return "COALESCE(reading,'') COLLATE NOCASE ASC, created_at DESC, id DESC"
+		}
+		return "COALESCE(reading,'') COLLATE NOCASE DESC, created_at DESC, id DESC"
+	case wordSortType:
+		if dir == "asc" {
+			return "COALESCE(part_of_speech,'') ASC, last_drilled_at IS NULL ASC, last_drilled_at DESC, created_at DESC, id DESC"
+		}
+		return "COALESCE(part_of_speech,'') DESC, last_drilled_at IS NOT NULL ASC, last_drilled_at ASC, created_at DESC, id DESC"
+	case wordSortCorrect:
+		if dir == "asc" {
+			return "drill_count ASC, created_at DESC, id DESC"
+		}
+		return "drill_count DESC, created_at DESC, id DESC"
+	case wordSortIncorrect:
+		if dir == "asc" {
+			return "incorrect_count ASC, created_at DESC, id DESC"
+		}
+		return "incorrect_count DESC, created_at DESC, id DESC"
+	case wordSortTarget:
+		if dir == "asc" {
+			return "drill_target ASC, created_at DESC, id DESC"
+		}
+		return "drill_target DESC, created_at DESC, id DESC"
+	default:
+		return "created_at DESC, id DESC"
+	}
+}
+
+func scanWordRows(rows *sql.Rows) ([]wordJSON, error) {
+	var words []wordJSON
+	for rows.Next() {
+		var w wordJSON
+		var kanjiDataStr string
+		if err := rows.Scan(
+			&w.ID, &w.Word, &w.Reading, &w.PitchAccent, &w.Type, &w.Meaning, &w.ExampleJp, &w.ExampleEn,
+			&w.Correct, &w.Incorrect, &w.Target, &w.CreatedAt, &w.LastDrilled,
+			&w.ImagePath, &kanjiDataStr, &w.Tracked,
+		); err != nil {
+			return nil, err
+		}
+		w.KanjiData = decodeKanjiDataEntries(kanjiDataStr)
+		words = append(words, w)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	if words == nil {
+		words = []wordJSON{}
+	}
+	return words, nil
+}
+
 // listWords returns all words from the lexicon ordered by creation date descending.
 // Each word's KanjiData entries are enriched with Character and Meanings from the
 // kanji table so callers receive complete kanji info without a separate query.
@@ -404,33 +568,69 @@ func listWords(db *sql.DB) ([]wordJSON, error) {
 	if err != nil {
 		return nil, err
 	}
+	defer rows.Close()
 
-	var words []wordJSON
-	for rows.Next() {
-		var w wordJSON
-		var kanjiDataStr string
-		if err := rows.Scan(
-			&w.ID, &w.Word, &w.Reading, &w.PitchAccent, &w.Type, &w.Meaning, &w.ExampleJp, &w.ExampleEn,
-			&w.Correct, &w.Incorrect, &w.Target, &w.CreatedAt, &w.LastDrilled,
-			&w.ImagePath, &kanjiDataStr, &w.Tracked,
-		); err != nil {
-			rows.Close()
-			return nil, err
-		}
-		w.KanjiData = decodeKanjiDataEntries(kanjiDataStr)
-		words = append(words, w)
-	}
-	if err := rows.Err(); err != nil {
-		rows.Close()
+	words, err := scanWordRows(rows)
+	if err != nil {
 		return nil, err
 	}
-	rows.Close()
-	for i := range words {
-		if err := enrichKanjiDataEntries(db, words[i].KanjiData); err != nil {
-			return nil, err
-		}
+	if err := enrichWordsKanjiDataEntries(db, words); err != nil {
+		return nil, err
 	}
 	return words, nil
+}
+
+func listWordsPage(db *sql.DB, sort, dir string, offset, limit int) (wordListPage, error) {
+	page := wordListPage{
+		Items: []wordJSON{},
+	}
+	if limit < 1 {
+		limit = 1
+	}
+	if limit > 200 {
+		limit = 200
+	}
+	if offset < 0 {
+		offset = 0
+	}
+
+	if err := db.QueryRow(`SELECT COUNT(*), SUM(CASE WHEN drill_count < drill_target THEN 1 ELSE 0 END) FROM words WHERE tracked = 1`).Scan(&page.Total, &page.ActiveTotal); err != nil {
+		return page, err
+	}
+	if page.Total == 0 || offset >= page.Total {
+		return page, nil
+	}
+
+	rows, err := db.Query(`
+		SELECT id, base_word, COALESCE(reading,''), pitch_accent, COALESCE(part_of_speech,''), COALESCE(meaning,''),
+		       COALESCE(example_jp,''), COALESCE(example_en,''),
+		       drill_count, incorrect_count, drill_target, created_at, last_drilled_at,
+		       image_path, COALESCE(kanji_data,'[]'), tracked
+		FROM words
+		WHERE tracked = 1
+		ORDER BY `+wordSortOrderClause(sort, dir)+`
+		LIMIT ? OFFSET ?
+	`, limit, offset)
+	if err != nil {
+		return page, err
+	}
+	defer rows.Close()
+
+	items, err := scanWordRows(rows)
+	if err != nil {
+		return page, err
+	}
+	if err := enrichWordsKanjiDataEntries(db, items); err != nil {
+		return page, err
+	}
+	page.Items = items
+	return page, nil
+}
+
+func trackedWordCount(db *sql.DB) (int, error) {
+	var count int
+	err := db.QueryRow(`SELECT COUNT(*) FROM words WHERE tracked = 1`).Scan(&count)
+	return count, err
 }
 
 // updateWord saves editable fields for an existing word by ID.
@@ -558,7 +758,9 @@ func insertWordsIfAbsent(tx *sql.Tx, baseWords []string) ([]string, error) {
 		}
 		reading, partOfSpeech, meaning, kanjiData, err := fillWordInfoFromDictionary(
 			word, "", "", "", "",
-			func(character string, meanings []string) (int64, error) { return upsertKanjiTx(tx, character, meanings) },
+			func(character string, meanings []string) (int64, error) {
+				return upsertKanjiTx(tx, character, meanings)
+			},
 		)
 		if err != nil {
 			return nil, err

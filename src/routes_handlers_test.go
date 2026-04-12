@@ -473,6 +473,85 @@ func TestAPIGetWords_ReturnsInsertedWord(t *testing.T) {
 	}
 }
 
+func TestAPIGetWords_PagedBadOffset(t *testing.T) {
+	db := testDB(t)
+	req := httptest.NewRequest(http.MethodGet, "/api/words?offset=-1&limit=50", nil)
+	rec := httptest.NewRecorder()
+
+	apiGetWords(db).ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusBadRequest {
+		t.Fatalf("status: got %d, want %d", rec.Code, http.StatusBadRequest)
+	}
+}
+
+func TestAPIGetWords_PagedReturnsItemsAndTotals(t *testing.T) {
+	db := testDB(t)
+	if _, err := db.Exec(`
+		INSERT INTO words (base_word, reading, part_of_speech, meaning, drill_count, incorrect_count, drill_target, created_at, tracked)
+		VALUES
+			('りんご', 'りんご', 'noun', 'apple', 1, 0, 3, '2024-01-01T00:00:00Z', 1),
+			('ばなな', 'ばなな', 'noun', 'banana', 3, 1, 3, '2024-02-01T00:00:00Z', 1),
+			('さくらんぼ', 'さくらんぼ', 'noun', 'cherry', 0, 2, 4, '2024-03-01T00:00:00Z', 1)
+	`); err != nil {
+		t.Fatal(err)
+	}
+
+	req := httptest.NewRequest(http.MethodGet, "/api/words?sort=added&dir=desc&offset=0&limit=2", nil)
+	rec := httptest.NewRecorder()
+
+	apiGetWords(db).ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status: got %d, want %d body=%q", rec.Code, http.StatusOK, rec.Body.String())
+	}
+	var page wordListPage
+	if err := json.NewDecoder(rec.Body).Decode(&page); err != nil {
+		t.Fatal(err)
+	}
+	if page.Total != 3 {
+		t.Fatalf("total: got %d, want 3", page.Total)
+	}
+	if page.ActiveTotal != 2 {
+		t.Fatalf("activeTotal: got %d, want 2", page.ActiveTotal)
+	}
+	if len(page.Items) != 2 {
+		t.Fatalf("items: got %d, want 2", len(page.Items))
+	}
+	if got := []string{page.Items[0].Word, page.Items[1].Word}; fmt.Sprint(got) != fmt.Sprint([]string{"さくらんぼ", "ばなな"}) {
+		t.Fatalf("words: got %v", got)
+	}
+}
+
+func TestAPIGetWords_PagedSortsByReadingAcrossFullSet(t *testing.T) {
+	db := testDB(t)
+	if _, err := db.Exec(`
+		INSERT INTO words (base_word, reading, part_of_speech, meaning, drill_target, created_at, tracked)
+		VALUES
+			('猫', 'ねこ', 'noun', 'cat', 2, '2024-01-01T00:00:00Z', 1),
+			('犬', 'いぬ', 'noun', 'dog', 2, '2024-02-01T00:00:00Z', 1),
+			('鳥', 'とり', 'noun', 'bird', 2, '2024-03-01T00:00:00Z', 1)
+	`); err != nil {
+		t.Fatal(err)
+	}
+
+	req := httptest.NewRequest(http.MethodGet, "/api/words?sort=reading&dir=asc&offset=0&limit=2", nil)
+	rec := httptest.NewRecorder()
+
+	apiGetWords(db).ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status: got %d, want %d", rec.Code, http.StatusOK)
+	}
+	var page wordListPage
+	if err := json.NewDecoder(rec.Body).Decode(&page); err != nil {
+		t.Fatal(err)
+	}
+	if got := []string{page.Items[0].Word, page.Items[1].Word}; fmt.Sprint(got) != fmt.Sprint([]string{"犬", "鳥"}) {
+		t.Fatalf("words: got %v", got)
+	}
+}
+
 func TestAPIGetStories_ReturnsTitle(t *testing.T) {
 	db := testDB(t)
 	rec := httptest.NewRecorder()

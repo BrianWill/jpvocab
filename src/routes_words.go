@@ -16,6 +16,7 @@ import (
 	"os/exec"
 	"path"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"time"
 )
@@ -24,6 +25,34 @@ type wordImageWriter func(r *http.Request, info *wordImageInfo) (string, int, er
 
 func apiGetWords(db *sql.DB) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
+		offsetParam := strings.TrimSpace(r.URL.Query().Get("offset"))
+		limitParam := strings.TrimSpace(r.URL.Query().Get("limit"))
+		if offsetParam != "" || limitParam != "" {
+			offset, err := parseNonNegativeInt(offsetParam)
+			if err != nil {
+				http.Error(w, "invalid offset", http.StatusBadRequest)
+				return
+			}
+			limit, err := parsePositiveInt(limitParam)
+			if err != nil {
+				http.Error(w, "invalid limit", http.StatusBadRequest)
+				return
+			}
+			page, err := listWordsPage(
+				db,
+				r.URL.Query().Get("sort"),
+				r.URL.Query().Get("dir"),
+				offset,
+				limit,
+			)
+			if err != nil {
+				http.Error(w, err.Error(), http.StatusInternalServerError)
+				return
+			}
+			writeJSON(w, page)
+			return
+		}
+
 		words, err := listWords(db)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -34,6 +63,22 @@ func apiGetWords(db *sql.DB) http.HandlerFunc {
 		}
 		writeJSON(w, words)
 	}
+}
+
+func parseNonNegativeInt(value string) (int, error) {
+	n, err := strconv.Atoi(value)
+	if err != nil || n < 0 {
+		return 0, fmt.Errorf("invalid non-negative integer")
+	}
+	return n, nil
+}
+
+func parsePositiveInt(value string) (int, error) {
+	n, err := strconv.Atoi(value)
+	if err != nil || n <= 0 {
+		return 0, fmt.Errorf("invalid positive integer")
+	}
+	return n, nil
 }
 
 func apiUpdateWord(db *sql.DB) http.HandlerFunc {

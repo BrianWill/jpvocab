@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"embed"
 	"encoding/json"
+	"fmt"
 	"log"
 	"net/http"
 	"strings"
@@ -77,10 +78,10 @@ func init() {
 func apiGetWordLists(db *sql.DB) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		type item struct {
-			Slug      string `json:"slug"`
-			Name      string `json:"name"`
-			Total     int    `json:"total"`
-			Tracked   int    `json:"tracked"`
+			Slug    string `json:"slug"`
+			Name    string `json:"name"`
+			Total   int    `json:"total"`
+			Tracked int    `json:"tracked"`
 		}
 		items := make([]item, len(loadedWordLists))
 		for i, wl := range loadedWordLists {
@@ -130,9 +131,9 @@ func apiGetWordListWords(db *sql.DB) http.HandlerFunc {
 
 		w.Header().Set("Content-Type", "application/json")
 		json.NewEncoder(w).Encode(map[string]any{
-			"words":      availableWords,
-			"entries":    availableEntries,
-			"total":      len(wl.Entries),
+			"words":   availableWords,
+			"entries": availableEntries,
+			"total":   len(wl.Entries),
 			"tracked": len(wl.Entries) - len(availableEntries),
 		})
 	}
@@ -149,6 +150,46 @@ func wordListWords(entries []wordListEntry) []string {
 func wordListLookup(word string) (wordListEntry, bool) {
 	entry, ok := wordListEntryByWord[word]
 	return entry, ok
+}
+
+func populateLexiconFromWordListsIfTrackedEmpty(db *sql.DB) (int, bool, error) {
+	trackedCount, err := trackedWordCount(db)
+	if err != nil {
+		return 0, false, err
+	}
+	if trackedCount > 0 {
+		return 0, true, nil
+	}
+
+	drillCfg, err := getDrillSettings(db)
+	if err != nil {
+		return 0, false, err
+	}
+	newWordTarget := drillCfg.NewWordTarget
+	if newWordTarget <= 0 {
+		newWordTarget = 8
+	}
+
+	inserted := 0
+	seen := make(map[string]struct{}, len(wordListEntryByWord))
+	for _, wl := range loadedWordLists {
+		for _, entry := range wl.Entries {
+			word := strings.TrimSpace(entry.Word)
+			if word == "" {
+				continue
+			}
+			if _, exists := seen[word]; exists {
+				continue
+			}
+			seen[word] = struct{}{}
+			if _, err := insertWordReturningID(db, word, entry.Reading, entry.PartOfSpeech, entry.Meaning, entry.ExampleJP, entry.ExampleEN, "", newWordTarget); err != nil {
+				return inserted, false, fmt.Errorf("insert %q from word list %q: %w", word, wl.Slug, err)
+			}
+			inserted++
+		}
+	}
+
+	return inserted, false, nil
 }
 
 func mergeWordListEntry(existing, incoming wordListEntry, word, source string) wordListEntry {

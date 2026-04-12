@@ -738,6 +738,47 @@ func TestWordsInfoInDB_ReturnsCorrectFields(t *testing.T) {
 	}
 }
 
+func TestPopulateLexiconFromWordListsIfTrackedEmpty_InsertsEntries(t *testing.T) {
+	db := testDB(t)
+
+	inserted, skipped, err := populateLexiconFromWordListsIfTrackedEmpty(db)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if skipped {
+		t.Fatal("expected populate to run")
+	}
+	if inserted == 0 {
+		t.Fatal("expected word-list entries to be inserted")
+	}
+
+	count, err := trackedWordCount(db)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if count != inserted {
+		t.Fatalf("tracked count: got %d, want %d", count, inserted)
+	}
+}
+
+func TestPopulateLexiconFromWordListsIfTrackedEmpty_SkipsNonEmptyTrackedLexicon(t *testing.T) {
+	db := testDB(t)
+	if err := insertWord(db, "既存", "きそん", "noun", "existing", "", "", "", 3); err != nil {
+		t.Fatal(err)
+	}
+
+	inserted, skipped, err := populateLexiconFromWordListsIfTrackedEmpty(db)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !skipped {
+		t.Fatal("expected populate to skip")
+	}
+	if inserted != 0 {
+		t.Fatalf("inserted: got %d, want 0", inserted)
+	}
+}
+
 // --- updateWordTarget ---
 
 func TestUpdateWordTarget(t *testing.T) {

@@ -1,4 +1,4 @@
-import { state as lexiconState, typeLabels, reloadWords, renderTable, getSortedWords, closeAddModal, updateWordImagePath } from './lexicon.js';
+import { state as lexiconState, typeLabels, reloadWords, renderTable, closeAddModal, updateWordImagePath } from './lexicon.js';
 import { esc } from './lexicon-utils.js';
 import { playWordAudio, playSentenceAudio, playDing, PROVIDER_MODELS } from './common.js';
 import {
@@ -61,9 +61,9 @@ export const state = {
 export function openEditModal(event) {
   event.stopPropagation();
   const editBtn = event.target.closest('.btn-edit');
-  const trMain = event.target.closest('tr');
-  const wordId = parseInt(editBtn?.dataset.wordId || trMain?.dataset.wordId || '', 10);
-  const w = lexiconState.words.find(word => word.id === wordId) || trMain?._word;
+  const rowEl = event.target.closest('[data-word-id]');
+  const wordId = parseInt(editBtn?.dataset.wordId || rowEl?.dataset.wordId || '', 10);
+  const w = lexiconState.words.find(word => word.id === wordId) || rowEl?._word;
   if (!w) return;
 
   state.addPhase = 'done';
@@ -184,8 +184,7 @@ export async function closeAddResultModal() {
   if (state.addPhase === 'loading' || state.pendingGenerates > 0) return;
   els.addResultModalBackdrop.classList.add('hidden');
   await reloadWords();
-  const activeBtn = document.querySelector('.btn-sort--active');
-  renderTable(getSortedWords(activeBtn.dataset.sort, activeBtn.dataset.dir || 'desc'));
+  renderTable();
 }
 
 async function saveAddModal() {

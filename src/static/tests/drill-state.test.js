@@ -24,6 +24,7 @@ test('createDrillState: seeds defaults from filter keys', () => {
   const state = createDrillState(filterKeys);
   assert.deepEqual([...state.activeFilters], filterKeys);
   assert.equal(state.round, 1);
+  assert.equal(state.requestedRoundSize, DEFAULT_ROUND_SIZE);
   assert.equal(state.roundSize, DEFAULT_ROUND_SIZE);
   assert.equal(state.currentWord, null);
   assert.deepEqual(state.pool, []);
@@ -196,6 +197,7 @@ test('getNextRevealState: returns null when there is no current word', () => {
 test('serializeSessionState: keeps durable progress fields and converts filters to an array', () => {
   const state = {
     poolSize: 25,
+    requestedRoundSize: 10,
     roundSize: 7,
     round: 3,
     doneCount: 11,
@@ -211,6 +213,7 @@ test('serializeSessionState: keeps durable progress fields and converts filters 
 
   assert.deepEqual(serializeSessionState(state), {
     poolSize: 25,
+    requestedRoundSize: 10,
     roundSize: 7,
     round: 3,
     doneCount: 11,

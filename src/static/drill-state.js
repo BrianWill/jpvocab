@@ -51,6 +51,7 @@ export function createDrillState(filterKeys) {
     redo: [],
     remaining: [],
     round: 1,
+    requestedRoundSize: DEFAULT_ROUND_SIZE,
     roundSize: DEFAULT_ROUND_SIZE,
     sidebarFlash: null,
     sessionId: null,
@@ -165,6 +166,7 @@ export function getNextRevealState(sessionState, knew) {
 export function serializeSessionState(state) {
   return {
     poolSize: state.poolSize,
+    requestedRoundSize: state.requestedRoundSize,
     roundSize: state.roundSize,
     round: state.round,
     doneCount: state.doneCount,

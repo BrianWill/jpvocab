@@ -94,6 +94,7 @@ function restoreSession(session) {
 
   const sessionState = session.state || {};
   state.poolSize = sessionState.poolSize || 0;
+  state.requestedRoundSize = sessionState.requestedRoundSize || state.requestedRoundSize || DEFAULT_ROUND_SIZE;
   state.roundSize = sessionState.roundSize || DEFAULT_ROUND_SIZE;
   state.round = sessionState.round || 1;
   state.doneCount = sessionState.doneCount || 0;
@@ -120,7 +121,10 @@ async function init() {
 
   state.words = allWords.filter(word => word.correct < word.target);
   state.settingsMaxWords = settings.maxWords;
-  if (settings.roundSize > 0) state.roundSize = settings.roundSize;
+  if (settings.roundSize > 0) {
+    state.roundSize = settings.roundSize;
+    state.requestedRoundSize = settings.roundSize;
+  }
   if (Array.isArray(settings.wordTypes) && settings.wordTypes.length > 0) {
     state.activeFilters.clear();
     settings.wordTypes.forEach(filterKey => state.activeFilters.add(filterKey));
@@ -171,7 +175,7 @@ function reveal(knew) {
 
 function openRestartModal() {
   els.restartTotalWords.value = state.settingsMaxWords;
-  els.restartRoundSize.value = state.roundSize;
+  els.restartRoundSize.value = state.requestedRoundSize;
   refreshFilterHint();
   els.restartBackdrop.classList.remove('hidden');
 }
@@ -200,7 +204,9 @@ async function confirmRestart() {
   const filtered = getCurrentFilteredWords();
   const maxPoolSize = Math.max(1, parseInt(els.restartTotalWords.value, 10) || filtered.length);
   const total = Math.min(maxPoolSize, filtered.length);
-  const nextRoundSize = Math.max(1, Math.min(total, parseInt(els.restartRoundSize.value, 10) || state.roundSize));
+  const requestedRoundSize = Math.max(1, parseInt(els.restartRoundSize.value, 10) || state.requestedRoundSize);
+  const nextRoundSize = Math.max(1, Math.min(total, requestedRoundSize));
+  state.requestedRoundSize = requestedRoundSize;
   closeRestartModal();
   restartDrill(total, nextRoundSize, filtered);
   state.sessionId = await createSession(serializeSessionState(state));

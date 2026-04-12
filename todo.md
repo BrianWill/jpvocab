@@ -2,10 +2,15 @@
 
 This file is random notes of possible features and bug fixes.
 
-- use dictionary instead of AI for word info
-    make sure story chunk translation does not use AI for words
-- still have AI fallback?
-    - yes, because simpler more concise meanings and can generate example sentences
+- when you answer word, maybe there should be brief reveal of answer before moving to next word?
+    - especially when you answer don't know
+    - or maybe just delay reveal and audio play of next word
+    - or maybe show answer in main area, then user has to hit space to proceed
+
+    - space could also be hotkey that advances to next word without answering the word
+        - what happens to unanswered words when you get to next round?
+
+- separate generation of example sentences from generation of word info
 
 - on story import, can we detect if a sentence is Japanese or English (mixed cases default to Japanese)?
 
@@ -16,7 +21,6 @@ This file is random notes of possible features and bug fixes.
     first import subtitle files
 
     either local video file or embedded youtube 
-
 
 - add more common Japanese words to the word insertion blacklist?
     already filtering based on POS, but some common things sneak through, like　です
@@ -34,19 +38,14 @@ This file is random notes of possible features and bug fixes.
     nearly 300mb
         mainly the dict?
 
-
-
 - the wails zoom override is interferring with layout
     not full equivalent of browser zoom
 
 - activity page
     - stats on number of tracked words in lexicon vs untracked
 
-- integrate a free dictionary for word info
-
 - mic STT : why only last a few seconds? what causes it to stop?
     - should user have to hit button to stop STT? also stop STT when user submits the message?
-    - English prompt modes should 
 
 - drill
     - presentation of last word needs some reconsideration

@@ -25,7 +25,7 @@ function capStepperInput(input, min, max) {
 export function attachNumberStepper(input, options = {}) {
   if (!input) return;
 
-  const { onChange, onInput, step = 5, min = 5, max = 995 } = options;
+  const { onChange, onInput, step = 5, min = 1, max = 995 } = options;
   const [minusBtn, plusBtn] = input.closest('.num-stepper').querySelectorAll('.num-btn');
   let stepTimer = null;
 

@@ -1,0 +1,101 @@
+{
+  "name": "Common godan verbs",
+  "entries": [
+    {
+      "word": "行く",
+      "reading": "いく",
+      "part_of_speech": "godan-verb",
+      "meaning": "to go",
+      "example_jp": "明日図書館に行く。",
+      "example_en": "I will go to the library tomorrow."
+    },
+    {
+      "word": "話す",
+      "reading": "はなす",
+      "part_of_speech": "godan-verb",
+      "meaning": "to speak; to talk",
+      "example_jp": "友だちと日本語で話す。",
+      "example_en": "I talk with my friend in Japanese."
+    },
+    {
+      "word": "聞く",
+      "reading": "きく",
+      "part_of_speech": "godan-verb",
+      "meaning": "to hear; to listen; to ask",
+      "example_jp": "先生の話をよく聞く。",
+      "example_en": "I listen carefully to the teacher."
+    },
+    {
+      "word": "読む",
+      "reading": "よむ",
+      "part_of_speech": "godan-verb",
+      "meaning": "to read",
+      "example_jp": "寝る前に本を読む。",
+      "example_en": "I read a book before bed."
+    },
+    {
+      "word": "書く",
+      "reading": "かく",
+      "part_of_speech": "godan-verb",
+      "meaning": "to write",
+      "example_jp": "ノートに新しい言葉を書く。",
+      "example_en": "I write new words in my notebook."
+    },
+    {
+      "word": "待つ",
+      "reading": "まつ",
+      "part_of_speech": "godan-verb",
+      "meaning": "to wait",
+      "example_jp": "駅で十分待った。",
+      "example_en": "I waited for ten minutes at the station."
+    },
+    {
+      "word": "使う",
+      "reading": "つかう",
+      "part_of_speech": "godan-verb",
+      "meaning": "to use",
+      "example_jp": "この辞書をよく使う。",
+      "example_en": "I use this dictionary often."
+    },
+    {
+      "word": "持つ",
+      "reading": "もつ",
+      "part_of_speech": "godan-verb",
+      "meaning": "to hold; to carry; to have",
+      "example_jp": "今日は傘を持って行く。",
+      "example_en": "I will take an umbrella today."
+    },
+    {
+      "word": "立つ",
+      "reading": "たつ",
+      "part_of_speech": "godan-verb",
+      "meaning": "to stand",
+      "example_jp": "ドアの前に立つ。",
+      "example_en": "I stand in front of the door."
+    },
+    {
+      "word": "座る",
+      "reading": "すわる",
+      "part_of_speech": "godan-verb",
+      "meaning": "to sit",
+      "example_jp": "ここに座ってください。",
+      "example_en": "Please sit here."
+    },
+    {
+      "word": "入る",
+      "reading": "はいる",
+      "part_of_speech": "godan-verb",
+      "meaning": "to enter",
+      "example_jp": "寒いので中に入る。",
+      "example_en": "It is cold, so I go inside."
+    },
+    {
+      "word": "作る",
+      "reading": "つくる",
+      "part_of_speech": "godan-verb",
+      "meaning": "to make; to create",
+      "example_jp": "週末にカレーを作る。",
+      "example_en": "I make curry on the weekend."
+    }
+  ]
+}

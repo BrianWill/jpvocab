@@ -15,6 +15,16 @@
   min-width: 18rem;
 }
 
+#btn-debug-toggle {
+  padding-bottom: 0.4rem;
+}
+
+#btn-new-chat {
+  padding-top: 0.2rem;
+  padding-bottom: 0.4rem;
+}
+
+
 .tutor-select {
   background: #11111b;
   border: 1px solid #313244;
@@ -34,10 +44,8 @@
   display: flex;
   flex-direction: column;
   min-height: 0;
-  max-width: 860px;
   width: 100%;
-  margin: 0 auto;
-  padding: 1.25rem 1.5rem 0;
+  padding: 1.25rem 0 0;
 }
 
 /* ── Message list ────────────────────────────────────────────────────────────*/
@@ -48,6 +56,8 @@
   flex-direction: column;
   gap: 0.85rem;
   padding-bottom: 0.75rem;
+  padding-left: max(1.5rem, calc((100% - 860px) / 2));
+  padding-right: max(1.5rem, calc((100% - 860px) / 2));
 }
 
 .tutor-message {
@@ -82,12 +92,10 @@
 /* Japanese segment with hidden English tooltip */
 .tutor-seg--jp {
   cursor: help;
-  border-bottom: 1px dotted #45475a;
   display: inline-block;
 }
 .tutor-seg--jp:hover {
   color: #b4befe;
-  border-bottom-color: #89b4fa;
 }
 
 /* English-only segment: direct translation when jp is absent */
@@ -101,6 +109,12 @@
   color: #585b70;
   font-size: 0.78em;
   font-style: italic;
+}
+
+/* Border separator only when a jp segment exists somewhere above the note */
+.tutor-seg--jp ~ .tutor-seg--note {
+  border-top: 1px solid #313244;
+  padding-top: 0.4rem;
 }
 
 /* Generic extra-field segment */
@@ -139,6 +153,15 @@
   border: 1px solid #313244;
   color: #cdd6f4;
   border-bottom-left-radius: 4px;
+}
+
+.tutor-bubble--playing {
+  animation: tutor-playing-pulse 1.8s ease-in-out infinite;
+}
+
+@keyframes tutor-playing-pulse {
+  0%, 100% { border-color: #313244; box-shadow: none; }
+  50%       { border-color: #89b4fa; box-shadow: 0 0 6px rgba(137,180,250,0.25); }
 }
 
 /* ── Per-message play button ─────────────────────────────────────────────────*/
@@ -187,10 +210,24 @@
 .tutor-input-row {
   display: flex;
   gap: 0.5rem;
-  padding: 0.65rem 0 1rem;
-  border-top: 1px solid #313244;
+  padding: 0.65rem 1.5rem 1rem;
   align-items: flex-end;
   flex-shrink: 0;
+  max-width: 860px;
+  width: 100%;
+  margin: 0 auto;
+  position: relative;
+}
+
+.tutor-input-row::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 100vw;
+  border-top: 1px solid #313244;
+  pointer-events: none;
 }
 
 .tutor-input {
@@ -206,9 +243,19 @@
   line-height: 1.45;
   min-height: 2.4rem;
   overflow-y: hidden;
+  position: relative;
+  z-index: 1;
 }
 .tutor-input:focus  { outline: none; border-color: #89b4fa; }
 .tutor-input:disabled { opacity: 0.45; }
+
+.tutor-mic-buttons {
+  display: flex;
+  gap: 0.45rem;
+  align-items: flex-end;
+  position: relative;
+  z-index: 1;
+}
 
 .btn-tutor-mic {
   background: none;
@@ -220,12 +267,14 @@
   padding: 0.3rem 0.5rem;
   line-height: 1;
   align-self: flex-end;
-  transition: color 0.15s, border-color 0.15s;
+  min-width: 3rem;
+  transition: color 0.15s, border-color 0.15s, background 0.15s;
 }
-.btn-tutor-mic:hover { color: #cdd6f4; border-color: #585b70; }
+.btn-tutor-mic:hover { color: #cdd6f4; border-color: #585b70; background: rgba(205, 214, 244, 0.05); }
 .btn-tutor-mic--active {
   color: #f38ba8;
   border-color: #f38ba8;
+  background: rgba(243, 139, 168, 0.08);
   animation: tutor-mic-pulse 1s ease-in-out infinite;
 }
 @keyframes tutor-mic-pulse {
@@ -246,6 +295,8 @@
   white-space: nowrap;
   align-self: flex-end;
   line-height: 1.45;
+  position: relative;
+  z-index: 1;
 }
 .btn-tutor-send:hover    { background: #b4befe; }
 .btn-tutor-send:disabled { opacity: 0.35; cursor: default; }

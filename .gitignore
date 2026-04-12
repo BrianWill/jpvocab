@@ -77,9 +77,21 @@ Thumbs.db
 # Misc
 # ----------------------------
 src/jpvocab.db
+src/jdict.db
+src/jdict.db.gz
 src/tmp/
 
 *.stackdump
 
 src/static/images/words/
 src/jpvocab
+src/jpvocab-backend
+
+# ----------------------------
+# Dictionary data
+# ----------------------------
+dict/*.json
+dict/*.db
+dict/build-db/
+dict/jdict.db-wal
+dict/jdict.db-shm

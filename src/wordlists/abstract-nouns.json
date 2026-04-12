@@ -1,0 +1,101 @@
+{
+  "name": "Abstract Nouns",
+  "entries": [
+    {
+      "word": "理由",
+      "reading": "りゆう",
+      "part_of_speech": "noun",
+      "meaning": "reason",
+      "example_jp": "遅れた理由を説明した。",
+      "example_en": "I explained the reason I was late."
+    },
+    {
+      "word": "予定",
+      "reading": "よてい",
+      "part_of_speech": "noun",
+      "meaning": "plan; schedule",
+      "example_jp": "週末の予定を決めた。",
+      "example_en": "I decided my weekend plans."
+    },
+    {
+      "word": "場合",
+      "reading": "ばあい",
+      "part_of_speech": "noun",
+      "meaning": "case; situation",
+      "example_jp": "雨の場合は中止です。",
+      "example_en": "In case of rain, it will be canceled."
+    },
+    {
+      "word": "必要",
+      "reading": "ひつよう",
+      "part_of_speech": "na-adjective",
+      "meaning": "necessary",
+      "example_jp": "それは今すぐ必要だ。",
+      "example_en": "That is necessary right now."
+    },
+    {
+      "word": "約束",
+      "reading": "やくそく",
+      "part_of_speech": "noun",
+      "meaning": "promise; appointment",
+      "example_jp": "友だちと駅で会う約束をした。",
+      "example_en": "I made plans to meet my friend at the station."
+    },
+    {
+      "word": "意見",
+      "reading": "いけん",
+      "part_of_speech": "noun",
+      "meaning": "opinion",
+      "example_jp": "自分の意見をはっきり言った。",
+      "example_en": "I clearly stated my opinion."
+    },
+    {
+      "word": "問題",
+      "reading": "もんだい",
+      "part_of_speech": "noun",
+      "meaning": "problem; question",
+      "example_jp": "この問題は少し難しい。",
+      "example_en": "This problem is a little difficult."
+    },
+    {
+      "word": "経験",
+      "reading": "けいけん",
+      "part_of_speech": "noun",
+      "meaning": "experience",
+      "example_jp": "その仕事の経験がある。",
+      "example_en": "I have experience with that work."
+    },
+    {
+      "word": "機会",
+      "reading": "きかい",
+      "part_of_speech": "noun",
+      "meaning": "opportunity",
+      "example_jp": "日本へ行く機会が欲しい。",
+      "example_en": "I want an opportunity to go to Japan."
+    },
+    {
+      "word": "方法",
+      "reading": "ほうほう",
+      "part_of_speech": "noun",
+      "meaning": "method; way",
+      "example_jp": "新しい勉強方法を試した。",
+      "example_en": "I tried a new study method."
+    },
+    {
+      "word": "意味",
+      "reading": "いみ",
+      "part_of_speech": "noun",
+      "meaning": "meaning",
+      "example_jp": "この言葉の意味を知っている。",
+      "example_en": "I know the meaning of this word."
+    },
+    {
+      "word": "目的",
+      "reading": "もくてき",
+      "part_of_speech": "noun",
+      "meaning": "purpose; goal",
+      "example_jp": "旅行の目的は温泉だ。",
+      "example_en": "The purpose of the trip is the hot springs."
+    }
+  ]
+}

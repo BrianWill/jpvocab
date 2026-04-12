@@ -12,24 +12,22 @@ function formatTokenCount(count) {
 
 function getTranslationTarget() {
   if (!_state.story) return null;
-  if (_state.translationChunkId) {
-    return (_state.story.chunks || []).find(chunk => String(chunk.id || 0) === String(_state.translationChunkId)) || null;
-  }
-  return {
-    sentences: _state.story.sentences || [],
-    storyWords: _state.story.storyWords || [],
-  };
+  const sentences = _state.translationChunkPosition
+    ? (_state.story.sentences || []).filter(s => s.chunkPosition === _state.translationChunkPosition)
+    : (_state.story.sentences || []);
+  return { sentences };
 }
 
-function updateTranslationCountsText(extraWordInfoCount = null) {
+function updateTranslationCountsText() {
   const target = getTranslationTarget();
   const sentenceCount = Array.isArray(target?.sentences) ? target.sentences.length : 0;
-  const uniqueWordCount = Array.isArray(target?.storyWords) ? target.storyWords.length : 0;
-  let text = `${sentenceCount} sentence${sentenceCount === 1 ? '' : 's'}, ${uniqueWordCount} unique word${uniqueWordCount === 1 ? '' : 's'}`;
-  if (typeof extraWordInfoCount === 'number') {
-    text += ` (${extraWordInfoCount} need word info)`;
-  }
-  _els.genTranslationCounts.textContent = text;
+  const uniqueWordCount = new Set(
+    (target?.sentences || [])
+      .filter(s => s.orig_lang === 'jp')
+      .flatMap(s => (s.words || []).filter(w => w.base).map(w => w.base))
+  ).size;
+  _els.genTranslationCounts.textContent =
+    `${sentenceCount} sentence${sentenceCount === 1 ? '' : 's'}, ${uniqueWordCount} unique word${uniqueWordCount === 1 ? '' : 's'}`;
 }
 
 function stopTranslationTimer() {
@@ -52,7 +50,6 @@ function startTranslationTimer() {
 function resetTranslationProgressUi() {
   stopTranslationTimer();
   _state.translationStartedAt = 0;
-  _state.translationWordInfoCount = null;
   updateTranslationCountsText();
   _els.genTranslationElapsed.textContent = '0s elapsed';
   _els.genTranslationSummary.textContent = '';
@@ -106,13 +103,13 @@ function setTranslationModalGenerating(generating) {
   _els.genTranslationModalClose.disabled = generating;
 }
 
-export function openTranslationModal(chunkId = null, chunkLabel = '') {
-  _state.translationChunkId = chunkId || null;
+export function openTranslationModal(chunkPosition = null, chunkLabel = '') {
+  _state.translationChunkPosition = chunkPosition || null;
   _state.translationChunkLabel = chunkLabel || '';
   resetTranslationProgressUi();
   if (_els.genTranslationCopy) {
     const target = _state.translationChunkLabel || 'this chunk';
-    _els.genTranslationCopy.innerHTML = `Generate English sentence translations for ${target} using AI?<br>Any existing translations will be replaced.`;
+    _els.genTranslationCopy.innerHTML = `Generate sentence translations for ${target} using AI?<br>Any existing non-original-language text will be replaced.`;
   }
   setTranslationModalGenerating(false);
   _els.genTranslationModalBackdrop.classList.remove('hidden');
@@ -195,7 +192,7 @@ export function initGenerateModals(els, state, { storyId, onTranslationDone, sto
         const res = await fetch(url, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ ai_model: aiModel, chunk_id: _state.translationChunkId }),
+          body: JSON.stringify({ ai_model: aiModel, chunk_position: _state.translationChunkPosition }),
           signal: _state.translationController.signal,
         });
         return await readNDJSON(res, onMsg);
@@ -204,24 +201,16 @@ export function initGenerateModals(els, state, { storyId, onTranslationDone, sto
       }
     };
 
-    const [phase1Done, phase2Done] = await Promise.all([
-      runPhase(`/api/stories/${_storyId}/generate-translation`, msg => {
-        if (typeof msg.sentenceCount === 'number') updateTranslationCountsText(_state.translationWordInfoCount);
-      }),
-      runPhase(`/api/stories/${_storyId}/generate-word-info`, msg => {
-        if (typeof msg.wordCount === 'number') {
-          _state.translationWordInfoCount = msg.wordCount;
-          updateTranslationCountsText(_state.translationWordInfoCount);
-        }
-      }),
-    ]);
+    const phaseDone = await runPhase(`/api/stories/${_storyId}/generate-translation`, msg => {
+      if (typeof msg.sentenceCount === 'number') updateTranslationCountsText();
+    });
 
     stopTranslationTimer();
     _state.translationController = null;
 
-    if (phase1Done && phase2Done) {
+    if (phaseDone) {
       const elapsedSeconds = _state.translationStartedAt ? (Date.now() - _state.translationStartedAt) / 1000 : 0;
-      const totalTokens = (phase1Done.totalTokens || 0) + (phase2Done.totalTokens || 0);
+      const totalTokens = phaseDone.totalTokens || 0;
       playDing();
       _state.translating = false;
       _els.genTranslationSpinner.classList.add('hidden');
@@ -234,7 +223,7 @@ export function initGenerateModals(els, state, { storyId, onTranslationDone, sto
       _els.genTranslationModalDone.classList.remove('hidden');
       _els.genTranslationModalClose.disabled = false;
       const updated = await fetch(`/api/stories/${_storyId}`).then(r => r.json());
-      _onTranslationDone(updated);
+      _onTranslationDone(updated, _state.translationChunkPosition);
     } else {
       setTranslationModalGenerating(false);
       closeTranslationModal();

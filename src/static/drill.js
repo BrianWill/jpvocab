@@ -35,6 +35,7 @@ const state = createDrillState(DRILL_FILTER_KEYS);
 const DRILL_AUDIO_OPTIONS = { preferSynthesis: true, fallbackToBrowserTts: true };
 
 let _prefetchController = null;
+let _answerQueue = Promise.resolve();
 
 async function prefetchRoundAudio(remaining) {
   if (_prefetchController) _prefetchController.abort();
@@ -150,9 +151,8 @@ async function init() {
   prefetchRoundAudio(state.remaining);
 }
 
-async function reveal(knew) {
-  if (!state.currentWord || state.isSubmittingAnswer) return;
-  state.isSubmittingAnswer = true;
+function reveal(knew) {
+  if (!state.currentWord) return;
 
   const answered = state.currentWord;
   Object.assign(state, getNextRevealState(state, knew));
@@ -160,11 +160,13 @@ async function reveal(knew) {
   renderDrill(els, state);
   prefetchRoundAudio(state.remaining);
 
-  try {
-    await postAnswer(state.sessionId, answered.id, knew, serializeSessionState(state));
-  } finally {
-    state.isSubmittingAnswer = false;
-  }
+  // Capture state snapshot now; queue the network call so answers are sent in
+  // order without blocking the UI between answers.
+  const sessionId = state.sessionId;
+  const sessionSnapshot = serializeSessionState(state);
+  _answerQueue = _answerQueue
+    .then(() => postAnswer(sessionId, answered.id, knew, sessionSnapshot))
+    .catch(err => console.error('Failed to save drill answer', err));
 }
 
 function openRestartModal() {

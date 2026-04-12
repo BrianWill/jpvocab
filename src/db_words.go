@@ -60,6 +60,125 @@ type wordJSON struct {
 	Tracked          int              `json:"tracked"`
 }
 
+func decodeKanjiDataEntries(kanjiData string) []kanjiDataEntry {
+	var entries []kanjiDataEntry
+	if strings.TrimSpace(kanjiData) != "" {
+		json.Unmarshal([]byte(kanjiData), &entries) //nolint:errcheck
+	}
+	if entries == nil {
+		entries = []kanjiDataEntry{}
+	}
+	return entries
+}
+
+func enrichKanjiDataEntries(db *sql.DB, entries []kanjiDataEntry) error {
+	if len(entries) == 0 {
+		return nil
+	}
+
+	missingIDs := make(map[int64]struct{})
+	for _, entry := range entries {
+		if entry.ID > 0 && entry.Character == "" {
+			missingIDs[entry.ID] = struct{}{}
+		}
+	}
+	if len(missingIDs) == 0 {
+		return nil
+	}
+
+	placeholders := make([]string, 0, len(missingIDs))
+	args := make([]any, 0, len(missingIDs))
+	for id := range missingIDs {
+		placeholders = append(placeholders, "?")
+		args = append(args, id)
+	}
+
+	rows, err := db.Query(
+		`SELECT id, character, meanings FROM kanji WHERE id IN (`+strings.Join(placeholders, ",")+`)`,
+		args...,
+	)
+	if err != nil {
+		return err
+	}
+	defer rows.Close()
+
+	kanjiByID := make(map[int64]kanjiJSON, len(missingIDs))
+	for rows.Next() {
+		var (
+			info         kanjiJSON
+			meaningsJSON string
+		)
+		if err := rows.Scan(&info.ID, &info.Character, &meaningsJSON); err != nil {
+			return err
+		}
+		json.Unmarshal([]byte(meaningsJSON), &info.Meanings) //nolint:errcheck
+		if info.Meanings == nil {
+			info.Meanings = []string{}
+		}
+		kanjiByID[info.ID] = info
+	}
+	if err := rows.Err(); err != nil {
+		return err
+	}
+
+	for i := range entries {
+		if info, ok := kanjiByID[entries[i].ID]; ok {
+			entries[i].Character = info.Character
+			entries[i].Meanings = info.Meanings
+		}
+	}
+	return nil
+}
+
+func fillWordInfoFromDictionary(
+	word, reading, partOfSpeech, meaning, kanjiData string,
+	upsertKanjiFn func(character string, meanings []string) (int64, error),
+) (string, string, string, string, error) {
+	if kanjiData == "" {
+		kanjiData = "[]"
+	}
+	if !dictIsReady() {
+		return reading, partOfSpeech, meaning, kanjiData, nil
+	}
+
+	info, err := lookupDictionaryWord(word)
+	if err != nil || info == nil {
+		return reading, partOfSpeech, meaning, kanjiData, nil
+	}
+
+	if strings.TrimSpace(reading) == "" {
+		reading = info.Reading
+	}
+	if strings.TrimSpace(partOfSpeech) == "" {
+		partOfSpeech = info.PartOfSpeech
+	}
+	if strings.TrimSpace(meaning) == "" {
+		meaning = info.Meaning
+	}
+	if kanjiData != "[]" {
+		return reading, partOfSpeech, meaning, kanjiData, nil
+	}
+
+	kd := make([]kanjiDataEntry, 0, len(info.Kanji))
+	for _, k := range info.Kanji {
+		kID, err := upsertKanjiFn(k.Character, k.Meanings)
+		if err != nil {
+			return reading, partOfSpeech, meaning, kanjiData, err
+		}
+		kd = append(kd, kanjiDataEntry{
+			ID:        kID,
+			Character: k.Character,
+			Reading:   k.Reading,
+			Meanings:  k.Meanings,
+		})
+	}
+	b, err := json.Marshal(kd)
+	if err != nil {
+		return reading, partOfSpeech, meaning, kanjiData, err
+	}
+	return reading, partOfSpeech, meaning, string(b), nil
+}
+
 // insertWord adds a single word to the lexicon. Only the word itself is
 // required; all other fields are optional and default to empty / zero.
 // kanjiData should be a JSON string like `[{"id":1,"reading":"はし"}]` or empty.
@@ -71,10 +190,15 @@ func insertWord(db *sql.DB, word, reading, partOfSpeech, meaning, exampleJP, exa
 	if containsKatakana(word) {
 		kat = 1
 	}
-	if kanjiData == "" {
-		kanjiData = "[]"
+	var err error
+	reading, partOfSpeech, meaning, kanjiData, err = fillWordInfoFromDictionary(
+		word, reading, partOfSpeech, meaning, kanjiData,
+		func(character string, meanings []string) (int64, error) { return upsertKanji(db, character, meanings) },
+	)
+	if err != nil {
+		return err
 	}
-	_, err := db.Exec(`
+	_, err = db.Exec(`
 		INSERT INTO words (base_word, reading, part_of_speech, meaning, example_jp, example_en, drill_target, is_katakana, kanji_data)
 		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
 	`, word, reading, partOfSpeech, meaning, exampleJP, exampleEN, drillTarget, kat, kanjiData)
@@ -93,8 +217,13 @@ func insertWordReturningID(db *sql.DB, word, reading, partOfSpeech, meaning, exa
 	if containsKatakana(word) {
 		kat = 1
 	}
-	if kanjiData == "" {
-		kanjiData = "[]"
+	var err error
+	reading, partOfSpeech, meaning, kanjiData, err = fillWordInfoFromDictionary(
+		word, reading, partOfSpeech, meaning, kanjiData,
+		func(character string, meanings []string) (int64, error) { return upsertKanji(db, character, meanings) },
+	)
+	if err != nil {
+		return 0, err
 	}
 	res, err := db.Exec(`
 		INSERT INTO words (base_word, reading, part_of_speech, meaning, example_jp, example_en, drill_target, is_katakana, kanji_data)
@@ -137,34 +266,6 @@ func updateWordFill(db *sql.DB, id int64, reading string, pitchAccent *int, part
 		WHERE id=?
 	`, reading, pitchAccent, partOfSpeech, meaning, exampleJP, exampleEN, kanjiData, id)
 	return err
-}
-
-// wordsExistInDB returns a set of which words from the given slice are already
-// present in the lexicon, keyed by their normalised word value.
-func wordsExistInDB(db *sql.DB, words []string) (map[string]bool, error) {
-	if len(words) == 0 {
-		return nil, nil
-	}
-	placeholders := strings.Repeat("?,", len(words))
-	placeholders = placeholders[:len(placeholders)-1]
-	args := make([]any, len(words))
-	for i, w := range words {
-		args[i] = w
-	}
-	rows, err := db.Query("SELECT base_word FROM words WHERE base_word IN ("+placeholders+")", args...)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-	existing := make(map[string]bool, len(words))
-	for rows.Next() {
-		var w string
-		if err := rows.Scan(&w); err != nil {
-			return nil, err
-		}
-		existing[w] = true
-	}
-	return existing, rows.Err()
 }
 
 // wordsInfoInDB returns info for words already in the lexicon,
@@ -245,6 +346,22 @@ func upsertKanji(db *sql.DB, character string, meanings []string) (int64, error)
 	return id, err
 }
 
+func upsertKanjiTx(tx *sql.Tx, character string, meanings []string) (int64, error) {
+	meaningsJSON, err := json.Marshal(meanings)
+	if err != nil {
+		return 0, err
+	}
+	if _, err := tx.Exec(`
+		INSERT INTO kanji (character, meanings) VALUES (?, ?)
+		ON CONFLICT(character) DO UPDATE SET meanings = excluded.meanings
+	`, character, string(meaningsJSON)); err != nil {
+		return 0, err
+	}
+	var id int64
+	err = tx.QueryRow(`SELECT id FROM kanji WHERE character = ?`, character).Scan(&id)
+	return id, err
+}
+
 // listKanji returns all rows from the kanji table.
 func listKanji(db *sql.DB) ([]kanjiJSON, error) {
 	rows, err := db.Query(`SELECT id, character, meanings FROM kanji ORDER BY id`)
@@ -279,7 +396,7 @@ func listWords(db *sql.DB) ([]wordJSON, error) {
 		SELECT id, base_word, COALESCE(reading,''), pitch_accent, COALESCE(part_of_speech,''), COALESCE(meaning,''),
 		       COALESCE(example_jp,''), COALESCE(example_en,''),
 		       drill_count, incorrect_count, drill_target, created_at, last_drilled_at,
-		       image_path, kanji_data, tracked
+		       image_path, COALESCE(kanji_data,'[]'), tracked
 		FROM words
 		WHERE tracked = 1
 		ORDER BY created_at DESC
@@ -287,58 +404,33 @@ func listWords(db *sql.DB) ([]wordJSON, error) {
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
 
 	var words []wordJSON
 	for rows.Next() {
 		var w wordJSON
-		var kanjiDataStr *string
+		var kanjiDataStr string
 		if err := rows.Scan(
 			&w.ID, &w.Word, &w.Reading, &w.PitchAccent, &w.Type, &w.Meaning, &w.ExampleJp, &w.ExampleEn,
 			&w.Correct, &w.Incorrect, &w.Target, &w.CreatedAt, &w.LastDrilled,
 			&w.ImagePath, &kanjiDataStr, &w.Tracked,
 		); err != nil {
+			rows.Close()
 			return nil, err
 		}
-		if kanjiDataStr != nil {
-			json.Unmarshal([]byte(*kanjiDataStr), &w.KanjiData)
-		}
-		if w.KanjiData == nil {
-			w.KanjiData = []kanjiDataEntry{}
-		}
+		w.KanjiData = decodeKanjiDataEntries(kanjiDataStr)
 		words = append(words, w)
 	}
 	if err := rows.Err(); err != nil {
+		rows.Close()
 		return nil, err
 	}
-
-	// Enrich kanji entries with character and meanings from the kanji table.
-	km, err := loadKanjiMap(db)
-	if err != nil {
-		return nil, err
-	}
+	rows.Close()
 	for i := range words {
-		for j := range words[i].KanjiData {
-			if k, ok := km[words[i].KanjiData[j].ID]; ok {
-				words[i].KanjiData[j].Character = k.Character
-				words[i].KanjiData[j].Meanings = k.Meanings
-			}
+		if err := enrichKanjiDataEntries(db, words[i].KanjiData); err != nil {
+			return nil, err
 		}
 	}
 	return words, nil
-}
-
-// loadKanjiMap returns all kanji rows keyed by ID.
-func loadKanjiMap(db *sql.DB) (map[int64]kanjiJSON, error) {
-	kanji, err := listKanji(db)
-	if err != nil {
-		return nil, err
-	}
-	m := make(map[int64]kanjiJSON, len(kanji))
-	for _, k := range kanji {
-		m[k.ID] = k
-	}
-	return m, nil
 }
 
 // updateWord saves editable fields for an existing word by ID.
@@ -443,19 +535,6 @@ func containsJapaneseLetter(s string) bool {
 	return false
 }
 
-// updateWordInfoIfEmpty sets meaning and/or reading on the words row for the
-// given word text only where the current value is NULL or empty, preserving
-// any data the user has already entered.
-func updateWordInfoIfEmpty(db *sql.DB, word, meaning, reading string) error {
-	_, err := db.Exec(`
-		UPDATE words
-		SET meaning = CASE WHEN COALESCE(meaning,'') = '' THEN ? ELSE meaning END,
-		    reading = CASE WHEN COALESCE(reading,'') = '' THEN ? ELSE reading END
-		WHERE base_word = ?
-	`, meaning, reading, word)
-	return err
-}
-
 // insertWordsIfAbsent adds each word in baseWords to the lexicon with
 // tracked=0 if that word is not already present. Existing rows, regardless
 // of their tracked value, are left untouched. Pure punctuation/symbol tokens
@@ -477,10 +556,17 @@ func insertWordsIfAbsent(tx *sql.Tx, baseWords []string) ([]string, error) {
 		if containsKatakana(word) {
 			kat = 1
 		}
+		reading, partOfSpeech, meaning, kanjiData, err := fillWordInfoFromDictionary(
+			word, "", "", "", "",
+			func(character string, meanings []string) (int64, error) { return upsertKanjiTx(tx, character, meanings) },
+		)
+		if err != nil {
+			return nil, err
+		}
 		if _, err := tx.Exec(`
-			INSERT OR IGNORE INTO words (base_word, is_katakana, tracked)
-			VALUES (?, ?, 0)
-		`, word, kat); err != nil {
+			INSERT OR IGNORE INTO words (base_word, reading, part_of_speech, meaning, is_katakana, kanji_data, tracked)
+			VALUES (?, ?, ?, ?, ?, ?, 0)
+		`, word, reading, partOfSpeech, meaning, kat, kanjiData); err != nil {
 			return nil, err
 		}
 		accepted = append(accepted, word)

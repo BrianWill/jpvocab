@@ -2,6 +2,7 @@ package main
 
 import (
 	"database/sql"
+	"fmt"
 	"strings"
 	"testing"
 	"time"
@@ -291,36 +292,6 @@ func TestContainsKatakana(t *testing.T) {
 		if got != tc.want {
 			t.Errorf("containsKatakana(%q) = %v, want %v", tc.input, got, tc.want)
 		}
-	}
-}
-
-// --- wordsExistInDB ---
-
-func TestWordsExistInDB_Empty(t *testing.T) {
-	db := testDB(t)
-	result, err := wordsExistInDB(db, nil)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if result != nil {
-		t.Errorf("expected nil map for empty input, got %v", result)
-	}
-}
-
-func TestWordsExistInDB_Mixed(t *testing.T) {
-	db := testDB(t)
-	insertWord(db, "猫", "", "", "", "", "", "", 1)
-	insertWord(db, "犬", "", "", "", "", "", "", 1)
-
-	result, err := wordsExistInDB(db, []string{"猫", "魚"})
-	if err != nil {
-		t.Fatal(err)
-	}
-	if !result["猫"] {
-		t.Error("猫 should be in result (present in DB)")
-	}
-	if result["魚"] {
-		t.Error("魚 should not be in result (absent from DB)")
 	}
 }
 
@@ -975,6 +946,34 @@ func TestListWords_OrderNewestFirst(t *testing.T) {
 	}
 }
 
+func TestListWords_EnrichesKanjiDataFromKanjiTable(t *testing.T) {
+	db := testDB(t)
+	kanjiID, err := upsertKanji(db, "猫", []string{"cat", "feline"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := db.Exec(`INSERT INTO words (base_word, reading, kanji_data, tracked) VALUES (?, ?, ?, 1)`, "猫", "ねこ", fmt.Sprintf(`[{"id":%d,"reading":"ねこ"}]`, kanjiID)); err != nil {
+		t.Fatal(err)
+	}
+
+	words, err := listWords(db)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(words) != 1 {
+		t.Fatalf("expected 1 word, got %d", len(words))
+	}
+	if len(words[0].KanjiData) != 1 {
+		t.Fatalf("expected 1 kanji entry, got %d", len(words[0].KanjiData))
+	}
+	if words[0].KanjiData[0].Character != "猫" {
+		t.Errorf("character: got %q, want 猫", words[0].KanjiData[0].Character)
+	}
+	if len(words[0].KanjiData[0].Meanings) != 2 {
+		t.Errorf("meanings: got %v, want two meanings", words[0].KanjiData[0].Meanings)
+	}
+}
+
 // --- updateWord ---
 
 func TestUpdateWord(t *testing.T) {
@@ -1046,32 +1045,35 @@ func TestDeleteWordsByName(t *testing.T) {
 
 // --- stories ---
 
-func TestInsertStory_AndListStories(t *testing.T) {
+func TestInsertStory_AndGetStoryByID(t *testing.T) {
 	db := testDB(t)
 	title := "足立美術館の庭園"
+	jp1 := "おはよう。"
+	jp2 := "今日も頑張ろう。"
 	en1 := "Good morning."
 	en2 := "Let's do our best today too."
-	ts1 := int64(0)
-	ts2 := int64(700)
-	ts3 := int64(2450)
 
 	id, err := insertStory(db, title, []storySentenceInput{
 		{
 			Words: []storyWordInput{
-				{DisplayWord: "おはよう", BaseWord: "おはよう", AudioTimestampMs: &ts1},
-				{DisplayWord: "。", BaseWord: "。", AudioTimestampMs: &ts2},
+				{DisplayWord: "おはよう", BaseWord: "おはよう"},
+				{DisplayWord: "。", BaseWord: "。"},
 			},
-			EnglishText:      &en1,
+			JPText:           &jp1,
+			ENText:           &en1,
+			OrigLang:         "jp",
 			IsParagraphStart: true,
 		},
 		{
 			Words: []storyWordInput{
-				{DisplayWord: "今日", BaseWord: "今日", AudioTimestampMs: &ts3},
+				{DisplayWord: "今日", BaseWord: "今日"},
 				{DisplayWord: "も", BaseWord: "も"},
 				{DisplayWord: "頑張ろう", BaseWord: "頑張る"},
 				{DisplayWord: "。", BaseWord: "。"},
 			},
-			EnglishText: &en2,
+			JPText:   &jp2,
+			ENText:   &en2,
+			OrigLang: "jp",
 		},
 	})
 	if err != nil {
@@ -1081,14 +1083,13 @@ func TestInsertStory_AndListStories(t *testing.T) {
 		t.Fatal("expected non-zero story id")
 	}
 
-	stories, err := listStories(db)
+	story, err := getStoryByID(db, id)
 	if err != nil {
-		t.Fatalf("listStories: %v", err)
+		t.Fatalf("getStoryByID: %v", err)
 	}
-	if len(stories) != 1 {
-		t.Fatalf("expected 1 story, got %d", len(stories))
+	if story == nil {
+		t.Fatal("expected story")
 	}
-	story := stories[0]
 	if story.Title != title {
 		t.Errorf("title: got %q, want %q", story.Title, title)
 	}
@@ -1105,11 +1106,8 @@ func TestInsertStory_AndListStories(t *testing.T) {
 	if len(story.Sentences) != 2 {
 		t.Fatalf("expected 2 sentences, got %d", len(story.Sentences))
 	}
-	if len(story.Chunks) != 1 {
-		t.Fatalf("expected 1 chunk, got %d", len(story.Chunks))
-	}
-	if len(story.Chunks[0].Sentences) != 2 {
-		t.Fatalf("expected chunk to contain 2 sentences, got %d", len(story.Chunks[0].Sentences))
+	if story.Sentences[0].ChunkPosition != 1 || story.Sentences[1].ChunkPosition != 1 {
+		t.Errorf("chunk positions: got %d, %d; want 1, 1", story.Sentences[0].ChunkPosition, story.Sentences[1].ChunkPosition)
 	}
 	if story.Sentences[0].Position != 1 || story.Sentences[1].Position != 2 {
 		t.Errorf("positions: got %+v", story.Sentences)
@@ -1120,11 +1118,14 @@ func TestInsertStory_AndListStories(t *testing.T) {
 	if story.Sentences[1].Words[2].BaseWord != "頑張る" {
 		t.Errorf("base word: got %q, want 頑張る", story.Sentences[1].Words[2].BaseWord)
 	}
-	if story.Sentences[0].Words[0].AudioTimestampMs == nil || *story.Sentences[0].Words[0].AudioTimestampMs != ts1 {
-		t.Errorf("word audio timestamp: got %+v", story.Sentences[0].Words[0].AudioTimestampMs)
+	if story.Sentences[0].ENText == nil || *story.Sentences[0].ENText != en1 {
+		t.Errorf("sentence 1 english: got %+v", story.Sentences[0].ENText)
 	}
-	if story.Sentences[0].EnglishText == nil || *story.Sentences[0].EnglishText != en1 {
-		t.Errorf("sentence 1 english: got %+v", story.Sentences[0].EnglishText)
+	if story.Sentences[0].JPText == nil || *story.Sentences[0].JPText != jp1 {
+		t.Errorf("sentence 1 japanese: got %+v", story.Sentences[0].JPText)
+	}
+	if story.Sentences[0].OrigLang != "jp" {
+		t.Errorf("sentence 1 orig_lang: got %q, want jp", story.Sentences[0].OrigLang)
 	}
 	if !story.Sentences[0].IsParagraphStart {
 		t.Error("sentence 1 should be marked as paragraph start")
@@ -1146,29 +1147,11 @@ func TestInsertStory_RequiresAtLeastOneSentence(t *testing.T) {
 	}
 }
 
-func TestInsertStory_RejectsNegativeAudioTimestamp(t *testing.T) {
-	db := testDB(t)
-	badTs := int64(-1)
-
-	_, err := insertStory(db, "Bad timestamps", []storySentenceInput{
-		{
-			Words: []storyWordInput{
-				{DisplayWord: "文", BaseWord: "文", AudioTimestampMs: &badTs},
-			},
-		},
-	})
-	if err == nil {
-		t.Fatal("expected error for negative audio timestamp")
-	}
-	if !strings.Contains(err.Error(), "non-negative") {
-		t.Errorf("unexpected error: %v", err)
-	}
-}
-
 func TestInsertStory_RequiresAtLeastOneWordPerSentence(t *testing.T) {
 	db := testDB(t)
 
-	_, err := insertStory(db, "Missing words", []storySentenceInput{{}})
+	text := "庭園。"
+	_, err := insertStory(db, "Missing words", []storySentenceInput{{JPText: &text, OrigLang: "jp"}})
 	if err == nil {
 		t.Fatal("expected error for missing words")
 	}
@@ -1181,13 +1164,48 @@ func TestInsertStory_RequiresTitle(t *testing.T) {
 	db := testDB(t)
 
 	_, err := insertStory(db, "", []storySentenceInput{
-		{Words: []storyWordInput{{DisplayWord: "庭園", BaseWord: "庭園"}}},
+		{Words: []storyWordInput{{DisplayWord: "庭園", BaseWord: "庭園"}}, OrigLang: "jp"},
 	})
 	if err == nil {
 		t.Fatal("expected error for missing title")
 	}
 	if !strings.Contains(err.Error(), "title is required") {
 		t.Errorf("unexpected error: %v", err)
+	}
+}
+
+func TestInsertStory_RollsBackActivityEventOnFailure(t *testing.T) {
+	db := testDB(t)
+	if _, err := db.Exec(`
+		CREATE TRIGGER fail_words_insert
+		BEFORE INSERT ON words
+		BEGIN
+			SELECT RAISE(ABORT, 'forced word insert failure');
+		END;
+	`); err != nil {
+		t.Fatal(err)
+	}
+
+	_, err := insertStory(db, "Broken Story", []storySentenceInput{
+		{
+			Words:            []storyWordInput{{DisplayWord: "庭園", BaseWord: "庭園"}},
+			OrigLang:         "jp",
+			IsParagraphStart: true,
+		},
+	})
+	if err == nil {
+		t.Fatal("expected insertStory to fail")
+	}
+	if !strings.Contains(err.Error(), "forced word insert failure") {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	var count int
+	if err := db.QueryRow(`SELECT COUNT(*) FROM activity_events WHERE event_type = ? AND summary = ?`, activityEventStoryCreated, "Broken Story").Scan(&count); err != nil {
+		t.Fatal(err)
+	}
+	if count != 0 {
+		t.Fatalf("expected no rolled-back story activity event, got %d", count)
 	}
 }
 
@@ -1200,6 +1218,7 @@ func TestStoryNotedWords_PersistOnStory(t *testing.T) {
 				{DisplayWord: "へ", BaseWord: "へ"},
 				{DisplayWord: "行く", BaseWord: "行く"},
 			},
+			OrigLang:         "jp",
 			IsParagraphStart: true,
 		},
 	})
@@ -1246,42 +1265,6 @@ func TestStoryNotedWords_PersistOnStory(t *testing.T) {
 	}
 }
 
-func TestGetStoryByID_PopulatesWordInfoFromWordsTable(t *testing.T) {
-	db := testDB(t)
-	// insertStory auto-adds 猫 to words with tracked=0 and empty meaning/reading.
-	id, err := insertStory(db, "Reading Story", []storySentenceInput{
-		{
-			Words: []storyWordInput{
-				{DisplayWord: "猫", BaseWord: "猫"},
-				{DisplayWord: "が", BaseWord: "が"},
-			},
-			IsParagraphStart: true,
-		},
-	})
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	// Populate meaning and reading directly on the words row.
-	if _, err := db.Exec(`UPDATE words SET meaning = 'cat', reading = 'ねこ' WHERE base_word = '猫'`); err != nil {
-		t.Fatalf("update word: %v", err)
-	}
-
-	story, err := getStoryByID(db, id)
-	if err != nil {
-		t.Fatalf("getStoryByID: %v", err)
-	}
-	if story == nil || len(story.Sentences) == 0 || len(story.Sentences[0].Words) == 0 {
-		t.Fatalf("unexpected story payload: %+v", story)
-	}
-	if story.Sentences[0].Words[0].English != "cat" {
-		t.Errorf("english: got %q, want %q", story.Sentences[0].Words[0].English, "cat")
-	}
-	if story.Sentences[0].Words[0].Reading != "ねこ" {
-		t.Errorf("reading: got %q, want %q", story.Sentences[0].Words[0].Reading, "ねこ")
-	}
-}
-
 func TestBuildStorySentenceWords_TokenizesDisplayAndBaseForms(t *testing.T) {
 	words := buildStorySentenceWords("庭園は庭のことですね。")
 	if len(words) == 0 {
@@ -1301,6 +1284,28 @@ func TestBuildStorySentenceWords_TokenizesDisplayAndBaseForms(t *testing.T) {
 	}
 }
 
+func TestBuildStorySentencesFromText_ClassifiesJapaneseAndEnglish(t *testing.T) {
+	sentences := buildStorySentencesFromText("今日はmeetingがあります。\n\nThis is a test.")
+	if len(sentences) != 2 {
+		t.Fatalf("expected 2 sentences, got %d", len(sentences))
+	}
+	if sentences[0].OrigLang != "jp" {
+		t.Fatalf("sentence 1 orig_lang: got %q, want jp", sentences[0].OrigLang)
+	}
+	if sentences[0].JPText == nil || *sentences[0].JPText != "今日はmeetingがあります。" {
+		t.Fatalf("sentence 1 jp text: got %+v", sentences[0].JPText)
+	}
+	if sentences[1].OrigLang != "en" {
+		t.Fatalf("sentence 2 orig_lang: got %q, want en", sentences[1].OrigLang)
+	}
+	if sentences[1].ENText == nil || *sentences[1].ENText != "This is a test." {
+		t.Fatalf("sentence 2 en text: got %+v", sentences[1].ENText)
+	}
+	if len(sentences[1].Words) != 0 {
+		t.Fatalf("expected english sentence to have no japanese word tokens, got %d", len(sentences[1].Words))
+	}
+}
+
 func TestStoryLexiconWordCount_FiltersNonLexiconTokens(t *testing.T) {
 	got := storyLexiconWordCount([]storySentenceInput{
 		{
@@ -1314,6 +1319,7 @@ func TestStoryLexiconWordCount_FiltersNonLexiconTokens(t *testing.T) {
 				{DisplayWord: "です", BaseWord: "です"},
 				{DisplayWord: "。", BaseWord: "。"},
 			},
+			OrigLang:         "jp",
 			IsParagraphStart: true,
 		},
 		{
@@ -1323,6 +1329,7 @@ func TestStoryLexiconWordCount_FiltersNonLexiconTokens(t *testing.T) {
 				{DisplayWord: "です", BaseWord: "です"},
 				{DisplayWord: "。", BaseWord: "。"},
 			},
+			OrigLang: "jp",
 		},
 	})
 	if got != 3 {
@@ -1331,11 +1338,11 @@ func TestStoryLexiconWordCount_FiltersNonLexiconTokens(t *testing.T) {
 }
 
 func TestBuildStoryChunks_SplitsAfterMinimumChars(t *testing.T) {
-	longWord := strings.Repeat("あ", 260)
+	longWord := strings.Repeat("あ", 100)
 	sentences := []storySentenceInput{
-		{Words: []storyWordInput{{DisplayWord: longWord + "。", BaseWord: longWord + "。"}}, IsParagraphStart: true},
-		{Words: []storyWordInput{{DisplayWord: longWord + "。", BaseWord: longWord + "。"}}},
-		{Words: []storyWordInput{{DisplayWord: "短いです。", BaseWord: "短いです。"}}},
+		{Words: []storyWordInput{{DisplayWord: longWord + "。", BaseWord: longWord + "。"}}, OrigLang: "jp", IsParagraphStart: true},
+		{Words: []storyWordInput{{DisplayWord: longWord + "。", BaseWord: longWord + "。"}}, OrigLang: "jp"},
+		{Words: []storyWordInput{{DisplayWord: "短いです。", BaseWord: "短いです。"}}, OrigLang: "jp"},
 	}
 
 	chunks := buildStoryChunks(sentences)
@@ -1430,6 +1437,56 @@ func TestGetActivityCalendar_DrilledAddedCleared(t *testing.T) {
 	}
 }
 
+func TestGetActivityCalendar_IncludesStoryEvents(t *testing.T) {
+	db := testDB(t)
+	storyID := int64(7)
+	db.Exec(`
+		INSERT INTO activity_events (event_type, entity_id, summary, created_at)
+		VALUES (?, ?, ?, ?)
+	`, activityEventStoryCreated, storyID, "Rainy Day", "2024-05-02 09:00:00")
+
+	cal, err := getActivityCalendar(db)
+	if err != nil {
+		t.Fatal(err)
+	}
+	day, ok := cal.Days["2024-05-02"]
+	if !ok {
+		t.Fatal("expected calendar entry for 2024-05-02")
+	}
+	if len(day.Stories) != 1 {
+		t.Fatalf("Stories: got %d entries, want 1", len(day.Stories))
+	}
+	if day.Stories[0].StoryID != storyID {
+		t.Errorf("Stories[0].StoryID: got %d, want %d", day.Stories[0].StoryID, storyID)
+	}
+	if day.Stories[0].Title != "Rainy Day" {
+		t.Errorf("Stories[0].Title: got %q, want %q", day.Stories[0].Title, "Rainy Day")
+	}
+}
+
+func TestGetActivityCalendar_IncludesTutorEvents(t *testing.T) {
+	db := testDB(t)
+	db.Exec(`
+		INSERT INTO activity_events (event_type, summary, meta_json, created_at)
+		VALUES (?, '', ?, ?)
+	`, activityEventTutorUserMessage, `{"mode":"Free Conversation"}`, "2024-05-03 12:00:00")
+
+	cal, err := getActivityCalendar(db)
+	if err != nil {
+		t.Fatal(err)
+	}
+	day, ok := cal.Days["2024-05-03"]
+	if !ok {
+		t.Fatal("expected calendar entry for 2024-05-03")
+	}
+	if len(day.TutorMessages) != 1 {
+		t.Fatalf("TutorMessages: got %d entries, want 1", len(day.TutorMessages))
+	}
+	if day.TutorMessages[0].Mode != "Free Conversation" {
+		t.Errorf("TutorMessages[0].Mode: got %q, want %q", day.TutorMessages[0].Mode, "Free Conversation")
+	}
+}
+
 func TestGetActivityCalendar_KnewFalseWhenAnyIncorrect(t *testing.T) {
 	db := testDB(t)
 	db.Exec(`INSERT INTO words (base_word, created_at) VALUES ('風', datetime('now'))`)
@@ -1471,6 +1528,12 @@ func TestGetActivityCalendar_NonNilSlices(t *testing.T) {
 	}
 	if day.Cleared == nil {
 		t.Error("Cleared should be [] not nil")
+	}
+	if day.Stories == nil {
+		t.Error("Stories should be [] not nil")
+	}
+	if day.TutorMessages == nil {
+		t.Error("TutorMessages should be [] not nil")
 	}
 }
 
@@ -1586,7 +1649,7 @@ func TestGetActivityCalendar_ExcludesUntracked(t *testing.T) {
 	// One manually-added word on 2024-05-01.
 	db.Exec(`INSERT INTO words (base_word, created_at) VALUES ('星', '2024-05-01 00:00:00')`)
 	// One story-sourced word on the same date — must not appear in Added.
-	db.Exec(`INSERT INTO words (word, created_at, tracked) VALUES ('月', '2024-05-01 00:00:00', 0)`)
+	db.Exec(`INSERT INTO words (base_word, created_at, tracked) VALUES ('月', '2024-05-01 00:00:00', 0)`)
 
 	cal, err := getActivityCalendar(db)
 	if err != nil {

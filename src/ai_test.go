@@ -8,7 +8,7 @@ import (
 
 // --- autoFillExamples ---
 
-// katakanaToHiragana converts katakana runes (U+30A1–U+30F6) to their hiragana
+// katakanaToHiragana converts katakana runes (U+30A1-U+30F6) to their hiragana
 // equivalents by subtracting 0x60. All other runes pass through unchanged.
 func katakanaToHiragana(s string) string {
 	var b strings.Builder
@@ -26,8 +26,8 @@ func TestAutoFillExamples_KanjiReadingsConcatenateToWordReading(t *testing.T) {
 	// Verifies that the few-shot examples embedded in the prompt are internally
 	// consistent: the kanji readings, normalised to hiragana and concatenated,
 	// must be a prefix of the word's full reading. The remainder is okurigana
-	// (e.g. "べる" in 食べる after 食→た). This catches mistakes like writing
-	// ニチ for 日 in 日本語 (にほんご), where ニチ+ホン+ゴ → にちほんご ≠ にほんご.
+	// (e.g. "??" in ??? after ???). This catches mistakes like writing
+	// ?? for ? in ??? (????), where ??+??+? ? ????? ? ????.
 	for _, ex := range autoFillExamples {
 		t.Run(ex.word, func(t *testing.T) {
 			var result wordAutoFill
@@ -55,40 +55,12 @@ var invalidProviderModels = []string{"badformat", "", "noslash"}
 
 func TestAutoFillWord_InvalidProviderModelFormat(t *testing.T) {
 	for _, pm := range invalidProviderModels {
-		_, err := autoFillWord(nil, "食べる", pm)
+		_, err := autoFillWord(nil, "???", pm)
 		if err == nil {
 			t.Errorf("autoFillWord(%q): expected error, got nil", pm)
 		}
 		if err != nil && !strings.Contains(err.Error(), "invalid ai_model value") {
 			t.Errorf("autoFillWord(%q): unexpected error: %v", pm, err)
-		}
-	}
-}
-
-// --- rerollMeaning ---
-
-func TestRerollMeaning_InvalidProviderModelFormat(t *testing.T) {
-	for _, pm := range invalidProviderModels {
-		_, err := rerollMeaning(nil, "食べる", "to eat", pm)
-		if err == nil {
-			t.Errorf("rerollMeaning(%q): expected error, got nil", pm)
-		}
-		if err != nil && !strings.Contains(err.Error(), "invalid ai_model value") {
-			t.Errorf("rerollMeaning(%q): unexpected error: %v", pm, err)
-		}
-	}
-}
-
-// --- rerollExamples ---
-
-func TestRerollExamples_InvalidProviderModelFormat(t *testing.T) {
-	for _, pm := range invalidProviderModels {
-		_, err := rerollExamples(nil, "食べる", pm)
-		if err == nil {
-			t.Errorf("rerollExamples(%q): expected error, got nil", pm)
-		}
-		if err != nil && !strings.Contains(err.Error(), "invalid ai_model value") {
-			t.Errorf("rerollExamples(%q): unexpected error: %v", pm, err)
 		}
 	}
 }

@@ -40,13 +40,13 @@ func findStoryWord(story *storyJSON, baseWord, displayWord string) *storyWordJSO
 
 func apiGetStories(db *sql.DB) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		stories, err := listStories(db)
+		stories, err := listStoriesMeta(db)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
 		if stories == nil {
-			stories = []storyJSON{}
+			stories = []storyMetaJSON{}
 		}
 		writeJSON(w, stories)
 	}
@@ -68,19 +68,13 @@ func apiGetStory(db *sql.DB) http.HandlerFunc {
 			return
 		}
 
-		// Remove any noted words whose base word is now in the lexicon.
-		lexiconSet := map[string]bool{}
-		for _, sentence := range story.Sentences {
-			for _, word := range sentence.Words {
-				if word.Tracked {
-					lexiconSet[word.BaseWord] = true
-				}
-			}
-		}
+		// Remove any noted words whose base word is now tracked in the lexicon.
 		var cleanedNoted []storyNotedWordJSON
 		changed := false
 		for _, nw := range story.NotedWords {
-			if lexiconSet[nw.BaseWord] {
+			var tracked int
+			db.QueryRow(`SELECT tracked FROM words WHERE base_word = ?`, nw.BaseWord).Scan(&tracked) //nolint:errcheck
+			if tracked == 1 {
 				changed = true
 			} else {
 				cleanedNoted = append(cleanedNoted, nw)
@@ -133,7 +127,6 @@ func apiAddStoryNotedWord(db *sql.DB) http.HandlerFunc {
 		if err := addStoryNotedWord(db, id, storyNotedWordJSON{
 			DisplayWord: word.DisplayWord,
 			BaseWord:    word.BaseWord,
-			English:     word.English,
 		}); err != nil {
 			if err.Error() == "story not found" {
 				http.Error(w, err.Error(), http.StatusNotFound)
@@ -263,24 +256,48 @@ func apiCreateStory(db *sql.DB) http.HandlerFunc {
 
 // storySentenceText reconstructs the plain text of a sentence from its word tokens.
 func storySentenceText(s storySentenceJSON) string {
-	parts := make([]string, len(s.Words))
-	for i, w := range s.Words {
-		parts[i] = w.DisplayWord
-	}
-	return strings.Join(parts, "")
+	return storySentenceDisplayText(s)
 }
 
-func findStoryChunk(story *storyJSON, chunkID int64) *storyChunkJSON {
-	for i := range story.Chunks {
-		if story.Chunks[i].ID == chunkID {
-			return &story.Chunks[i]
+func writeStoryJobSuccess(streamEvent func(v any), usage tokenUsage) {
+	streamEvent(map[string]any{
+		"allDone":      true,
+		"inputTokens":  usage.InputTokens,
+		"outputTokens": usage.OutputTokens,
+		"totalTokens":  usage.InputTokens + usage.OutputTokens,
+	})
+}
+
+func runStoryNDJSONJob(w http.ResponseWriter, initialEvent map[string]any, work func() (tokenUsage, error)) {
+	streamEvent := newNDJSONStreamer(w)
+	streamEvent(initialEvent)
+
+	done := make(chan struct{})
+	go func() {
+		ticker := time.NewTicker(3 * time.Second)
+		defer ticker.Stop()
+		for {
+			select {
+			case <-ticker.C:
+				streamEvent(map[string]string{"status": "working"})
+			case <-done:
+				return
+			}
 		}
+	}()
+
+	usage, err := work()
+	close(done)
+	if err != nil {
+		streamEvent(map[string]string{"error": err.Error()})
+		return
 	}
-	return nil
+
+	writeStoryJobSuccess(streamEvent, usage)
 }
 
-// apiGenerateStoryTranslation calls an AI provider to translate all sentences in the
-// story. Streams NDJSON:
+// apiGenerateStoryTranslation calls an AI provider to translate story sentences from
+// each sentence's original language into the opposite language. Streams NDJSON:
 //
 //	{"status": "translating", "sentenceCount": N}                                   — emitted immediately
 //	{"allDone": true, "inputTokens": N, "outputTokens": N, "totalTokens": N}        — on success
@@ -293,239 +310,58 @@ func apiGenerateStoryTranslation(db *sql.DB) http.HandlerFunc {
 		}
 
 		var body struct {
-			AIModel string `json:"ai_model"`
-			ChunkID int64  `json:"chunk_id"`
+			AIModel       string `json:"ai_model"`
+			ChunkPosition int    `json:"chunk_position"`
 		}
 		if err := json.NewDecoder(r.Body).Decode(&body); err != nil || body.AIModel == "" {
 			http.Error(w, "ai_model is required", http.StatusBadRequest)
 			return
 		}
 
-		story, err := getStoryByID(db, id)
+		targetSentences, err := querySentencesLite(db, id, body.ChunkPosition)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
-		if story == nil {
-			http.Error(w, "story not found", http.StatusNotFound)
+		if targetSentences == nil {
+			http.Error(w, "story or chunk not found", http.StatusNotFound)
 			return
 		}
 
-		targetSentences := story.Sentences
-		if body.ChunkID > 0 {
-			chunk := findStoryChunk(story, body.ChunkID)
-			if chunk == nil {
-				http.Error(w, "story chunk not found", http.StatusBadRequest)
-				return
-			}
-			targetSentences = chunk.Sentences
-		}
-
-		var sentenceTexts []string
+		var requests []storyTranslationRequest
 		var sentenceIDs []int64
 		for _, s := range targetSentences {
-			text := storySentenceText(s)
+			text := storySentenceSourceText(s)
 			if strings.TrimSpace(text) == "" {
 				continue
 			}
-			sentenceTexts = append(sentenceTexts, text)
+			requests = append(requests, storyTranslationRequest{
+				OrigLang: s.OrigLang,
+				Text:     text,
+			})
 			sentenceIDs = append(sentenceIDs, s.ID)
 		}
 
-		streamEvent := newNDJSONStreamer(w)
-		streamEvent(map[string]any{
+		runStoryNDJSONJob(w, map[string]any{
 			"status":        "translating",
-			"sentenceCount": len(sentenceTexts),
-			"chunkId":       body.ChunkID,
-		})
+			"sentenceCount": len(requests),
+			"chunkPosition": body.ChunkPosition,
+		}, func() (tokenUsage, error) {
+			result, usage, err := translateStory(db, requests, body.AIModel)
+			if err != nil {
+				return tokenUsage{}, err
+			}
 
-		done := make(chan struct{})
-		go func() {
-			ticker := time.NewTicker(3 * time.Second)
-			defer ticker.Stop()
-			for {
-				select {
-				case <-ticker.C:
-					streamEvent(map[string]string{"status": "working"})
-				case <-done:
-					return
+			for i, translation := range result.Sentences {
+				if i >= len(sentenceIDs) || i >= len(result.TargetLangs) || translation == "" {
+					continue
+				}
+				if err := setSentenceTranslationText(db, sentenceIDs[i], result.TargetLangs[i], translation); err != nil {
+					return tokenUsage{}, err
 				}
 			}
-		}()
 
-		result, usage, err := translateStory(db, sentenceTexts, body.AIModel)
-		close(done)
-		if err != nil {
-			streamEvent(map[string]string{"error": err.Error()})
-			return
-		}
-
-		for i, translation := range result.Sentences {
-			if i >= len(sentenceIDs) || translation == "" {
-				break
-			}
-			if err := setSentenceEnglishText(db, sentenceIDs[i], translation); err != nil {
-				streamEvent(map[string]string{"error": "db error: " + err.Error()})
-				return
-			}
-		}
-
-		streamEvent(map[string]any{
-			"allDone":      true,
-			"inputTokens":  usage.InputTokens,
-			"outputTokens": usage.OutputTokens,
-			"totalTokens":  usage.InputTokens + usage.OutputTokens,
-		})
-	}
-}
-
-// apiGenerateStoryWordInfo runs autofill for all story words that have no word info yet
-// (meaning, reading, part_of_speech, example_jp, example_en all empty). Streams NDJSON:
-//
-//	{"status": "autofilling", "wordCount": N}                                  — emitted immediately
-//	{"allDone": true, "inputTokens": N, "outputTokens": N, "totalTokens": N}   — on success
-//	{"error": "..."}                                                            — on failure
-func apiGenerateStoryWordInfo(db *sql.DB) http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		id, ok := parseRouteInt64(w, r, "id", "invalid story id")
-		if !ok {
-			return
-		}
-
-		var body struct {
-			AIModel string `json:"ai_model"`
-			ChunkID int64  `json:"chunk_id"`
-		}
-		if err := json.NewDecoder(r.Body).Decode(&body); err != nil || body.AIModel == "" {
-			http.Error(w, "ai_model is required", http.StatusBadRequest)
-			return
-		}
-
-		story, err := getStoryByID(db, id)
-		if err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
-			return
-		}
-		if story == nil {
-			http.Error(w, "story not found", http.StatusNotFound)
-			return
-		}
-
-		streamEvent := newNDJSONStreamer(w)
-
-		targetStoryWords := story.StoryWords
-		if body.ChunkID > 0 {
-			chunk := findStoryChunk(story, body.ChunkID)
-			if chunk == nil {
-				http.Error(w, "story chunk not found", http.StatusBadRequest)
-				return
-			}
-			targetStoryWords = chunk.StoryWords
-		}
-
-		if len(targetStoryWords) == 0 {
-			streamEvent(map[string]any{
-				"allDone":      true,
-				"inputTokens":  0,
-				"outputTokens": 0,
-				"totalTokens":  0,
-			})
-			return
-		}
-
-		// Find story words that have no word info at all yet.
-		placeholders := make([]string, len(targetStoryWords))
-		args := make([]any, len(targetStoryWords))
-		for i, bw := range targetStoryWords {
-			placeholders[i] = "?"
-			args[i] = bw
-		}
-		rows, err := db.QueryContext(r.Context(),
-			`SELECT id, base_word FROM words
-			 WHERE base_word IN (`+strings.Join(placeholders, ",")+`)
-			 AND COALESCE(reading,'') = ''
-			 AND COALESCE(part_of_speech,'') = ''
-			 AND COALESCE(meaning,'') = ''
-			 AND COALESCE(example_jp,'') = ''
-			 AND COALESCE(example_en,'') = ''`,
-			args...,
-		)
-		if err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
-			return
-		}
-		type wordEntry struct {
-			ID   int64
-			Word string
-		}
-		var wordsToFill []wordEntry
-		for rows.Next() {
-			var e wordEntry
-			if err := rows.Scan(&e.ID, &e.Word); err != nil {
-				rows.Close()
-				http.Error(w, err.Error(), http.StatusInternalServerError)
-				return
-			}
-			wordsToFill = append(wordsToFill, e)
-		}
-		rows.Close()
-
-		if len(wordsToFill) == 0 {
-			streamEvent(map[string]any{
-				"allDone":      true,
-				"inputTokens":  0,
-				"outputTokens": 0,
-				"totalTokens":  0,
-			})
-			return
-		}
-
-		streamEvent(map[string]any{
-			"status":    "autofilling",
-			"wordCount": len(wordsToFill),
-			"chunkId":   body.ChunkID,
-		})
-
-		done := make(chan struct{})
-		go func() {
-			ticker := time.NewTicker(3 * time.Second)
-			defer ticker.Stop()
-			for {
-				select {
-				case <-ticker.C:
-					streamEvent(map[string]string{"status": "working"})
-				case <-done:
-					return
-				}
-			}
-		}()
-
-		wordStrings := make([]string, len(wordsToFill))
-		for i, e := range wordsToFill {
-			wordStrings[i] = e.Word
-		}
-		fills, usage, err := autoFillWordsBatchWithUsage(db, wordStrings, body.AIModel)
-		close(done)
-		if err != nil {
-			streamEvent(map[string]string{"error": err.Error()})
-			return
-		}
-
-		for i, e := range wordsToFill {
-			if fills[i] == nil {
-				continue
-			}
-			if _, err := persistWordAutoFill(db, e.ID, fills[i]); err != nil {
-				streamEvent(map[string]string{"error": "db error: " + err.Error()})
-				return
-			}
-		}
-
-		streamEvent(map[string]any{
-			"allDone":      true,
-			"inputTokens":  usage.InputTokens,
-			"outputTokens": usage.OutputTokens,
-			"totalTokens":  usage.InputTokens + usage.OutputTokens,
+			return usage, nil
 		})
 	}
 }

@@ -1,0 +1,101 @@
+{
+  "name": "Work and Office",
+  "entries": [
+    {
+      "word": "会社",
+      "reading": "かいしゃ",
+      "part_of_speech": "noun",
+      "meaning": "company",
+      "example_jp": "父は大きい会社で働いている。",
+      "example_en": "My father works at a large company."
+    },
+    {
+      "word": "会議",
+      "reading": "かいぎ",
+      "part_of_speech": "noun",
+      "meaning": "meeting",
+      "example_jp": "午後に大事な会議がある。",
+      "example_en": "There is an important meeting in the afternoon."
+    },
+    {
+      "word": "書類",
+      "reading": "しょるい",
+      "part_of_speech": "noun",
+      "meaning": "documents; paperwork",
+      "example_jp": "必要な書類を机の上に置いた。",
+      "example_en": "I put the necessary documents on the desk."
+    },
+    {
+      "word": "机",
+      "reading": "つくえ",
+      "part_of_speech": "noun",
+      "meaning": "desk",
+      "example_jp": "机の上をきれいにした。",
+      "example_en": "I cleaned the top of my desk."
+    },
+    {
+      "word": "電話",
+      "reading": "でんわ",
+      "part_of_speech": "noun",
+      "meaning": "telephone; phone call",
+      "example_jp": "午後に取引先へ電話する。",
+      "example_en": "I will call the client in the afternoon."
+    },
+    {
+      "word": "忙しい",
+      "reading": "いそがしい",
+      "part_of_speech": "i-adjective",
+      "meaning": "busy",
+      "example_jp": "月曜日は特に忙しい。",
+      "example_en": "Mondays are especially busy."
+    },
+    {
+      "word": "働く",
+      "reading": "はたらく",
+      "part_of_speech": "godan-verb",
+      "meaning": "to work",
+      "example_jp": "兄は東京で働いている。",
+      "example_en": "My older brother works in Tokyo."
+    },
+    {
+      "word": "送る",
+      "reading": "おくる",
+      "part_of_speech": "godan-verb",
+      "meaning": "to send",
+      "example_jp": "夕方までにメールを送る。",
+      "example_en": "I will send the email by evening."
+    },
+    {
+      "word": "確認",
+      "reading": "かくにん",
+      "part_of_speech": "noun",
+      "meaning": "confirmation; checking",
+      "example_jp": "予定をもう一度確認した。",
+      "example_en": "I checked the schedule once more."
+    },
+    {
+      "word": "予定",
+      "reading": "よてい",
+      "part_of_speech": "noun",
+      "meaning": "schedule; plan",
+      "example_jp": "明日の予定を手帳に書いた。",
+      "example_en": "I wrote tomorrow's schedule in my planner."
+    },
+    {
+      "word": "同僚",
+      "reading": "どうりょう",
+      "part_of_speech": "noun",
+      "meaning": "coworker",
+      "example_jp": "同僚と一緒に昼ご飯を食べた。",
+      "example_en": "I ate lunch with my coworker."
+    },
+    {
+      "word": "上司",
+      "reading": "じょうし",
+      "part_of_speech": "noun",
+      "meaning": "boss; supervisor",
+      "example_jp": "上司に資料を見せた。",
+      "example_en": "I showed the materials to my boss."
+    }
+  ]
+}

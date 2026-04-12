@@ -26,11 +26,22 @@ type activityWordEntry struct {
 	Knew    *bool  `json:"knew,omitempty"` // set only for drilled entries
 }
 
+type activityStoryEntry struct {
+	StoryID int64  `json:"storyId"`
+	Title   string `json:"title"`
+}
+
+type activityTutorEntry struct {
+	Mode string `json:"mode"`
+}
+
 // activityDay holds the drilled/added/cleared events for a single calendar day.
 type activityDay struct {
-	Drilled []activityWordEntry `json:"drilled"`
-	Added   []activityWordEntry `json:"added"`
-	Cleared []activityWordEntry `json:"cleared"`
+	Drilled       []activityWordEntry  `json:"drilled"`
+	Added         []activityWordEntry  `json:"added"`
+	Cleared       []activityWordEntry  `json:"cleared"`
+	Stories       []activityStoryEntry `json:"stories"`
+	TutorMessages []activityTutorEntry `json:"tutorMessages"`
 }
 
 // activityCalendar is the full response for the /api/activity/calendar endpoint.
@@ -38,6 +49,47 @@ type activityCalendar struct {
 	Today        string                 `json:"today"`
 	HistoryStart string                 `json:"historyStart"`
 	Days         map[string]activityDay `json:"days"`
+}
+
+const (
+	activityEventStoryCreated     = "story_created"
+	activityEventTutorUserMessage = "tutor_user_message"
+)
+
+type activityEventMeta struct {
+	Mode string `json:"mode,omitempty"`
+}
+
+func insertActivityEvent(db *sql.DB, eventType string, entityID *int64, summary string, meta any) error {
+	metaJSON := "{}"
+	if meta != nil {
+		b, err := json.Marshal(meta)
+		if err != nil {
+			return err
+		}
+		metaJSON = string(b)
+	}
+	_, err := db.Exec(`
+		INSERT INTO activity_events (event_type, entity_id, summary, meta_json)
+		VALUES (?, ?, ?, ?)
+	`, eventType, entityID, summary, metaJSON)
+	return err
+}
+
+func insertActivityEventTx(tx *sql.Tx, eventType string, entityID *int64, summary string, meta any) error {
+	metaJSON := "{}"
+	if meta != nil {
+		b, err := json.Marshal(meta)
+		if err != nil {
+			return err
+		}
+		metaJSON = string(b)
+	}
+	_, err := tx.Exec(`
+		INSERT INTO activity_events (event_type, entity_id, summary, meta_json)
+		VALUES (?, ?, ?, ?)
+	`, eventType, entityID, summary, metaJSON)
+	return err
 }
 
 type drillSidebarItem struct {
@@ -233,20 +285,39 @@ func getActivityStats(db *sql.DB) (activityStats, error) {
 	err := db.QueryRow(`
 		SELECT
 			COUNT(*),
-			SUM(CASE WHEN drill_count < drill_target THEN 1 ELSE 0 END),
-			SUM(CASE WHEN target_reached_at IS NOT NULL THEN 1 ELSE 0 END),
-			SUM(CASE WHEN drill_count >= drill_target THEN 1 ELSE 0 END),
-			SUM(CASE WHEN drill_count < drill_target AND (drill_target - drill_count) <= 4 THEN 1 ELSE 0 END),
-			SUM(CASE WHEN drill_count < drill_target AND (drill_target - drill_count) > 4 AND (drill_target - drill_count) <= 8 THEN 1 ELSE 0 END),
-			SUM(CASE WHEN drill_count < drill_target AND (drill_target - drill_count) > 8 THEN 1 ELSE 0 END)
+			COALESCE(SUM(CASE WHEN drill_count < drill_target THEN 1 ELSE 0 END), 0),
+			COALESCE(SUM(CASE WHEN target_reached_at IS NOT NULL THEN 1 ELSE 0 END), 0),
+			COALESCE(SUM(CASE WHEN drill_count >= drill_target THEN 1 ELSE 0 END), 0),
+			COALESCE(SUM(CASE WHEN drill_count < drill_target AND (drill_target - drill_count) <= 4 THEN 1 ELSE 0 END), 0),
+			COALESCE(SUM(CASE WHEN drill_count < drill_target AND (drill_target - drill_count) > 4 AND (drill_target - drill_count) <= 8 THEN 1 ELSE 0 END), 0),
+			COALESCE(SUM(CASE WHEN drill_count < drill_target AND (drill_target - drill_count) > 8 THEN 1 ELSE 0 END), 0)
 		FROM words
 		WHERE tracked = 1
 	`).Scan(&s.LexiconSize, &s.ActiveWords, &s.ClearedLifetime, &s.DrillsCleared, &s.DrillsClose, &s.DrillsMid, &s.DrillsFar)
 	return s, err
 }
 
+func ensureActivityDaySlices(v activityDay) activityDay {
+	if v.Drilled == nil {
+		v.Drilled = []activityWordEntry{}
+	}
+	if v.Added == nil {
+		v.Added = []activityWordEntry{}
+	}
+	if v.Cleared == nil {
+		v.Cleared = []activityWordEntry{}
+	}
+	if v.Stories == nil {
+		v.Stories = []activityStoryEntry{}
+	}
+	if v.TutorMessages == nil {
+		v.TutorMessages = []activityTutorEntry{}
+	}
+	return v
+}
+
 // getActivityCalendar builds the date-keyed calendar data from drill_answers,
-// words.created_at, and words.target_reached_at.
+// words.created_at, words.target_reached_at, and activity_events.
 func getActivityCalendar(db *sql.DB) (activityCalendar, error) {
 	days := make(map[string]activityDay)
 
@@ -327,18 +398,47 @@ func getActivityCalendar(db *sql.DB) (activityCalendar, error) {
 		return activityCalendar{}, err
 	}
 
+	rows4, err := db.Query(`
+		SELECT event_type, COALESCE(entity_id, 0), summary, COALESCE(meta_json, '{}'), DATE(created_at)
+		FROM activity_events
+		ORDER BY created_at, id
+	`)
+	if err != nil {
+		return activityCalendar{}, err
+	}
+	for rows4.Next() {
+		var (
+			eventType string
+			entityID  int64
+			summary   string
+			metaJSON  string
+			dateStr   string
+		)
+		if err := rows4.Scan(&eventType, &entityID, &summary, &metaJSON, &dateStr); err != nil {
+			rows4.Close()
+			return activityCalendar{}, err
+		}
+		d := days[dateStr]
+		switch eventType {
+		case activityEventStoryCreated:
+			d.Stories = append(d.Stories, activityStoryEntry{
+				StoryID: entityID,
+				Title:   summary,
+			})
+		case activityEventTutorUserMessage:
+			var meta activityEventMeta
+			json.Unmarshal([]byte(metaJSON), &meta) //nolint:errcheck
+			d.TutorMessages = append(d.TutorMessages, activityTutorEntry{Mode: meta.Mode})
+		}
+		days[dateStr] = d
+	}
+	if err := rows4.Close(); err != nil {
+		return activityCalendar{}, err
+	}
+
 	// Ensure every day's slices are non-nil so they encode as [] not null.
 	for k, v := range days {
-		if v.Drilled == nil {
-			v.Drilled = []activityWordEntry{}
-		}
-		if v.Added == nil {
-			v.Added = []activityWordEntry{}
-		}
-		if v.Cleared == nil {
-			v.Cleared = []activityWordEntry{}
-		}
-		days[k] = v
+		days[k] = ensureActivityDaySlices(v)
 	}
 
 	today := time.Now().UTC().Format("2006-01-02")

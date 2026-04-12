@@ -16,6 +16,13 @@
     <span id="tutor-provider-info" class="provider-info-icon" style="display:none">?</span>
     <button id="btn-new-chat" class="btn-header" data-tooltip="New chat">↺</button>
     <button id="btn-debug-toggle" class="btn-header" data-tooltip="Toggle debug view">{}</button>
+    <select id="tutor-level-select" class="tutor-select">
+      <option value="N5" selected>N5</option>
+      <option value="N4">N4</option>
+      <option value="N3">N3</option>
+      <option value="N2">N2</option>
+      <option value="N1">N1</option>
+    </select>
     <select id="tutor-mode-select" class="tutor-select"></select>
     <button id="btn-add-prompt" class="btn-header" data-tooltip="Add new prompt based on current">＋</button>
     <button id="btn-edit-prompt" class="btn-header" data-tooltip="Edit this prompt" style="display:none">✎</button>
@@ -31,8 +38,11 @@
   <div id="tutor-messages" class="tutor-messages"></div>
   <form id="tutor-form" class="tutor-input-row">
     <textarea id="tutor-input" class="tutor-input" placeholder="Type a message…" rows="1"></textarea>
-    <button type="button" id="btn-tutor-mic" class="btn-tutor-mic" aria-label="Voice input">🎤</button>
-    <button type="submit" id="btn-tutor-send" class="btn-tutor-send">Send <span class="btn-hotkey">⇧↵</span></button>
+    <div class="tutor-mic-buttons" aria-label="Voice input language">
+      <button type="button" id="btn-tutor-mic-ja" class="btn-tutor-mic" data-tooltip="Japanese voice input (Alt+J)" aria-label="Japanese voice input (Alt+J)" accesskey="j">あ🎤</button>
+      <button type="button" id="btn-tutor-mic-en" class="btn-tutor-mic" data-tooltip="English voice input (Alt+E)" aria-label="English voice input (Alt+E)" accesskey="e">A🎤</button>
+    </div>
+    <button type="submit" id="btn-tutor-send" class="btn-tutor-send" data-tooltip="Send message (Shift+Enter)" aria-label="Send message (Shift+Enter)">Send <span class="btn-hotkey">⇧↵</span></button>
   </form>
 </main>
 

@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"net/http"
 	"strconv"
+	"strings"
 )
 
 // tutorSegment is a flexible map so the AI can include any string-valued fields
@@ -16,8 +17,11 @@ type tutorSegment = map[string]string
 var tutorSession struct {
 	AIModel   string    `json:"ai_model"`
 	TutorMode string    `json:"tutor_mode"`
+	JLPTLevel string    `json:"jlpt_level"`
 	Messages  []message `json:"messages"`
 }
+
+var tutorChatFn = tutorChat
 
 func apiGetTutorPrompts(db *sql.DB) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
@@ -156,6 +160,7 @@ func apiTutorChat(db *sql.DB) http.HandlerFunc {
 		var req struct {
 			AIModel   string    `json:"ai_model"`
 			TutorMode string    `json:"tutor_mode"`
+			JLPTLevel string    `json:"jlpt_level"`
 			Messages  []message `json:"messages"`
 		}
 		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
@@ -169,8 +174,12 @@ func apiTutorChat(db *sql.DB) http.HandlerFunc {
 		// Empty messages is valid — used to generate the bot's opening turn.
 
 		modeID, _ := strconv.ParseInt(req.TutorMode, 10, 64)
-		system := tutorSystemPromptByID(db, modeID)
-		reply, err := tutorChat(db, req.Messages, system, req.AIModel)
+		level := req.JLPTLevel
+		if level == "" {
+			level = "N5"
+		}
+		system := strings.ReplaceAll(tutorSystemPromptByID(db, modeID), "{{level}}", level)
+		reply, err := tutorChatFn(db, req.Messages, system, req.AIModel)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
@@ -185,7 +194,7 @@ func apiTutorChat(db *sql.DB) http.HandlerFunc {
 				message{Role: "assistant", Content: reply},
 				message{Role: "user", Content: "Your last response was not a valid JSON object. Respond again as a single JSON object with string fields (jp, en, note, correction, etc.) — no array, no markdown, no code fences."},
 			)
-			if retryReply, retryErr := tutorChat(db, retryMsgs, system, req.AIModel); retryErr == nil {
+			if retryReply, retryErr := tutorChatFn(db, retryMsgs, system, req.AIModel); retryErr == nil {
 				if jsonErr2 := json.Unmarshal([]byte(retryReply), &response); jsonErr2 == nil && len(response) > 0 {
 					reply = retryReply
 				}
@@ -198,7 +207,17 @@ func apiTutorChat(db *sql.DB) http.HandlerFunc {
 		// Persist the full conversation (including the new reply) so it survives navigation.
 		tutorSession.AIModel = req.AIModel
 		tutorSession.TutorMode = req.TutorMode
+		tutorSession.JLPTLevel = level
 		tutorSession.Messages = append(req.Messages, message{Role: "assistant", Content: reply})
+
+		if len(req.Messages) > 0 {
+			last := req.Messages[len(req.Messages)-1]
+			if last.Role == "user" && strings.TrimSpace(last.Content) != "" {
+				insertActivityEvent(db, activityEventTutorUserMessage, nil, "", activityEventMeta{
+					Mode: tutorPromptLabelByID(db, modeID),
+				}) //nolint:errcheck
+			}
+		}
 
 		writeJSON(w, map[string]any{"response": response})
 	}

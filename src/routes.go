@@ -7,12 +7,15 @@ import (
 	"html/template"
 	"log"
 	"net/http"
+	"os"
 	"path/filepath"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
+	"github.com/wailsapp/wails/v3/pkg/application"
 )
 
 func parseRouteInt64(w http.ResponseWriter, r *http.Request, paramName, invalidMsg string) (int64, bool) {
@@ -67,7 +70,6 @@ func serverInit(db *sql.DB) {
 	r.Post("/api/stories/{id}/noted-words", apiAddStoryNotedWord(db))
 	r.Delete("/api/stories/{id}/noted-words", apiDeleteStoryNotedWord(db))
 	r.Post("/api/stories/{id}/generate-translation", apiGenerateStoryTranslation(db))
-	r.Post("/api/stories/{id}/generate-word-info", apiGenerateStoryWordInfo(db))
 
 	r.Get("/api/providers", func(w http.ResponseWriter, r *http.Request) {
 		p := checkAIProviders()
@@ -98,6 +100,8 @@ func serverInit(db *sql.DB) {
 	r.Get("/api/wordlists/{slug}/words", apiGetWordListWords(db))
 
 	r.Get("/api/words", apiGetWords(db))
+	r.Get("/api/word-info", apiGetWordInfo(db))
+	r.Post("/api/word-info-batch", apiGetWordInfoBatch(db))
 	r.Patch("/api/words/{id}", apiUpdateWord(db))
 	r.Patch("/api/words/{id}/target", apiUpdateWordTarget(db))
 	r.Delete("/api/words/{id}", apiDeleteWord(db))
@@ -131,6 +135,7 @@ func serverInit(db *sql.DB) {
 	r.Post("/api/tutor/chat", apiTutorChat(db))
 
 	r.Get("/api/token-usage", apiGetTokenUsage(db))
+	r.Post("/api/dev/wails/clear-cache", apiQueueWailsCacheClear())
 
 	r.Route("/admin", func(r chi.Router) {
 		r.Get("/", adminIndex(db))
@@ -142,6 +147,34 @@ func serverInit(db *sql.DB) {
 
 	if err := http.ListenAndServe(fmt.Sprintf(":%d", port), r); err != nil {
 		log.Fatal(err)
+	}
+}
+
+func apiQueueWailsCacheClear() http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		if !isDesktopApp {
+			http.Error(w, "desktop app is not running", http.StatusNotFound)
+			return
+		}
+		if clearWebviewCacheFlag == "" {
+			http.Error(w, "webview cache path is not configured", http.StatusInternalServerError)
+			return
+		}
+		if err := os.MkdirAll(filepath.Dir(clearWebviewCacheFlag), 0o755); err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		if err := os.WriteFile(clearWebviewCacheFlag, []byte(time.Now().Format(time.RFC3339)), 0o644); err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		writeJSON(w, map[string]bool{"queued": true})
+		go func() {
+			time.Sleep(250 * time.Millisecond)
+			if app := application.Get(); app != nil {
+				app.Quit()
+			}
+		}()
 	}
 }
 
@@ -456,8 +489,7 @@ func adminAddWordsBatch(db *sql.DB) http.HandlerFunc {
 				send(batchWordResult{Input: e.input, Word: e.norm, Added: false, Reason: reason})
 				continue
 			}
-			// Read back from DB so we reflect any info already present on the row
-			// (e.g. autofilled by generate-word-info while tracked=0).
+			// Read back from DB so we reflect any info already present on the row.
 			var actualReading, actualPOS, actualMeaning, actualExJP, actualExEN string
 			db.QueryRowContext(r.Context(),
 				`SELECT COALESCE(reading,''), COALESCE(part_of_speech,''), COALESCE(meaning,''),

@@ -218,6 +218,8 @@ function buildDayCell(dateStr) {
     }
     if (data.added.length)   badges.appendChild(makeBadge('added',   data.added.length + ' added'));
     if (data.cleared.length) badges.appendChild(makeBadge('cleared', data.cleared.length + ' cleared'));
+    if (data.stories.length) badges.appendChild(makeBadge('stories', data.stories.length + ' stories'));
+    if (data.tutorMessages.length) badges.appendChild(makeBadge('tutor', data.tutorMessages.length + ' tutor msgs'));
 
     cell.appendChild(badges);
   }
@@ -257,6 +259,8 @@ function openDayModal(dateStr) {
   }
   if (data.added.length)   els.dayModalBody.appendChild(buildSection('Added',   data.added,   'added'));
   if (data.cleared.length) els.dayModalBody.appendChild(buildSection('Cleared', data.cleared, 'cleared'));
+  if (data.stories.length) els.dayModalBody.appendChild(buildStorySection(data.stories));
+  if (data.tutorMessages.length) els.dayModalBody.appendChild(buildTutorSection(data.tutorMessages));
 
   els.dayModalBackdrop.classList.remove('hidden');
 }
@@ -305,6 +309,60 @@ function buildSection(title, words, type, note) {
 
 function closeDayModal() {
   els.dayModalBackdrop.classList.add('hidden');
+}
+
+function buildStorySection(stories) {
+  const section = document.createElement('div');
+  const titleEl = document.createElement('div');
+  titleEl.className = 'day-section-title';
+  titleEl.textContent = 'Stories';
+  section.appendChild(titleEl);
+
+  const list = document.createElement('div');
+  list.className = 'day-word-list';
+  stories.forEach(entry => {
+    const item = document.createElement('div');
+    item.className = 'day-word-item';
+    item.innerHTML = '<span class="day-word-jp">' + escHtml(entry.title) + '</span>';
+    list.appendChild(item);
+  });
+  section.appendChild(list);
+  return section;
+}
+
+function buildTutorSection(messages) {
+  const counts = new Map();
+  messages.forEach(entry => {
+    const mode = entry.mode || 'Unknown';
+    counts.set(mode, (counts.get(mode) || 0) + 1);
+  });
+
+  const section = document.createElement('div');
+  const titleEl = document.createElement('div');
+  titleEl.className = 'day-section-title';
+  titleEl.textContent = 'Tutor';
+  section.appendChild(titleEl);
+
+  const list = document.createElement('div');
+  list.className = 'day-word-list';
+  Array.from(counts.entries()).forEach(([mode, count]) => {
+    const item = document.createElement('div');
+    item.className = 'day-word-item';
+    item.innerHTML =
+      '<span class="day-word-jp">' + escHtml(mode) + '</span>' +
+      '<span class="day-word-meaning">' + count + ' message' + (count === 1 ? '' : 's') + '</span>';
+    list.appendChild(item);
+  });
+  section.appendChild(list);
+  return section;
+}
+
+function escHtml(s) {
+  return String(s ?? '')
+    .replaceAll('&', '&amp;')
+    .replaceAll('<', '&lt;')
+    .replaceAll('>', '&gt;')
+    .replaceAll('"', '&quot;');
 }
 
 document.addEventListener('keydown', e => { if (e.key === 'Escape') closeDayModal(); });
@@ -356,6 +414,10 @@ async function init() {
   state.today = cal.today;
   state.historyStart = cal.historyStart;
   state.activityData = cal.days;
+  Object.values(state.activityData).forEach(day => {
+    if (!Array.isArray(day.stories)) day.stories = [];
+    if (!Array.isArray(day.tutorMessages)) day.tutorMessages = [];
+  });
   state.wordMap = {};
   words.forEach(word => { state.wordMap[word.word] = word; });
   renderStats();

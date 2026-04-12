@@ -2,8 +2,47 @@
 
 This file is random notes of possible features and bug fixes.
 
+- use dictionary instead of AI for word info
+    make sure story chunk translation does not use AI for words
+- still have AI fallback?
+    - yes, because simpler more concise meanings and can generate example sentences
+
+- on story import, can we detect if a sentence is Japanese or English (mixed cases default to Japanese)?
+
+- for repurposing English content, may best to translate on paragraph or multi-graph level, then split into sentences?
+    - would require translating back
+
+- video stories with subtitles
+    first import subtitle files
+
+    either local video file or embedded youtube 
+
+
 - add more common Japanese words to the word insertion blacklist?
     already filtering based on POS, but some common things sneak through, like　です
+
+- story       
+    - word info retrieval and presentation still needs work
+        filter out more noise words
+            have the server mark words that should show work info in the json
+                frontend should only request wordinfo for words that might have it
+                frontend shows nothing for words that cannot have word info
+                    if no translation, teh hover tooltip says "no translation available"
+    
+
+- memory usage
+    nearly 300mb
+        mainly the dict?
+
+
+
+- the wails zoom override is interferring with layout
+    not full equivalent of browser zoom
+
+- activity page
+    - stats on number of tracked words in lexicon vs untracked
+
+- integrate a free dictionary for word info
 
 - mic STT : why only last a few seconds? what causes it to stop?
     - should user have to hit button to stop STT? also stop STT when user submits the message?
@@ -16,20 +55,16 @@ This file is random notes of possible features and bug fixes.
         - sidebar, edit button appears when hovered
 
 - stories:
-    - load chunks progressively as you scroll
     - support English stories that get translated into Japanese (sentence by sentence)
         in this setup, going for decent natural translations by chunk rather than by sentence?
             if so, need to also translate back to English sentence-by-sentence to get gloss of each Japanese sentence
     
 - tutor:
-    - JLPT level should be configurable with a separate pulldown
-        - use {{level}} in prompt text to substitute JLPT level?
-    - hotkey to repeat audio of last prompt
-    - button on each AI message to play audio
-    - words from every AI message are added to lexicon (as tracked=0)
-    - maybe your own prompts are spoken by voicevox? or just use TTS for own?
-        - use a different voice
-        - play the AI's correction?
+    - ability to hold separate chats at same time in separate tabs
+        - wouldn't work in wails, but that's OK?
+    - prompts should all be tolerant of swapping between English and Japanese. If English, don't provide critque of their language, but otherwise just procede whether they answer in Japanese or English.
+    - single click on words in bot messages to add them to the dictionary
+    - maybe play the AI's correction? use different voice?
     - if AI provides a correction, your last message is faded and teh correction placed below it with new color
     - should warn users somehow about conversation getting too long (context collapse)
     - button to suggest topics, sentences? 
@@ -49,37 +84,33 @@ This file is random notes of possible features and bug fixes.
         generate topics / questions from a random set of recently drilled words? or from active words?
         - instruct bot to use words that are in user's active lexicon
         - these encounters could be tallied as correct drills? 
-
     - option to rewind chat? undo last prompt and response?
+    - in chat, highlight words in lexicon, different color for words that are active? 
+        - when user responds to bot message that contains active word, increment that drill count?
+    - bot that provides grammatical analysis of sentences
+        user can ask questions in English / Japanese or mix
+            - what is hotkey? how to distinguish from click-to-play? ctrl-click? hover popup next to sentence?
+            - uses AI to give breakdown of phrases / clauses
+            - has chat window so user can ask about points of grammar (continues context of the sentence breakdown)
+            - analysis and chat session of each sentence is preserved in db
+                - maybe option to clear the conversation?
+        - sentence breakdown
+        - isolate, classify, and explain phrases
+    - typing trainer bot
+        - this could be just another chat bot
+            seems wasteful maybe to use tokens, but the tokens should be pretty cheap
 
-- grammatical analysis of story sentences
-    - click sentence to open analysis modal 
-        - what is hotkey? how to distinguish from click-to-play? ctrl-click? hover popup next to sentence?
-        - uses AI to give breakdown of phrases / clauses
-        - has chat window so user can ask about points of grammar (continues context of the sentence breakdown)
-        - analysis and chat session of each sentence is preserved in db
-            - maybe option to clear the conversation?
-    - sentence breakdown
-    - isolate, classify, and explain phrases
-    
-- typing trainer
-    - this could be just another chat bot
-        seems wasteful maybe to use tokens, but the tokens should be pretty cheap
 
 - word images: 
     - drag-and-drop support to change image
     - option to crop image
     - copy from clipboard support
-    
+
 - wails
     - double scrollbar appears on start of wails
     - on mac, cmd+-/+ does weird zoom behavior
         (but ctrl+scroll and ctrl+-/+ is fine)
-
-
-
-- create more word lists
-    - expand existing lists
+    - custom scroll behaviour breaks page layout
 
 - lexicon
     - slow to render with thousands of words
@@ -106,9 +137,10 @@ This file is random notes of possible features and bug fixes.
 
 - README
     - explain drilling theory / workflow
-        
+ 
 - proper error messages for failed API requests
     - what if user runs out of tokens? or other API failures
+
 - experiment with openAI audio generation. Might be better quality than voicevox
 
 - play with visual styles

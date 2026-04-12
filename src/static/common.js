@@ -153,6 +153,16 @@ function injectSettingsModal() {
               <button type="button" id="settings-vv-preview" class="btn-cancel" style="white-space:nowrap">▶ Preview</button>
             </div>
           </div>
+          <div id="settings-dev-tools" class="settings-dev-tools hidden">
+            <div class="settings-section-label settings-section-label--spaced">Developer</div>
+            <div class="restart-field restart-field-dev">
+              <label>Desktop cache</label>
+              <div class="settings-dev-action">
+                <button type="button" id="settings-clear-wails-cache" class="btn-danger">Clear Wails cache on next launch</button>
+                <div id="settings-clear-wails-cache-hint" class="settings-dev-hint">Closes the desktop app so the next launch starts with a fresh WebView cache.</div>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
       <div class="modal-footer">
@@ -350,7 +360,7 @@ let _currentAudio = null;
 let _currentSynthController = null;
 let _playbackRequestId = 0;
 
-function stopCurrentPlayback() {
+export function stopCurrentPlayback() {
   speechSynthesis.cancel();
   if (_currentSynthController) {
     _currentSynthController.abort();
@@ -362,7 +372,7 @@ function stopCurrentPlayback() {
   }
 }
 
-export async function playTts(text, lang, rate = 1) {
+export async function playTts(text, lang, rate = 1, onEnd = null) {
   stopCurrentPlayback();
   await waitForVoices();
   const utt = new SpeechSynthesisUtterance(text);
@@ -370,10 +380,16 @@ export async function playTts(text, lang, rate = 1) {
   utt.rate = rate;
   const voice = getTtsVoice(lang);
   if (voice) utt.voice = voice;
+  if (onEnd) {
+    // Guard with the current request ID so a cancel()-triggered onend from a
+    // superseded utterance does not fire the callback for the new playback.
+    const rid = _playbackRequestId;
+    utt.onend = () => { if (_playbackRequestId === rid) onEnd(); };
+  }
   speechSynthesis.speak(utt);
 }
 
-async function playVoicevoxText(text, rate = 1) {
+async function playVoicevoxText(text, rate = 1, onEnd = null) {
   const requestId = ++_playbackRequestId;
   stopCurrentPlayback();
   const controller = new AbortController();
@@ -390,6 +406,7 @@ async function playVoicevoxText(text, rate = 1) {
     if (requestId !== _playbackRequestId) return true; // superseded — newer request took over
     const audio = new Audio(audioUrl);
     audio.playbackRate = rate;
+    if (onEnd) audio.addEventListener('ended', () => { if (_playbackRequestId === requestId) onEnd(); });
     _currentAudio = audio;
     try {
       await audio.play();
@@ -424,22 +441,23 @@ async function playVoicevoxText(text, rate = 1) {
   }
 }
 
-async function playFallbackTts(text, lang, rate) {
+async function playFallbackTts(text, lang, rate, onEnd = null) {
   _playbackRequestId++;
-  await playTts(text, lang, rate);
+  await playTts(text, lang, rate, onEnd);
 }
 
 export async function playJapaneseText(text, rate = 1, options = {}) {
   if (!text) return;
+  const onEnd = options.onEnd || null;
   if (options.preferSynthesis) {
-    const played = await playVoicevoxText(text, rate);
+    const played = await playVoicevoxText(text, rate, onEnd);
     if (played) return;
     if (options.fallbackToBrowserTts) {
-      await playFallbackTts(text, 'ja-JP', rate);
+      await playFallbackTts(text, 'ja-JP', rate, onEnd);
       return;
     }
   }
-  await playTts(text, 'ja-JP', rate);
+  await playTts(text, 'ja-JP', rate, onEnd);
 }
 
 // playWordAudio plays a word with optional on-demand VoiceVox synthesis.
@@ -529,6 +547,11 @@ function initializeSettings() {
   if (!settingsBtn || !settingsModal) return;
 
   const saveBtn = document.getElementById('settings-save-btn');
+  const clearWailsCacheBtn = document.getElementById('settings-clear-wails-cache');
+  const clearWailsCacheHint = document.getElementById('settings-clear-wails-cache-hint');
+  const devToolsSection = document.getElementById('settings-dev-tools');
+  const isProbablyWailsDesktop = !!window.chrome?.webview;
+  if (devToolsSection && isProbablyWailsDesktop) devToolsSection.classList.remove('hidden');
   const closeModal = () => {
     if (_vvGenController) return;
     settingsModal.classList.add('hidden');
@@ -711,6 +734,24 @@ function initializeSettings() {
       btn.disabled = false;
     }
   });
+
+  clearWailsCacheBtn?.addEventListener('click', async () => {
+    if (!confirm('Clear the Wails desktop cache on next launch and close the app now?')) return;
+    clearWailsCacheBtn.disabled = true;
+    if (clearWailsCacheHint) clearWailsCacheHint.textContent = 'Preparing cache clear...';
+    try {
+      const resp = await fetch('/api/dev/wails/clear-cache', { method: 'POST' });
+      if (!resp.ok) throw new Error(await resp.text());
+      if (clearWailsCacheHint) {
+        clearWailsCacheHint.textContent = 'Cache clear queued. The desktop app should close in a moment.';
+      }
+    } catch (err) {
+      clearWailsCacheBtn.disabled = false;
+      if (clearWailsCacheHint) {
+        clearWailsCacheHint.textContent = err?.message || 'Unable to queue cache clear.';
+      }
+    }
+  });
 }
 
 injectSettingsModal();
@@ -749,10 +790,16 @@ document.addEventListener('mouseover', e => {
   const pad = 8;
   const w = _hoverTooltip.offsetWidth;
   const h = _hoverTooltip.offsetHeight;
-  let left = e.clientX + 14;
-  if (left + w > window.innerWidth - pad) left = window.innerWidth - w - pad;
-  let top = e.clientY + 18;
-  top = Math.max(pad, Math.min(top, window.innerHeight - h - pad));
+  // CSS zoom on <html> scales the layout coordinate system but not clientX/Y or
+  // window.innerWidth/Height, so we must divide viewport-space values by the zoom
+  // factor to get the correct position in layout coordinates.
+  const zoom = parseFloat(localStorage.getItem('appZoom')) || 1.0;
+  const vw = window.innerWidth / zoom;
+  const vh = window.innerHeight / zoom;
+  let left = e.clientX / zoom + 14;
+  if (left + w > vw - pad) left = vw - w - pad;
+  let top = e.clientY / zoom + 18;
+  top = Math.max(pad, Math.min(top, vh - h - pad));
   _hoverTooltip.style.left = left + 'px';
   _hoverTooltip.style.top = top + 'px';
 });
@@ -761,10 +808,13 @@ document.addEventListener('mousemove', e => {
   const pad = 8;
   const w = _hoverTooltip.offsetWidth;
   const h = _hoverTooltip.offsetHeight;
-  let left = e.clientX + 14;
-  if (left + w > window.innerWidth - pad) left = window.innerWidth - w - pad;
-  let top = e.clientY + 18;
-  top = Math.max(pad, Math.min(top, window.innerHeight - h - pad));
+  const zoom = parseFloat(localStorage.getItem('appZoom')) || 1.0;
+  const vw = window.innerWidth / zoom;
+  const vh = window.innerHeight / zoom;
+  let left = e.clientX / zoom + 14;
+  if (left + w > vw - pad) left = vw - w - pad;
+  let top = e.clientY / zoom + 18;
+  top = Math.max(pad, Math.min(top, vh - h - pad));
   _hoverTooltip.style.left = left + 'px';
   _hoverTooltip.style.top = top + 'px';
 });
@@ -826,11 +876,12 @@ export function positionAnchoredWordTooltip(tooltipEl, options) {
   tooltipEl.style.visibility = 'hidden';
   tooltipEl.classList.add('visible');
 
+  const zoom = parseFloat(localStorage.getItem('appZoom')) || 1.0;
   const tooltipHeight = tooltipEl.offsetHeight;
-  const maxTop = Math.max(8, window.innerHeight - tooltipHeight - 8);
-  const top = Math.max(8, Math.min(anchorRect.top, maxTop));
+  const maxTop = Math.max(8, window.innerHeight / zoom - tooltipHeight - 8);
+  const top = Math.max(8, Math.min(anchorRect.top / zoom, maxTop));
 
-  tooltipEl.style.left = left + 'px';
+  tooltipEl.style.left = (left / zoom) + 'px';
   tooltipEl.style.top = top + 'px';
   tooltipEl.style.visibility = '';
 }

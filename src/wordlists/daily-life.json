@@ -1,0 +1,101 @@
+{
+  "name": "Daily Life",
+  "entries": [
+    {
+      "word": "朝",
+      "reading": "あさ",
+      "part_of_speech": "noun",
+      "meaning": "morning",
+      "example_jp": "朝はコーヒーを飲む。",
+      "example_en": "I drink coffee in the morning."
+    },
+    {
+      "word": "夜",
+      "reading": "よる",
+      "part_of_speech": "noun",
+      "meaning": "night; evening",
+      "example_jp": "夜は家でゆっくり休む。",
+      "example_en": "I relax at home at night."
+    },
+    {
+      "word": "家",
+      "reading": "いえ",
+      "part_of_speech": "noun",
+      "meaning": "house; home",
+      "example_jp": "今日は早く家に帰る。",
+      "example_en": "I will go home early today."
+    },
+    {
+      "word": "部屋",
+      "reading": "へや",
+      "part_of_speech": "noun",
+      "meaning": "room",
+      "example_jp": "部屋をきれいに片づけた。",
+      "example_en": "I tidied up my room."
+    },
+    {
+      "word": "仕事",
+      "reading": "しごと",
+      "part_of_speech": "noun",
+      "meaning": "work; job",
+      "example_jp": "父は仕事で忙しい。",
+      "example_en": "My father is busy with work."
+    },
+    {
+      "word": "休み",
+      "reading": "やすみ",
+      "part_of_speech": "noun",
+      "meaning": "rest; holiday; day off",
+      "example_jp": "日曜日は休みだ。",
+      "example_en": "Sunday is my day off."
+    },
+    {
+      "word": "起きる",
+      "reading": "おきる",
+      "part_of_speech": "ichidan-verb",
+      "meaning": "to wake up; to get up",
+      "example_jp": "毎朝六時に起きる。",
+      "example_en": "I wake up at six every morning."
+    },
+    {
+      "word": "洗う",
+      "reading": "あらう",
+      "part_of_speech": "godan-verb",
+      "meaning": "to wash",
+      "example_jp": "食事の前に手を洗う。",
+      "example_en": "I wash my hands before eating."
+    },
+    {
+      "word": "掃除",
+      "reading": "そうじ",
+      "part_of_speech": "noun",
+      "meaning": "cleaning",
+      "example_jp": "土曜日の朝に掃除をする。",
+      "example_en": "I do cleaning on Saturday morning."
+    },
+    {
+      "word": "洗濯",
+      "reading": "せんたく",
+      "part_of_speech": "noun",
+      "meaning": "laundry",
+      "example_jp": "今日は洗濯が多い。",
+      "example_en": "There is a lot of laundry today."
+    },
+    {
+      "word": "料理",
+      "reading": "りょうり",
+      "part_of_speech": "noun",
+      "meaning": "cooking; cuisine",
+      "example_jp": "母は料理が上手だ。",
+      "example_en": "My mother is good at cooking."
+    },
+    {
+      "word": "帰る",
+      "reading": "かえる",
+      "part_of_speech": "godan-verb",
+      "meaning": "to return; to go home",
+      "example_jp": "仕事のあとでまっすぐ帰る。",
+      "example_en": "I go straight home after work."
+    }
+  ]
+}

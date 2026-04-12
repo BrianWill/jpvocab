@@ -1,0 +1,101 @@
+{
+  "name": "Movement and Location Verbs",
+  "entries": [
+    {
+      "word": "歩く",
+      "reading": "あるく",
+      "part_of_speech": "godan-verb",
+      "meaning": "to walk",
+      "example_jp": "駅までゆっくり歩く。",
+      "example_en": "I walk slowly to the station."
+    },
+    {
+      "word": "走る",
+      "reading": "はしる",
+      "part_of_speech": "godan-verb",
+      "meaning": "to run",
+      "example_jp": "朝、公園を少し走る。",
+      "example_en": "I run a little in the park in the morning."
+    },
+    {
+      "word": "渡る",
+      "reading": "わたる",
+      "part_of_speech": "godan-verb",
+      "meaning": "to cross",
+      "example_jp": "青信号で道を渡る。",
+      "example_en": "I cross the street at the green light."
+    },
+    {
+      "word": "曲がる",
+      "reading": "まがる",
+      "part_of_speech": "godan-verb",
+      "meaning": "to turn",
+      "example_jp": "次の角を左に曲がる。",
+      "example_en": "Turn left at the next corner."
+    },
+    {
+      "word": "通る",
+      "reading": "とおる",
+      "part_of_speech": "godan-verb",
+      "meaning": "to pass through",
+      "example_jp": "毎日この道を通る。",
+      "example_en": "I pass through this road every day."
+    },
+    {
+      "word": "進む",
+      "reading": "すすむ",
+      "part_of_speech": "godan-verb",
+      "meaning": "to go forward; to advance",
+      "example_jp": "そのまままっすぐ進んでください。",
+      "example_en": "Please continue straight ahead."
+    },
+    {
+      "word": "向かう",
+      "reading": "むかう",
+      "part_of_speech": "godan-verb",
+      "meaning": "to head toward",
+      "example_jp": "今から駅へ向かう。",
+      "example_en": "I am heading to the station now."
+    },
+    {
+      "word": "集まる",
+      "reading": "あつまる",
+      "part_of_speech": "godan-verb",
+      "meaning": "to gather",
+      "example_jp": "公園に人が集まっている。",
+      "example_en": "People are gathering in the park."
+    },
+    {
+      "word": "離れる",
+      "reading": "はなれる",
+      "part_of_speech": "ichidan-verb",
+      "meaning": "to separate; to move away",
+      "example_jp": "駅から少し離れた場所に住んでいる。",
+      "example_en": "I live a little away from the station."
+    },
+    {
+      "word": "止まる",
+      "reading": "とまる",
+      "part_of_speech": "godan-verb",
+      "meaning": "to stop",
+      "example_jp": "信号の前で車が止まった。",
+      "example_en": "The car stopped in front of the light."
+    },
+    {
+      "word": "上る",
+      "reading": "のぼる",
+      "part_of_speech": "godan-verb",
+      "meaning": "to go up; to climb",
+      "example_jp": "階段を上って二階へ行く。",
+      "example_en": "Go up the stairs to the second floor."
+    },
+    {
+      "word": "下りる",
+      "reading": "おりる",
+      "part_of_speech": "ichidan-verb",
+      "meaning": "to go down; to get off",
+      "example_jp": "階段を下りて外へ出た。",
+      "example_en": "I went down the stairs and went outside."
+    }
+  ]
+}

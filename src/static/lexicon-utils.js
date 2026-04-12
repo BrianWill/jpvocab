@@ -131,6 +131,17 @@ export function esc(s) {
   return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 }
 
+export function isImageFile(file) {
+  if (!file) return false;
+  const type = (file.type || '').toLowerCase();
+  if (type.startsWith('image/')) return true;
+  return /\.(png|jpe?g|gif|webp|bmp|svg|avif|heic|heif)$/i.test(file.name || '');
+}
+
+export function getFirstImageFile(files) {
+  return Array.from(files || []).find(isImageFile) || null;
+}
+
 export function timeAgo(dateStr) {
   const sec = Math.floor((Date.now() - new Date(dateStr)) / 1000);
   const min = Math.floor(sec / 60);

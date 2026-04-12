@@ -1,5 +1,5 @@
 import { openEditModal, closeAddResultModal, state as addEditState } from './lexicon-add-edit.js';
-import { timeAgo, getSortedWords as _getSortedWords, renderReading } from './lexicon-utils.js';
+import { timeAgo, getSortedWords as _getSortedWords, renderReading, getFirstImageFile } from './lexicon-utils.js';
 import { playTts, playWordAudio, playSentenceAudio, checkVoicevoxAvailable, checkFfmpegAvailable, refreshTooltip } from './common.js';
 
 const LEXICON_AUDIO_OPTIONS = { preferSynthesis: true, fallbackToBrowserTts: true };
@@ -34,6 +34,102 @@ export const state = {
   words: [],
 };
 
+let activeDropGroup = null;
+
+function clearDropTarget() {
+  if (!activeDropGroup?.isConnected) {
+    activeDropGroup = null;
+    return;
+  }
+  activeDropGroup.classList.remove('word-group--drop-target');
+  activeDropGroup = null;
+}
+
+function setDropTarget(group) {
+  if (activeDropGroup === group) return;
+  clearDropTarget();
+  activeDropGroup = group;
+  activeDropGroup?.classList.add('word-group--drop-target');
+}
+
+function clearFailedDropState(group) {
+  group?.classList.remove('word-group--upload-failed');
+}
+
+function getWordRowContext(group) {
+  const trMain = group?.querySelector('.row-main');
+  const wordId = parseInt(trMain?.dataset.wordId || '', 10);
+  const word = trMain?._word;
+  return { trMain, wordId, word };
+}
+
+async function uploadWordImage(group, file, actionDescription = 'set image') {
+  const { wordId, word } = getWordRowContext(group);
+  if (!group || !wordId || !word || group.classList.contains('word-group--uploading')) return false;
+
+  clearFailedDropState(group);
+  group.classList.add('word-group--uploading');
+
+  try {
+    const formData = new FormData();
+    formData.append('image', file);
+    const res = await fetch('/api/words/' + wordId + '/upload-image', {
+      method: 'POST',
+      body: formData,
+    });
+    if (!res.ok) throw new Error((await res.text()).trim() || res.statusText);
+    const data = await res.json();
+    updateWordImagePath(wordId, data.image_path);
+  } catch (err) {
+    if (group.isConnected) {
+      group.classList.remove('word-group--uploading');
+    }
+    console.error('Failed to ' + actionDescription + ' for "' + word.word + '":', err);
+    return false;
+  }
+  if (group.isConnected) group.classList.remove('word-group--uploading');
+  return true;
+}
+
+function isExternalFileDrag(event) {
+  return Array.from(event.dataTransfer?.types || []).includes('Files');
+}
+
+function onWordTableDragOver(event) {
+  if (!isExternalFileDrag(event)) return;
+  const group = event.target.closest('.word-group');
+  if (!group) {
+    clearDropTarget();
+    return;
+  }
+  event.preventDefault();
+  event.dataTransfer.dropEffect = 'copy';
+  clearFailedDropState(group);
+  setDropTarget(group);
+}
+
+function onWordTableDragLeave(event) {
+  if (!activeDropGroup) return;
+  const nextTarget = event.relatedTarget;
+  if (nextTarget && activeDropGroup.contains(nextTarget)) return;
+  if (event.target === activeDropGroup || !activeDropGroup.contains(event.target)) clearDropTarget();
+}
+
+async function onWordTableDrop(event) {
+  if (!isExternalFileDrag(event)) return;
+  event.preventDefault();
+  const group = event.target.closest('.word-group');
+  clearDropTarget();
+  if (!group) return;
+
+  const file = getFirstImageFile(event.dataTransfer?.files);
+  if (!file) {
+    console.error('Dropped item is not an image file.');
+    return;
+  }
+  await uploadWordImage(group, file, 'set image');
+}
+
 function updateWordCount() {
   const active = state.words.filter(w => w.correct < w.target).length;
   els.wordCount.textContent = state.words.length + ' words (' + active + ' active)';
@@ -62,13 +158,13 @@ function renderRow(w, trMain, trEx) {
     : '<td class="cell-img" rowspan="2"></td>';
   trMain.innerHTML =
     imgCell +
-    '<td><div class="cell-word" data-tooltip="Word">' + w.word +
+    '<td><div class="cell-word">' + w.word +
       '<button class="btn-edit" data-word-id="' + w.id + '" data-tooltip="Edit word">✎</button>' +
       '<button class="btn-delete" data-tooltip="Delete word">✕</button>' +
     '</div></td>' +
     '<td class="cell-reading" data-tooltip="Reading (Pronunciation)">' + renderReading(w.reading, w.word, w.kanjiData, w.pitchAccent) + '</td>' +
-    '<td><span class="type-badge" data-tooltip="' + (typeLabels[w.type] || w.type) + '">' + w.type + '</span></td>' +
-    '<td class="cell-meaning"><div class="cell-meaning-inner" data-tooltip="Meaning: ' + w.meaning + '">' + w.meaning + '</div></td>' +
+    '<td><span class="type-badge" data-tooltip="Part of Speech">' + w.type + '</span></td>' +
+    '<td class="cell-meaning"><div class="cell-meaning-inner" data-tooltip="Meaning">' + w.meaning + '</div></td>' +
     '<td class="cell-correct" data-tooltip="Times answered correctly">' + w.correct + '</td>' +
     '<td class="cell-incorrect" data-tooltip="Times answered incorrectly">' + w.incorrect + '</td>' +
     '<td class="cell-target" data-tooltip="Remaining drills to target">' +
@@ -161,6 +257,10 @@ async function init() {
 }
 
 init();
+
+els.wordTable.addEventListener('dragover', onWordTableDragOver);
+els.wordTable.addEventListener('dragleave', onWordTableDragLeave);
+els.wordTable.addEventListener('drop', onWordTableDrop);
 
 function onBackdropClick(event, closeFn) {
   if (event.target === event.currentTarget) closeFn();

@@ -1,4 +1,4 @@
-import { esc, detailItemPosSelect, detailItemKanjiReadings, detailItemInput, detailItemExInput } from './lexicon-utils.js';
+import { esc, detailItemPosSelect, detailItemKanjiReadings, detailItemInput, detailItemExInput, getFirstImageFile } from './lexicon-utils.js';
 
 const imagePlaceholderSvg =
   '<svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">' +
@@ -51,21 +51,18 @@ export function bindWordResultImageUpload({ containerEl, onUploadComplete }) {
 
   let activeRow = null;
 
-  containerEl.addEventListener('click', event => {
-    const imageEl = event.target.closest('.word-result-image');
+  function setDragState(row, active) {
+    const imageEl = row?.querySelector('.word-result-image');
     if (!imageEl) return;
-    const row = imageEl.closest('.word-result-row');
-    if (!row?._wordId || row._imageUploadBusy) return;
-    activeRow = row;
-    inputEl.value = '';
-    inputEl.click();
-  });
+    imageEl.classList.toggle('word-result-image--drop-target', active);
+  }
 
-  inputEl.addEventListener('change', async () => {
-    const row = activeRow;
-    activeRow = null;
-    const file = inputEl.files?.[0];
-    if (!row || !file) return;
+  function clearDragState(row) {
+    setDragState(row, false);
+  }
+
+  async function uploadImageForRow(row, file) {
+    if (!row || !file || !row._wordId || row._imageUploadBusy) return;
 
     row._imageUploadBusy = true;
     const prevImageHtml = row.querySelector('.word-result-image')?.outerHTML ?? null;
@@ -93,6 +90,59 @@ export function bindWordResultImageUpload({ containerEl, onUploadComplete }) {
     } finally {
       row._imageUploadBusy = false;
     }
+  }
+
+  containerEl.addEventListener('click', event => {
+    const imageEl = event.target.closest('.word-result-image');
+    if (!imageEl) return;
+    const row = imageEl.closest('.word-result-row');
+    if (!row?._wordId || row._imageUploadBusy) return;
+    activeRow = row;
+    inputEl.value = '';
+    inputEl.click();
+  });
+
+  inputEl.addEventListener('change', async () => {
+    const row = activeRow;
+    activeRow = null;
+    const file = inputEl.files?.[0];
+    if (!row || !file) return;
+    await uploadImageForRow(row, file);
+  });
+
+  containerEl.addEventListener('dragover', event => {
+    const imageEl = event.target.closest('.word-result-image');
+    if (!imageEl) return;
+    const row = imageEl.closest('.word-result-row');
+    if (!row?._wordId || row._imageUploadBusy) return;
+    if (!Array.from(event.dataTransfer?.types || []).includes('Files')) return;
+    event.preventDefault();
+    event.dataTransfer.dropEffect = 'copy';
+    setDragState(row, true);
+  });
+
+  containerEl.addEventListener('dragleave', event => {
+    const imageEl = event.target.closest('.word-result-image');
+    if (!imageEl) return;
+    const nextTarget = event.relatedTarget;
+    if (nextTarget && imageEl.contains(nextTarget)) return;
+    clearDragState(imageEl.closest('.word-result-row'));
+  });
+
+  containerEl.addEventListener('drop', async event => {
+    const imageEl = event.target.closest('.word-result-image');
+    if (!imageEl) return;
+    const row = imageEl.closest('.word-result-row');
+    clearDragState(row);
+    if (!row?._wordId || row._imageUploadBusy) return;
+    if (!Array.from(event.dataTransfer?.types || []).includes('Files')) return;
+    event.preventDefault();
+    const file = getFirstImageFile(event.dataTransfer?.files);
+    if (!file) {
+      setWordRowImage(row, '', 'failed');
+      return;
+    }
+    await uploadImageForRow(row, file);
   });
 }
 

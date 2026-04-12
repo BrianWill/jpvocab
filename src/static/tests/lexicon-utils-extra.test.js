@@ -6,7 +6,9 @@ import {
   detailItemKanjiReadings,
   detailItemPosSelect,
   getSortedWords,
+  getFirstImageFile,
   isKanji,
+  isImageFile,
   renderReading,
 } from '../lexicon-utils.js';
 
@@ -83,4 +85,26 @@ test('detailItemExInput: trims and escapes both example fields', () => {
   assert.match(html, /&lt;cat&gt;/);
   assert.doesNotMatch(html, /  猫です  /);
   assert.doesNotMatch(html, /  &lt;cat&gt;  /);
+});
+
+test('isImageFile: accepts MIME-typed image files', () => {
+  assert.equal(isImageFile({ name: 'cat.bin', type: 'image/png' }), true);
+});
+
+test('isImageFile: rejects non-image files', () => {
+  assert.equal(isImageFile({ name: 'notes.txt', type: 'text/plain' }), false);
+});
+
+test('getFirstImageFile: prefers the first valid image file', () => {
+  const files = [
+    { name: 'notes.txt', type: 'text/plain' },
+    { name: 'cat.jpeg', type: 'image/jpeg' },
+    { name: 'dog.png', type: 'image/png' },
+  ];
+  assert.deepEqual(getFirstImageFile(files), files[1]);
+});
+
+test('getFirstImageFile: returns null when there are no files or no image files', () => {
+  assert.equal(getFirstImageFile([]), null);
+  assert.equal(getFirstImageFile([{ name: 'notes.txt', type: 'text/plain' }]), null);
 });

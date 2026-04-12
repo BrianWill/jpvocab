@@ -6,7 +6,7 @@ This file is random notes of possible features and bug fixes.
     - especially when you answer don't know
     - or maybe just delay reveal and audio play of next word
     - or maybe show answer in main area, then user has to hit space to proceed
-
+    - should answering repeat playback of the word?
     - space could also be hotkey that advances to next word without answering the word
         - what happens to unanswered words when you get to next round?
 
@@ -14,7 +14,7 @@ This file is random notes of possible features and bug fixes.
 
 - on story import, can we detect if a sentence is Japanese or English (mixed cases default to Japanese)?
 
-- for repurposing English content, may best to translate on paragraph or multi-graph level, then split into sentences?
+- for repurposing English content, may be best to translate on paragraph or multi-graph level, then split into sentences?
     - would require translating back
 
 - video stories with subtitles
@@ -99,11 +99,6 @@ This file is random notes of possible features and bug fixes.
         - this could be just another chat bot
             seems wasteful maybe to use tokens, but the tokens should be pretty cheap
 
-
-- word images: 
-    - drag-and-drop support to change image
-    - option to crop image
-    - copy from clipboard support
 
 - wails
     - double scrollbar appears on start of wails

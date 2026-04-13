@@ -6,6 +6,12 @@ This file is random notes of possible features and bug fixes.
 - test linux
     linux icon for wails?
 
+- restructure the dictionary to have a word info field per word (rather than having to reconstruct all that)
+    - throw away all other data in the dict?
+
+- db decompress
+    - instead of decompressing on every run, just decompress once and leave the file?
+
 - when you answer word, maybe there should be brief reveal of answer before moving to next word?
     - especially when you answer don't know
     - or maybe just delay reveal and audio play of next word

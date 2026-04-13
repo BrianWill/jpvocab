@@ -133,7 +133,7 @@ func openDictDB() (*sql.DB, error) {
 			dictOpenErr = err
 			return
 		}
-		db.SetMaxOpenConns(1)
+		db.SetMaxOpenConns(4)
 		if err := db.Ping(); err != nil {
 			db.Close()
 			dictOpenErr = err

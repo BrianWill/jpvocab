@@ -2,7 +2,10 @@ package main
 
 import (
 	"database/sql"
+	"sync"
 	"testing"
+
+	"jpvocab/internal/dictlookup"
 
 	_ "modernc.org/sqlite"
 )
@@ -186,6 +189,46 @@ func TestLookupDictionaryWordInDB_InfersCompoundKanjiPrefixes(t *testing.T) {
 	}
 }
 
+func TestLookupDictionaryWordInDB_UsesFlattenedLookupTable(t *testing.T) {
+	db := testDictDB(t)
+
+	if _, err := db.Exec(`INSERT INTO jmdict_words (id) VALUES ('w1')`); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := db.Exec(`INSERT INTO jmdict_kanji (word_id, text, common) VALUES ('w1', '食べる', 1)`); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := db.Exec(`INSERT INTO jmdict_kana (word_id, text, common, applies_to_kanji) VALUES ('w1', 'たべる', 1, '["食べる"]')`); err != nil {
+		t.Fatal(err)
+	}
+	insertDictSense(t, db, "w1", `["Ichidan verb"]`, `["食べる"]`, `["たべる"]`, "to eat")
+	if _, err := db.Exec(`INSERT INTO kanjidic_readings (literal, type, value) VALUES ('食', 'ja_kun', 'た.べる')`); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := db.Exec(`INSERT INTO kanjidic_meanings (literal, value) VALUES ('食', 'eat')`); err != nil {
+		t.Fatal(err)
+	}
+
+	if err := dictlookup.RebuildLookupTable(db); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := db.Exec(`DROP TABLE jmdict_glosses`); err != nil {
+		t.Fatal(err)
+	}
+
+	dictLookupCache = sync.Map{}
+	info, err := lookupDictionaryWordInDB(db, "食べる")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if info == nil {
+		t.Fatal("expected dictionary result, got nil")
+	}
+	if info.Meaning != "to eat" {
+		t.Fatalf("meaning: got %q, want %q", info.Meaning, "to eat")
+	}
+}
+
 func TestCanonicalPartOfSpeechFromDict(t *testing.T) {
 	cases := []struct {
 		name string
@@ -193,11 +236,17 @@ func TestCanonicalPartOfSpeechFromDict(t *testing.T) {
 		want string
 	}{
 		{name: "godan", tags: []string{"Godan verb with `ku' ending"}, want: "godan-verb"},
+		{name: "godan code", tags: []string{"v5k"}, want: "godan-verb"},
 		{name: "ichidan", tags: []string{"Ichidan verb"}, want: "ichidan-verb"},
+		{name: "ichidan code", tags: []string{"v1"}, want: "ichidan-verb"},
 		{name: "i adjective", tags: []string{"I-adjective (keiyoushi)"}, want: "i-adjective"},
+		{name: "i adjective code", tags: []string{"adj-i"}, want: "i-adjective"},
 		{name: "na adjective", tags: []string{"Adjectival nouns or quasi-adjectives (keiyodoshi)"}, want: "na-adjective"},
+		{name: "na adjective code", tags: []string{"adj-na"}, want: "na-adjective"},
 		{name: "adverb", tags: []string{"Adverb (fukushi)"}, want: "adverb"},
+		{name: "adverb code", tags: []string{"adv"}, want: "adverb"},
 		{name: "noun", tags: []string{"Noun (common) (futsuumeishi)"}, want: "noun"},
+		{name: "noun code", tags: []string{"n"}, want: "noun"},
 		{name: "fallback other", tags: []string{"Expression (phrase, clause, etc.)"}, want: "other"},
 		{name: "empty", tags: nil, want: ""},
 	}

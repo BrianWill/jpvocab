@@ -43,6 +43,7 @@ func toBaseForm(word string) string {
 		// IPAdic feature layout: [POS, sub1, sub2, sub3, conjType, conjForm, baseForm, reading, pronunciation]
 		pos := f[0]
 		switch pos {
+		// filter out Particles, Auxiliary Verbs, Symbols, Fillers, Other
 		case "助詞", "助動詞", "記号", "フィラー", "その他":
 			continue
 		}
@@ -76,13 +77,13 @@ func extractContentWords(text string) []string {
 		case "名詞":
 			// Skip non-vocabulary noun sub-types
 			switch sub1 {
-			case "数",         // numerals (一, 二, 三…)
-				"接尾",         // noun suffixes (〜さ, 〜み…)
-				"非自立",       // non-independent nominals (こと, の used as nominalizers)
-				"代名詞",       // pronouns (これ, それ, あれ…)
-				"接続詞的",     // conjunctive nouns
+			case "数", // numerals (一, 二, 三…)
+				"接尾",     // noun suffixes (〜さ, 〜み…)
+				"非自立",    // non-independent nominals (こと, の used as nominalizers)
+				"代名詞",    // pronouns (これ, それ, あれ…)
+				"接続詞的",   // conjunctive nouns
 				"動詞非自立的", // non-independent verb-like nominals
-				"特殊":         // special types
+				"特殊":     // special types
 				// skip
 			default:
 				include = true

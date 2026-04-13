@@ -1,3 +1,6 @@
+import { escapeHtml } from './html-utils.js';
+import { formatRelativeTime } from './format-utils.js';
+
 // Returns true if ch is a CJK kanji character.
 export function isKanji(ch) {
   const cp = ch.codePointAt(0);
@@ -129,7 +132,7 @@ function _splitMorae(reading) {
 }
 
 export function esc(s) {
-  return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  return escapeHtml(s, { escapeQuotes: false });
 }
 
 export function isImageFile(file) {
@@ -144,18 +147,7 @@ export function getFirstImageFile(files) {
 }
 
 export function timeAgo(dateStr) {
-  const sec = Math.floor((Date.now() - new Date(dateStr)) / 1000);
-  const min = Math.floor(sec / 60);
-  if (min < 1) return 'just now';
-  if (min < 60)   return min + ' minute' + (min === 1 ? '' : 's') + ' ago';
-  const hr = Math.floor(min / 60);
-  if (hr < 24)    return hr + ' hour' + (hr === 1 ? '' : 's') + ' ago';
-  const day = Math.floor(hr / 24);
-  if (day < 30)   return day + ' day' + (day === 1 ? '' : 's') + ' ago';
-  const mo = Math.floor(day / 30);
-  if (mo < 12)    return mo + ' month' + (mo === 1 ? '' : 's') + ' ago';
-  const yr = Math.floor(day / 365);
-  return yr + ' year' + (yr === 1 ? '' : 's') + ' ago';
+  return formatRelativeTime(dateStr);
 }
 
 export const typeLabels = {

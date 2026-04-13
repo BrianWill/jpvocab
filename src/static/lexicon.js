@@ -1,6 +1,7 @@
 import { openEditModal, closeAddResultModal, state as addEditState } from './lexicon-add-edit.js';
 import { timeAgo, getSortedWords as _getSortedWords, renderReading, getFirstImageFile, esc } from './lexicon-utils.js';
 import { playTts, playWordAudio, playSentenceAudio, checkVoicevoxAvailable } from './common.js';
+import { bindBackdropClose, setModalOpen } from './modal-utils.js';
 import { computeVisibleRange, mergeWordPage, removeWordAtIndex } from './lexicon-virtual.js';
 
 const LEXICON_AUDIO_OPTIONS = { preferSynthesis: true, fallbackToBrowserTts: true };
@@ -380,10 +381,6 @@ els.wordTableBody.addEventListener('dragover', onWordTableDragOver);
 els.wordTableBody.addEventListener('dragleave', onWordTableDragLeave);
 els.wordTableBody.addEventListener('drop', onWordTableDrop);
 
-function onBackdropClick(event, closeFn) {
-  if (event.target === event.currentTarget) closeFn();
-}
-
 function openDeleteModal(event) {
   event.stopPropagation();
   state.deleteRowEl = event.target.closest('.word-group');
@@ -393,11 +390,11 @@ function openDeleteModal(event) {
   els.deleteError.classList.add('hidden');
   els.deleteConfirmBtn.disabled = false;
   els.deleteConfirmBtn.textContent = 'Delete';
-  els.deleteModalBackdrop.classList.remove('hidden');
+  setModalOpen(els.deleteModalBackdrop, true);
 }
 
 function closeDeleteModal() {
-  els.deleteModalBackdrop.classList.add('hidden');
+  setModalOpen(els.deleteModalBackdrop, false);
 }
 
 async function confirmDelete() {
@@ -491,11 +488,11 @@ els.sortBtns.forEach(btn => {
 
 els.headerAddBtn.addEventListener('click', openAddModal);
 
-els.addModalBackdrop.addEventListener('click', e => onBackdropClick(e, closeAddModal));
+bindBackdropClose(els.addModalBackdrop, closeAddModal);
 els.addModalCloseBtn.addEventListener('click', closeAddModal);
 els.addModalCancelBtn.addEventListener('click', closeAddModal);
 
-els.deleteModalBackdrop.addEventListener('click', e => onBackdropClick(e, closeDeleteModal));
+bindBackdropClose(els.deleteModalBackdrop, closeDeleteModal);
 els.deleteModalCloseBtn.addEventListener('click', closeDeleteModal);
 els.deleteModalCancelBtn.addEventListener('click', closeDeleteModal);
 els.deleteConfirmBtn.addEventListener('click', confirmDelete);
@@ -618,10 +615,10 @@ initWordListSidebar();
 function openAddModal() {
   els.addWordsInput.value = '';
   els.addModalStatus.textContent = '';
-  els.addModalBackdrop.classList.remove('hidden');
+  setModalOpen(els.addModalBackdrop, true);
   els.addWordsInput.focus();
 }
 
 export function closeAddModal() {
-  els.addModalBackdrop.classList.add('hidden');
+  setModalOpen(els.addModalBackdrop, false);
 }

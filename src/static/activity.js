@@ -1,5 +1,8 @@
 import { populateWordTooltip, positionAnchoredWordTooltip, playJapaneseText, WORD_TTS_RATE } from './common.js';
+import { escapeHtml } from './html-utils.js';
+import { pluralize } from './format-utils.js';
 import { renderReading } from './lexicon-utils.js';
+import { bindBackdropClose, bindEscapeClose, setModalOpen } from './modal-utils.js';
 import { addDays, computeAvgForActivity, dayLabel, formatDateFull, toDateStr, weekSunday } from './activity-utils.js';
 
 const els = {
@@ -212,7 +215,7 @@ function openDayModal(dateStr) {
   if (data.stories.length) els.dayModalBody.appendChild(buildStorySection(data.stories));
   if (data.tutorMessages.length) els.dayModalBody.appendChild(buildTutorSection(data.tutorMessages));
 
-  els.dayModalBackdrop.classList.remove('hidden');
+  setModalOpen(els.dayModalBackdrop, true);
 }
 
 function buildSection(title, words, type, note) {
@@ -258,7 +261,7 @@ function buildSection(title, words, type, note) {
 }
 
 function closeDayModal() {
-  els.dayModalBackdrop.classList.add('hidden');
+  setModalOpen(els.dayModalBackdrop, false);
 }
 
 function buildStorySection(stories) {
@@ -273,7 +276,7 @@ function buildStorySection(stories) {
   stories.forEach(entry => {
     const item = document.createElement('div');
     item.className = 'day-word-item';
-    item.innerHTML = '<span class="day-word-jp">' + escHtml(entry.title) + '</span>';
+    item.innerHTML = '<span class="day-word-jp">' + escapeHtml(entry.title) + '</span>';
     list.appendChild(item);
   });
   section.appendChild(list);
@@ -299,27 +302,16 @@ function buildTutorSection(messages) {
     const item = document.createElement('div');
     item.className = 'day-word-item';
     item.innerHTML =
-      '<span class="day-word-jp">' + escHtml(mode) + '</span>' +
-      '<span class="day-word-meaning">' + count + ' message' + (count === 1 ? '' : 's') + '</span>';
+      '<span class="day-word-jp">' + escapeHtml(mode) + '</span>' +
+      '<span class="day-word-meaning">' + pluralize(count, 'message') + '</span>';
     list.appendChild(item);
   });
   section.appendChild(list);
   return section;
 }
 
-function escHtml(s) {
-  return String(s ?? '')
-    .replaceAll('&', '&amp;')
-    .replaceAll('<', '&lt;')
-    .replaceAll('>', '&gt;')
-    .replaceAll('"', '&quot;');
-}
-
-document.addEventListener('keydown', e => { if (e.key === 'Escape') closeDayModal(); });
-
-els.dayModalBackdrop.addEventListener('click', e => {
-  if (e.target === els.dayModalBackdrop) closeDayModal();
-});
+bindEscapeClose(closeDayModal);
+bindBackdropClose(els.dayModalBackdrop, closeDayModal);
 els.dayModalCloseBtn.addEventListener('click', closeDayModal);
 
 // ── Tooltip ───────────────────────────────────────────────────────────────────

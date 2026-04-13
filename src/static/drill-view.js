@@ -1,4 +1,5 @@
 import { isTtsAutoplayEnabled, playWordAudio, positionAnchoredWordTooltip, renderWordTooltipKanji } from './common.js';
+import { formatRelativeTime } from './format-utils.js';
 import { renderReading } from './lexicon-utils.js';
 import { isSessionComplete } from './drill-state.js';
 
@@ -68,21 +69,10 @@ export function updateFilterHint(els, activeFilters, filteredCount, totalCount, 
   els.restartStartBtn.disabled = false;
 }
 
-function timeAgo(date) {
-  const sec = Math.floor((Date.now() - date) / 1000);
-  const min = Math.floor(sec / 60);
-  if (min < 1) return 'just now';
-  if (min < 60) return min + ' minute' + (min === 1 ? '' : 's') + ' ago';
-  const hr = Math.floor(min / 60);
-  if (hr < 24) return hr + ' hour' + (hr === 1 ? '' : 's') + ' ago';
-  const day = Math.floor(hr / 24);
-  return day + ' day' + (day === 1 ? '' : 's') + ' ago';
-}
-
 function renderStats(els, state) {
   els.statToGo.textContent = (state.poolSize - state.doneCount) + ' to go of ' + state.poolSize;
   els.sidebarTitle.textContent = 'Round ' + state.round;
-  els.headerBegan.textContent = 'began ' + timeAgo(state.drillStartedAt);
+  els.headerBegan.textContent = 'began ' + formatRelativeTime(state.drillStartedAt);
 
   const pct = state.poolSize > 0 ? (state.doneCount / state.poolSize) * 100 : 0;
   els.progressBar.style.width = pct + '%';

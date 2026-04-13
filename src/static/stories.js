@@ -6,6 +6,7 @@ import {
   sortStories,
   wordCountLabel,
 } from './stories-utils.js';
+import { bindBackdropClose, bindEscapeClose, setModalOpen } from './modal-utils.js';
 
 const els = {
   addConfirmBtn: document.getElementById('story-add-confirm'),
@@ -74,22 +75,18 @@ function renderError() {
   els.empty.textContent = 'Could not load stories right now.';
 }
 
-function onBackdropClick(event, closeFn) {
-  if (event.target === event.currentTarget) closeFn();
-}
-
 function openAddModal() {
   els.storyTitleInput.value = '';
   els.storyContentInput.value = '';
   els.addError.classList.add('hidden');
   els.addConfirmBtn.disabled = false;
   els.addConfirmBtn.textContent = 'Add';
-  els.addModalBackdrop.classList.remove('hidden');
+  setModalOpen(els.addModalBackdrop, true);
   els.storyTitleInput.focus();
 }
 
 function closeAddModal() {
-  els.addModalBackdrop.classList.add('hidden');
+  setModalOpen(els.addModalBackdrop, false);
 }
 
 async function confirmAdd() {
@@ -130,11 +127,11 @@ function openDeleteModal(event) {
   els.deleteError.classList.add('hidden');
   els.deleteConfirmBtn.disabled = false;
   els.deleteConfirmBtn.textContent = 'Delete';
-  els.deleteModalBackdrop.classList.remove('hidden');
+  setModalOpen(els.deleteModalBackdrop, true);
 }
 
 function closeDeleteModal() {
-  els.deleteModalBackdrop.classList.add('hidden');
+  setModalOpen(els.deleteModalBackdrop, false);
   state.deletingStoryId = null;
 }
 
@@ -159,20 +156,18 @@ async function confirmDelete() {
   }
 }
 
-document.addEventListener('keydown', event => {
-  if (event.key === 'Escape') {
-    closeAddModal();
-    closeDeleteModal();
-  }
+bindEscapeClose(() => {
+  closeAddModal();
+  closeDeleteModal();
 });
 
 els.headerAddBtn.addEventListener('click', openAddModal);
-els.addModalBackdrop.addEventListener('click', event => onBackdropClick(event, closeAddModal));
+bindBackdropClose(els.addModalBackdrop, closeAddModal);
 els.addModalCloseBtn.addEventListener('click', closeAddModal);
 els.addModalCancelBtn.addEventListener('click', closeAddModal);
 els.addConfirmBtn.addEventListener('click', confirmAdd);
 
-els.deleteModalBackdrop.addEventListener('click', event => onBackdropClick(event, closeDeleteModal));
+bindBackdropClose(els.deleteModalBackdrop, closeDeleteModal);
 els.deleteModalCloseBtn.addEventListener('click', closeDeleteModal);
 els.deleteModalCancelBtn.addEventListener('click', closeDeleteModal);
 els.deleteConfirmBtn.addEventListener('click', confirmDelete);

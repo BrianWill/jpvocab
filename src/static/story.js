@@ -1,4 +1,5 @@
 import { checkVoicevoxAvailable, PROVIDER_MODELS, refreshTooltip } from './common.js';
+import { pluralize } from './format-utils.js';
 import { esc, renderReading } from './lexicon-utils.js';
 import { initGenerateModals, openTranslationModal, populateTranslationModelSelect } from './story-generate.js';
 import { initStoryAddToLexicon, addWordsToLexicon } from './story-add-to-lexicon.js';
@@ -92,11 +93,6 @@ const state = {
   sentencePlayBtnTargetIdx: -1,
   sentencePlayHideTimer: null,
 };
-
-// ── Helpers ───────────────────────────────────────────────────────────────────
-function pluralize(count, singular, plural = singular + 's') {
-  return `${count} ${count === 1 ? singular : plural}`;
-}
 
 function storyMetaLabel(story) {
   return [

@@ -1,4 +1,5 @@
 import { PROVIDER_MODELS, playJapaneseText, WORD_TTS_RATE, checkVoicevoxAvailable, stopCurrentPlayback } from './common.js';
+import { escapeHtml } from './html-utils.js';
 
 // ── VoiceVox / TTS playback ────────────────────────────────────────────────
 
@@ -119,10 +120,6 @@ function populateModelSelect() {
 
 // ── Segment rendering ──────────────────────────────────────────────────────
 
-function escHtml(s) {
-  return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
-}
-
 // Parse the AI's single JSON object from a content string.
 // Falls back to {en: content} if parsing fails.
 function parseResponse(content) {
@@ -149,18 +146,18 @@ function responseToHTML(resp) {
   // 1. jp first; en is tooltip-only
   if (resp.jp) {
     if (resp.en) {
-      parts.push('<div class="tutor-seg tutor-seg--jp" data-tooltip="' + escHtml(resp.en) + '">' + escHtml(resp.jp) + '</div>');
+      parts.push('<div class="tutor-seg tutor-seg--jp" data-tooltip="' + escapeHtml(resp.en) + '">' + escapeHtml(resp.jp) + '</div>');
     } else {
-      parts.push('<div class="tutor-seg">' + escHtml(resp.jp) + '</div>');
+      parts.push('<div class="tutor-seg">' + escapeHtml(resp.jp) + '</div>');
     }
   } else if (resp.en) {
     // en only (no jp to attach tooltip to — display standalone)
-    parts.push('<div class="tutor-seg tutor-seg--en">' + escHtml(resp.en) + '</div>');
+    parts.push('<div class="tutor-seg tutor-seg--en">' + escapeHtml(resp.en) + '</div>');
   }
 
   // 2. question immediately after jp
   if (resp.question) {
-    parts.push('<div class="tutor-seg">' + escHtml(resp.question) + '</div>');
+    parts.push('<div class="tutor-seg">' + escapeHtml(resp.question) + '</div>');
   }
 
   // 3. any other unknown fields: generic labeled display
@@ -168,8 +165,8 @@ function responseToHTML(resp) {
     if (!KNOWN_RESP_FIELDS.has(key) && val) {
       parts.push(
         '<div class="tutor-seg tutor-seg--extra">' +
-          '<span class="tutor-seg-key">' + escHtml(key) + '</span>' +
-          escHtml(val) +
+          '<span class="tutor-seg-key">' + escapeHtml(key) + '</span>' +
+          escapeHtml(val) +
         '</div>'
       );
     }
@@ -177,7 +174,7 @@ function responseToHTML(resp) {
 
   // 4. note last
   if (resp.note) {
-    parts.push('<div class="tutor-seg tutor-seg--note">' + escHtml(resp.note) + '</div>');
+    parts.push('<div class="tutor-seg tutor-seg--note">' + escapeHtml(resp.note) + '</div>');
   }
 
   return parts.join('');
@@ -246,12 +243,12 @@ function highlightJson(raw) {
     (match, str, colon, kw, num, punct) => {
       if (str !== undefined) {
         const cls = colon !== undefined ? 'json-key' : 'json-str';
-        return '<span class="' + cls + '">' + escHtml(str) + '</span>' + (colon ? colon : '');
+        return '<span class="' + cls + '">' + escapeHtml(str) + '</span>' + (colon ? colon : '');
       }
       if (kw    !== undefined) return '<span class="json-kw">'    + kw    + '</span>';
       if (num   !== undefined) return '<span class="json-num">'   + num   + '</span>';
       if (punct !== undefined) return '<span class="json-punct">' + punct + '</span>';
-      return escHtml(match);
+      return escapeHtml(match);
     }
   );
 }
@@ -602,7 +599,7 @@ function populateModeSelect() {
 
   const builtIn = state.prompts.filter(p => !p.can_remove).sort((a, b) => a.label.localeCompare(b.label));
   const custom  = state.prompts.filter(p =>  p.can_remove).sort((a, b) => a.label.localeCompare(b.label));
-  const opt     = p => '<option value="' + p.id + '">' + escHtml(p.label) + '</option>';
+  const opt     = p => '<option value="' + p.id + '">' + escapeHtml(p.label) + '</option>';
 
   els.modeSelect.innerHTML = (builtIn.length && custom.length)
     ? '<optgroup label="Built-in">' + builtIn.map(opt).join('') + '</optgroup>' +

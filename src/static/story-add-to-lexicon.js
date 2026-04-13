@@ -1,6 +1,13 @@
 import { esc, typeLabels } from './lexicon-utils.js';
 import { playWordAudio, playSentenceAudio, playDing, PROVIDER_MODELS } from './common.js';
 import {
+  applyWordRowDetailsUpdate,
+  generateAllAutofillBatchRequest,
+  generateWordAutofillRequest,
+  generateWordImageRequest,
+  streamBatchAdd,
+} from './add-to-lexicon-modal-utils.js';
+import {
   adjustWordTarget,
   bindWordResultImageUpload,
   bindWordResultEditorEvents,
@@ -11,6 +18,13 @@ import {
   setWordRowImage,
   sortAddResultRows,
 } from './add-to-lexicon.js';
+import {
+  buildImageSourceOptionsHtml,
+  buildProviderOptionsHtml,
+  hasAvailableProvider,
+  imageSourceUnavailableTooltip,
+  providerUnavailableTooltip,
+} from './generation-ui-utils.js';
 
 const STORY_LEXICON_AUDIO_OPTIONS = { preferSynthesis: true, fallbackToBrowserTts: true };
 
@@ -217,42 +231,24 @@ export async function addWordsToLexicon(words) {
   initAddResultFooter();
   renderStatus();
 
-  const form = new FormData();
-  form.append('words', rawWords);
-  form.append('autofill', 'off');
-
-  const res = await fetch('/admin/words/batch', { method: 'POST', body: form });
-  if (!res.ok) throw new Error(await res.text());
-
-  const reader = res.body.getReader();
-  const dec = new TextDecoder();
-  let buf = '';
-  while (true) {
-    const { done, value } = await reader.read();
-    if (done) break;
-    buf += dec.decode(value, { stream: true });
-    const lines = buf.split('\n');
-    buf = lines.pop();
-    for (const line of lines) {
-      if (!line.startsWith('data: ')) continue;
-      const data = JSON.parse(line.slice(6));
-      if (data.updated) {
-        updateWordRowDetails(data);
-        continue;
-      }
-      if (data.done) {
-        sortAddResultRows(els.addResultBody);
-        renderStatus();
-        updateAddResultFooter();
-        return;
-      }
+  await streamBatchAdd({
+    rawWords,
+    onUpdated: data => {
+      updateWordRowDetails(data);
+    },
+    onDone: () => {
+      sortAddResultRows(els.addResultBody);
+      renderStatus();
+      updateAddResultFooter();
+    },
+    onRow: data => {
       if (data.added) state.addedWords.push(data.word);
       else state.skippedCount++;
       appendWordRow(data);
       renderStatus();
       updateAddResultFooter();
-    }
-  }
+    },
+  });
 }
 
 function appendWordRow(data) {
@@ -318,9 +314,18 @@ function appendWordRow(data) {
 }
 
 function updateWordRowDetails(data) {
-  const row = Array.from(els.addResultBody.children).find(el => el._resolvedWord === data.word);
-  if (!row) return;
-  row.querySelector('.word-result-details').outerHTML = buildWordResultDetails(data.word, data, typeLabels);
+  applyWordRowDetailsUpdate({
+    containerEl: els.addResultBody,
+    data,
+    buildWordResultDetails,
+    typeLabels,
+    getWordBtnLabel,
+    generateType: state.generateType,
+    onBusyResolved: () => {
+      state.pendingGenerates = Math.max(0, state.pendingGenerates - 1);
+      renderStatus();
+    },
+  });
 }
 
 function getGenerateType() {
@@ -332,88 +337,33 @@ function getImageSource() {
 }
 
 async function generateWordAutofill(event, wordId, word, btn) {
-  event.stopPropagation();
-  if (btn._generateAbort) {
-    btn._generateAbort.abort();
-    return;
-  }
-  if (btn.classList.contains('btn-generate--busy')) return;
-  const abort = new AbortController();
-  btn._generateAbort = abort;
-  btn.classList.add('btn-generate--busy', 'btn-generate--cancellable');
-  btn.innerHTML = '<span class="spinner"></span><span class="btn-gen-label">generating…</span><span class="btn-gen-cancel">cancel generation</span>';
-  state.pendingGenerates++;
-  renderStatus();
-  try {
-    const aiModel = els.addResultModelSelect?.value;
-    const res = await fetch('/api/words/' + wordId + '/autofill', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ word, ai_model: aiModel }),
-      signal: abort.signal,
-    });
-    if (!res.ok) throw new Error(await res.text());
-    updateWordRowDetails(await res.json());
-  } finally {
-    if (btn._generateAbort === abort) {
-      btn._generateAbort = null;
-      if (btn.classList.contains('btn-generate--busy')) {
-        btn.classList.remove('btn-generate--busy', 'btn-generate--cancellable');
-        btn.innerHTML = getWordBtnLabel(state.generateType);
-        state.pendingGenerates = Math.max(0, state.pendingGenerates - 1);
-        renderStatus();
-      }
-    }
-  }
+  await generateWordAutofillRequest({
+    event,
+    wordId,
+    word,
+    btn,
+    aiModel: els.addResultModelSelect?.value,
+    state,
+    renderStatus,
+    getWordBtnLabel,
+    generateType: state.generateType,
+    onWordUpdated: updateWordRowDetails,
+  });
 }
 
 async function generateWordImage(event, wordId, word, btn) {
-  event.stopPropagation();
-  if (btn._generateAbort) {
-    btn._generateAbort.abort();
-    return;
-  }
-  if (btn.classList.contains('btn-generate--busy')) return;
-  const abort = new AbortController();
-  btn._generateAbort = abort;
-  btn.classList.add('btn-generate--busy', 'btn-generate--cancellable');
-  btn.innerHTML = '<span class="spinner"></span><span class="btn-gen-label">finding image…</span><span class="btn-gen-cancel">cancel</span>';
-  state.pendingGenerates++;
-  renderStatus();
-  const row = btn.closest('.word-result-row');
-  const meaning = row.querySelector('.detail-meaning .detail-input')?.textContent.trim() || '';
-  const prevImageHtml = row?.querySelector('.word-result-image')?.outerHTML ?? null;
-  try {
-    setWordRowImage(row, '', 'loading');
-    const res = await fetch('/api/words/' + wordId + '/find-image', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        word,
-        meaning,
-        ai_model: els.addResultModelSelect?.value,
-        image_source: getImageSource(),
-      }),
-      signal: abort.signal,
-    });
-    if (!res.ok) throw new Error(await res.text());
-    const data = await res.json();
-    setWordRowImage(row, data.image_path, '', Date.now());
-  } catch (_) {
-    const imageEl = row?.querySelector('.word-result-image');
-    if (imageEl && prevImageHtml) imageEl.outerHTML = prevImageHtml;
-    else setWordRowImage(row, '', 'failed');
-  } finally {
-    if (btn._generateAbort === abort) {
-      btn._generateAbort = null;
-      if (btn.classList.contains('btn-generate--busy')) {
-        btn.classList.remove('btn-generate--busy', 'btn-generate--cancellable');
-        btn.innerHTML = getWordBtnLabel(state.generateType);
-        state.pendingGenerates = Math.max(0, state.pendingGenerates - 1);
-        renderStatus();
-      }
-    }
-  }
+  await generateWordImageRequest({
+    event,
+    wordId,
+    word,
+    btn,
+    aiModel: els.addResultModelSelect?.value,
+    imageSource: getImageSource(),
+    state,
+    renderStatus,
+    getWordBtnLabel,
+    generateType: state.generateType,
+  });
 }
 
 function removeWordRow(event, btn) {
@@ -456,44 +406,15 @@ function generateAll(includeAdded, includeSkipped) {
 }
 
 async function generateAllAutofillBatch(rows) {
-  const abort = new AbortController();
-  const aiModel = els.addResultModelSelect?.value;
-  const wordItems = rows.filter(Boolean).map(row => ({ id: row._wordId, word: row._resolvedWord, btn: row.querySelector('.btn-generate') }));
-  if (wordItems.length === 0) return;
-  for (const item of wordItems) {
-    item.btn._generateAbort = abort;
-    item.btn.classList.add('btn-generate--busy', 'btn-generate--cancellable');
-    item.btn.innerHTML = '<span class="spinner"></span><span class="btn-gen-label">generating…</span><span class="btn-gen-cancel">cancel generation</span>';
-    state.pendingGenerates++;
-  }
-  renderStatus();
-  try {
-    const res = await fetch('/api/words/autofill-batch', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ words: wordItems.map(item => ({ id: item.id, word: item.word })), ai_model: aiModel }),
-      signal: abort.signal,
-    });
-    if (!res.ok) throw new Error(await res.text());
-    const results = await res.json();
-    for (const item of wordItems) {
-      if (item.btn._generateAbort === abort) item.btn._generateAbort = null;
-    }
-    for (const result of results) {
-      if (!result.error) updateWordRowDetails(result);
-    }
-  } finally {
-    for (const item of wordItems) {
-      item.btn._generateAbort = null;
-      item.btn.classList.remove('btn-generate--cancellable');
-      if (item.btn.classList.contains('btn-generate--busy')) {
-        item.btn.classList.remove('btn-generate--busy');
-        item.btn.innerHTML = getWordBtnLabel(state.generateType);
-        state.pendingGenerates = Math.max(0, state.pendingGenerates - 1);
-      }
-    }
-    renderStatus();
-  }
+  await generateAllAutofillBatchRequest({
+    rows,
+    aiModel: els.addResultModelSelect?.value,
+    state,
+    renderStatus,
+    getWordBtnLabel,
+    generateType: state.generateType,
+    updateWordRowDetails,
+  });
 }
 
 function clearAutofillSpinners() {
@@ -532,7 +453,7 @@ function renderStatus() {
       skippedHtml +
     '</span>';
 
-  const hasProviders = !!(state.providers && PROVIDER_MODELS.some(p => state.providers[p.key]));
+  const hasProviders = hasAvailableProvider(state.providers, PROVIDER_MODELS);
   const genType = getGenerateType();
   const enabled = els.addResultBody.querySelectorAll('.word-result-row .btn-generate:not(.btn-generate--busy):not([disabled])').length > 0 &&
     hasProviders;
@@ -579,31 +500,11 @@ function renderStatus() {
 }
 
 function initAddResultFooter() {
-  const imageSources = [
-    { key: 'unsplash', label: 'Unsplash', envKey: 'UNSPLASH_ACCESS_KEY' },
-    { key: 'pexels', label: 'Pexels', envKey: 'PEXELS_API_KEY' },
-    { key: 'pixabay', label: 'Pixabay', envKey: 'PIXABAY_API_KEY' },
-    { key: 'bing', label: 'Bing', envKey: 'BING_API_KEY' },
-  ];
-  const hasProviders = !!(state.providers && PROVIDER_MODELS.some(p => state.providers[p.key]));
-  const progTip = state.providers
-    ? PROVIDER_MODELS.filter(p => !state.providers[p.key]).map(p => p.label + ': set ' + p.envKey + ' to enable').join('\n')
-    : null;
-  const optgroupsHtml = PROVIDER_MODELS.map(({ key, label, models }) => {
-    const avail = state.providers && state.providers[key];
-    const groupLabel = avail ? label : label + ' - no API key';
-    const options = models.map(([val, text]) => '<option value="' + val + '">' + text + '</option>').join('');
-    return '<optgroup label="' + groupLabel + '"' + (avail ? '' : ' disabled') + '>' + options + '</optgroup>';
-  }).join('');
-  const imageSourceOptions =
-    '<option value="wikimedia">Wikimedia</option>' +
-    imageSources.map(({ key, label }) => {
-      const avail = state.imageSources && state.imageSources[key];
-      return '<option value="' + key + '"' + (avail ? '' : ' disabled') + '>' + label + (avail ? '' : ' - no key') + '</option>';
-    }).join('');
-  const imageSourceTip = state.imageSources
-    ? imageSources.filter(source => !state.imageSources[source.key]).map(source => source.label + ': set ' + source.envKey + ' to enable').join('\n')
-    : null;
+  const hasProviders = hasAvailableProvider(state.providers, PROVIDER_MODELS);
+  const progTip = providerUnavailableTooltip(state.providers, PROVIDER_MODELS);
+  const optgroupsHtml = buildProviderOptionsHtml(state.providers, PROVIDER_MODELS);
+  const imageSourceOptions = buildImageSourceOptionsHtml(state.imageSources);
+  const imageSourceTip = imageSourceUnavailableTooltip(state.imageSources);
 
   els.addResultFooter.innerHTML =
     '<select id="story-add-result-model-select" class="add-result-model-select"' + (hasProviders ? '' : ' disabled') + '>' +

@@ -70,7 +70,8 @@ func migrate(db *sql.DB) {
 		`CREATE TABLE IF NOT EXISTS kanji (
 			id        INTEGER PRIMARY KEY AUTOINCREMENT,
 			character TEXT    NOT NULL UNIQUE,
-			meanings  TEXT    NOT NULL
+			meanings  TEXT    NOT NULL,
+			readings  TEXT    NOT NULL DEFAULT '[]'
 		)`,
 		`CREATE TABLE IF NOT EXISTS user_settings (
 			key   TEXT NOT NULL PRIMARY KEY,
@@ -123,6 +124,13 @@ func migrate(db *sql.DB) {
 			meta_json  TEXT     NOT NULL DEFAULT '{}',
 			created_at DATETIME NOT NULL DEFAULT (datetime('now'))
 		)`,
+		func(db *sql.DB) error {
+			_, err := db.Exec(`ALTER TABLE kanji ADD COLUMN readings TEXT NOT NULL DEFAULT '[]'`)
+			if err != nil && !strings.Contains(strings.ToLower(err.Error()), "duplicate column name") {
+				return err
+			}
+			return nil
+		},
 	}
 
 	var version int
@@ -468,7 +476,7 @@ func seedDB(db *sql.DB) {
 	}
 
 	// Insert kanji definitions, collecting character → id for word kanji_data.
-	kanjiStmt, err := tx.Prepare(`INSERT INTO kanji (character, meanings) VALUES (?, ?)`)
+	kanjiStmt, err := tx.Prepare(`INSERT INTO kanji (character, meanings, readings) VALUES (?, ?, '[]')`)
 	if err != nil {
 		log.Fatal("seed: prepare kanji:", err)
 	}

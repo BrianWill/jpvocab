@@ -1045,7 +1045,7 @@ func TestAPIGetWordInfo_ReturnsWordInfo(t *testing.T) {
 
 func TestAPIGetWordInfo_EnrichesKanjiData(t *testing.T) {
 	db := testDB(t)
-	kanjiID, err := upsertKanji(db, "猫", []string{"cat", "feline"})
+	kanjiID, err := upsertKanji(db, "猫", []string{"cat", "feline"}, []string{"ビョウ", "ねこ"})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1072,6 +1072,9 @@ func TestAPIGetWordInfo_EnrichesKanjiData(t *testing.T) {
 	}
 	if len(info.KanjiData[0].Meanings) != 2 {
 		t.Errorf("meanings: got %v, want two meanings", info.KanjiData[0].Meanings)
+	}
+	if len(info.KanjiData[0].Readings) != 2 {
+		t.Errorf("readings: got %v, want two readings", info.KanjiData[0].Readings)
 	}
 }
 
@@ -1106,7 +1109,7 @@ func TestAPIGetWordInfoBatch(t *testing.T) {
 
 func TestAPIGetWordInfoBatch_EnrichesKanjiData(t *testing.T) {
 	db := testDB(t)
-	kanjiID, err := upsertKanji(db, "猫", []string{"cat", "feline"})
+	kanjiID, err := upsertKanji(db, "猫", []string{"cat", "feline"}, []string{"ビョウ", "ねこ"})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1136,6 +1139,9 @@ func TestAPIGetWordInfoBatch_EnrichesKanjiData(t *testing.T) {
 	}
 	if len(cat.KanjiData[0].Meanings) != 2 {
 		t.Errorf("meanings: got %v, want two meanings", cat.KanjiData[0].Meanings)
+	}
+	if len(cat.KanjiData[0].Readings) != 2 {
+		t.Errorf("readings: got %v, want two readings", cat.KanjiData[0].Readings)
 	}
 }
 
@@ -1209,7 +1215,7 @@ func TestAPIGetKanji_EmptyReturnsArray(t *testing.T) {
 
 func TestAPIGetKanji_ReturnsInserted(t *testing.T) {
 	db := testDB(t)
-	upsertKanji(db, "木", []string{"tree", "wood"})
+	upsertKanji(db, "木", []string{"tree", "wood"}, []string{"モク", "き"})
 	req := httptest.NewRequest(http.MethodGet, "/api/kanji", nil)
 	rec := httptest.NewRecorder()
 
@@ -1230,6 +1236,9 @@ func TestAPIGetKanji_ReturnsInserted(t *testing.T) {
 	}
 	if len(kanji[0].Meanings) != 2 {
 		t.Errorf("meanings: got %v, want [tree wood]", kanji[0].Meanings)
+	}
+	if len(kanji[0].Readings) != 2 {
+		t.Errorf("readings: got %v, want [モク き]", kanji[0].Readings)
 	}
 }
 

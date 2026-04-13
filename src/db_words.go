@@ -36,6 +36,7 @@ type kanjiJSON struct {
 	ID        int64    `json:"id"`
 	Character string   `json:"character"`
 	Meanings  []string `json:"meanings"`
+	Readings  []string `json:"readings"`
 }
 
 // kanjiDataEntry is one element of a word's kanji_data JSON column.
@@ -47,6 +48,7 @@ type kanjiDataEntry struct {
 	Character string   `json:"character,omitempty"`
 	Reading   string   `json:"reading"`
 	Meanings  []string `json:"meanings,omitempty"`
+	Readings  []string `json:"readings,omitempty"`
 }
 
 // wordJSON is the JSON shape returned by the /api/words endpoint.
@@ -104,7 +106,7 @@ func enrichKanjiDataEntries(db *sql.DB, entries []kanjiDataEntry) error {
 	}
 
 	rows, err := db.Query(
-		`SELECT id, character, meanings FROM kanji WHERE id IN (`+strings.Join(placeholders, ",")+`)`,
+		`SELECT id, character, meanings, readings FROM kanji WHERE id IN (`+strings.Join(placeholders, ",")+`)`,
 		args...,
 	)
 	if err != nil {
@@ -117,13 +119,18 @@ func enrichKanjiDataEntries(db *sql.DB, entries []kanjiDataEntry) error {
 		var (
 			info         kanjiJSON
 			meaningsJSON string
+			readingsJSON string
 		)
-		if err := rows.Scan(&info.ID, &info.Character, &meaningsJSON); err != nil {
+		if err := rows.Scan(&info.ID, &info.Character, &meaningsJSON, &readingsJSON); err != nil {
 			return err
 		}
 		json.Unmarshal([]byte(meaningsJSON), &info.Meanings) //nolint:errcheck
+		json.Unmarshal([]byte(readingsJSON), &info.Readings) //nolint:errcheck
 		if info.Meanings == nil {
 			info.Meanings = []string{}
+		}
+		if info.Readings == nil {
+			info.Readings = []string{}
 		}
 		kanjiByID[info.ID] = info
 	}
@@ -135,6 +142,7 @@ func enrichKanjiDataEntries(db *sql.DB, entries []kanjiDataEntry) error {
 		if info, ok := kanjiByID[entries[i].ID]; ok {
 			entries[i].Character = info.Character
 			entries[i].Meanings = info.Meanings
+			entries[i].Readings = info.Readings
 		}
 	}
 	return nil
@@ -165,7 +173,7 @@ func enrichWordsKanjiDataEntries(db *sql.DB, words []wordJSON) error {
 	}
 
 	rows, err := db.Query(
-		`SELECT id, character, meanings FROM kanji WHERE id IN (`+strings.Join(placeholders, ",")+`)`,
+		`SELECT id, character, meanings, readings FROM kanji WHERE id IN (`+strings.Join(placeholders, ",")+`)`,
 		args...,
 	)
 	if err != nil {
@@ -178,13 +186,18 @@ func enrichWordsKanjiDataEntries(db *sql.DB, words []wordJSON) error {
 		var (
 			info         kanjiJSON
 			meaningsJSON string
+			readingsJSON string
 		)
-		if err := rows.Scan(&info.ID, &info.Character, &meaningsJSON); err != nil {
+		if err := rows.Scan(&info.ID, &info.Character, &meaningsJSON, &readingsJSON); err != nil {
 			return err
 		}
 		json.Unmarshal([]byte(meaningsJSON), &info.Meanings) //nolint:errcheck
+		json.Unmarshal([]byte(readingsJSON), &info.Readings) //nolint:errcheck
 		if info.Meanings == nil {
 			info.Meanings = []string{}
+		}
+		if info.Readings == nil {
+			info.Readings = []string{}
 		}
 		kanjiByID[info.ID] = info
 	}
@@ -197,6 +210,7 @@ func enrichWordsKanjiDataEntries(db *sql.DB, words []wordJSON) error {
 			if info, ok := kanjiByID[words[i].KanjiData[j].ID]; ok {
 				words[i].KanjiData[j].Character = info.Character
 				words[i].KanjiData[j].Meanings = info.Meanings
+				words[i].KanjiData[j].Readings = info.Readings
 			}
 		}
 	}
@@ -205,7 +219,7 @@ func enrichWordsKanjiDataEntries(db *sql.DB, words []wordJSON) error {
 
 func fillWordInfoFromDictionary(
 	word, reading, partOfSpeech, meaning, kanjiData string,
-	upsertKanjiFn func(character string, meanings []string) (int64, error),
+	upsertKanjiFn func(character string, meanings, readings []string) (int64, error),
 ) (string, string, string, string, error) {
 	if kanjiData == "" {
 		kanjiData = "[]"
@@ -234,7 +248,7 @@ func fillWordInfoFromDictionary(
 
 	kd := make([]kanjiDataEntry, 0, len(info.Kanji))
 	for _, k := range info.Kanji {
-		kID, err := upsertKanjiFn(k.Character, k.Meanings)
+		kID, err := upsertKanjiFn(k.Character, k.Meanings, k.Readings)
 		if err != nil {
 			return reading, partOfSpeech, meaning, kanjiData, err
 		}
@@ -243,6 +257,7 @@ func fillWordInfoFromDictionary(
 			Character: k.Character,
 			Reading:   k.Reading,
 			Meanings:  k.Meanings,
+			Readings:  k.Readings,
 		})
 	}
 	b, err := json.Marshal(kd)
@@ -266,7 +281,9 @@ func insertWord(db *sql.DB, word, reading, partOfSpeech, meaning, exampleJP, exa
 	var err error
 	reading, partOfSpeech, meaning, kanjiData, err = fillWordInfoFromDictionary(
 		word, reading, partOfSpeech, meaning, kanjiData,
-		func(character string, meanings []string) (int64, error) { return upsertKanji(db, character, meanings) },
+		func(character string, meanings, readings []string) (int64, error) {
+			return upsertKanji(db, character, meanings, readings)
+		},
 	)
 	if err != nil {
 		return err
@@ -293,7 +310,9 @@ func insertWordReturningID(db *sql.DB, word, reading, partOfSpeech, meaning, exa
 	var err error
 	reading, partOfSpeech, meaning, kanjiData, err = fillWordInfoFromDictionary(
 		word, reading, partOfSpeech, meaning, kanjiData,
-		func(character string, meanings []string) (int64, error) { return upsertKanji(db, character, meanings) },
+		func(character string, meanings, readings []string) (int64, error) {
+			return upsertKanji(db, character, meanings, readings)
+		},
 	)
 	if err != nil {
 		return 0, err
@@ -404,15 +423,19 @@ func updateWordImagePath(db *sql.DB, id int64, imagePath string) error {
 
 // upsertKanji inserts a kanji row or updates its meanings if it already exists,
 // then returns the row's ID.
-func upsertKanji(db *sql.DB, character string, meanings []string) (int64, error) {
+func upsertKanji(db *sql.DB, character string, meanings, readings []string) (int64, error) {
 	meaningsJSON, err := json.Marshal(meanings)
 	if err != nil {
 		return 0, err
 	}
+	readingsJSON, err := json.Marshal(readings)
+	if err != nil {
+		return 0, err
+	}
 	if _, err := db.Exec(`
-		INSERT INTO kanji (character, meanings) VALUES (?, ?)
-		ON CONFLICT(character) DO UPDATE SET meanings = excluded.meanings
-	`, character, string(meaningsJSON)); err != nil {
+		INSERT INTO kanji (character, meanings, readings) VALUES (?, ?, ?)
+		ON CONFLICT(character) DO UPDATE SET meanings = excluded.meanings, readings = excluded.readings
+	`, character, string(meaningsJSON), string(readingsJSON)); err != nil {
 		return 0, err
 	}
 	var id int64
@@ -420,15 +443,19 @@ func upsertKanji(db *sql.DB, character string, meanings []string) (int64, error)
 	return id, err
 }
 
-func upsertKanjiTx(tx *sql.Tx, character string, meanings []string) (int64, error) {
+func upsertKanjiTx(tx *sql.Tx, character string, meanings, readings []string) (int64, error) {
 	meaningsJSON, err := json.Marshal(meanings)
 	if err != nil {
 		return 0, err
 	}
+	readingsJSON, err := json.Marshal(readings)
+	if err != nil {
+		return 0, err
+	}
 	if _, err := tx.Exec(`
-		INSERT INTO kanji (character, meanings) VALUES (?, ?)
-		ON CONFLICT(character) DO UPDATE SET meanings = excluded.meanings
-	`, character, string(meaningsJSON)); err != nil {
+		INSERT INTO kanji (character, meanings, readings) VALUES (?, ?, ?)
+		ON CONFLICT(character) DO UPDATE SET meanings = excluded.meanings, readings = excluded.readings
+	`, character, string(meaningsJSON), string(readingsJSON)); err != nil {
 		return 0, err
 	}
 	var id int64
@@ -438,7 +465,7 @@ func upsertKanjiTx(tx *sql.Tx, character string, meanings []string) (int64, erro
 
 // listKanji returns all rows from the kanji table.
 func listKanji(db *sql.DB) ([]kanjiJSON, error) {
-	rows, err := db.Query(`SELECT id, character, meanings FROM kanji ORDER BY id`)
+	rows, err := db.Query(`SELECT id, character, meanings, readings FROM kanji ORDER BY id`)
 	if err != nil {
 		return nil, err
 	}
@@ -447,12 +474,17 @@ func listKanji(db *sql.DB) ([]kanjiJSON, error) {
 	for rows.Next() {
 		var k kanjiJSON
 		var meaningsStr string
-		if err := rows.Scan(&k.ID, &k.Character, &meaningsStr); err != nil {
+		var readingsStr string
+		if err := rows.Scan(&k.ID, &k.Character, &meaningsStr, &readingsStr); err != nil {
 			return nil, err
 		}
 		json.Unmarshal([]byte(meaningsStr), &k.Meanings)
+		json.Unmarshal([]byte(readingsStr), &k.Readings)
 		if k.Meanings == nil {
 			k.Meanings = []string{}
+		}
+		if k.Readings == nil {
+			k.Readings = []string{}
 		}
 		out = append(out, k)
 	}
@@ -748,8 +780,8 @@ func insertWordsIfAbsent(tx *sql.Tx, baseWords []string) ([]string, error) {
 		}
 		reading, partOfSpeech, meaning, kanjiData, err := fillWordInfoFromDictionary(
 			word, "", "", "", "",
-			func(character string, meanings []string) (int64, error) {
-				return upsertKanjiTx(tx, character, meanings)
+			func(character string, meanings, readings []string) (int64, error) {
+				return upsertKanjiTx(tx, character, meanings, readings)
 			},
 		)
 		if err != nil {

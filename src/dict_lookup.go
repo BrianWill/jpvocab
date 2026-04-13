@@ -48,6 +48,32 @@ func lookupDictionaryWordInDB(dictDB *sql.DB, word string) (*dictionaryWordInfo,
 	return info, nil
 }
 
+func lookupDictionaryKanji(character string) (*dictionaryKanjiInfo, error) {
+	if !dictIsReady() {
+		return nil, errors.New("dictionary not ready")
+	}
+	db, err := openDictDB()
+	if err != nil {
+		return nil, err
+	}
+	return lookupDictionaryKanjiInDB(db, strings.TrimSpace(character))
+}
+
+func lookupDictionaryKanjiInDB(dictDB *sql.DB, character string) (*dictionaryKanjiInfo, error) {
+	character = strings.TrimSpace(character)
+	if character == "" {
+		return nil, nil
+	}
+	info, _, err := dictlookup.LookupKanjiInDB(dictDB, character)
+	if err != nil {
+		return nil, err
+	}
+	if info.Character == "" {
+		return nil, nil
+	}
+	return &info, nil
+}
+
 func canonicalPartOfSpeechFromDict(tags []string) string {
 	lowered := make([]string, 0, len(tags))
 	for _, tag := range tags {

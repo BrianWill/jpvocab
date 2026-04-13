@@ -154,6 +154,96 @@ func RebuildLookupTable(dictDB *sql.DB) error {
 	if _, err := tx.Exec(`CREATE INDEX idx_dict_word_lookup_reading ON dict_word_lookup(reading)`); err != nil {
 		return err
 	}
+	if err := tx.Commit(); err != nil {
+		return err
+	}
+	return RebuildKanjiLookupTable(dictDB)
+}
+
+func RebuildKanjiLookupTable(dictDB *sql.DB) error {
+	if _, err := dictDB.Exec(`
+		DROP TABLE IF EXISTS dict_kanji_lookup;
+	`); err != nil {
+		return err
+	}
+	if _, err := dictDB.Exec(`
+		CREATE TABLE dict_kanji_lookup (
+			literal       TEXT PRIMARY KEY,
+			meanings_json TEXT NOT NULL,
+			readings_json TEXT NOT NULL
+		);
+	`); err != nil {
+		return err
+	}
+
+	rows, err := dictDB.Query(`
+		SELECT literal
+		FROM kanjidic
+		ORDER BY literal
+	`)
+	if err != nil {
+		return err
+	}
+	defer rows.Close()
+
+	var literals []string
+	for rows.Next() {
+		var literal string
+		if err := rows.Scan(&literal); err != nil {
+			return err
+		}
+		literals = append(literals, literal)
+	}
+	if err := rows.Err(); err != nil {
+		return err
+	}
+
+	type kanjiRow struct {
+		Literal      string
+		MeaningsJSON string
+		ReadingsJSON string
+	}
+	values := make([]kanjiRow, 0, len(literals))
+	for _, literal := range literals {
+		info, _, err := loadDictionaryKanjiInfoFromNormalizedTables(dictDB, literal)
+		if err != nil {
+			return err
+		}
+		meaningsJSON, err := json.Marshal(info.Meanings)
+		if err != nil {
+			return err
+		}
+		readingsJSON, err := json.Marshal(info.Readings)
+		if err != nil {
+			return err
+		}
+		values = append(values, kanjiRow{
+			Literal:      literal,
+			MeaningsJSON: string(meaningsJSON),
+			ReadingsJSON: string(readingsJSON),
+		})
+	}
+
+	tx, err := dictDB.Begin()
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+
+	stmt, err := tx.Prepare(`
+		INSERT INTO dict_kanji_lookup (literal, meanings_json, readings_json)
+		VALUES (?, ?, ?)
+	`)
+	if err != nil {
+		return err
+	}
+	defer stmt.Close()
+
+	for _, row := range values {
+		if _, err := stmt.Exec(row.Literal, row.MeaningsJSON, row.ReadingsJSON); err != nil {
+			return err
+		}
+	}
 	return tx.Commit()
 }
 
@@ -500,7 +590,7 @@ func lookupDictionaryKanjiInfo(dictDB *sql.DB, word, reading string) ([]KanjiInf
 	out := make([]KanjiInfo, 0, len(kanjiIdxs))
 	candidates := make([][]kanjiReadingCandidate, 0, len(kanjiIdxs))
 	for _, idx := range kanjiIdxs {
-		info, readingCandidates, err := loadDictionaryKanjiInfo(dictDB, string(wordRunes[idx]))
+		info, readingCandidates, err := LookupKanjiInDB(dictDB, string(wordRunes[idx]))
 		if err != nil {
 			return nil, err
 		}
@@ -516,7 +606,68 @@ func lookupDictionaryKanjiInfo(dictDB *sql.DB, word, reading string) ([]KanjiInf
 	return out, nil
 }
 
-func loadDictionaryKanjiInfo(dictDB *sql.DB, character string) (KanjiInfo, []kanjiReadingCandidate, error) {
+func LookupKanjiInDB(dictDB *sql.DB, character string) (KanjiInfo, []kanjiReadingCandidate, error) {
+	info, candidates, err := lookupKanjiFromTable(dictDB, character)
+	if err == nil || !isMissingKanjiLookupTableErr(err) {
+		return info, candidates, err
+	}
+	return loadDictionaryKanjiInfoFromNormalizedTables(dictDB, character)
+}
+
+func lookupKanjiFromTable(dictDB *sql.DB, character string) (KanjiInfo, []kanjiReadingCandidate, error) {
+	info := KanjiInfo{
+		Character: strings.TrimSpace(character),
+		Readings:  []string{},
+		Meanings:  []string{},
+	}
+	if info.Character == "" {
+		return info, nil, nil
+	}
+
+	var meaningsJSON string
+	var readingsJSON string
+	err := dictDB.QueryRow(`
+		SELECT meanings_json, readings_json
+		FROM dict_kanji_lookup
+		WHERE literal = ?
+	`, info.Character).Scan(&meaningsJSON, &readingsJSON)
+	if err == sql.ErrNoRows {
+		return info, nil, nil
+	}
+	if err != nil {
+		return info, nil, err
+	}
+	if err := json.Unmarshal([]byte(meaningsJSON), &info.Meanings); err != nil {
+		return info, nil, err
+	}
+	if err := json.Unmarshal([]byte(readingsJSON), &info.Readings); err != nil {
+		return info, nil, err
+	}
+	if info.Meanings == nil {
+		info.Meanings = []string{}
+	}
+	if info.Readings == nil {
+		info.Readings = []string{}
+	}
+	candidates := make([]kanjiReadingCandidate, 0, len(info.Readings))
+	for _, display := range info.Readings {
+		normalized := kanaToHiragana(display)
+		if normalized == "" {
+			continue
+		}
+		candidates = append(candidates, kanjiReadingCandidate{
+			Display:    display,
+			Normalized: normalized,
+		})
+	}
+	return info, candidates, nil
+}
+
+func isMissingKanjiLookupTableErr(err error) bool {
+	return err != nil && strings.Contains(strings.ToLower(err.Error()), "no such table: dict_kanji_lookup")
+}
+
+func loadDictionaryKanjiInfoFromNormalizedTables(dictDB *sql.DB, character string) (KanjiInfo, []kanjiReadingCandidate, error) {
 	info := KanjiInfo{
 		Character: character,
 		Readings:  []string{},

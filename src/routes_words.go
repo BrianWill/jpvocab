@@ -301,11 +301,21 @@ func handleWordImageUpdate(db *sql.DB, w http.ResponseWriter, r *http.Request, w
 func persistWordAutoFill(db *sql.DB, wordID int64, filled *wordAutoFill) ([]kanjiDataEntry, error) {
 	kd := make([]kanjiDataEntry, 0, len(filled.Kanji))
 	for _, k := range filled.Kanji {
-		kID, err := upsertKanji(db, k.Character, k.Meanings)
+		sharedReadings := []string{}
+		if info, err := lookupDictionaryKanji(k.Character); err == nil && info != nil {
+			sharedReadings = info.Readings
+		}
+		kID, err := upsertKanji(db, k.Character, k.Meanings, sharedReadings)
 		if err != nil {
 			continue
 		}
-		kd = append(kd, kanjiDataEntry{ID: kID, Character: k.Character, Reading: k.Reading, Meanings: k.Meanings})
+		kd = append(kd, kanjiDataEntry{
+			ID:        kID,
+			Character: k.Character,
+			Reading:   k.Reading,
+			Meanings:  k.Meanings,
+			Readings:  sharedReadings,
+		})
 	}
 	b, _ := json.Marshal(kd)
 	if err := updateWordFill(db, wordID, filled.Reading, filled.PitchAccent, filled.PartOfSpeech, filled.Meaning,

@@ -299,7 +299,7 @@ func TestContainsKatakana(t *testing.T) {
 
 func TestUpsertKanji_Insert(t *testing.T) {
 	db := testDB(t)
-	id, err := upsertKanji(db, "食", []string{"eat", "food"})
+	id, err := upsertKanji(db, "食", []string{"eat", "food"}, []string{"ショク", "た"})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -310,11 +310,11 @@ func TestUpsertKanji_Insert(t *testing.T) {
 
 func TestUpsertKanji_DuplicateReturnsSameID(t *testing.T) {
 	db := testDB(t)
-	id1, err := upsertKanji(db, "食", []string{"eat"})
+	id1, err := upsertKanji(db, "食", []string{"eat"}, []string{"ショク"})
 	if err != nil {
 		t.Fatal("first upsert:", err)
 	}
-	id2, err := upsertKanji(db, "食", []string{"eat", "food"})
+	id2, err := upsertKanji(db, "食", []string{"eat", "food"}, []string{"ショク", "た"})
 	if err != nil {
 		t.Fatal("second upsert:", err)
 	}
@@ -930,8 +930,8 @@ func TestListKanji_EmptySliceWhenNone(t *testing.T) {
 
 func TestListKanji_ReturnsInserted(t *testing.T) {
 	db := testDB(t)
-	upsertKanji(db, "日", []string{"sun", "day"})
-	upsertKanji(db, "本", []string{"origin", "book"})
+	upsertKanji(db, "日", []string{"sun", "day"}, []string{"ニチ", "ひ"})
+	upsertKanji(db, "本", []string{"origin", "book"}, []string{"ホン", "もと"})
 
 	kanji, err := listKanji(db)
 	if err != nil {
@@ -945,6 +945,9 @@ func TestListKanji_ReturnsInserted(t *testing.T) {
 	}
 	if len(kanji[0].Meanings) != 2 {
 		t.Errorf("日 meanings: got %v, want [sun day]", kanji[0].Meanings)
+	}
+	if len(kanji[0].Readings) != 2 {
+		t.Errorf("日 readings: got %v, want two readings", kanji[0].Readings)
 	}
 }
 
@@ -1004,7 +1007,7 @@ func TestListWords_OrderNewestFirst(t *testing.T) {
 
 func TestListWords_EnrichesKanjiDataFromKanjiTable(t *testing.T) {
 	db := testDB(t)
-	kanjiID, err := upsertKanji(db, "猫", []string{"cat", "feline"})
+	kanjiID, err := upsertKanji(db, "猫", []string{"cat", "feline"}, []string{"ビョウ", "ねこ"})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1027,6 +1030,9 @@ func TestListWords_EnrichesKanjiDataFromKanjiTable(t *testing.T) {
 	}
 	if len(words[0].KanjiData[0].Meanings) != 2 {
 		t.Errorf("meanings: got %v, want two meanings", words[0].KanjiData[0].Meanings)
+	}
+	if len(words[0].KanjiData[0].Readings) != 2 {
+		t.Errorf("readings: got %v, want two readings", words[0].KanjiData[0].Readings)
 	}
 }
 

@@ -93,7 +93,13 @@ ai_openai.go
 
 wordlists.go
 
-db_schema.go
+db_schema.go (fine)
+
+
+FRONTEND
+
+welcome page (fine)
+
 
 
 

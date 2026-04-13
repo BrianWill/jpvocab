@@ -2,46 +2,23 @@
 
 This file is random notes of possible features and bug fixes.
 
-- mac wails needs icon
-- test linux
-    linux icon for wails?
-
-- restructure the dictionary to have a word info field per word (rather than having to reconstruct all that)
-    - throw away all other data in the dict?
-
-- db decompress
-    - instead of decompressing on every run, just decompress once and leave the file?
-
-- when you answer word, maybe there should be brief reveal of answer before moving to next word?
-    - especially when you answer don't know
-    - or maybe just delay reveal and audio play of next word
-    - or maybe show answer in main area, then user has to hit space to proceed
-    - should answering repeat playback of the word?
-    - space could also be hotkey that advances to next word without answering the word
-        - what happens to unanswered words when you get to next round?
+- option to use seed data
+    add seed data if flag is set and if db did not already exist
+    default is to not add seed data
 
 - separate generation of example sentences from generation of word info
-
-- on story import, can we detect if a sentence is Japanese or English (mixed cases default to Japanese)?
 
 - for repurposing English content, may be best to translate on paragraph or multi-graph level, then split into sentences?
     - would require translating back
 
 - video stories with subtitles
     first import subtitle files
-
-    either local video file or embedded youtube 
+    - play local files
+        sync with subtitles
+    - embed youtube player?
 
 - add more common Japanese words to the word insertion blacklist?
     already filtering based on POS, but some common things sneak through, like　です
-
-- story       
-    - word info retrieval and presentation still needs work
-        filter out more noise words
-            have the server mark words that should show work info in the json
-                frontend should only request wordinfo for words that might have it
-                frontend shows nothing for words that cannot have word info
-                    if no translation, teh hover tooltip says "no translation available"
     
 
 - memory usage
@@ -54,21 +31,30 @@ This file is random notes of possible features and bug fixes.
 - activity page
     - stats on number of tracked words in lexicon vs untracked
 
+
 - mic STT : why only last a few seconds? what causes it to stop?
     - should user have to hit button to stop STT? also stop STT when user submits the message?
 
 - drill
-    - presentation of last word needs some reconsideration
-        ideally shouldn't move around
     - modal to edit current word
         - sidebar, edit button appears when hovered
 
-- stories:
-    - support English stories that get translated into Japanese (sentence by sentence)
+- story list
+    - add a date last viewed to optionally sort by?
+
+- story       
+    - word info retrieval and presentation still needs work
+        filter out more noise words
+            have the server mark words that should show work info in the json
+                frontend should only request wordinfo for words that might have it
+                frontend shows nothing for words that cannot have word info
+                    if no translation, teh hover tooltip says "no translation available"
+    - chunk translation should translate English sentences into Japanese
         in this setup, going for decent natural translations by chunk rather than by sentence?
-            if so, need to also translate back to English sentence-by-sentence to get gloss of each Japanese sentence
+            if so, need to also translate back to English sentence-by-sentence to get gloss of each Japanese sentence?
     
 - tutor:
+    - debug view should show system prompt / prompt
     - ability to hold separate chats at same time in separate tabs
         - wouldn't work in wails, but that's OK?
     - prompts should all be tolerant of swapping between English and Japanese. If English, don't provide critque of their language, but otherwise just procede whether they answer in Japanese or English.
@@ -115,21 +101,9 @@ This file is random notes of possible features and bug fixes.
     - on mac, cmd+-/+ does weird zoom behavior
         (but ctrl+scroll and ctrl+-/+ is fine)
     - custom scroll behaviour breaks page layout
-
-- lexicon
-    - slow to render with thousands of words
-        - slow to scroll? slow toload? slow to sort? 
-        - slow on client or backend?
-        - add pagination?
-        - add search for lexicon list?
-
-- story list
-    - add a date last viewed to optionally sort by?
-
-- video stories
-    - play local files
-        sync with subtitles
-    - embed youtube player?
+    - mac wails needs icon
+    - test linux
+        linux icon for wails?
 
 - story page
     - scan text to auto suggest noted words from the frequently occuring unique words in the story

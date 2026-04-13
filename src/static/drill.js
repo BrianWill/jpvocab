@@ -7,7 +7,6 @@ import {
   playWordAudio,
   playSentenceAudio,
   populateWordTooltip,
-  WORD_TTS_RATE,
 } from './common.js';
 import { getSynthAudio } from './synth-cache.js';
 import {

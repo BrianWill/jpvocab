@@ -123,16 +123,6 @@ function escHtml(s) {
   return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 }
 
-// Parse the AI's JSON segment array from a content string.
-// Falls back to [{en: content}] if parsing fails.
-function parseSegments(content) {
-  try {
-    const parsed = JSON.parse(content);
-    if (Array.isArray(parsed) && parsed.length > 0) return parsed;
-  } catch (_) {}
-  return [{ en: content }];
-}
-
 // Parse the AI's single JSON object from a content string.
 // Falls back to {en: content} if parsing fails.
 function parseResponse(content) {
@@ -623,14 +613,6 @@ function populateModeSelect() {
     els.modeSelect.value = saved;
   }
   updatePromptButtons();
-}
-
-async function loadPrompts() {
-  try {
-    const resp = await fetch('/api/tutor/prompts');
-    if (resp.ok) state.prompts = await resp.json();
-  } catch (_) {}
-  populateModeSelect();
 }
 
 function openAddPromptModal() {

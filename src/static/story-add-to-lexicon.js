@@ -390,6 +390,7 @@ function renderStatus() {
     mainButtonClass: 'story-split-btn-main',
     arrowButtonClass: 'story-split-btn-arrow',
   });
+  els.splitBtnMenu = actionEl.querySelector('.split-btn-menu');
   if (state.pendingGenerates > 0) {
     actionEl.querySelector('button')?.addEventListener('mousedown', cancelAllGenerates);
   } else {

@@ -527,6 +527,7 @@ function renderStatus() {
   });
   if (actionEl) {
     actionEl.innerHTML = actionHtml;
+    els.splitBtnMenu = actionEl.querySelector('.split-btn-menu');
     if (state.pendingGenerates > 0) {
       actionEl.querySelector('button').addEventListener('mousedown', cancelAllGenerates);
     } else {

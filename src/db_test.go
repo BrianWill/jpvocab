@@ -1629,48 +1629,6 @@ func TestUpdateWordImagePath_RoundTrip(t *testing.T) {
 	}
 }
 
-func TestGetWordAudioInfo_NotFound(t *testing.T) {
-	db := testDB(t)
-	word, exJp, err := getWordAudioInfo(db, 9999)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if word != "" || exJp != "" {
-		t.Errorf("expected empty strings for missing word, got word=%q exJp=%q", word, exJp)
-	}
-}
-
-func TestGetWordAudioInfo_ReturnsWordAndExample(t *testing.T) {
-	db := testDB(t)
-	insertWord(db, "猫", "ねこ", "noun", "cat", "猫がいる。", "There is a cat.", "", 1)
-	var id int64
-	db.QueryRow(`SELECT id FROM words WHERE base_word = '猫'`).Scan(&id)
-
-	word, exJp, err := getWordAudioInfo(db, id)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if word != "猫" {
-		t.Errorf("word: got %q, want 猫", word)
-	}
-	if exJp != "猫がいる。" {
-		t.Errorf("exJp: got %q, want 猫がいる。", exJp)
-	}
-}
-
-func TestGetWordAudioInfo_NullExampleDefaultsToEmpty(t *testing.T) {
-	db := testDB(t)
-	id := insertTestWord(t, db, "犬", 1) // insertTestWord uses empty strings for all optional fields
-
-	_, exJp, err := getWordAudioInfo(db, id)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if exJp != "" {
-		t.Errorf("exJp: got %q, want empty string when example_jp is NULL", exJp)
-	}
-}
-
 func TestGetActivityCalendar_HistoryStartIsContainingSunday(t *testing.T) {
 	db := testDB(t)
 	// 2024-01-17 is a Wednesday; the containing Sunday is 2024-01-14.

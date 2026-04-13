@@ -1,10 +1,5 @@
 import { getSynthAudio } from './synth-cache.js';
 
-// ── VoiceVox bulk audio generation state ─────────────────────────────────
-let _vvGenController = null; // non-null while generation is in progress
-let _vvGenPending = 0;
-let _vvGenTotal = 0;
-
 // ── Settings modal step helpers ────────────────────────────────────────────
 const STEPPER_INTERVAL = 230;
 
@@ -146,10 +141,6 @@ function injectSettingsModal() {
           <div class="restart-field">
             <label></label>
             <div style="display:flex;gap:0.5rem;align-items:center">
-              <div id="settings-vv-gen-all-wrap">
-                <button type="button" id="settings-vv-gen-all" class="btn-save" disabled>Generate audio for all words</button>
-                <button type="button" id="settings-vv-gen-cancel" class="btn-danger hidden" style="white-space:nowrap"><span class="spinner"></span><span id="settings-vv-gen-cancel-label" style="margin-left:0.4rem"></span></button>
-              </div>
               <button type="button" id="settings-vv-preview" class="btn-cancel" style="white-space:nowrap">▶ Preview</button>
             </div>
           </div>
@@ -281,27 +272,12 @@ function getDefaultVoicevoxSpeakerId() {
   return null;
 }
 
-let _ffmpegAvailableCache = null;
-// Checks once whether ffmpeg is available on the server. Returns a boolean.
-export async function checkFfmpegAvailable() {
-  if (_ffmpegAvailableCache !== null) return _ffmpegAvailableCache;
-  try {
-    const resp = await fetch('/api/ffmpeg/available');
-    const data = await resp.json();
-    _ffmpegAvailableCache = data.available === true;
-  } catch (_) {
-    _ffmpegAvailableCache = false;
-  }
-  return _ffmpegAvailableCache;
-}
-
 async function populateVoicevoxSpeakers() {
   const sel = document.getElementById('settings-vv-speaker');
   if (!sel) return;
   await checkVoicevoxAvailable();
   const available = _voicevoxSpeakers.length > 0;
   document.getElementById('settings-vv-preview')?.toggleAttribute('disabled', !available);
-  document.getElementById('settings-vv-gen-all')?.toggleAttribute('disabled', !available);
   if (!available) {
     sel.innerHTML = '<option value="1">VoiceVox unavailable</option>';
     return;
@@ -470,13 +446,7 @@ export async function playWordAudio(word, rate = 1, options = {}) {
       return;
     }
   }
-  _playbackRequestId++;
-  stopCurrentPlayback();
-  const audio = new Audio(`/static/audio/${encodeURIComponent(word.word)}.ogg`);
-  audio.playbackRate = rate;
-  audio.addEventListener('error', () => playTts(word.word, 'ja-JP', WORD_TTS_RATE * rate));
-  _currentAudio = audio;
-  audio.play().catch(() => {});
+  await playFallbackTts(word.word, 'ja-JP', WORD_TTS_RATE * rate);
 }
 
 // playSentenceAudio plays a sentence with optional on-demand VoiceVox synthesis.
@@ -489,56 +459,9 @@ export async function playSentenceAudio(word, rate = 1, options = {}) {
       return;
     }
   }
-  _playbackRequestId++;
-  stopCurrentPlayback();
-  const audio = new Audio(`/static/audio/${encodeURIComponent(word.word)}_sentence.ogg`);
-  audio.playbackRate = rate;
-  audio.addEventListener('error', () => { if (word.exampleJp) playTts(word.exampleJp, 'ja-JP', 0.75 * rate); });
-  _currentAudio = audio;
-  audio.play().catch(() => {});
-}
-
-function updateGenAllBtn() {
-  const genBtn = document.getElementById('settings-vv-gen-all');
-  const cancelBtn = document.getElementById('settings-vv-gen-cancel');
-  if (!genBtn || !cancelBtn) return;
-  const generating = !!_vvGenController;
-  genBtn.classList.toggle('hidden', generating);
-  cancelBtn.classList.toggle('hidden', !generating);
-  if (generating) {
-    document.getElementById('settings-vv-gen-cancel-label').textContent =
-      'Cancel generation (' + _vvGenPending + ' remaining)';
+  if (word.exampleJp) {
+    await playFallbackTts(word.exampleJp, 'ja-JP', 0.75 * rate);
   }
-}
-
-async function runGenerateAllAudio() {
-  if (_vvGenController) return;
-  const words = await fetch('/api/words').then(r => r.json());
-  if (!words.length) return;
-  _vvGenController = new AbortController();
-  _vvGenTotal = words.length;
-  _vvGenPending = words.length;
-  updateGenAllBtn();
-  for (const w of words) {
-    if (_vvGenController.signal.aborted) break;
-    try {
-      const vv = getVoicevoxSettings();
-      await fetch('/api/words/' + w.id + '/generate-audio', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ word: w.word, speaker: vv.speaker, speedScale: vv.speedScale, intonationScale: vv.intonationScale }),
-        signal: _vvGenController.signal,
-      });
-    } catch (_) {
-      if (_vvGenController?.signal.aborted) break;
-    }
-    _vvGenPending = Math.max(0, _vvGenPending - 1);
-    updateGenAllBtn();
-  }
-  _vvGenController = null;
-  _vvGenPending = 0;
-  _vvGenTotal = 0;
-  updateGenAllBtn();
 }
 
 function initializeSettings() {
@@ -553,7 +476,6 @@ function initializeSettings() {
   const isProbablyWailsDesktop = !!window.chrome?.webview;
   if (devToolsSection && isProbablyWailsDesktop) devToolsSection.classList.remove('hidden');
   const closeModal = () => {
-    if (_vvGenController) return;
     settingsModal.classList.add('hidden');
   };
 
@@ -707,9 +629,6 @@ function initializeSettings() {
     setDirty();
   });
   document.getElementById('settings-vv-speaker')?.addEventListener('change', setDirty);
-
-  document.getElementById('settings-vv-gen-all')?.addEventListener('click', runGenerateAllAudio);
-  document.getElementById('settings-vv-gen-cancel')?.addEventListener('click', () => _vvGenController?.abort());
 
   document.getElementById('settings-vv-preview')?.addEventListener('click', async () => {
     const btn = document.getElementById('settings-vv-preview');

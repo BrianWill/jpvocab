@@ -1,6 +1,6 @@
 import { openEditModal, closeAddResultModal, state as addEditState } from './lexicon-add-edit.js';
 import { timeAgo, getSortedWords as _getSortedWords, renderReading, getFirstImageFile, esc } from './lexicon-utils.js';
-import { playTts, playWordAudio, playSentenceAudio, checkVoicevoxAvailable, checkFfmpegAvailable } from './common.js';
+import { playTts, playWordAudio, playSentenceAudio, checkVoicevoxAvailable } from './common.js';
 import { computeVisibleRange, mergeWordPage, removeWordAtIndex } from './lexicon-virtual.js';
 
 const LEXICON_AUDIO_OPTIONS = { preferSynthesis: true, fallbackToBrowserTts: true };
@@ -33,7 +33,6 @@ els.deleteModalCancelBtn = els.deleteModalBackdrop.querySelector('.btn-cancel');
 export const state = {
   activeWords: 0,
   deleteRowEl: null,
-  ffmpegAvailable: false,
   imageSources: null,
   loadedPages: new Set(),
   pendingPages: new Map(),
@@ -367,10 +366,7 @@ async function init() {
   const providers = await fetch('/api/providers').then(r => r.json());
   state.providers = providers.ai;
   state.imageSources = providers.image_sources;
-  [state.voicevoxAvailable, state.ffmpegAvailable] = await Promise.all([
-    checkVoicevoxAvailable(),
-    checkFfmpegAvailable(),
-  ]);
+  state.voicevoxAvailable = await checkVoicevoxAvailable();
   await resetAndReload();
 }
 

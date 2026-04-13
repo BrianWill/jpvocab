@@ -330,7 +330,8 @@ func insertWordReturningID(db *sql.DB, word, reading, partOfSpeech, meaning, exa
 }
 
 // updateWordFill sets the AI-generated fields for an existing word by ID.
-func updateWordFill(db *sql.DB, id int64, reading string, pitchAccent *int, partOfSpeech, meaning, exampleJP, exampleEN, kanjiData string) error {
+func updateWordFill(db *sql.DB, id int64, reading string, pitchAccent *int, partOfSpeech, meaning,
+	exampleJP, exampleEN, kanjiData string) error {
 	if kanjiData == "" {
 		kanjiData = "[]"
 	}
@@ -665,17 +666,6 @@ func deleteWordsByName(db *sql.DB, words []string) error {
 	}
 	_, err := db.Exec("DELETE FROM words WHERE base_word IN ("+placeholders+")", args...)
 	return err
-}
-
-func getWordAudioInfo(db *sql.DB, id int64) (string, string, error) {
-	var word string
-	var exampleJP string
-	err := db.QueryRow("SELECT base_word, COALESCE(example_jp,'') FROM words WHERE id = ?", id).
-		Scan(&word, &exampleJP)
-	if err == sql.ErrNoRows {
-		return "", "", nil
-	}
-	return word, exampleJP, err
 }
 
 // containsKatakana reports whether s contains any character in the main

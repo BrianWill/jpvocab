@@ -4,10 +4,7 @@ import (
 	"database/sql"
 	"encoding/json"
 	"errors"
-	"os"
-	"path/filepath"
 	"regexp"
-	"strconv"
 	"strings"
 	"time"
 	"unicode/utf8"
@@ -246,12 +243,6 @@ func deleteStory(db *sql.DB, id int64) error {
 	if err := tx.Commit(); err != nil {
 		return err
 	}
-
-	audioDir := filepath.Join("static", "audio", "story_"+strconv.FormatInt(id, 10))
-	if err := os.RemoveAll(audioDir); err != nil && !errors.Is(err, os.ErrNotExist) {
-		return err
-	}
-
 	return nil
 }
 

@@ -324,7 +324,7 @@ export function stopPlayback() {
 }
 
 // ── Synth-mode init ───────────────────────────────────────────────────────────
-// Called when VoiceVox is confirmed available. Overrides pre-generated file mode.
+// Called when VoiceVox is confirmed available. Enables on-demand synth playback.
 export function initSynthPlayback() {
   _state.synthMode = true;
   _state.audioMode = false;

@@ -119,7 +119,8 @@ func apiUpdateWord(db *sql.DB) http.HandlerFunc {
 			}
 		}
 		kanjiDataJSON, _ := json.Marshal(body.KanjiData)
-		if err := updateWord(db, id, body.Reading, body.Type, body.Meaning, body.ExampleJp, body.ExampleEn, string(kanjiDataJSON), body.Target); err != nil {
+		if err := updateWord(db, id, body.Reading, body.Type, body.Meaning, body.ExampleJp,
+			body.ExampleEn, string(kanjiDataJSON), body.Target); err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
@@ -171,7 +172,8 @@ func apiGetWordInfo(db *sql.DB) http.HandlerFunc {
 		var partOfSpeech string
 		var kanjiDataStr string
 		err := db.QueryRow(
-			`SELECT id, COALESCE(meaning,''), COALESCE(reading,''), COALESCE(part_of_speech,''), pitch_accent, COALESCE(kanji_data,'[]'), tracked, drill_count, drill_target
+			`SELECT id, COALESCE(meaning,''), COALESCE(reading,''), COALESCE(part_of_speech,''), pitch_accent, 
+			 COALESCE(kanji_data,'[]'), tracked, drill_count, drill_target
 			 FROM words WHERE base_word = ?`, base,
 		).Scan(&info.WordID, &info.English, &info.Reading, &partOfSpeech, &info.PitchAccent, &kanjiDataStr, &info.Tracked, &info.DrillCount, &info.DrillTarget)
 		if err == sql.ErrNoRows {
@@ -306,7 +308,8 @@ func persistWordAutoFill(db *sql.DB, wordID int64, filled *wordAutoFill) ([]kanj
 		kd = append(kd, kanjiDataEntry{ID: kID, Character: k.Character, Reading: k.Reading, Meanings: k.Meanings})
 	}
 	b, _ := json.Marshal(kd)
-	if err := updateWordFill(db, wordID, filled.Reading, filled.PitchAccent, filled.PartOfSpeech, filled.Meaning, filled.ExampleJP, filled.ExampleEN, string(b)); err != nil {
+	if err := updateWordFill(db, wordID, filled.Reading, filled.PitchAccent, filled.PartOfSpeech, filled.Meaning,
+		filled.ExampleJP, filled.ExampleEN, string(b)); err != nil {
 		return nil, err
 	}
 	return kd, nil
@@ -699,21 +702,6 @@ func synthesizeVoicevox(ctx context.Context, text string, p voicevoxParams) ([]b
 	return io.ReadAll(resp2.Body)
 }
 
-func synthesizeVoicevoxToFile(ctx context.Context, text string, p voicevoxParams, destPath string) error {
-	wav, err := synthesizeVoicevox(ctx, text, p)
-	if err != nil {
-		return err
-	}
-	ogg, err := wavToOgg(ctx, wav)
-	if err != nil {
-		return err
-	}
-	if err := os.MkdirAll(filepath.Dir(destPath), 0o755); err != nil {
-		return err
-	}
-	return os.WriteFile(destPath, ogg, 0o644)
-}
-
 // apiSynthesizeSentence synthesizes a single sentence via VoiceVox and returns OGG audio.
 // The full sentence text is submitted as-is (no clause splitting at this stage).
 func apiSynthesizeSentence() http.HandlerFunc {
@@ -765,13 +753,6 @@ func apiSynthesizeSentence() http.HandlerFunc {
 	}
 }
 
-func apiFfmpegAvailable() http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		_, err := exec.LookPath("ffmpeg")
-		writeJSON(w, map[string]bool{"available": err == nil})
-	}
-}
-
 func apiVoicevoxSpeakers() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		req, err := http.NewRequestWithContext(r.Context(), http.MethodGet, voicevoxBase+"/speakers", nil)
@@ -819,57 +800,6 @@ func apiVoicevoxPreview() http.HandlerFunc {
 		}
 		w.Header().Set("Content-Type", "audio/wav")
 		w.Write(wav)
-	}
-}
-
-func apiGenerateWordAudio(db *sql.DB) http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		id, ok := parseRouteInt64(w, r, "id", "invalid id")
-		if !ok {
-			return
-		}
-		p := defaultVoicevoxParams()
-		// Body is optional — frontend may omit it for default settings.
-		var body struct {
-			Speaker         *int     `json:"speaker"`
-			SpeedScale      *float64 `json:"speedScale"`
-			IntonationScale *float64 `json:"intonationScale"`
-		}
-		if err := json.NewDecoder(r.Body).Decode(&body); err == nil {
-			if body.Speaker != nil {
-				p.Speaker = *body.Speaker
-			}
-			if body.SpeedScale != nil {
-				p.SpeedScale = *body.SpeedScale
-			}
-			if body.IntonationScale != nil {
-				p.IntonationScale = *body.IntonationScale
-			}
-		}
-
-		word, exampleJP, err := getWordAudioInfo(db, id)
-		if err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
-			return
-		}
-		if word == "" {
-			http.Error(w, "word not found", http.StatusNotFound)
-			return
-		}
-
-		audioDir := filepath.Join("static", "audio")
-		wordPath := filepath.Join(audioDir, word+".ogg")
-		sentencePath := filepath.Join(audioDir, word+"_sentence.ogg")
-
-		if err := synthesizeVoicevoxToFile(r.Context(), word, p, wordPath); err != nil {
-			http.Error(w, "voicevox error: "+err.Error(), http.StatusBadGateway)
-			return
-		}
-
-		if exampleJP != "" {
-			_ = synthesizeVoicevoxToFile(r.Context(), exampleJP, p, sentencePath)
-		}
-		w.WriteHeader(http.StatusNoContent)
 	}
 }
 

@@ -86,12 +86,10 @@ func serverInit(db *sql.DB) {
 	r.Post("/api/words/{id}/find-image", apiFindWordImage(db))
 	r.Post("/api/words/autofill-batch", apiAutofillWordsBatch(db))
 	r.Post("/api/words/{id}/autofill", apiAutofillWord(db))
-	r.Post("/api/words/{id}/generate-audio", apiGenerateWordAudio(db))
 
 	r.Get("/api/voicevox/speakers", apiVoicevoxSpeakers())
 	r.Post("/api/voicevox/preview", apiVoicevoxPreview())
 	r.Post("/api/voicevox/synthesize", apiSynthesizeSentence())
-	r.Get("/api/ffmpeg/available", apiFfmpegAvailable())
 
 	r.Get("/api/kanji", apiGetKanji(db))
 	r.Get("/api/drill/sessions/current", apiGetCurrentDrillSession(db))

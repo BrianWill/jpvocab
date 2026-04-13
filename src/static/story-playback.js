@@ -1,14 +1,11 @@
 import { getTtsVoice, getVoicevoxSettings } from './common.js';
 import { getSynthAudio } from './synth-cache.js';
+import { clampPlaybackRate, speechPlaybackLangForStory, splitByClause } from './story-playback-utils.js';
 
 let _els, _state, _storyId;
 
 // ── Speed stepper ─────────────────────────────────────────────────────────────
 const SPEED_STEPPER_INTERVAL = 230;
-
-function clampPlaybackRate(rate) {
-  return Math.min(2.0, Math.max(0.5, parseFloat(rate.toFixed(2))));
-}
 
 async function restartPlaybackForRateChange() {
   if (_state.synthMode) {
@@ -168,14 +165,6 @@ function highlightAt(charIndex) {
   if (sIdx !== _state.activeIdx) setActiveIdx(sIdx);
 }
 
-function speechPlaybackLang() {
-  const sentences = _state.story?.sentences || [];
-  if (sentences.length > 0 && sentences.every(sentence => sentence.orig_lang === 'en')) {
-    return 'en-US';
-  }
-  return 'ja-JP';
-}
-
 function stopSpeechPlayback() {
   _state.resumeOffset = _state.lastWordAbsPos;
   if (_state.currentUtterance) {
@@ -193,7 +182,7 @@ async function startSpeechPlayback() {
     await new Promise(resolve => speechSynthesis.addEventListener('voiceschanged', resolve, { once: true }));
   }
   _state.currentUtterance = new SpeechSynthesisUtterance(_state.speechText.slice(_state.resumeOffset));
-  _state.currentUtterance.lang = speechPlaybackLang();
+  _state.currentUtterance.lang = speechPlaybackLangForStory(_state.story);
   _state.currentUtterance.rate = _state.playbackRate;
   const voice = getTtsVoice(_state.currentUtterance.lang);
   if (voice) _state.currentUtterance.voice = voice;
@@ -205,22 +194,6 @@ async function startSpeechPlayback() {
 }
 
 // ── Clause splitting ──────────────────────────────────────────────────────────
-// Splits a sentence into clauses by breaking after any token whose displayWord
-// contains a Japanese comma (、). Returns an array of word-token arrays.
-export function splitByClause(sentence) {
-  const clauses = [];
-  let current = [];
-  for (const word of sentence.words) {
-    current.push(word);
-    if (word.display.includes('、')) {
-      clauses.push(current);
-      current = [];
-    }
-  }
-  if (current.length > 0) clauses.push(current);
-  return clauses.filter(c => c.length > 0);
-}
-
 // ── On-demand synthesis ───────────────────────────────────────────────────────
 function synthClauseAudio(words) {
   const vv = getVoicevoxSettings();

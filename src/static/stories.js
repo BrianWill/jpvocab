@@ -1,3 +1,12 @@
+import {
+  escStoryHtml,
+  formatStoryDate,
+  formatStoryTimestamp,
+  sentenceCountLabel,
+  sortStories,
+  wordCountLabel,
+} from './stories-utils.js';
+
 const els = {
   addConfirmBtn: document.getElementById('story-add-confirm'),
   addError: document.getElementById('story-add-error'),
@@ -28,55 +37,8 @@ async function loadStories() {
   return res.json();
 }
 
-function storyTimestamp(story) {
-  const raw = story?.createdAt;
-  if (!raw) return 0;
-  const parsed = Date.parse(raw.includes('T') ? raw : raw.replace(' ', 'T'));
-  return Number.isNaN(parsed) ? 0 : parsed;
-}
-
-function formatDate(dateTime) {
-  return new Date(dateTime.includes('T') ? dateTime : dateTime.replace(' ', 'T')).toLocaleDateString('en-GB', {
-    year: 'numeric',
-    month: 'short',
-    day: 'numeric',
-  });
-}
-
-function formatTimestamp(dateTime) {
-  return new Date(dateTime.includes('T') ? dateTime : dateTime.replace(' ', 'T')).toLocaleString('en-GB', {
-    year: 'numeric',
-    month: 'short',
-    day: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit',
-  });
-}
-
-function sentenceCountLabel(n) {
-  return n === 1 ? '1 sentence' : `${n} sentences`;
-}
-
-function wordCountLabel(n) {
-  return n === 1 ? '1 unique lexicon word' : `${n} unique lexicon words`;
-}
-
-function esc(value) {
-  return String(value).replace(/[&<>"']/g, char => ({
-    '&': '&amp;',
-    '<': '&lt;',
-    '>': '&gt;',
-    '"': '&quot;',
-    "'": '&#39;',
-  }[char]));
-}
-
 function renderStories(stories) {
-  const sortedStories = [...stories].sort((a, b) => {
-    const timeDiff = storyTimestamp(b) - storyTimestamp(a);
-    if (timeDiff !== 0) return timeDiff;
-    return (b.id ?? 0) - (a.id ?? 0);
-  });
+  const sortedStories = sortStories(stories);
   state.stories = sortedStories;
 
   if (!sortedStories.length) {
@@ -89,10 +51,10 @@ function renderStories(stories) {
   els.list.innerHTML = sortedStories.map(story => `
     <a class="story-card-link" href="/stories/${story.id}">
       <article class="story-card">
-        <button class="story-card-delete" type="button" data-story-id="${story.id}" aria-label="Delete ${esc(story.title)}">✕</button>
+        <button class="story-card-delete" type="button" data-story-id="${story.id}" aria-label="Delete ${escStoryHtml(story.title)}">✕</button>
         <div class="story-card-heading">
-          <h2 class="story-card-title">${esc(story.title)}</h2>
-          <span class="story-card-date" data-tooltip="Added ${esc(formatTimestamp(story.createdAt))}">${formatDate(story.createdAt)}</span>
+          <h2 class="story-card-title">${escStoryHtml(story.title)}</h2>
+          <span class="story-card-date" data-tooltip="Added ${escStoryHtml(formatStoryTimestamp(story.createdAt))}">${formatStoryDate(story.createdAt)}</span>
         </div>
         <div class="story-card-meta">
           <span>${sentenceCountLabel(story.sentenceCount || 0)}</span>

@@ -1,4 +1,5 @@
 import { esc, detailItemPosSelect, detailItemKanjiReadings, detailItemInput, detailItemExInput, getFirstImageFile } from './lexicon-utils.js';
+import { getFieldLanguageErrorMsg, getFieldLanguageFilter, getFieldLanguageKind, sanitizeFieldInput } from './add-to-lexicon-utils.js';
 
 const imagePlaceholderSvg =
   '<svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">' +
@@ -251,26 +252,6 @@ export async function adjustWordTarget(event, wordId, delta, btn) {
   }
 }
 
-function getFieldLanguageFilter(el) {
-  if (el.closest('.detail-ex')) {
-    const isEn = el.classList.contains('detail-input--en');
-    return text => isEn
-      ? text.replace(/[\u3040-\u30FF\u4E00-\u9FFF\u3400-\u4DBF\uFF01-\uFF9F]/g, '')
-      : text.replace(/[a-zA-Z]/g, '');
-  }
-  if (el.closest('.detail-reading') || el.classList.contains('kanji-reading-input')) {
-    return text => text.replace(/[a-zA-Z]/g, '');
-  }
-  return null;
-}
-
-function getFieldLanguageErrorMsg(el) {
-  if (el.closest('.detail-ex') && el.classList.contains('detail-input--en')) {
-    return 'English only - Japanese characters are not allowed here';
-  }
-  return 'Japanese only - Latin letters are not allowed here';
-}
-
 function showFieldError(el, footerEl, closeButtonId, state, msg) {
   el.classList.remove('detail-input--flash-error');
   void el.offsetWidth;
@@ -290,10 +271,11 @@ function showFieldError(el, footerEl, closeButtonId, state, msg) {
 }
 
 function enforceFieldLanguage(el, footerEl, closeButtonId, state) {
-  const filter = getFieldLanguageFilter(el);
+  const kind = getFieldLanguageKind(el);
+  const filter = getFieldLanguageFilter(kind);
   if (!filter) return;
   const original = el.textContent;
-  const filtered = filter(original);
+  const filtered = sanitizeFieldInput(original, kind);
   if (filtered === original) return;
   const selection = window.getSelection();
   const rawOffset = selection.rangeCount > 0 ? selection.getRangeAt(0).startOffset : 0;
@@ -307,5 +289,5 @@ function enforceFieldLanguage(el, footerEl, closeButtonId, state) {
     selection.removeAllRanges();
     selection.addRange(range);
   }
-  showFieldError(el, footerEl, closeButtonId, state, getFieldLanguageErrorMsg(el));
+  showFieldError(el, footerEl, closeButtonId, state, getFieldLanguageErrorMsg(kind));
 }

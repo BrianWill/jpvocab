@@ -188,6 +188,33 @@ test('getSortedWords: does not mutate the input array', () => {
   assert.deepEqual(words.map(w => w.word), original);
 });
 
+test('getSortedWords: reading handles missing reading and missing createdAt fields', () => {
+  const rows = [
+    { word: 'A', reading: 'ねこ', createdAt: '2024-01-01T00:00:00Z' },
+    { word: 'B', createdAt: '2024-02-01T00:00:00Z' },
+    { word: 'C', reading: 'ねこ' },
+  ];
+  assert.deepEqual(wordNames(getSortedWords(rows, 'reading', 'asc')), ['B', 'A', 'C']);
+});
+
+test('getSortedWords: type sort remains stable across unexpected types and missing lastDrilled', () => {
+  const rows = [
+    { word: 'A', type: 'zzz', lastDrilled: null },
+    { word: 'B', type: 'aaa', lastDrilled: '2024-01-01T00:00:00Z' },
+    { word: 'C', type: 'aaa', lastDrilled: '2024-02-01T00:00:00Z' },
+  ];
+  assert.deepEqual(wordNames(getSortedWords(rows, 'type', 'asc')), ['C', 'B', 'A']);
+});
+
+test('getSortedWords: correct ties across multiple rows are broken by createdAt desc', () => {
+  const rows = [
+    { word: 'A', correct: 1, createdAt: '2024-01-01T00:00:00Z' },
+    { word: 'B', correct: 1, createdAt: '2024-03-01T00:00:00Z' },
+    { word: 'C', correct: 1, createdAt: '2024-02-01T00:00:00Z' },
+  ];
+  assert.deepEqual(wordNames(getSortedWords(rows, 'correct', 'asc')), ['B', 'C', 'A']);
+});
+
 // ---------------------------------------------------------------------------
 // renderReading
 // ---------------------------------------------------------------------------
@@ -250,4 +277,32 @@ test('renderReading: extra kanji in word beyond kanjiData entries are skipped', 
   // Only one kanji entry but word has two kanji
   const result = renderReading('てんき', '天気', [{ id: 1, reading: 'テン' }]);
   assert.equal(result, '<span class="reading-seg reading-on">テン</span>');
+});
+
+test('renderReading: pitch accent zero marks all but first mora high', () => {
+  const result = renderReading('さかな', 'さかな', [], 0);
+  assert.match(result, /pitch-rise/);
+  assert.match(result, /pitch-high/);
+});
+
+test('renderReading: pitch accent one creates an immediate drop after the first mora', () => {
+  const result = renderReading('あめ', '雨', [{ id: 1, reading: 'あめ' }], 1);
+  assert.match(result, /pitch-drop/);
+  assert.match(result, /pitch-high/);
+});
+
+test('renderReading: pitch accent with small kana keeps combined morae together', () => {
+  const result = renderReading('きょう', '今日', [], 2);
+  assert.match(result, />きょ</);
+  assert.match(result, />う</);
+});
+
+test('renderReading: pitch-connected class appears across high segments', () => {
+  const result = renderReading('だいじ', '大事', [{ id: 1, reading: 'ダイ' }, { id: 2, reading: 'ジ' }], 0);
+  assert.match(result, /pitch-connected/);
+});
+
+test('renderReading: malformed kanjiData falls back to escaped reading text', () => {
+  const result = renderReading('て<すと>', '試験', [{ id: 1 }, { id: 2, reading: '' }]);
+  assert.equal(result, 'て&lt;すと&gt;');
 });

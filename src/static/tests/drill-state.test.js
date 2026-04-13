@@ -51,6 +51,10 @@ test('getFilteredWords: keeps words matching any active filter in filter order',
   assert.deepEqual(getFilteredWords(words, activeFilters, filterKeys), [verbWord, otherWord]);
 });
 
+test('getFilteredWords: returns no words when no filters are active', () => {
+  assert.deepEqual(getFilteredWords([katakanaWord, verbWord], new Set(), filterKeys), []);
+});
+
 test('createSidebarItems: marks redo words with unseen-redo status', () => {
   const items = createSidebarItems([nounWord, verbWord], new Set([verbWord.word]));
   assert.deepEqual(items, [
@@ -111,6 +115,17 @@ test('buildRoundState: fills the round from redo first, then pool', () => {
   ]);
   assert.deepEqual(pool, [nounWord, otherWord, katakanaWord]);
   assert.deepEqual(redo, [verbWord]);
+});
+
+test('buildRoundState: allows redo to exceed round size without pulling from pool', () => {
+  const result = buildRoundState({
+    roundSize: 1,
+    redo: [verbWord, nounWord],
+    pool: [otherWord],
+  });
+
+  assert.deepEqual(result.remaining, [verbWord, nounWord]);
+  assert.deepEqual(result.pool, [otherWord]);
 });
 
 test('getNextRevealState: advances within the same round on a known answer', () => {
@@ -251,6 +266,14 @@ test('advanceAfterRevealState: advances using pending answer result', () => {
   });
 });
 
+test('advanceAfterRevealState: returns null when not awaiting advance', () => {
+  assert.equal(advanceAfterRevealState({
+    currentWord: nounWord,
+    awaitingAdvance: false,
+    pendingAnswerCorrect: true,
+  }), null);
+});
+
 test('serializeSessionState: keeps durable progress fields and converts filters to an array', () => {
   const state = {
     poolSize: 25,
@@ -287,4 +310,27 @@ test('serializeSessionState: keeps durable progress fields and converts filters 
     awaitingAdvance: true,
     pendingAnswerCorrect: true,
   });
+});
+
+test('serializeSessionState: preserves partial state and filter insertion order', () => {
+  const serialized = serializeSessionState({
+    poolSize: 0,
+    requestedRoundSize: 5,
+    roundSize: 5,
+    round: 3,
+    doneCount: 1,
+    activeFilters: new Set(['other', 'verbs']),
+    pool: [],
+    redo: [],
+    remaining: [],
+    sidebarItems: [],
+    lastAnswered: null,
+    skipAnswerReveal: true,
+    awaitingAdvance: false,
+    pendingAnswerCorrect: null,
+  });
+
+  assert.deepEqual(serialized.activeFilters, ['other', 'verbs']);
+  assert.equal(serialized.lastAnswered, null);
+  assert.equal(serialized.pendingAnswerCorrect, null);
 });

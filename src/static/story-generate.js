@@ -1,33 +1,14 @@
 import { PROVIDER_MODELS, playDing } from './common.js';
+import {
+  formatElapsedSeconds,
+  formatTokenCount,
+  getTranslationCountsText,
+} from './story-generate-utils.js';
 
 let _els, _state, _storyId, _onTranslationDone, _stopPlayback;
 
-function formatElapsedSeconds(seconds) {
-  return `${Math.max(0, Math.round(seconds))}s`;
-}
-
-function formatTokenCount(count) {
-  return new Intl.NumberFormat().format(Math.max(0, count || 0));
-}
-
-function getTranslationTarget() {
-  if (!_state.story) return null;
-  const sentences = _state.translationChunkPosition
-    ? (_state.story.sentences || []).filter(s => s.chunkPosition === _state.translationChunkPosition)
-    : (_state.story.sentences || []);
-  return { sentences };
-}
-
 function updateTranslationCountsText() {
-  const target = getTranslationTarget();
-  const sentenceCount = Array.isArray(target?.sentences) ? target.sentences.length : 0;
-  const uniqueWordCount = new Set(
-    (target?.sentences || [])
-      .filter(s => s.orig_lang === 'jp')
-      .flatMap(s => (s.words || []).filter(w => w.base).map(w => w.base))
-  ).size;
-  _els.genTranslationCounts.textContent =
-    `${sentenceCount} sentence${sentenceCount === 1 ? '' : 's'}, ${uniqueWordCount} unique word${uniqueWordCount === 1 ? '' : 's'}`;
+  _els.genTranslationCounts.textContent = getTranslationCountsText(_state.story, _state.translationChunkPosition);
 }
 
 function stopTranslationTimer() {

@@ -36,6 +36,13 @@ function cacheSet(key, url) {
   _cache.set(key, url);
 }
 
+export function __resetSynthCacheForTests() {
+  for (const url of _cache.values()) {
+    URL.revokeObjectURL(url);
+  }
+  _cache.clear();
+}
+
 /**
  * Returns a Blob URL for the synthesized audio of `text` using the given
  * VoiceVox settings. Hits the cache first; synthesizes and caches on miss.

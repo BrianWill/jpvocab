@@ -1,5 +1,6 @@
 import { populateWordTooltip, positionAnchoredWordTooltip, playJapaneseText, WORD_TTS_RATE } from './common.js';
 import { renderReading } from './lexicon-utils.js';
+import { addDays, computeAvgForActivity, dayLabel, formatDateFull, toDateStr, weekSunday } from './activity-utils.js';
 
 const els = {
   activityBody: document.querySelector('.activity-body'),
@@ -24,46 +25,6 @@ const state = {
   wordMap: {},
 };
 
-// ── Stats utilities ───────────────────────────────────────────────────────────
-
-// Returns average count of `field` per day over the given window.
-// days = number of calendar days ending today; null = all time (from historyStart).
-// Days with no entry in activityData count as zero — the denominator is the full window.
-function computeAvg(field, days) {
-  let startStr, denom;
-  if (days === null) {
-    startStr = state.historyStart;
-    const ms = new Date(state.today + 'T00:00:00') - new Date(state.historyStart + 'T00:00:00');
-    denom = Math.round(ms / 86400000) + 1;
-  } else {
-    const start = addDays(new Date(state.today + 'T00:00:00'), -(days - 1));
-    startStr = toDateStr(start);
-    denom = days;
-  }
-  let total = 0;
-  for (const [date, data] of Object.entries(state.activityData)) {
-    if (date < startStr) continue;
-    total += data[field].length;
-  }
-  return (total / denom).toFixed(1);
-}
-
-// ── Calendar utilities ────────────────────────────────────────────────────────
-
-function weekSunday(dateStr) {
-  const d = new Date(dateStr + 'T00:00:00');
-  d.setDate(d.getDate() - d.getDay()); // getDay(): 0=Sun, 1=Mon, …
-  return d;
-}
-
-function toDateStr(d) { return d.toISOString().slice(0, 10); }
-
-function addDays(d, n) {
-  const r = new Date(d);
-  r.setDate(r.getDate() + n);
-  return r;
-}
-
 const INITIAL_WEEKS = 5;
 const LOAD_BATCH = 4;
 
@@ -87,32 +48,21 @@ function appendWeeks(count) {
   return exhausted;
 }
 
-function formatDateFull(dateStr) {
-  return new Date(dateStr + 'T00:00:00').toLocaleDateString('en-GB', {
-    weekday: 'long', day: 'numeric', month: 'long', year: 'numeric'
-  });
-}
-
-function dayLabel(dateStr) {
-  const d = new Date(dateStr + 'T00:00:00');
-  if (d.getDay() === 0) return d.toLocaleDateString('en-GB', {month: 'short', day: 'numeric'});
-  return String(d.getDate());
-}
-
 function renderStats() {
   const { stats } = state;
   const wordTotal = stats.drillsCleared + stats.drillsClose + stats.drillsMid + stats.drillsFar;
   const pct = n => (n / wordTotal * 100).toFixed(1);
 
-  const avgDrilled7  = computeAvg('drilled',  7);
-  const avgDrilled30 = computeAvg('drilled', 30);
-  const avgDrilledAll = computeAvg('drilled', null);
-  const avgCleared7  = computeAvg('cleared',  7);
-  const avgCleared30 = computeAvg('cleared', 30);
-  const avgClearedAll = computeAvg('cleared', null);
-  const avgAdded7  = computeAvg('added',  7);
-  const avgAdded30 = computeAvg('added', 30);
-  const avgAddedAll = computeAvg('added', null);
+  const avg = (field, days) => computeAvgForActivity(state.activityData, state.historyStart, state.today, field, days);
+  const avgDrilled7  = avg('drilled', 7);
+  const avgDrilled30 = avg('drilled', 30);
+  const avgDrilledAll = avg('drilled', null);
+  const avgCleared7  = avg('cleared', 7);
+  const avgCleared30 = avg('cleared', 30);
+  const avgClearedAll = avg('cleared', null);
+  const avgAdded7  = avg('added', 7);
+  const avgAdded30 = avg('added', 30);
+  const avgAddedAll = avg('added', null);
 
   els.statsSection.innerHTML = `
     <div class="stat-grid">

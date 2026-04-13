@@ -8,7 +8,7 @@ export function isKanji(ch) {
 
 // Returns true if every character in s is katakana.
 function _isKatakana(s) {
-  return s.length > 0 && /^[\u30A0-\u30FF]+$/.test(s);
+  return typeof s === 'string' && s.length > 0 && /^[\u30A0-\u30FF]+$/.test(s);
 }
 
 // Returns HTML for a reading with colour-coded segments.
@@ -28,7 +28,7 @@ export function renderReading(reading, word, kanjiData, pitchAccent) {
   if (!hasPitch) {
     // No pitch data — one span per kanji reading or kana buffer, existing behaviour.
     if (!kanjiData || kanjiData.length === 0) return esc(reading);
-    const kanjiReadings = kanjiData.map(e => e.reading);
+    const kanjiReadings = kanjiData.map(e => e?.reading);
     let kanjiIdx = 0;
     let html = '';
     let kanaBuffer = '';
@@ -43,6 +43,7 @@ export function renderReading(reading, word, kanjiData, pitchAccent) {
         flushKana();
         if (kanjiIdx >= kanjiReadings.length) continue;
         const r = kanjiReadings[kanjiIdx++];
+        if (!r) continue;
         html += '<span class="reading-seg reading-' + (_isKatakana(r) ? 'on' : 'kun') + '">' + esc(r) + '</span>';
       } else if ((cp >= 0x3040 && cp <= 0x309F) || (cp >= 0x30A0 && cp <= 0x30FF)) {
         kanaBuffer += ch;
@@ -67,7 +68,7 @@ export function renderReading(reading, word, kanjiData, pitchAccent) {
   if (!kanjiData || kanjiData.length === 0) {
     segments.push({ text: reading, type: 'kana' });
   } else {
-    const kanjiReadings = kanjiData.map(e => e.reading);
+    const kanjiReadings = kanjiData.map(e => e?.reading);
     let kanjiIdx = 0;
     let kanaBuffer = '';
     for (const ch of word) {
@@ -76,7 +77,7 @@ export function renderReading(reading, word, kanjiData, pitchAccent) {
         if (kanaBuffer) { segments.push({ text: kanaBuffer, type: 'kana' }); kanaBuffer = ''; }
         if (kanjiIdx < kanjiReadings.length) {
           const r = kanjiReadings[kanjiIdx++];
-          segments.push({ text: r, type: _isKatakana(r) ? 'on' : 'kun' });
+          if (r) segments.push({ text: r, type: _isKatakana(r) ? 'on' : 'kun' });
         }
       } else if ((cp >= 0x3040 && cp <= 0x309F) || (cp >= 0x30A0 && cp <= 0x30FF)) {
         kanaBuffer += ch;
@@ -220,6 +221,11 @@ export function detailItemExInput(exJp, exEn) {
 
 export function getSortedWords(words, key, dir) {
   const asc = dir === 'asc';
+  const createdAtTieBreak = (a, b) => {
+    const aTime = a.createdAt ? new Date(a.createdAt).getTime() : Number.NEGATIVE_INFINITY;
+    const bTime = b.createdAt ? new Date(b.createdAt).getTime() : Number.NEGATIVE_INFINITY;
+    return bTime - aTime;
+  };
   const byDate = (a, b, field) => {
     if (!a[field] && !b[field]) return 0;
     if (!a[field]) return asc ? -1 : 1;
@@ -233,21 +239,21 @@ export function getSortedWords(words, key, dir) {
       case 'drilled':  return byDate(a, b, 'lastDrilled');
       case 'correct': {
         const d = asc ? a.correct - b.correct : b.correct - a.correct;
-        return d || new Date(b.createdAt) - new Date(a.createdAt);
+        return d || createdAtTieBreak(a, b);
       }
       case 'incorrect': {
         const d = asc ? a.incorrect - b.incorrect : b.incorrect - a.incorrect;
-        return d || new Date(b.createdAt) - new Date(a.createdAt);
+        return d || createdAtTieBreak(a, b);
       }
       case 'target': {
         const d = asc ? a.target - b.target : b.target - a.target;
-        return d || new Date(b.createdAt) - new Date(a.createdAt);
+        return d || createdAtTieBreak(a, b);
       }
       case 'reading': {
         const ra = a.reading || '';
         const rb = b.reading || '';
         const d = asc ? ra.localeCompare(rb, 'ja') : rb.localeCompare(ra, 'ja');
-        return d || new Date(b.createdAt) - new Date(a.createdAt);
+        return d || createdAtTieBreak(a, b);
       }
       case 'type': {
         if (a.type < b.type) return asc ? -1 : 1;

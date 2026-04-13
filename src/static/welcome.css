@@ -62,53 +62,6 @@
     0 0 30px rgba(250, 179, 135, 0.25);
 }
 
-.hero-desc {
-  font-size: 1.05rem;
-  color: #a6adc8;
-  line-height: 1.7;
-  max-width: 520px;
-  margin-bottom: 2.4rem;
-}
-
-.hero-cta {
-  display: inline-flex;
-  gap: 0.75rem;
-}
-
-.btn-cta-primary {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.5rem;
-  padding: 0.75rem 1.75rem;
-  background: rgba(137, 180, 250, 0.15);
-  border: 1px solid rgba(137, 180, 250, 0.4);
-  color: #89b4fa;
-  font-size: 0.9rem;
-  font-weight: 600;
-  font-family: inherit;
-  border-radius: 8px;
-  text-decoration: none;
-  cursor: pointer;
-  transition: background 0.15s, border-color 0.15s;
-}
-.btn-cta-primary:hover { background: rgba(137, 180, 250, 0.25); border-color: rgba(137, 180, 250, 0.65); }
-
-.btn-cta-secondary {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.5rem;
-  padding: 0.75rem 1.75rem;
-  background: transparent;
-  border: 1px solid #313244;
-  color: #6c7086;
-  font-size: 0.9rem;
-  font-family: inherit;
-  border-radius: 8px;
-  text-decoration: none;
-  transition: border-color 0.15s, color 0.15s;
-}
-.btn-cta-secondary:hover { border-color: #585b70; color: #a6adc8; }
-
 /* ── Magazine grid ──────────────────────────── */
 .magazine {
   display: grid;
@@ -117,29 +70,6 @@
   max-width: 1560px;
   margin: 0 auto;
   padding: 0 2rem 4rem;
-}
-
-/* ── Section label ──────────────────────────── */
-.section-label {
-  grid-column: 1 / -1;
-  padding: 3.5rem 1rem 1.5rem;
-  display: flex;
-  align-items: center;
-  gap: 1rem;
-}
-
-.section-label-text {
-  font-size: 0.7rem;
-  font-weight: 700;
-  letter-spacing: 0.2em;
-  text-transform: uppercase;
-  color: #45475a;
-}
-
-.section-label-line {
-  flex: 1;
-  height: 1px;
-  background: #313244;
 }
 
 /* ── Feature cards ──────────────────────────── */
@@ -161,7 +91,6 @@
 /* Remove double borders between adjacent cards; restore for first card of each new row */
 .feature-card + .feature-card { border-left: none; }
 .magazine .feature-card:nth-child(4n+1) { border-left: 1px solid #313244; }
-.feature-card--wide { grid-column: span 2; }
 
 .feature-card-kanji {
   font-size: 5.6rem;
@@ -238,95 +167,6 @@
   align-items: start;
 }
 
-.feature-card-image-slot {
-  border-radius: 6px;
-  overflow: hidden;
-  position: relative;
-}
-
-/* Pull quote card */
-.pull-quote-card {
-  border: 1px solid #313244;
-  border-left: none;
-  background: #11111b;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 2.5rem 2rem;
-}
-
-.pull-quote {
-  text-align: center;
-}
-
-.pull-quote-mark {
-  font-size: 5rem;
-  line-height: 0.8;
-  color: #313244;
-  font-family: Georgia, serif;
-  margin-bottom: 0.5rem;
-  display: block;
-}
-
-.pull-quote-text {
-  font-size: 1.05rem;
-  font-style: italic;
-  color: #a6adc8;
-  line-height: 1.6;
-  max-width: 240px;
-  margin: 0 auto 0.9rem;
-}
-
-.pull-quote-attr {
-  font-size: 0.68rem;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
-  color: #45475a;
-}
-
-/* ── How it works ───────────────────────────── */
-.how-it-works {
-  grid-column: 1 / -1;
-  border: 1px solid #313244;
-  border-top: none;
-  background: #181825;
-  padding: 2.5rem 2.5rem;
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 0;
-}
-
-.step {
-  padding: 0 2rem 0 0;
-  position: relative;
-}
-
-.step + .step {
-  padding-left: 2rem;
-  border-left: 1px solid #313244;
-}
-
-.step-num {
-  font-size: 2.8rem;
-  font-weight: 800;
-  color: #313244;
-  line-height: 1;
-  margin-bottom: 0.5rem;
-}
-
-.step-title {
-  font-size: 0.88rem;
-  font-weight: 700;
-  color: #cdd6f4;
-  margin-bottom: 0.4rem;
-}
-
-.step-desc {
-  font-size: 0.8rem;
-  color: #585b70;
-  line-height: 1.6;
-}
-
 /* ── Decorative kanji strip ─────────────────── */
 .kanji-strip {
   grid-column: 1 / -1;
@@ -374,33 +214,6 @@
 .kanji-strip-item:hover .kanji-strip-meaning { color: #585b70; }
 
 /* ── Stat bar ───────────────────────────────── */
-.stat-bar {
-  grid-column: 1 / -1;
-  border: 1px solid #313244;
-  border-top: none;
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-}
-
-.stat-bar-item {
-  padding: 2rem 2.5rem;
-  border-right: 1px solid #313244;
-}
-.stat-bar-item:last-child { border-right: none; }
-
-.stat-bar-num {
-  font-size: 2.4rem;
-  font-weight: 800;
-  line-height: 1;
-  margin-bottom: 0.4rem;
-}
-
-.stat-bar-label {
-  font-size: 0.78rem;
-  color: #585b70;
-  line-height: 1.45;
-}
-
 @media (max-width: 1200px) {
   .magazine {
     grid-template-columns: repeat(2, minmax(0, 1fr));

@@ -168,13 +168,6 @@
   opacity: 0.6;
 }
 
-.story-noted-add-all-note {
-  margin: 0 0 0.85rem;
-  color: #6c7086;
-  font-size: 0.72rem;
-  line-height: 1.35;
-}
-
 .story-noted-list {
   display: flex;
   flex-direction: column;

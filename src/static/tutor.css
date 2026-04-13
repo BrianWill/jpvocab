@@ -5,12 +5,6 @@
   gap: 0.5rem;
 }
 
-.tutor-select-label {
-  font-size: 0.78rem;
-  color: #585b70;
-  white-space: nowrap;
-}
-
 #tutor-mode-select {
   min-width: 18rem;
 }
@@ -304,16 +298,6 @@
   font-size: 0.75em;
   opacity: 0.65;
   margin-left: 0.25em;
-}
-
-/* Danger variant for header buttons (e.g. delete prompt) */
-.btn-header--danger {
-  color: #f38ba8;
-  border-color: #f38ba8;
-}
-.btn-header--danger:hover {
-  background: rgba(243,139,168,0.15);
-  color: #f38ba8;
 }
 
 /* Active state for toggle buttons in the header (e.g. debug mode) */

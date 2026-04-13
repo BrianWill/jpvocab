@@ -26,6 +26,7 @@ import {
   imageSourceUnavailableTooltip,
   providerUnavailableTooltip,
 } from './generation-ui-utils.js';
+import { createWordResultModalController } from './word-result-modal-controller.js';
 
 const LEXICON_AUDIO_OPTIONS = { preferSynthesis: true, fallbackToBrowserTts: true };
 
@@ -62,6 +63,7 @@ export const state = {
   abortController: null,
   addedWords: [],
   addPhase: 'idle', // 'loading' | 'done' | 'cancelled'
+  eventsBound: false,
   fieldErrorTimer: null,
   generateType: 'word-info',
   generationCancelled: false,
@@ -152,66 +154,26 @@ els.addResultBody.addEventListener('click', e => {
   }, 1, LEXICON_AUDIO_OPTIONS);
 });
 
-// --- Remove-confirm mini-modal ---
-function openRemoveConfirm(message, action) {
-  state.pendingRemoveAction = action;
-  els.removeConfirmText.textContent = message;
-  els.removeConfirmModalBackdrop.classList.remove('hidden');
-}
-function closeRemoveConfirm() {
-  state.pendingRemoveAction = null;
-  els.removeConfirmModalBackdrop.classList.add('hidden');
-}
-els.removeConfirmModalBackdrop.addEventListener('click', e => {
-  if (e.target === els.removeConfirmModalBackdrop) closeRemoveConfirm();
-});
-els.removeConfirmCancel.addEventListener('click', closeRemoveConfirm);
-els.removeConfirmOk.addEventListener('click', () => {
-  const action = state.pendingRemoveAction;
-  closeRemoveConfirm();
-  if (action) action();
-});
-
-// --- Generate-confirm mini-modal ---
-function openGenerateConfirm() {
-  const addedCount   = els.addResultBody.querySelectorAll('.result-added .btn-generate:not(.btn-generate--busy):not([disabled])').length;
-  const skippedCount = els.addResultBody.querySelectorAll('.result-skipped .btn-generate:not(.btn-generate--busy):not([disabled])').length;
-
-  els.generateConfirmAddedText.textContent   = addedCount   + ' newly added words';
-  els.generateConfirmSkippedText.textContent = skippedCount + ' already existing words';
-  els.generateConfirmAddedCheckbox.checked   = true;
-  els.generateConfirmSkippedCheckbox.checked = false;
-
-  els.generateConfirmModalBackdrop.classList.remove('hidden');
-}
-function closeGenerateConfirm() {
-  els.generateConfirmModalBackdrop.classList.add('hidden');
-}
-els.generateConfirmModalBackdrop.addEventListener('click', e => {
-  if (e.target === els.generateConfirmModalBackdrop) closeGenerateConfirm();
-});
-els.generateConfirmCancel.addEventListener('click', closeGenerateConfirm);
-els.generateConfirmOk.addEventListener('click', () => {
-  const includeAdded   = els.generateConfirmAddedCheckbox.checked;
-  const includeSkipped = els.generateConfirmSkippedCheckbox.checked;
-  closeGenerateConfirm();
-  generateAll(includeAdded, includeSkipped);
-});
-
 els.addModalSaveBtn.addEventListener('click', saveAddModal);
-
-bindWordResultEditorEvents({
-  containerEl: els.addResultBody,
-  footerEl: els.addResultFooter,
-  closeButtonId: 'btn-add-result-close',
+const modalController = createWordResultModalController({
+  els,
   state,
-  onSaveRowEdits: saveWordRowEdits,
-});
-
-bindWordResultImageUpload({
-  containerEl: els.addResultBody,
+  closeModal: closeAddResultModal,
+  canClose: () => state.addPhase !== 'loading' && state.pendingGenerates === 0,
+  closeButtonId: 'btn-add-result-close',
+  onGenerateAll: generateAll,
+  onPlayExampleSentence: ({ row, text }) => {
+    playSentenceAudio({
+      word: row?._resolvedWord ?? '',
+      exampleJp: text,
+    }, 1, LEXICON_AUDIO_OPTIONS);
+  },
   onUploadComplete: (wordId, imagePath) => updateWordImagePath(wordId, imagePath),
+  onSaveRowEdits: saveWordRowEdits,
+  bindWordResultEditorEvents,
+  bindWordResultImageUpload,
 });
+modalController.bindBaseEvents();
 
 export async function closeAddResultModal() {
   if (state.addPhase === 'loading' || state.pendingGenerates > 0) return;
@@ -465,7 +427,7 @@ async function generateWordImage(event, wordId, word, btn) {
 function removeWordRow(event, btn) {
   const word = btn.dataset.word;
   event.stopPropagation();
-  openRemoveConfirm('Remove "' + word + '" from the lexicon?', async () => {
+    modalController.openRemoveConfirm('Remove "' + word + '" from the lexicon?', async () => {
     btn.disabled = true;
     const res = await fetch('/admin/words/delete', {
       method: 'POST',
@@ -615,7 +577,7 @@ function renderStatus() {
       const mainBtn = actionEl.querySelector('.split-btn-main');
       const arrowBtn = actionEl.querySelector('.split-btn-arrow');
       const menu = els.splitBtnMenu;
-      if (mainBtn) mainBtn.addEventListener('mousedown', state.isSingleEdit ? () => generateAll(true, true) : openGenerateConfirm);
+      if (mainBtn) mainBtn.addEventListener('mousedown', state.isSingleEdit ? () => generateAll(true, true) : modalController.openGenerateConfirm);
       if (arrowBtn && menu) {
         arrowBtn.addEventListener('mousedown', (e) => {
           e.stopPropagation();
@@ -693,7 +655,7 @@ function initAddResultFooter() {
   els.addResultRemoveBtn.addEventListener('click', function () {
     const count = state.addedWords.length;
     const label = count === 1 ? '"' + state.addedWords[0] + '"' : count + ' added words';
-    openRemoveConfirm('Remove ' + label + ' from the lexicon?', async () => {
+    modalController.openRemoveConfirm('Remove ' + label + ' from the lexicon?', async () => {
       const toRemove = state.addedWords.slice();
       if (state.addPhase === 'loading') {
         state.addPhase = 'done'; // mark before abort so the AbortError catch is a no-op

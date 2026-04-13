@@ -25,6 +25,7 @@ import {
   imageSourceUnavailableTooltip,
   providerUnavailableTooltip,
 } from './generation-ui-utils.js';
+import { createWordResultModalController } from './word-result-modal-controller.js';
 
 const STORY_LEXICON_AUDIO_OPTIONS = { preferSynthesis: true, fallbackToBrowserTts: true };
 
@@ -121,91 +122,6 @@ function cacheEls() {
   els.removeConfirmText = document.getElementById('story-remove-confirm-text');
 }
 
-function openRemoveConfirm(message, action) {
-  state.pendingRemoveAction = action;
-  els.removeConfirmText.textContent = message;
-  els.removeConfirmModalBackdrop.classList.remove('hidden');
-}
-
-function closeRemoveConfirm() {
-  state.pendingRemoveAction = null;
-  els.removeConfirmModalBackdrop.classList.add('hidden');
-}
-
-function openGenerateConfirm() {
-  const addedCount = els.addResultBody.querySelectorAll('.result-added .btn-generate:not(.btn-generate--busy):not([disabled])').length;
-  const skippedCount = els.addResultBody.querySelectorAll('.result-skipped .btn-generate:not(.btn-generate--busy):not([disabled])').length;
-  els.generateConfirmAddedText.textContent = addedCount + ' newly added words';
-  els.generateConfirmSkippedText.textContent = skippedCount + ' already existing words';
-  els.generateConfirmAddedCheckbox.checked = true;
-  els.generateConfirmSkippedCheckbox.checked = false;
-  els.generateConfirmModalBackdrop.classList.remove('hidden');
-}
-
-function closeGenerateConfirm() {
-  els.generateConfirmModalBackdrop.classList.add('hidden');
-}
-
-function bindEvents() {
-  if (state.eventsBound) return;
-  state.eventsBound = true;
-
-  document.addEventListener('mousedown', () => {
-    if (els.splitBtnMenu) els.splitBtnMenu.hidden = true;
-  });
-
-  els.addResultModalBackdrop.addEventListener('click', e => {
-    if (e.target === els.addResultModalBackdrop && state.pendingGenerates === 0) closeAddResultModal();
-  });
-  els.addResultClose.addEventListener('click', closeAddResultModal);
-
-  els.addResultBody.addEventListener('click', e => {
-    if (!e.target.closest('.detail-ex-play')) return;
-    const row = e.target.closest('.word-result-row');
-    const jpInput = e.target.closest('.detail-ex-inputs')?.querySelector('.detail-input:not(.detail-input--en)');
-    const text = jpInput?.textContent.trim();
-    if (text) {
-      playSentenceAudio({
-        word: row?._resolvedWord ?? '',
-        exampleJp: text,
-      }, 1, STORY_LEXICON_AUDIO_OPTIONS);
-    }
-  });
-
-  bindWordResultEditorEvents({
-    containerEl: els.addResultBody,
-    footerEl: els.addResultFooter,
-    closeButtonId: 'story-btn-add-result-close',
-    state,
-    onSaveRowEdits: saveWordRowEdits,
-  });
-
-  bindWordResultImageUpload({
-    containerEl: els.addResultBody,
-  });
-
-  els.removeConfirmModalBackdrop.addEventListener('click', e => {
-    if (e.target === els.removeConfirmModalBackdrop) closeRemoveConfirm();
-  });
-  els.removeConfirmCancel.addEventListener('click', closeRemoveConfirm);
-  els.removeConfirmOk.addEventListener('click', () => {
-    const action = state.pendingRemoveAction;
-    closeRemoveConfirm();
-    if (action) action();
-  });
-
-  els.generateConfirmModalBackdrop.addEventListener('click', e => {
-    if (e.target === els.generateConfirmModalBackdrop) closeGenerateConfirm();
-  });
-  els.generateConfirmCancel.addEventListener('click', closeGenerateConfirm);
-  els.generateConfirmOk.addEventListener('click', () => {
-    const includeAdded = els.generateConfirmAddedCheckbox.checked;
-    const includeSkipped = els.generateConfirmSkippedCheckbox.checked;
-    closeGenerateConfirm();
-    generateAll(includeAdded, includeSkipped);
-  });
-}
-
 async function loadSupportState() {
   const providers = await fetch('/api/providers').then(r => r.json()).catch(() => null);
   state.providers = providers?.ai ?? null;
@@ -215,9 +131,28 @@ async function loadSupportState() {
 export async function initStoryAddToLexicon() {
   ensureModalDom();
   cacheEls();
-  bindEvents();
+  modalController.bindBaseEvents();
   await loadSupportState();
 }
+
+const modalController = createWordResultModalController({
+  els,
+  state,
+  closeModal: closeAddResultModal,
+  canClose: () => state.pendingGenerates === 0,
+  closeButtonId: 'story-btn-add-result-close',
+  onGenerateAll: generateAll,
+  onPlayExampleSentence: ({ row, text }) => {
+    playSentenceAudio({
+      word: row?._resolvedWord ?? '',
+      exampleJp: text,
+    }, 1, STORY_LEXICON_AUDIO_OPTIONS);
+  },
+  onUploadComplete: undefined,
+  onSaveRowEdits: saveWordRowEdits,
+  bindWordResultEditorEvents,
+  bindWordResultImageUpload,
+});
 
 export async function addWordsToLexicon(words) {
   const rawWords = words.map(word => String(word ?? '').trim()).filter(Boolean).join('\n');
@@ -369,7 +304,7 @@ async function generateWordImage(event, wordId, word, btn) {
 function removeWordRow(event, btn) {
   const word = btn.dataset.word;
   event.stopPropagation();
-  openRemoveConfirm('Remove "' + word + '" from the lexicon?', async () => {
+  modalController.openRemoveConfirm('Remove "' + word + '" from the lexicon?', async () => {
     btn.disabled = true;
     const res = await fetch('/admin/words/delete', {
       method: 'POST',
@@ -477,7 +412,7 @@ function renderStatus() {
     const mainBtn = actionEl.querySelector('.split-btn-main');
     const arrowBtn = actionEl.querySelector('.split-btn-arrow');
     const menu = els.splitBtnMenu;
-    mainBtn?.addEventListener('mousedown', openGenerateConfirm);
+    mainBtn?.addEventListener('mousedown', modalController.openGenerateConfirm);
     arrowBtn?.addEventListener('mousedown', e => {
       e.stopPropagation();
       menu.hidden = !menu.hidden;
@@ -530,7 +465,7 @@ function initAddResultFooter() {
   els.addResultRemoveBtn.addEventListener('click', () => {
     const count = state.addedWords.length;
     const label = count === 1 ? '"' + state.addedWords[0] + '"' : count + ' added words';
-    openRemoveConfirm('Remove ' + label + ' from the lexicon?', async () => {
+    modalController.openRemoveConfirm('Remove ' + label + ' from the lexicon?', async () => {
       await fetch('/admin/words/delete', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },

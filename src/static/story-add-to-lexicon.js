@@ -18,6 +18,7 @@ const els = {};
 
 const state = {
   addedWords: [],
+  eventsBound: false,
   fieldErrorTimer: null,
   generateType: 'word-info',
   generationCancelled: false,
@@ -29,7 +30,16 @@ const state = {
   skippedCount: 0,
 };
 
-let eventsBound = false;
+function cacheFooterEls() {
+  els.addResultAction = document.getElementById('story-add-result-modal-action');
+  els.addResultCloseBtn = document.getElementById('story-btn-add-result-close');
+  els.addResultImageSourceIcon = document.getElementById('story-add-result-image-source-icon');
+  els.addResultImageSourceSelect = document.getElementById('story-add-result-image-source-select');
+  els.addResultModelSelect = document.getElementById('story-add-result-model-select');
+  els.addResultRemoveBtn = document.getElementById('story-btn-add-result-remove');
+  els.addResultStatus = document.getElementById('story-add-result-modal-status');
+  els.splitBtnMenu = document.getElementById('story-split-btn-menu');
+}
 
 function ensureModalDom() {
   if (document.getElementById('story-add-result-modal-backdrop')) return;
@@ -123,12 +133,11 @@ function closeGenerateConfirm() {
 }
 
 function bindEvents() {
-  if (eventsBound) return;
-  eventsBound = true;
+  if (state.eventsBound) return;
+  state.eventsBound = true;
 
   document.addEventListener('mousedown', () => {
-    const menu = document.getElementById('story-split-btn-menu');
-    if (menu) menu.hidden = true;
+    if (els.splitBtnMenu) els.splitBtnMenu.hidden = true;
   });
 
   els.addResultModalBackdrop.addEventListener('click', e => {
@@ -319,7 +328,7 @@ function getGenerateType() {
 }
 
 function getImageSource() {
-  return document.getElementById('story-add-result-image-source-select')?.value || 'wikimedia';
+  return els.addResultImageSourceSelect?.value || 'wikimedia';
 }
 
 async function generateWordAutofill(event, wordId, word, btn) {
@@ -336,7 +345,7 @@ async function generateWordAutofill(event, wordId, word, btn) {
   state.pendingGenerates++;
   renderStatus();
   try {
-    const aiModel = document.getElementById('story-add-result-model-select')?.value;
+    const aiModel = els.addResultModelSelect?.value;
     const res = await fetch('/api/words/' + wordId + '/autofill', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -382,7 +391,7 @@ async function generateWordImage(event, wordId, word, btn) {
       body: JSON.stringify({
         word,
         meaning,
-        ai_model: document.getElementById('story-add-result-model-select')?.value,
+        ai_model: els.addResultModelSelect?.value,
         image_source: getImageSource(),
       }),
       signal: abort.signal,
@@ -448,7 +457,7 @@ function generateAll(includeAdded, includeSkipped) {
 
 async function generateAllAutofillBatch(rows) {
   const abort = new AbortController();
-  const aiModel = document.getElementById('story-add-result-model-select')?.value;
+  const aiModel = els.addResultModelSelect?.value;
   const wordItems = rows.filter(Boolean).map(row => ({ id: row._wordId, word: row._resolvedWord, btn: row.querySelector('.btn-generate') }));
   if (wordItems.length === 0) return;
   for (const item of wordItems) {
@@ -511,10 +520,10 @@ function renderStatus() {
   state.prevPendingGenerates = state.pendingGenerates;
 
   els.addResultTitle.textContent = 'Edit words';
-  const sel = document.getElementById('story-add-result-model-select');
+  const sel = els.addResultModelSelect;
   if (sel) sel.disabled = state.pendingGenerates > 0 || !(state.providers && PROVIDER_MODELS.some(p => state.providers[p.key]));
-  const statusEl = document.getElementById('story-add-result-modal-status');
-  const actionEl = document.getElementById('story-add-result-modal-action');
+  const statusEl = els.addResultStatus;
+  const actionEl = els.addResultAction;
   const skippedHtml = state.skippedCount > 0 ? '<span class="status-skipped">' + state.skippedCount + ' skipped</span>' : '';
   statusEl.className = 'modal-status ' + (state.pendingGenerates > 0 ? 'modal-status-loading' : 'modal-status-done');
   statusEl.innerHTML =
@@ -546,7 +555,7 @@ function renderStatus() {
 
     const mainBtn = actionEl.querySelector('.split-btn-main');
     const arrowBtn = actionEl.querySelector('.split-btn-arrow');
-    const menu = document.getElementById('story-split-btn-menu');
+    const menu = els.splitBtnMenu;
     mainBtn?.addEventListener('mousedown', openGenerateConfirm);
     arrowBtn?.addEventListener('mousedown', e => {
       e.stopPropagation();
@@ -563,8 +572,8 @@ function renderStatus() {
   }
 
   const sourceDisplay = genType === 'image' ? '' : 'none';
-  const sourceSel = document.getElementById('story-add-result-image-source-select');
-  const sourceIcon = document.getElementById('story-add-result-image-source-icon');
+  const sourceSel = els.addResultImageSourceSelect;
+  const sourceIcon = els.addResultImageSourceIcon;
   if (sourceSel) sourceSel.style.display = sourceDisplay;
   if (sourceIcon) sourceIcon.style.display = sourceDisplay;
 }
@@ -609,13 +618,15 @@ function initAddResultFooter() {
     '<button id="story-btn-add-result-remove" class="btn-danger">Remove the added words</button>' +
     '<button id="story-btn-add-result-close" class="btn-save">Close</button>';
 
+  cacheFooterEls();
+
   if (hasProviders) {
-    const sel = document.getElementById('story-add-result-model-select');
+    const sel = els.addResultModelSelect;
     const first = sel.querySelector('optgroup:not([disabled]) option');
     if (first) sel.value = first.value;
   }
 
-  document.getElementById('story-btn-add-result-remove').addEventListener('click', () => {
+  els.addResultRemoveBtn.addEventListener('click', () => {
     const count = state.addedWords.length;
     const label = count === 1 ? '"' + state.addedWords[0] + '"' : count + ' added words';
     openRemoveConfirm('Remove ' + label + ' from the lexicon?', async () => {
@@ -634,16 +645,14 @@ function initAddResultFooter() {
       updateAddResultFooter();
     });
   });
-  document.getElementById('story-btn-add-result-close').addEventListener('click', closeAddResultModal);
+  els.addResultCloseBtn.addEventListener('click', closeAddResultModal);
   updateAddResultFooter();
 }
 
 function updateAddResultFooter() {
-  const btnRemove = document.getElementById('story-btn-add-result-remove');
-  const btnClose = document.getElementById('story-btn-add-result-close');
-  if (!btnRemove || !btnClose) return;
-  btnRemove.disabled = state.addedWords.length === 0;
-  btnClose.disabled = state.pendingGenerates > 0;
+  if (!els.addResultRemoveBtn || !els.addResultCloseBtn) return;
+  els.addResultRemoveBtn.disabled = state.addedWords.length === 0;
+  els.addResultCloseBtn.disabled = state.pendingGenerates > 0;
 }
 
 export function closeAddResultModal() {

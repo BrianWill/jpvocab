@@ -339,6 +339,7 @@
   overflow: hidden;
   text-overflow: ellipsis;
   cursor: pointer;
+  user-select: none; 
 }
 .add-modal-main {
   flex: 1;

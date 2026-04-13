@@ -1,4 +1,7 @@
 const els = {
+  btnCancel: null,
+  btnClose: null,
+  btnRemove: null,
   form: document.querySelector('.add-word-form'),
   modal: document.getElementById('batch-modal'),
   modalBody: document.getElementById('batch-modal-body'),
@@ -126,10 +129,14 @@ function initFooter() {
     '<button id="btn-remove" class="btn-danger">Remove added words</button>' +
     '<button id="btn-close">Close</button>';
 
-  document.getElementById('btn-cancel').addEventListener('click', function () {
+  els.btnCancel = els.modalFooter.querySelector('#btn-cancel');
+  els.btnRemove = els.modalFooter.querySelector('#btn-remove');
+  els.btnClose = els.modalFooter.querySelector('#btn-close');
+
+  els.btnCancel.addEventListener('click', function () {
     if (state.controller) state.controller.abort();
   });
-  document.getElementById('btn-remove').addEventListener('click', async function () {
+  els.btnRemove.addEventListener('click', async function () {
     var words = state.addedWords.slice();
     await fetch('/admin/words/delete', {
       method: 'POST',
@@ -144,7 +151,7 @@ function initFooter() {
     setStatus('done', 'Removed \u2014 0 words in lexicon from this batch');
     updateFooter();
   });
-  document.getElementById('btn-close').addEventListener('click', function () {
+  els.btnClose.addEventListener('click', function () {
     els.modal.style.display = 'none';
     location.reload();
   });
@@ -153,15 +160,12 @@ function initFooter() {
 
 // Sync button enabled/disabled state and remove-button label to current state.
 function updateFooter() {
-  var btnCancel = document.getElementById('btn-cancel');
-  var btnRemove = document.getElementById('btn-remove');
-  var btnClose  = document.getElementById('btn-close');
-  if (!btnCancel) return;
+  if (!els.btnCancel) return;
 
-  btnCancel.disabled = state.phase !== 'loading';
-  btnRemove.disabled = state.addedWords.length === 0 || state.phase === 'loading';
-  btnRemove.textContent = state.addedWords.length > 0
+  els.btnCancel.disabled = state.phase !== 'loading';
+  els.btnRemove.disabled = state.addedWords.length === 0 || state.phase === 'loading';
+  els.btnRemove.textContent = state.addedWords.length > 0
     ? 'Remove the ' + state.addedWords.length + ' added word' + (state.addedWords.length === 1 ? '' : 's')
     : 'Remove added words';
-  btnClose.disabled = state.phase === 'loading';
+  els.btnClose.disabled = state.phase === 'loading';
 }

@@ -35,14 +35,13 @@ import { renderReading } from './lexicon-utils.js';
 const els = createDrillElements();
 const state = createDrillState(DRILL_FILTER_KEYS);
 const DRILL_AUDIO_OPTIONS = { preferSynthesis: true, fallbackToBrowserTts: true };
-
-let _prefetchController = null;
-let _answerQueue = Promise.resolve();
+state.prefetchController = null;
+state.answerQueue = Promise.resolve();
 
 async function prefetchRoundAudio(remaining) {
-  if (_prefetchController) _prefetchController.abort();
-  _prefetchController = new AbortController();
-  const { signal } = _prefetchController;
+  if (state.prefetchController) state.prefetchController.abort();
+  state.prefetchController = new AbortController();
+  const { signal } = state.prefetchController;
   const available = await checkVoicevoxAvailable();
   if (signal.aborted) return;
   const vv = getVoicevoxSettings();
@@ -182,7 +181,7 @@ function reveal(knew) {
   // order without blocking the UI between answers.
   const sessionId = state.sessionId;
   const sessionSnapshot = serializeSessionState(state);
-  _answerQueue = _answerQueue
+  state.answerQueue = state.answerQueue
     .then(() => postAnswer(sessionId, answered.id, knew, sessionSnapshot))
     .catch(err => console.error('Failed to save drill answer', err));
 }
@@ -200,7 +199,7 @@ function advanceAfterReveal() {
 
   const sessionId = state.sessionId;
   const sessionSnapshot = serializeSessionState(state);
-  _answerQueue = _answerQueue
+  state.answerQueue = state.answerQueue
     .then(() => updateSessionState(sessionId, sessionSnapshot))
     .catch(err => console.error('Failed to save drill session', err));
 }

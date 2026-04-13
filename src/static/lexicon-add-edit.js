@@ -17,10 +17,18 @@ const LEXICON_AUDIO_OPTIONS = { preferSynthesis: true, fallbackToBrowserTts: tru
 
 const els = {
   addModalSaveBtn: document.querySelector('#add-modal-backdrop .btn-save'),
+  addWordsInput: document.getElementById('add-words-input'),
+  addResultAction: null,
   addResultBody: document.getElementById('add-result-modal-body'),
   addResultClose: document.getElementById('add-result-modal-close'),
+  addResultCloseBtn: null,
   addResultFooter: document.getElementById('add-result-modal-footer'),
+  addResultImageSourceIcon: null,
+  addResultImageSourceSelect: null,
+  addResultModelSelect: null,
   addResultModalBackdrop: document.getElementById('add-result-modal-backdrop'),
+  addResultRemoveBtn: null,
+  addResultStatus: null,
   addResultTitle: document.getElementById('add-result-modal-title'),
   generateConfirmAddedCheckbox: document.getElementById('generate-confirm-added-checkbox'),
   generateConfirmAddedText: document.getElementById('generate-confirm-added-text'),
@@ -33,6 +41,7 @@ const els = {
   removeConfirmModalBackdrop: document.getElementById('remove-confirm-modal-backdrop'),
   removeConfirmOk: document.getElementById('remove-confirm-ok'),
   removeConfirmText: document.getElementById('remove-confirm-text'),
+  splitBtnMenu: null,
 };
 
 export const state = {
@@ -48,6 +57,17 @@ export const state = {
   pendingRemoveAction: null,
   skippedCount: 0,
 };
+
+function cacheAddResultFooterEls() {
+  els.addResultAction = document.getElementById('add-result-modal-action');
+  els.addResultCloseBtn = document.getElementById('btn-add-result-close');
+  els.addResultImageSourceIcon = document.getElementById('add-result-image-source-icon');
+  els.addResultImageSourceSelect = document.getElementById('add-result-image-source-select');
+  els.addResultModelSelect = document.getElementById('add-result-model-select');
+  els.addResultRemoveBtn = document.getElementById('btn-add-result-remove');
+  els.addResultStatus = document.getElementById('add-result-modal-status');
+  els.splitBtnMenu = document.getElementById('split-btn-menu');
+}
 
 // --- Add/edit modal ---
 // Handles two scenarios:
@@ -93,14 +113,13 @@ export function openEditModal(event) {
 
   els.addResultModalBackdrop.classList.remove('hidden');
   initAddResultFooter();
-  document.getElementById('btn-add-result-remove').style.display = 'none';
+  els.addResultRemoveBtn.style.display = 'none';
   renderStatus();
   els.addResultBody.querySelector('.result-badge').style.display = 'none';
 }
 
 document.addEventListener('mousedown', () => {
-  const menu = document.getElementById('split-btn-menu');
-  if (menu) menu.hidden = true;
+  if (els.splitBtnMenu) els.splitBtnMenu.hidden = true;
 });
 
 els.addResultModalBackdrop.addEventListener('click', function (e) {
@@ -189,13 +208,13 @@ export async function closeAddResultModal() {
 
 async function saveAddModal() {
   function setModalStatus(type, text) {
-    const el = document.getElementById('add-result-modal-status');
+    const el = els.addResultStatus;
     const spinner = type === 'loading' ? '<span class="spinner"></span>' : '';
     el.className = 'modal-status modal-status-' + type;
     el.innerHTML = spinner + '<span>' + esc(text) + '</span>';
   }
 
-  const rawWords = document.getElementById('add-words-input').value.trim();
+  const rawWords = els.addWordsInput.value.trim();
   if (!rawWords) return;
 
   closeAddModal();
@@ -210,7 +229,7 @@ async function saveAddModal() {
   els.addResultBody.innerHTML = '';
   els.addResultModalBackdrop.classList.remove('hidden');
   initAddResultFooter();
-  document.getElementById('add-result-modal-status').style.display = '';
+  els.addResultStatus.style.display = '';
   renderStatus();
 
   const form = new FormData();
@@ -399,7 +418,7 @@ function getGenerateType() {
 }
 
 function getImageSource() {
-  return document.getElementById('add-result-image-source-select')?.value ?? 'wikimedia';
+  return els.addResultImageSourceSelect?.value ?? 'wikimedia';
 }
 
 function updateGenerateBtnStates() {
@@ -429,7 +448,7 @@ async function generateWordAutofill(event, wordId, word, btn) {
   btn.innerHTML = '<span class="spinner"></span><span class="btn-gen-label">generating\u2026</span><span class="btn-gen-cancel">cancel generation</span>';
   state.pendingGenerates++;
   renderStatus();
-  const aiModel = document.getElementById('add-result-model-select').value;
+  const aiModel = els.addResultModelSelect.value;
   try {
     const res = await fetch('/api/words/' + wordId + '/autofill', {
       method: 'POST',
@@ -468,7 +487,7 @@ async function generateWordImage(event, wordId, word, btn) {
   btn.innerHTML = '<span class="spinner"></span><span class="btn-gen-label">finding image\u2026</span><span class="btn-gen-cancel">cancel</span>';
   state.pendingGenerates++;
   renderStatus();
-  const aiModel = document.getElementById('add-result-model-select').value;
+  const aiModel = els.addResultModelSelect.value;
   const meaning = (row?.querySelector('.detail-meaning .detail-input')?.textContent ?? '').trim();
   const prevImageHtml = row?.querySelector('.word-result-image')?.outerHTML ?? null;
   setWordRowImage(row, '', 'loading');
@@ -571,7 +590,7 @@ function generateAll(includeAdded, includeSkipped) {
 
 async function generateAllAutofillBatch(rows) {
   const abort = new AbortController();
-  const aiModel = document.getElementById('add-result-model-select').value;
+  const aiModel = els.addResultModelSelect.value;
   const wordItems = [];
   for (const row of rows) {
     if (!row._wordId) continue;
@@ -636,7 +655,7 @@ function renderStatus() {
     delete els.addResultClose.dataset.tooltip;
   }
 
-  const sel = document.getElementById('add-result-model-select');
+  const sel = els.addResultModelSelect;
   if (sel) {
     const busyLock = state.pendingGenerates > 0;
     sel.disabled = busyLock || !(lexiconState.providers && (lexiconState.providers.anthropic || lexiconState.providers.openai || lexiconState.providers.google || lexiconState.providers.mistral || lexiconState.providers.glm));
@@ -646,8 +665,8 @@ function renderStatus() {
       delete sel.dataset.tooltip;
     }
   }
-  const el = document.getElementById('add-result-modal-status');
-  const actionEl = document.getElementById('add-result-modal-action');
+  const el = els.addResultStatus;
+  const actionEl = els.addResultAction;
   const skippedHtml = state.skippedCount > 0
     ? '<span class="status-skipped">' + state.skippedCount + ' skipped</span>'
     : '';
@@ -693,7 +712,7 @@ function renderStatus() {
     } else {
       const mainBtn = actionEl.querySelector('.split-btn-main');
       const arrowBtn = actionEl.querySelector('.split-btn-arrow');
-      const menu = document.getElementById('split-btn-menu');
+      const menu = els.splitBtnMenu;
       if (mainBtn) mainBtn.addEventListener('mousedown', state.isSingleEdit ? () => generateAll(true, true) : openGenerateConfirm);
       if (arrowBtn && menu) {
         arrowBtn.addEventListener('mousedown', (e) => {
@@ -724,8 +743,8 @@ function renderStatus() {
   updateAddResultFooter();
   updateGenerateBtnStates();
   const sourceDisplay = genType === 'image' ? '' : 'none';
-  const sourceSel  = document.getElementById('add-result-image-source-select');
-  const sourceIcon = document.getElementById('add-result-image-source-icon');
+  const sourceSel  = els.addResultImageSourceSelect;
+  const sourceIcon = els.addResultImageSourceIcon;
   if (sourceSel)  sourceSel.style.display  = sourceDisplay;
   if (sourceIcon) sourceIcon.style.display = sourceDisplay;
 }
@@ -787,13 +806,15 @@ function initAddResultFooter() {
     '<button id="btn-add-result-remove" class="btn-danger">Remove the added words</button>' +
     '<button id="btn-add-result-close" class="btn-save">Close</button>';
 
+  cacheAddResultFooterEls();
+
   if (hasProviders) {
-    const sel = document.getElementById('add-result-model-select');
+    const sel = els.addResultModelSelect;
     const first = sel.querySelector('optgroup:not([disabled]) option');
     if (first) sel.value = first.value;
   }
 
-  document.getElementById('btn-add-result-remove').addEventListener('click', function () {
+  els.addResultRemoveBtn.addEventListener('click', function () {
     const count = state.addedWords.length;
     const label = count === 1 ? '"' + state.addedWords[0] + '"' : count + ' added words';
     openRemoveConfirm('Remove ' + label + ' from the lexicon?', async () => {
@@ -821,15 +842,13 @@ function initAddResultFooter() {
       updateAddResultFooter();
     });
   });
-  document.getElementById('btn-add-result-close').addEventListener('click', closeAddResultModal);
+  els.addResultCloseBtn.addEventListener('click', closeAddResultModal);
   updateAddResultFooter();
 }
 
 function updateAddResultFooter() {
-  const btnRemove = document.getElementById('btn-add-result-remove');
-  const btnClose  = document.getElementById('btn-add-result-close');
-  if (!btnRemove) return;
-  btnRemove.disabled = state.addedWords.length === 0;
-  btnRemove.textContent = 'Remove the added words';
-  btnClose.disabled = state.addPhase === 'loading' || state.pendingGenerates > 0;
+  if (!els.addResultRemoveBtn) return;
+  els.addResultRemoveBtn.disabled = state.addedWords.length === 0;
+  els.addResultRemoveBtn.textContent = 'Remove the added words';
+  els.addResultCloseBtn.disabled = state.addPhase === 'loading' || state.pendingGenerates > 0;
 }

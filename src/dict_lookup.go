@@ -96,17 +96,6 @@ func lookupDictionaryKanjiInDB(dictDB *sql.DB, character string) (*dictionaryKan
 	return &info, nil
 }
 
-func canonicalPartOfSpeechFromDict(tags []string) string {
-	lowered := make([]string, 0, len(tags))
-	for _, tag := range tags {
-		tag = strings.ToLower(strings.TrimSpace(tag))
-		if tag != "" {
-			lowered = append(lowered, tag)
-		}
-	}
-	return canonicalPartOfSpeech(lowered)
-}
-
 func lookupWordFromTable(dictDB *sql.DB, word string) (*dictionaryWordInfo, error) {
 	var info dictionaryWordInfo
 	var glossesJSON string

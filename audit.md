@@ -86,8 +86,15 @@ morphology.go (fine)
 images.go (fine)
 
 ai.go 
-
 ai_openai.go
+...
+
+- arguably should create AIProvider interface, but instead just uses switches on strings for handful of AI operations
+
+wordlists.go
+
+db_schema.go
+
 
 
 

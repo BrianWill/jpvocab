@@ -124,13 +124,6 @@ func migrate(db *sql.DB) {
 			meta_json  TEXT     NOT NULL DEFAULT '{}',
 			created_at DATETIME NOT NULL DEFAULT (datetime('now'))
 		)`,
-		func(db *sql.DB) error {
-			_, err := db.Exec(`ALTER TABLE kanji ADD COLUMN readings TEXT NOT NULL DEFAULT '[]'`)
-			if err != nil && !strings.Contains(strings.ToLower(err.Error()), "duplicate column name") {
-				return err
-			}
-			return nil
-		},
 	}
 
 	var version int

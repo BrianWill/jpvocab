@@ -562,19 +562,6 @@ func storySentenceDisplayText(s storySentenceJSON) string {
 	return strings.Join(parts, "")
 }
 
-func storySentenceTranslationText(s storySentenceJSON) string {
-	if s.OrigLang == "en" {
-		if s.JPText != nil {
-			return *s.JPText
-		}
-		return ""
-	}
-	if s.ENText != nil {
-		return *s.ENText
-	}
-	return ""
-}
-
 func storySentenceSourceText(s storySentenceJSON) string {
 	return strings.TrimSpace(storySentenceDisplayText(s))
 }
@@ -584,13 +571,6 @@ func storySentenceTargetLang(origLang string) string {
 		return "jp"
 	}
 	return "en"
-}
-
-func storySentenceHasTranslation(s storySentenceJSON) bool {
-	if s.OrigLang == "en" {
-		return s.JPText != nil && strings.TrimSpace(*s.JPText) != ""
-	}
-	return s.ENText != nil && strings.TrimSpace(*s.ENText) != ""
 }
 
 func classifySentenceLanguage(text string) string {

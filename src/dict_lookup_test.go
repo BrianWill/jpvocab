@@ -135,36 +135,6 @@ func TestBuildDictLookupCommandFailsClearly(t *testing.T) {
 	}
 }
 
-func TestCanonicalPartOfSpeechFromDict(t *testing.T) {
-	cases := []struct {
-		name string
-		tags []string
-		want string
-	}{
-		{name: "godan", tags: []string{"Godan verb with `ku' ending"}, want: "godan-verb"},
-		{name: "godan code", tags: []string{"v5k"}, want: "godan-verb"},
-		{name: "ichidan", tags: []string{"Ichidan verb"}, want: "ichidan-verb"},
-		{name: "ichidan code", tags: []string{"v1"}, want: "ichidan-verb"},
-		{name: "i adjective", tags: []string{"I-adjective (keiyoushi)"}, want: "i-adjective"},
-		{name: "i adjective code", tags: []string{"adj-i"}, want: "i-adjective"},
-		{name: "na adjective", tags: []string{"Adjectival nouns or quasi-adjectives (keiyodoshi)"}, want: "na-adjective"},
-		{name: "na adjective code", tags: []string{"adj-na"}, want: "na-adjective"},
-		{name: "adverb", tags: []string{"Adverb (fukushi)"}, want: "adverb"},
-		{name: "adverb code", tags: []string{"adv"}, want: "adverb"},
-		{name: "noun", tags: []string{"Noun (common) (futsuumeishi)"}, want: "noun"},
-		{name: "noun code", tags: []string{"n"}, want: "noun"},
-		{name: "fallback other", tags: []string{"Expression (phrase, clause, etc.)"}, want: "other"},
-		{name: "empty", tags: nil, want: ""},
-	}
-	for _, tc := range cases {
-		t.Run(tc.name, func(t *testing.T) {
-			if got := canonicalPartOfSpeechFromDict(tc.tags); got != tc.want {
-				t.Fatalf("got %q, want %q", got, tc.want)
-			}
-		})
-	}
-}
-
 func runGoCommand(t *testing.T, args ...string) (string, error) {
 	t.Helper()
 	cmd := exec.Command("go", args...)

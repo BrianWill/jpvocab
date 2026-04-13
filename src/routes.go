@@ -71,31 +71,7 @@ func serverInit(db *sql.DB) {
 	r.Delete("/api/stories/{id}/noted-words", apiDeleteStoryNotedWord(db))
 	r.Post("/api/stories/{id}/generate-translation", apiGenerateStoryTranslation(db))
 
-	r.Get("/api/providers", func(w http.ResponseWriter, r *http.Request) {
-		p := checkAIProviders()
-		s := checkImageSources()
-		writeJSON(w, map[string]any{
-			"ai": map[string]bool{
-				"anthropic": p.AnthropicAvail,
-				"openai":    p.OpenAIAvail,
-				"google":    p.GoogleAvail,
-				"mistral":   p.MistralAvail,
-				"glm":       p.GLMAvail,
-			},
-			"image_sources": map[string]bool{
-				"unsplash": s.UnsplashAvail,
-				"pexels":   s.PexelsAvail,
-				"pixabay":  s.PixabayAvail,
-				"bing":     s.BingAvail,
-			},
-			"default_drill_target": func() int {
-				if s, err := getDrillSettings(db); err == nil {
-					return s.NewWordTarget
-				}
-				return 8
-			}(),
-		})
-	})
+	r.Get("/api/providers", apiGetProviders(db))
 	r.Get("/api/wordlists", apiGetWordLists(db))
 	r.Get("/api/wordlists/{slug}/words", apiGetWordListWords(db))
 
@@ -175,6 +151,28 @@ func apiQueueWailsCacheClear() http.HandlerFunc {
 				app.Quit()
 			}
 		}()
+	}
+}
+
+func apiGetProviders(_ *sql.DB) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		p := checkAIProviders()
+		s := checkImageSources()
+		writeJSON(w, map[string]any{
+			"ai": map[string]bool{
+				"anthropic": p.AnthropicAvail,
+				"openai":    p.OpenAIAvail,
+				"google":    p.GoogleAvail,
+				"mistral":   p.MistralAvail,
+				"glm":       p.GLMAvail,
+			},
+			"image_sources": map[string]bool{
+				"unsplash": s.UnsplashAvail,
+				"pexels":   s.PexelsAvail,
+				"pixabay":  s.PixabayAvail,
+				"bing":     s.BingAvail,
+			},
+		})
 	}
 }
 

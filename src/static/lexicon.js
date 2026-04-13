@@ -32,7 +32,6 @@ els.deleteModalCancelBtn = els.deleteModalBackdrop.querySelector('.btn-cancel');
 
 export const state = {
   activeWords: 0,
-  defaultDrillTarget: 8,
   deleteRowEl: null,
   ffmpegAvailable: false,
   imageSources: null,
@@ -366,7 +365,6 @@ export function updateWordImagePath(wordId, imagePath) {
 
 async function init() {
   const providers = await fetch('/api/providers').then(r => r.json());
-  if (providers.default_drill_target) state.defaultDrillTarget = providers.default_drill_target;
   state.providers = providers.ai;
   state.imageSources = providers.image_sources;
   [state.voicevoxAvailable, state.ffmpegAvailable] = await Promise.all([

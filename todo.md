@@ -2,6 +2,10 @@
 
 This file is random notes of possible features and bug fixes.
 
+- mac wails needs icon
+- test linux
+    linux icon for wails?
+
 - when you answer word, maybe there should be brief reveal of answer before moving to next word?
     - especially when you answer don't know
     - or maybe just delay reveal and audio play of next word

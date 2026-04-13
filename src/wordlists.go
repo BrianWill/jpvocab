@@ -37,6 +37,7 @@ type wordList struct {
 var loadedWordLists []wordList
 var wordListEntryByWord map[string]wordListEntry
 
+// 'init' is special Go function name that is invoked automatically during package init before main()
 func init() {
 	entries, err := wordListsFS.ReadDir("wordlists")
 	if err != nil {
@@ -182,7 +183,8 @@ func populateLexiconFromWordListsIfTrackedEmpty(db *sql.DB) (int, bool, error) {
 				continue
 			}
 			seen[word] = struct{}{}
-			if _, err := insertWordReturningID(db, word, entry.Reading, entry.PartOfSpeech, entry.Meaning, entry.ExampleJP, entry.ExampleEN, "", newWordTarget); err != nil {
+			if _, err := insertWordReturningID(db, word, entry.Reading, entry.PartOfSpeech, entry.Meaning,
+				entry.ExampleJP, entry.ExampleEN, "", newWordTarget); err != nil {
 				return inserted, false, fmt.Errorf("insert %q from word list %q: %w", word, wl.Slug, err)
 			}
 			inserted++

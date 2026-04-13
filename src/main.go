@@ -20,7 +20,6 @@ const (
 
 var (
 	isDesktopApp          bool
-	webviewUserDataPath   string
 	clearWebviewCacheFlag string
 )
 
@@ -32,7 +31,7 @@ func defaultWebviewUserDataPath() (string, error) {
 	return filepath.Join(cacheRoot, "jpvocab", "wails-webview2"), nil
 }
 
-func clearPendingWebviewCache() error {
+func clearPendingWebviewCache(webviewUserDataPath string) error {
 	if clearWebviewCacheFlag == "" || webviewUserDataPath == "" {
 		return nil
 	}
@@ -67,13 +66,12 @@ func main() {
 	}
 	skipLargeSeedStories = *skipLargeStories
 
-	var err error
-	webviewUserDataPath, err = defaultWebviewUserDataPath()
+	webviewUserDataPath, err := defaultWebviewUserDataPath()
 	if err != nil {
 		log.Fatal(err)
 	}
 	clearWebviewCacheFlag = webviewUserDataPath + ".clear"
-	if err := clearPendingWebviewCache(); err != nil {
+	if err := clearPendingWebviewCache(webviewUserDataPath); err != nil {
 		log.Printf("warning: unable to clear pending webview cache: %v", err)
 	}
 
@@ -99,12 +97,12 @@ func main() {
 	log.Printf("jpvocab backend running on http://localhost:%d", port)
 
 	if *serverOnly {
-		// Blocking: run the web server on the main goroutine with no GUI.
+		// run the web server on the main goroutine with no GUI
 		serverInit(db)
 		return
 	}
 
-	// Run the web server in the background; serverInit blocks on ListenAndServe.
+	// Run the web server in the background (serverInit blocks on ListenAndServe).
 	go serverInit(db)
 
 	// Give the web server a moment to bind before the webview makes its first request.
@@ -122,8 +120,8 @@ func main() {
 
 	app.Window.NewWithOptions(application.WebviewWindowOptions{
 		Title:  "jpvocab",
-		Width:  1280,
-		Height: 800,
+		Width:  1920,
+		Height: 1080,
 		URL:    fmt.Sprintf("http://localhost:%d/welcome", port),
 		// ZoomControlEnabled allows Ctrl+scroll to reach the page's JS wheel
 		// handler (in app_nav.html) rather than being consumed by WebView2.

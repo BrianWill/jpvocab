@@ -62,6 +62,9 @@
       <button class="btn btn-yes">
         ✓ Do know <span class="key-hint">D</span>
       </button>
+      <button class="btn btn-next" id="drill-next-btn" style="display:none">
+        Next <span class="key-hint">Any key</span>
+      </button>
     </div>
   </div>
 
@@ -116,6 +119,10 @@
           <button type="button" class="filter-chip active" data-filter="nouns">Nouns</button>
           <button type="button" class="filter-chip active" data-filter="other">Other</button>
         </div>
+      </div>
+      <div class="restart-field">
+        <label for="restart-skip-answer-reveal">Skip answer reveal</label>
+        <input type="checkbox" id="restart-skip-answer-reveal" class="settings-tts-autoplay">
       </div>
       <div class="filter-hint" id="filter-hint"></div>
     </div>

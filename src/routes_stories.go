@@ -254,11 +254,6 @@ func apiCreateStory(db *sql.DB) http.HandlerFunc {
 	}
 }
 
-// storySentenceText reconstructs the plain text of a sentence from its word tokens.
-func storySentenceText(s storySentenceJSON) string {
-	return storySentenceDisplayText(s)
-}
-
 func writeStoryJobSuccess(streamEvent func(v any), usage tokenUsage) {
 	streamEvent(map[string]any{
 		"allDone":      true,

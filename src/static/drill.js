@@ -11,15 +11,18 @@ import {
 } from './common.js';
 import { getSynthAudio } from './synth-cache.js';
 import {
+  advanceAfterRevealState,
   buildRoundState,
   createSession,
   createDrillState,
   DEFAULT_ROUND_SIZE,
+  getAnswerFeedbackState,
   getFilteredWords,
   getNextRevealState,
   loadDrillData,
   postAnswer,
   serializeSessionState,
+  updateSessionState,
 } from './drill-state.js';
 import {
   createDrillElements,
@@ -102,6 +105,11 @@ function restoreSession(session) {
   state.redo = Array.isArray(sessionState.redo) ? sessionState.redo : [];
   state.remaining = Array.isArray(sessionState.remaining) ? sessionState.remaining : [];
   state.currentWord = state.remaining[0] || null;
+  state.skipAnswerReveal = sessionState.skipAnswerReveal === true;
+  state.awaitingAdvance = sessionState.awaitingAdvance === true;
+  state.pendingAnswerCorrect = typeof sessionState.pendingAnswerCorrect === 'boolean'
+    ? sessionState.pendingAnswerCorrect
+    : null;
   state.sidebarFlash = null;
   state.sidebarItems = Array.isArray(sessionState.sidebarItems) ? sessionState.sidebarItems : [];
   state.lastAnswered = sessionState.lastAnswered || null;
@@ -121,6 +129,7 @@ async function init() {
 
   state.words = allWords.filter(word => word.correct < word.target);
   state.settingsMaxWords = settings.maxWords;
+  state.skipAnswerReveal = settings.skipAnswerReveal === true;
   if (settings.roundSize > 0) {
     state.roundSize = settings.roundSize;
     state.requestedRoundSize = settings.roundSize;
@@ -146,6 +155,7 @@ async function init() {
   const source = filtered.length > 0 ? filtered : state.words;
   state.poolSize = Math.min(settings.maxWords, source.length);
   state.pool = shuffle(source).slice(0, state.poolSize);
+  state.lastAutoPlayedId = null;
   Object.assign(state, buildRoundState(state));
   state.lastAnswered = null;
   state.sidebarFlash = null;
@@ -156,13 +166,18 @@ async function init() {
 }
 
 function reveal(knew) {
-  if (!state.currentWord) return;
+  if (!state.currentWord || state.awaitingAdvance) return;
 
   const answered = state.currentWord;
-  Object.assign(state, getNextRevealState(state, knew));
+  if (state.skipAnswerReveal) {
+    Object.assign(state, getNextRevealState(state, knew));
+  } else {
+    Object.assign(state, getAnswerFeedbackState(state, knew));
+    playDrillWordAudio(answered).catch(() => {});
+  }
   state.sidebarFlash = { word: answered.word, knew };
   renderDrill(els, state);
-  prefetchRoundAudio(state.remaining);
+  if (!state.awaitingAdvance) prefetchRoundAudio(state.remaining);
 
   // Capture state snapshot now; queue the network call so answers are sent in
   // order without blocking the UI between answers.
@@ -173,9 +188,28 @@ function reveal(knew) {
     .catch(err => console.error('Failed to save drill answer', err));
 }
 
+function advanceAfterReveal() {
+  if (!state.awaitingAdvance) return;
+
+  const nextState = advanceAfterRevealState(state);
+  if (!nextState) return;
+
+  Object.assign(state, nextState);
+  state.sidebarFlash = null;
+  renderDrill(els, state);
+  prefetchRoundAudio(state.remaining);
+
+  const sessionId = state.sessionId;
+  const sessionSnapshot = serializeSessionState(state);
+  _answerQueue = _answerQueue
+    .then(() => updateSessionState(sessionId, sessionSnapshot))
+    .catch(err => console.error('Failed to save drill session', err));
+}
+
 function openRestartModal() {
   els.restartTotalWords.value = state.settingsMaxWords;
   els.restartRoundSize.value = state.requestedRoundSize;
+  els.restartSkipAnswerReveal.checked = state.skipAnswerReveal;
   refreshFilterHint();
   els.restartBackdrop.classList.remove('hidden');
 }
@@ -192,6 +226,9 @@ function restartDrill(totalWords, roundSize, sourceWords) {
   state.redo = [];
   state.doneCount = 0;
   state.drillStartedAt = Date.now();
+  state.awaitingAdvance = false;
+  state.lastAutoPlayedId = null;
+  state.pendingAnswerCorrect = null;
   Object.assign(state, buildRoundState(state));
   state.lastAnswered = null;
   state.sidebarFlash = null;
@@ -207,6 +244,7 @@ async function confirmRestart() {
   const requestedRoundSize = Math.max(1, parseInt(els.restartRoundSize.value, 10) || state.requestedRoundSize);
   const nextRoundSize = Math.max(1, Math.min(total, requestedRoundSize));
   state.requestedRoundSize = requestedRoundSize;
+  state.skipAnswerReveal = els.restartSkipAnswerReveal.checked;
   closeRestartModal();
   restartDrill(total, nextRoundSize, filtered);
   state.sessionId = await createSession(serializeSessionState(state));
@@ -247,6 +285,12 @@ document.addEventListener('keydown', event => {
     return;
   }
   if (els.actionPrompt.style.display === 'none') return;
+  if (state.awaitingAdvance) {
+    if (event.metaKey || event.ctrlKey || event.altKey) return;
+    if (event.key === 'Shift' || event.key === 'CapsLock' || event.key === 'Tab') return;
+    advanceAfterReveal();
+    return;
+  }
   if (event.key === 'd' || event.key === 'D') reveal(true);
   if (event.key === 'a' || event.key === 'A') reveal(false);
 });
@@ -280,6 +324,7 @@ els.lastExampleEn.addEventListener('click', () => {
 els.headerRestartBtn.addEventListener('click', openRestartModal);
 els.dontKnowBtn.addEventListener('click', () => reveal(false));
 els.knowBtn.addEventListener('click', () => reveal(true));
+els.nextBtn.addEventListener('click', advanceAfterReveal);
 
 els.restartBackdrop.addEventListener('click', event => {
   if (event.target === els.restartBackdrop) closeRestartModal();

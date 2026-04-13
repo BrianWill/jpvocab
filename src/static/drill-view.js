@@ -24,8 +24,10 @@ export function createDrillElements() {
     progressBar: document.querySelector('.progress-bar'),
     promptExampleJp: document.getElementById('prompt-example-jp'),
     promptWordJp: document.getElementById('prompt-word-jp'),
+    promptSection: document.querySelector('.prompt-section'),
     restartBackdrop: document.getElementById('restart-modal-backdrop'),
     restartRoundSize: document.getElementById('restart-round-size'),
+    restartSkipAnswerReveal: document.getElementById('restart-skip-answer-reveal'),
     restartStartBtn: document.getElementById('restart-start-btn'),
     restartTotalWords: document.getElementById('restart-total-words'),
     sidebar: document.querySelector('.sidebar'),
@@ -33,6 +35,7 @@ export function createDrillElements() {
     sidebarTitle: document.getElementById('sidebar-title'),
     statToGo: document.getElementById('stat-togo'),
     tip: document.getElementById('tooltip'),
+    nextBtn: document.getElementById('drill-next-btn'),
   };
 
   els.restartFilterButtons = Array.from(
@@ -144,6 +147,7 @@ function setPromptText(el, text, keyHint) {
 
 function renderPrompt(els, state) {
   els.sidebarList.querySelectorAll('.sidebar-item.current').forEach(el => el.classList.remove('current'));
+  els.promptSection.classList.remove('revealed-known', 'revealed-missed');
   if (isSessionComplete(state)) {
     if (state.poolSize === 0) {
       setPromptText(els.promptWordJp, 'No words to drill', '');
@@ -161,6 +165,12 @@ function renderPrompt(els, state) {
 
   setPromptText(els.promptWordJp, state.currentWord.word, 'W');
   setPromptText(els.promptExampleJp, state.currentWord.exampleJp, 'S');
+  els.dontKnowBtn.style.display = state.awaitingAdvance ? 'none' : '';
+  els.knowBtn.style.display = state.awaitingAdvance ? 'none' : '';
+  els.nextBtn.style.display = state.awaitingAdvance ? '' : 'none';
+  if (state.awaitingAdvance && state.lastAnswered) {
+    els.promptSection.classList.add(state.lastAnswered.knew ? 'revealed-known' : 'revealed-missed');
+  }
   if (isTtsAutoplayEnabled() && state.currentWord.id !== state.lastAutoPlayedId) {
     state.lastAutoPlayedId = state.currentWord.id;
     playWordAudio(state.currentWord, 1, DRILL_AUDIO_OPTIONS);

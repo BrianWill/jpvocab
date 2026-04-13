@@ -409,6 +409,39 @@ func TestAPIRecordDrillAnswer_Success(t *testing.T) {
 	}
 }
 
+func TestAPIUpdateDrillSessionState_Success(t *testing.T) {
+	db := testDB(t)
+	sessionID, err := createDrillSession(db, drillSessionState{Round: 1})
+	if err != nil {
+		t.Fatal(err)
+	}
+	req := httptest.NewRequest(http.MethodPut, "/api/drill/sessions/1/state", bytes.NewBufferString(`{"state":{"round":2,"remaining":[{"id":1,"word":"海"}],"skipAnswerReveal":false,"awaitingAdvance":true}}`))
+	req = withURLParam(req, "id", int64ToString(sessionID))
+	rec := httptest.NewRecorder()
+
+	apiUpdateDrillSessionState(db).ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusNoContent {
+		t.Fatalf("status: got %d, want %d", rec.Code, http.StatusNoContent)
+	}
+	current, err := getCurrentDrillSession(db)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if current == nil {
+		t.Fatal("expected current session")
+	}
+	if current.State.Round != 2 {
+		t.Errorf("round: got %d, want 2", current.State.Round)
+	}
+	if current.State.SkipAnswerReveal == nil || *current.State.SkipAnswerReveal {
+		t.Error("SkipAnswerReveal: got true/nil, want false")
+	}
+	if !current.State.AwaitingAdvance {
+		t.Error("AwaitingAdvance: got false, want true")
+	}
+}
+
 func TestAPIGetDrillSettings_ReturnsDefaults(t *testing.T) {
 	db := testDB(t)
 	req := httptest.NewRequest(http.MethodGet, "/api/settings/drill", nil)
@@ -425,6 +458,9 @@ func TestAPIGetDrillSettings_ReturnsDefaults(t *testing.T) {
 	}
 	if settings.MaxWords != 100 || settings.RoundSize != 10 {
 		t.Errorf("settings: got %+v", settings)
+	}
+	if settings.SkipAnswerReveal {
+		t.Error("SkipAnswerReveal: got true, want false")
 	}
 }
 
@@ -1199,7 +1235,7 @@ func TestAPIGetKanji_ReturnsInserted(t *testing.T) {
 
 func TestAPIPutDrillSettings_RoundTrips(t *testing.T) {
 	db := testDB(t)
-	req := httptest.NewRequest(http.MethodPut, "/api/settings/drill", bytes.NewBufferString(`{"maxWords":12,"roundSize":5,"wordTypes":["verbs","other"]}`))
+	req := httptest.NewRequest(http.MethodPut, "/api/settings/drill", bytes.NewBufferString(`{"maxWords":12,"roundSize":5,"wordTypes":["verbs","other"],"skipAnswerReveal":false}`))
 	rec := httptest.NewRecorder()
 
 	apiPutDrillSettings(db).ServeHTTP(rec, req)
@@ -1213,6 +1249,9 @@ func TestAPIPutDrillSettings_RoundTrips(t *testing.T) {
 	}
 	if settings.MaxWords != 12 || settings.RoundSize != 5 {
 		t.Errorf("settings: got %+v", settings)
+	}
+	if settings.SkipAnswerReveal {
+		t.Error("SkipAnswerReveal: got true, want false")
 	}
 }
 

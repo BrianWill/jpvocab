@@ -132,6 +132,12 @@
   gap: 0.5rem;
   flex: 1;
 }
+.prompt-section.revealed-known {
+  background: linear-gradient(180deg, rgba(166,227,161,0.12), rgba(24,24,37,0));
+}
+.prompt-section.revealed-missed {
+  background: linear-gradient(180deg, rgba(243,139,168,0.12), rgba(24,24,37,0));
+}
 .prompt-section:not(:last-child) {
   border-bottom: 1px solid #313244;
 }
@@ -373,6 +379,10 @@
 
 .word-jp.knew { color: #a6e3a1; }
 .word-jp.missed { color: #f38ba8; }
+.prompt-section.revealed-known .word-jp { color: #a6e3a1; }
+.prompt-section.revealed-missed .word-jp { color: #f38ba8; }
+.prompt-section.revealed-known .example-jp { color: #bfe8bc; }
+.prompt-section.revealed-missed .example-jp { color: #f6b4c7; }
 
 /* Nav links: cancel common.css auto-margin (header-progress owns it here) */
 .page-nav-links { margin-left: 0; }

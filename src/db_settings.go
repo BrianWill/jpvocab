@@ -6,22 +6,24 @@ import (
 )
 
 type drillSettings struct {
-	MaxWords      int      `json:"maxWords"`
-	RoundSize     int      `json:"roundSize"`
-	WordTypes     []string `json:"wordTypes"`
-	NewWordTarget int      `json:"newWordTarget"`
+	MaxWords         int      `json:"maxWords"`
+	RoundSize        int      `json:"roundSize"`
+	WordTypes        []string `json:"wordTypes"`
+	NewWordTarget    int      `json:"newWordTarget"`
+	SkipAnswerReveal bool     `json:"skipAnswerReveal"`
 }
 
 func getDrillSettings(db *sql.DB) (drillSettings, error) {
 	s := drillSettings{
-		MaxWords:      100,
-		RoundSize:     10,
-		WordTypes:     []string{"katakana", "verbs", "nouns", "other"},
-		NewWordTarget: 8,
+		MaxWords:         100,
+		RoundSize:        10,
+		WordTypes:        []string{"katakana", "verbs", "nouns", "other"},
+		NewWordTarget:    8,
+		SkipAnswerReveal: false,
 	}
 	rows, err := db.Query(`
 		SELECT key, value FROM user_settings
-		WHERE key IN ('drill_max_words', 'drill_round_size', 'drill_word_types', 'drill_new_word_target')
+		WHERE key IN ('drill_max_words', 'drill_round_size', 'drill_word_types', 'drill_new_word_target', 'drill_skip_answer_reveal')
 	`)
 	if err != nil {
 		return s, err
@@ -50,6 +52,11 @@ func getDrillSettings(db *sql.DB) (drillSettings, error) {
 			var n int
 			if json.Unmarshal([]byte(v), &n) == nil && n > 0 {
 				s.NewWordTarget = n
+			}
+		case "drill_skip_answer_reveal":
+			var enabled bool
+			if json.Unmarshal([]byte(v), &enabled) == nil {
+				s.SkipAnswerReveal = enabled
 			}
 		}
 	}
@@ -84,5 +91,8 @@ func putDrillSettings(db *sql.DB, s drillSettings) error {
 	if err := upsert("drill_word_types", s.WordTypes); err != nil {
 		return err
 	}
-	return upsert("drill_new_word_target", s.NewWordTarget)
+	if err := upsert("drill_new_word_target", s.NewWordTarget); err != nil {
+		return err
+	}
+	return upsert("drill_skip_answer_reveal", s.SkipAnswerReveal)
 }

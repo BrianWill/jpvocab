@@ -535,7 +535,7 @@ func TestCreateDrillSession_NormalisesNilSlicesInStoredState(t *testing.T) {
 	if err := db.QueryRow(`SELECT state_json FROM drill_sessions WHERE id = ?`, sessionID).Scan(&stateJSON); err != nil {
 		t.Fatal(err)
 	}
-	want := `{"poolSize":0,"roundSize":0,"round":3,"doneCount":0,"activeFilters":[],"pool":[],"redo":[],"remaining":[],"sidebarItems":[]}`
+	want := `{"poolSize":0,"roundSize":0,"round":3,"doneCount":0,"activeFilters":[],"pool":[],"redo":[],"remaining":[],"sidebarItems":[],"skipAnswerReveal":false}`
 	if stateJSON != want {
 		t.Errorf("state_json: got %s, want %s", stateJSON, want)
 	}
@@ -810,6 +810,9 @@ func TestGetDrillSettings_Defaults(t *testing.T) {
 	if settings.RoundSize != 10 {
 		t.Errorf("RoundSize: got %d, want 10", settings.RoundSize)
 	}
+	if settings.SkipAnswerReveal {
+		t.Error("SkipAnswerReveal: got true, want false")
+	}
 	wantTypes := []string{"katakana", "verbs", "nouns", "other"}
 	if len(settings.WordTypes) != len(wantTypes) {
 		t.Fatalf("WordTypes length: got %d, want %d (%v)", len(settings.WordTypes), len(wantTypes), settings.WordTypes)
@@ -826,7 +829,8 @@ func TestGetDrillSettings_IgnoresInvalidStoredValues(t *testing.T) {
 	if _, err := db.Exec(`INSERT INTO user_settings (key, value) VALUES
 		('drill_max_words', '"bad"'),
 		('drill_round_size', '0'),
-		('drill_word_types', 'not-json')`); err != nil {
+		('drill_word_types', 'not-json'),
+		('drill_skip_answer_reveal', '"bad"')`); err != nil {
 		t.Fatal(err)
 	}
 
@@ -840,6 +844,9 @@ func TestGetDrillSettings_IgnoresInvalidStoredValues(t *testing.T) {
 	if settings.RoundSize != 10 {
 		t.Errorf("RoundSize: got %d, want default 10", settings.RoundSize)
 	}
+	if settings.SkipAnswerReveal {
+		t.Error("SkipAnswerReveal: got true, want false")
+	}
 	wantTypes := []string{"katakana", "verbs", "nouns", "other"}
 	for i := range wantTypes {
 		if settings.WordTypes[i] != wantTypes[i] {
@@ -851,9 +858,10 @@ func TestGetDrillSettings_IgnoresInvalidStoredValues(t *testing.T) {
 func TestPutDrillSettings_RoundTripsAndDeletesInvalidMaxWords(t *testing.T) {
 	db := testDB(t)
 	if err := putDrillSettings(db, drillSettings{
-		MaxWords:  25,
-		RoundSize: 7,
-		WordTypes: []string{"verbs", "nouns"},
+		MaxWords:         25,
+		RoundSize:        7,
+		WordTypes:        []string{"verbs", "nouns"},
+		SkipAnswerReveal: false,
 	}); err != nil {
 		t.Fatal(err)
 	}
@@ -865,14 +873,18 @@ func TestPutDrillSettings_RoundTripsAndDeletesInvalidMaxWords(t *testing.T) {
 	if settings.MaxWords != 25 || settings.RoundSize != 7 {
 		t.Errorf("settings: got %+v, want MaxWords=25 RoundSize=7", settings)
 	}
+	if settings.SkipAnswerReveal {
+		t.Error("SkipAnswerReveal: got true, want false")
+	}
 	if len(settings.WordTypes) != 2 || settings.WordTypes[0] != "verbs" || settings.WordTypes[1] != "nouns" {
 		t.Errorf("WordTypes: got %v", settings.WordTypes)
 	}
 
 	if err := putDrillSettings(db, drillSettings{
-		MaxWords:  0,
-		RoundSize: 9,
-		WordTypes: []string{"other"},
+		MaxWords:         0,
+		RoundSize:        9,
+		WordTypes:        []string{"other"},
+		SkipAnswerReveal: false,
 	}); err != nil {
 		t.Fatal(err)
 	}
@@ -894,6 +906,9 @@ func TestPutDrillSettings_RoundTripsAndDeletesInvalidMaxWords(t *testing.T) {
 	}
 	if settings.RoundSize != 9 {
 		t.Errorf("RoundSize after overwrite: got %d, want 9", settings.RoundSize)
+	}
+	if settings.SkipAnswerReveal {
+		t.Error("SkipAnswerReveal after overwrite: got true, want false")
 	}
 	if len(settings.WordTypes) != 1 || settings.WordTypes[0] != "other" {
 		t.Errorf("WordTypes after overwrite: got %v", settings.WordTypes)

@@ -103,16 +103,20 @@ type drillLastAnswered struct {
 }
 
 type drillSessionState struct {
-	PoolSize      int                `json:"poolSize"`
-	RoundSize     int                `json:"roundSize"`
-	Round         int                `json:"round"`
-	DoneCount     int                `json:"doneCount"`
-	ActiveFilters []string           `json:"activeFilters"`
-	Pool          []wordJSON         `json:"pool"`
-	Redo          []wordJSON         `json:"redo"`
-	Remaining     []wordJSON         `json:"remaining"`
-	SidebarItems  []drillSidebarItem `json:"sidebarItems"`
-	LastAnswered  *drillLastAnswered `json:"lastAnswered,omitempty"`
+	PoolSize             int                `json:"poolSize"`
+	RequestedRoundSize   int                `json:"requestedRoundSize,omitempty"`
+	RoundSize            int                `json:"roundSize"`
+	Round                int                `json:"round"`
+	DoneCount            int                `json:"doneCount"`
+	ActiveFilters        []string           `json:"activeFilters"`
+	Pool                 []wordJSON         `json:"pool"`
+	Redo                 []wordJSON         `json:"redo"`
+	Remaining            []wordJSON         `json:"remaining"`
+	SidebarItems         []drillSidebarItem `json:"sidebarItems"`
+	LastAnswered         *drillLastAnswered `json:"lastAnswered,omitempty"`
+	SkipAnswerReveal     *bool              `json:"skipAnswerReveal,omitempty"`
+	AwaitingAdvance      bool               `json:"awaitingAdvance,omitempty"`
+	PendingAnswerCorrect *bool              `json:"pendingAnswerCorrect,omitempty"`
 }
 
 type drillSessionJSON struct {
@@ -122,6 +126,10 @@ type drillSessionJSON struct {
 }
 
 func normaliseDrillSessionState(state *drillSessionState) {
+	if state.SkipAnswerReveal == nil {
+		enabled := false
+		state.SkipAnswerReveal = &enabled
+	}
 	if state.ActiveFilters == nil {
 		state.ActiveFilters = []string{}
 	}
@@ -150,6 +158,29 @@ func sessionStateJSON(state drillSessionState) (string, error) {
 
 func isDrillSessionComplete(state drillSessionState) bool {
 	return len(state.Pool) == 0 && len(state.Redo) == 0 && len(state.Remaining) == 0
+}
+
+func updateDrillSessionState(db *sql.DB, sessionID int64, state drillSessionState) error {
+	stateJSON, err := sessionStateJSON(state)
+	if err != nil {
+		return err
+	}
+
+	if isDrillSessionComplete(state) {
+		_, err = db.Exec(`
+			UPDATE drill_sessions
+			SET state_json = '{}', completed_at = datetime('now')
+			WHERE id = ?
+		`, sessionID)
+		return err
+	}
+
+	_, err = db.Exec(`
+		UPDATE drill_sessions
+		SET state_json = ?, completed_at = NULL
+		WHERE id = ?
+	`, stateJSON, sessionID)
+	return err
 }
 
 // createDrillSession closes any existing active drill and inserts a new session.

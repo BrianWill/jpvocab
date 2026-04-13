@@ -28,6 +28,16 @@ export async function createSession(sessionState) {
   return data.id;
 }
 
+export async function updateSessionState(sessionId, sessionState) {
+  if (!sessionId) return;
+  const resp = await fetch('/api/drill/sessions/' + sessionId + '/state', {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ state: sessionState }),
+  });
+  if (!resp.ok) throw new Error('failed to save drill session');
+}
+
 export async function postAnswer(sessionId, wordId, correct, sessionState) {
   if (!sessionId) return;
   const resp = await fetch('/api/drill/sessions/' + sessionId + '/answers', {
@@ -41,11 +51,13 @@ export async function postAnswer(sessionId, wordId, correct, sessionState) {
 export function createDrillState(filterKeys) {
   return {
     activeFilters: new Set(filterKeys),
+    awaitingAdvance: false,
     currentWord: null,
     doneCount: 0,
     drillStartedAt: Date.now(),
     lastAnswered: null,
     lastAutoPlayedId: null,
+    pendingAnswerCorrect: null,
     pool: [],
     poolSize: 0,
     redo: [],
@@ -56,6 +68,7 @@ export function createDrillState(filterKeys) {
     sidebarFlash: null,
     sessionId: null,
     settingsMaxWords: null,
+    skipAnswerReveal: false,
     sidebarItems: [],
     words: [],
   };
@@ -163,6 +176,72 @@ export function getNextRevealState(sessionState, knew) {
   };
 }
 
+export function getAnswerFeedbackState(sessionState, knew) {
+  if (!sessionState.currentWord) return null;
+
+  const answered = sessionState.currentWord;
+  return {
+    ...sessionState,
+    doneCount: sessionState.doneCount + (knew ? 1 : 0),
+    lastAnswered: { word: answered, knew },
+    sidebarItems: applySidebarAnswer(sessionState.sidebarItems, answered, knew),
+    awaitingAdvance: true,
+    pendingAnswerCorrect: knew,
+  };
+}
+
+export function advanceAfterRevealState(sessionState) {
+  if (!sessionState.currentWord || !sessionState.awaitingAdvance || typeof sessionState.pendingAnswerCorrect !== 'boolean') {
+    return null;
+  }
+
+  const knew = sessionState.pendingAnswerCorrect;
+  const answered = sessionState.currentWord;
+  const remaining = sessionState.remaining.slice(1);
+  const redo = knew ? [...sessionState.redo] : [...sessionState.redo, answered];
+  const nextState = {
+    ...sessionState,
+    lastAnswered: { word: answered, knew },
+    sidebarItems: applySidebarAnswer(sessionState.sidebarItems, answered, knew),
+    redo,
+    remaining,
+    awaitingAdvance: false,
+    pendingAnswerCorrect: null,
+  };
+
+  if (remaining.length > 0) {
+    return {
+      ...nextState,
+      currentWord: remaining[0],
+      round: sessionState.round,
+      pool: sessionState.pool,
+    };
+  }
+
+  if (redo.length > 0 || sessionState.pool.length > 0) {
+    return {
+      ...nextState,
+      round: sessionState.round + 1,
+      ...buildRoundState({
+        ...sessionState,
+        doneCount: nextState.doneCount,
+        lastAnswered: nextState.lastAnswered,
+        pool: sessionState.pool,
+        redo,
+      }),
+      awaitingAdvance: false,
+      pendingAnswerCorrect: null,
+    };
+  }
+
+  return {
+    ...nextState,
+    currentWord: null,
+    round: sessionState.round,
+    pool: sessionState.pool,
+  };
+}
+
 export function serializeSessionState(state) {
   return {
     poolSize: state.poolSize,
@@ -176,5 +255,8 @@ export function serializeSessionState(state) {
     remaining: state.remaining,
     sidebarItems: state.sidebarItems,
     lastAnswered: state.lastAnswered,
+    skipAnswerReveal: state.skipAnswerReveal,
+    awaitingAdvance: state.awaitingAdvance,
+    pendingAnswerCorrect: state.pendingAnswerCorrect,
   };
 }

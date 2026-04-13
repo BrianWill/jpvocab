@@ -100,6 +100,10 @@ function injectSettingsModal() {
               <button type="button" class="filter-chip" data-setting-filter="other">Other</button>
             </div>
           </div>
+          <div class="restart-field">
+            <label for="settings-skip-answer-reveal">Skip answer reveal</label>
+            <input type="checkbox" id="settings-skip-answer-reveal" class="settings-tts-autoplay">
+          </div>
         </div>
         <div class="settings-col-divider"></div>
         <div class="settings-col" style="flex:3">
@@ -490,9 +494,11 @@ function initializeSettings() {
     const totalInput = document.getElementById('settings-total-words');
     const roundInput = document.getElementById('settings-round-size');
     const newWordTargetInput = document.getElementById('settings-new-word-target');
+    const skipAnswerRevealInput = document.getElementById('settings-skip-answer-reveal');
     if (totalInput) totalInput.value = settings.maxWords;
     if (roundInput) roundInput.value = settings.roundSize;
     if (newWordTargetInput) newWordTargetInput.value = settings.newWordTarget;
+    if (skipAnswerRevealInput) skipAnswerRevealInput.checked = settings.skipAnswerReveal === true;
 
     settingsModal.querySelectorAll('.filter-chip[data-setting-filter]').forEach(btn => {
       btn.classList.toggle('active', settings.wordTypes.includes(btn.dataset.settingFilter));
@@ -530,6 +536,7 @@ function initializeSettings() {
     const totalVal = parseInt(document.getElementById('settings-total-words')?.value, 10);
     const roundVal = parseInt(document.getElementById('settings-round-size')?.value, 10);
     const newWordTargetVal = parseInt(document.getElementById('settings-new-word-target')?.value, 10);
+    const skipAnswerReveal = document.getElementById('settings-skip-answer-reveal')?.checked ?? false;
     const wordTypes = DRILL_FILTER_KEYS.filter(f =>
       settingsModal.querySelector(`[data-setting-filter="${f}"]`)?.classList.contains('active')
     );
@@ -543,6 +550,7 @@ function initializeSettings() {
         roundSize: isNaN(roundVal) ? 10 : Math.max(1, Math.min(995, roundVal)),
         newWordTarget: isNaN(newWordTargetVal) ? 8 : Math.max(1, Math.min(999, newWordTargetVal)),
         wordTypes,
+        skipAnswerReveal,
       }),
     });
 
@@ -598,6 +606,8 @@ function initializeSettings() {
       max: 999,
     });
   }
+
+  document.getElementById('settings-skip-answer-reveal')?.addEventListener('change', setDirty);
 
   const previewVoice = (voiceURI, lang, sample) => {
     const voice = voiceURI

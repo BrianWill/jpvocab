@@ -94,6 +94,7 @@ func serverInit(db *sql.DB) {
 	r.Get("/api/kanji", apiGetKanji(db))
 	r.Get("/api/drill/sessions/current", apiGetCurrentDrillSession(db))
 	r.Post("/api/drill/sessions", apiCreateDrillSession(db))
+	r.Put("/api/drill/sessions/{id}/state", apiUpdateDrillSessionState(db))
 	r.Post("/api/drill/sessions/{id}/answers", apiRecordDrillAnswer(db))
 
 	r.Get("/api/settings/drill", apiGetDrillSettings(db))
@@ -288,6 +289,27 @@ func apiGetCurrentDrillSession(db *sql.DB) http.HandlerFunc {
 			return
 		}
 		writeJSON(w, map[string]any{"session": session})
+	}
+}
+
+func apiUpdateDrillSessionState(db *sql.DB) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		sessionID, ok := parseRouteInt64(w, r, "id", "invalid session id")
+		if !ok {
+			return
+		}
+		var body struct {
+			State drillSessionState `json:"state"`
+		}
+		if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+			http.Error(w, "bad request", http.StatusBadRequest)
+			return
+		}
+		if err := updateDrillSessionState(db, sessionID, body.State); err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		w.WriteHeader(http.StatusNoContent)
 	}
 }
 

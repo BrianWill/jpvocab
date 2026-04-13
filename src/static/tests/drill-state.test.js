@@ -1,11 +1,13 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
+  advanceAfterRevealState,
   DEFAULT_ROUND_SIZE,
   applySidebarAnswer,
   buildRoundState,
   createDrillState,
   createSidebarItems,
+  getAnswerFeedbackState,
   getFilteredWords,
   getNextRevealState,
   isSessionComplete,
@@ -27,6 +29,8 @@ test('createDrillState: seeds defaults from filter keys', () => {
   assert.equal(state.requestedRoundSize, DEFAULT_ROUND_SIZE);
   assert.equal(state.roundSize, DEFAULT_ROUND_SIZE);
   assert.equal(state.currentWord, null);
+  assert.equal(state.skipAnswerReveal, false);
+  assert.equal(state.awaitingAdvance, false);
   assert.deepEqual(state.pool, []);
   assert.deepEqual(state.redo, []);
 });
@@ -194,6 +198,59 @@ test('getNextRevealState: returns null when there is no current word', () => {
   }, true), null);
 });
 
+test('getAnswerFeedbackState: records answer result without advancing', () => {
+  const state = {
+    currentWord: nounWord,
+    remaining: [nounWord, otherWord],
+    redo: [],
+    pool: [katakanaWord],
+    round: 2,
+    doneCount: 4,
+    sidebarItems: createSidebarItems([nounWord, otherWord]),
+  };
+
+  assert.deepEqual(getAnswerFeedbackState(state, true), {
+    ...state,
+    doneCount: 5,
+    lastAnswered: { word: nounWord, knew: true },
+    sidebarItems: [
+      { word: nounWord, status: 'known' },
+      { word: otherWord, status: 'unseen' },
+    ],
+    awaitingAdvance: true,
+    pendingAnswerCorrect: true,
+  });
+});
+
+test('advanceAfterRevealState: advances using pending answer result', () => {
+  const state = {
+    currentWord: nounWord,
+    remaining: [nounWord, otherWord],
+    redo: [],
+    pool: [katakanaWord],
+    round: 2,
+    doneCount: 5,
+    sidebarItems: [
+      { word: nounWord, status: 'known' },
+      { word: otherWord, status: 'unseen' },
+    ],
+    lastAnswered: { word: nounWord, knew: true },
+    awaitingAdvance: true,
+    pendingAnswerCorrect: true,
+  };
+
+  assert.deepEqual(advanceAfterRevealState(state), {
+    ...state,
+    redo: [],
+    remaining: [otherWord],
+    currentWord: otherWord,
+    round: 2,
+    pool: [katakanaWord],
+    awaitingAdvance: false,
+    pendingAnswerCorrect: null,
+  });
+});
+
 test('serializeSessionState: keeps durable progress fields and converts filters to an array', () => {
   const state = {
     poolSize: 25,
@@ -207,6 +264,9 @@ test('serializeSessionState: keeps durable progress fields and converts filters 
     remaining: [otherWord],
     sidebarItems: [{ word: katakanaWord, status: 'known' }],
     lastAnswered: { word: katakanaWord, knew: true },
+    skipAnswerReveal: false,
+    awaitingAdvance: true,
+    pendingAnswerCorrect: true,
     currentWord: otherWord,
     sessionId: 99,
   };
@@ -223,5 +283,8 @@ test('serializeSessionState: keeps durable progress fields and converts filters 
     remaining: [otherWord],
     sidebarItems: [{ word: katakanaWord, status: 'known' }],
     lastAnswered: { word: katakanaWord, knew: true },
+    skipAnswerReveal: false,
+    awaitingAdvance: true,
+    pendingAnswerCorrect: true,
   });
 });

@@ -27,6 +27,13 @@ import {
   providerUnavailableTooltip,
 } from './generation-ui-utils.js';
 import { createWordResultModalController } from './word-result-modal-controller.js';
+import {
+  applyGenerateButtonState,
+  buildCountsHtml,
+  buildWordResultActionHtml,
+  buildWordResultFooterHtml,
+  buildWordResultRowMarkup,
+} from './word-result-modal-ui.js';
 
 const LEXICON_AUDIO_OPTIONS = { preferSynthesis: true, fallbackToBrowserTts: true };
 
@@ -267,48 +274,18 @@ function appendWordRow(data) {
   row.className = 'word-result-row ' + (data.added ? 'result-added' : 'result-skipped');
   row.dataset.reason = data.added ? 'added' : (data.reason || '');
 
-  const badge = data.added
-    ? '<span class="result-badge badge-added">added</span>'
-    : '<span class="result-badge badge-skipped">' + esc(data.reason) + '</span>';
-
-  const removeBtn =
-    '<button class="btn-delete btn-word-remove" data-tooltip="Remove word"' +
-      ' data-word="' + esc(data.word) + '">✕</button>';
-  const hasProviders = lexiconState.providers && (lexiconState.providers.anthropic || lexiconState.providers.openai || lexiconState.providers.google || lexiconState.providers.mistral || lexiconState.providers.glm);
-  const generateBtn = data.word_id
-    ? '<button class="btn-generate"' +
-        (hasProviders ? '' : ' disabled') +
-        ' data-tooltip="Uses an AI API request to get the word\'s reading, part-of-speech, meaning, and an example sentence"' +
-        '>' + getWordBtnLabel(state.generateType) + '</button>'
-    : '';
-  let inlineExtra;
-  if (data.word_id) {
-    const correct   = data.drill_count     ?? 0;
-    const incorrect = data.drill_incorrect ?? 0;
-    const target    = data.drill_target    ?? 0;
-    inlineExtra =
-      '<span class="word-result-drill">' +
-        '<span class="word-result-actions">' + generateBtn + removeBtn + '</span>' +
-        '<span class="drill-correct" data-tooltip="Times answered correctly">✓ ' + correct + '</span>' +
-        '<span class="drill-incorrect" data-tooltip="Times answered incorrectly">✗ ' + incorrect + '</span>' +
-        '<span class="target-stepper" data-tooltip="Remaining drills to target">' +
-          '<span class="drill-target-label">🎯</span>' +
-          '<span class="drill-target-val" data-target="' + target + '">' + target + '</span>' +
-          '<button class="btn-target-adj">−</button>' +
-          '<button class="btn-target-adj">+</button>' +
-        '</span>' +
-      '</span>';
-  } else {
-    inlineExtra = '<span class="word-result-drill">' + removeBtn + '</span>';
-  }
-
-  const details = buildWordResultDetails(data.word, data, typeLabels);
-
-  const imageHtml = buildWordResultImage(data.image_path, '');
-
-  row.innerHTML =
-    '<div class="word-result-main"><span class="result-word">' + esc(data.word) + '</span>' + badge + inlineExtra + '</div>' +
-    '<div class="word-result-body">' + details + imageHtml + '</div>';
+  row.innerHTML = buildWordResultRowMarkup({
+    data,
+    esc,
+    typeLabels,
+    buildWordResultDetails,
+    buildWordResultImage,
+    getWordBtnLabel,
+    generateType: state.generateType,
+    hasProviders: hasAvailableProvider(lexiconState.providers, PROVIDER_MODELS),
+    removeSymbol: '✕',
+    incorrectSymbol: '✗',
+  });
 
   const resultWordEl = row.querySelector('.result-word');
   if (resultWordEl) resultWordEl.addEventListener('click', () =>
@@ -382,14 +359,13 @@ function getImageSource() {
 function updateGenerateBtnStates() {
   const type = getGenerateType();
   const hasProviders = hasAvailableProvider(lexiconState.providers, PROVIDER_MODELS);
-  const disabled = !hasProviders;
   const tooltip = type === 'image'
     ? 'Uses an AI API request to find and download an image for this word'
     : 'Uses an AI API request to get the word\'s reading, part-of-speech, meaning, and an example sentence';
-  els.addResultBody.querySelectorAll('.btn-generate:not(.btn-generate--busy)').forEach(btn => {
-    btn.disabled = disabled;
-    btn.dataset.tooltip = tooltip;
-    btn.innerHTML = getWordBtnLabel(state.generateType);
+  applyGenerateButtonState(els.addResultBody, {
+    disabled: !hasProviders,
+    tooltip,
+    label: getWordBtnLabel(state.generateType),
   });
 }
 
@@ -531,15 +507,8 @@ function renderStatus() {
   }
   const el = els.addResultStatus;
   const actionEl = els.addResultAction;
-  const skippedHtml = state.skippedCount > 0
-    ? '<span class="status-skipped">' + state.skippedCount + ' skipped</span>'
-    : '';
-  const countsHtml =
-    '<span class="modal-status-counts">' +
-      '<span>' + state.addedWords.length + ' added</span>' +
-      skippedHtml +
-    '</span>';
-  const hasProviders = lexiconState.providers && (lexiconState.providers.anthropic || lexiconState.providers.openai || lexiconState.providers.google || lexiconState.providers.mistral || lexiconState.providers.glm);
+  const countsHtml = buildCountsHtml({ addedCount: state.addedWords.length, skippedCount: state.skippedCount });
+  const hasProviders = hasAvailableProvider(lexiconState.providers, PROVIDER_MODELS);
   const genType = getGenerateType();
   const genAllTooltip = genType === 'image'
     ? 'Uses an AI API request to find and download an image for each word'
@@ -548,27 +517,14 @@ function renderStatus() {
     els.addResultBody.querySelectorAll('.word-result-row .btn-generate:not(.btn-generate--busy):not([disabled])').length > 0 &&
     hasProviders && state.addPhase !== 'loading';
   const genTypeLabels = { 'word-info': 'Generate word info', 'image': 'Generate images' };
-  const actionHtml = state.pendingGenerates > 0
-    ? '<button class="btn-danger btn-generate--cancel">' +
-        '<span class="spinner"></span>Cancel generation' +
-      '</button>'
-    : '<div class="split-btn-wrap">' +
-        '<button class="btn-save btn-generate--all split-btn-main"' +
-          (genAllEnabled ? '' : ' disabled') +
-          ' data-tooltip="' + genAllTooltip + '">' +
-          genTypeLabels[state.generateType] +
-        '</button>' +
-        '<button class="btn-save btn-generate--all split-btn-arrow"' +
-          (genAllEnabled ? '' : ' disabled') +
-          '>▾</button>' +
-        '<div class="split-btn-menu" id="split-btn-menu" hidden>' +
-          ['word-info', 'image'].map(t =>
-            '<button class="split-btn-option' + (t === state.generateType ? ' split-btn-option--active' : '') + '" data-type="' + t + '">' +
-              genTypeLabels[t] +
-            '</button>'
-          ).join('') +
-        '</div>' +
-      '</div>';
+  const actionHtml = buildWordResultActionHtml({
+    pendingGenerates: state.pendingGenerates,
+    enabled: genAllEnabled,
+    generateType: state.generateType,
+    labels: genTypeLabels,
+    tooltip: genAllTooltip,
+    menuId: 'split-btn-menu',
+  });
   if (actionEl) {
     actionEl.innerHTML = actionHtml;
     if (state.pendingGenerates > 0) {
@@ -627,22 +583,13 @@ function initAddResultFooter() {
   const imageSourceOptions = buildImageSourceOptionsHtml(lexiconState.imageSources);
   const imageSourceTip = imageSourceUnavailableTooltip(lexiconState.imageSources);
 
-  els.addResultFooter.innerHTML =
-    '<select id="add-result-model-select" class="add-result-model-select"' +
-      (hasProviders ? '' : ' disabled') +
-    '>' +
-      (!hasProviders ? '<option value="" selected>no API keys configured</option>' : '') +
-      optgroupsHtml +
-    '</select>' +
-    (progTip ? '<span class="provider-info-icon" data-tooltip="' + progTip + '">?</span>' : '') +
-    '<div id="add-result-modal-action" style="margin-left:0.4rem;display:flex;align-items:center;gap:0.4rem"></div>' +
-    '<select id="add-result-image-source-select" class="add-result-model-select" style="display:none">' +
-      imageSourceOptions +
-    '</select>' +
-    (imageSourceTip ? '<span id="add-result-image-source-icon" class="provider-info-icon" style="display:none" data-tooltip="' + imageSourceTip + '">?</span>' : '') +
-    '<div id="add-result-modal-status" class="modal-status" style="padding:0;border:none;margin-left:auto"></div>' +
-    '<button id="btn-add-result-remove" class="btn-danger">Remove the added words</button>' +
-    '<button id="btn-add-result-close" class="btn-save">Close</button>';
+  els.addResultFooter.innerHTML = buildWordResultFooterHtml({
+    hasProviders,
+    optgroupsHtml,
+    progTip,
+    imageSourceOptions,
+    imageSourceTip,
+  });
 
   cacheAddResultFooterEls();
 

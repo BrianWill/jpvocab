@@ -26,6 +26,13 @@ import {
   providerUnavailableTooltip,
 } from './generation-ui-utils.js';
 import { createWordResultModalController } from './word-result-modal-controller.js';
+import {
+  applyGenerateButtonState,
+  buildCountsHtml,
+  buildWordResultActionHtml,
+  buildWordResultFooterHtml,
+  buildWordResultRowMarkup,
+} from './word-result-modal-ui.js';
 
 const STORY_LEXICON_AUDIO_OPTIONS = { preferSynthesis: true, fallbackToBrowserTts: true };
 
@@ -193,40 +200,18 @@ function appendWordRow(data) {
   row.className = 'word-result-row ' + (data.added ? 'result-added' : 'result-skipped');
   row.dataset.reason = data.added ? 'added' : (data.reason || '');
 
-  const badge = data.added
-    ? '<span class="result-badge badge-added">added</span>'
-    : '<span class="result-badge badge-skipped">' + esc(data.reason) + '</span>';
-  const removeBtn = '<button class="btn-delete btn-word-remove" data-tooltip="Remove word" data-word="' + esc(data.word) + '">x</button>';
-  const hasProviders = !!(state.providers && PROVIDER_MODELS.some(p => state.providers[p.key]));
-  const generateBtn = data.word_id
-    ? '<button class="btn-generate"' + (hasProviders ? '' : ' disabled') + ' data-tooltip="Uses an AI API request to get the word\'s reading, part-of-speech, meaning, and an example sentence">' + getWordBtnLabel(state.generateType) + '</button>'
-    : '';
-  let inlineExtra;
-  if (data.word_id) {
-    const correct = data.drill_count ?? 0;
-    const incorrect = data.drill_incorrect ?? 0;
-    const target = data.drill_target ?? 0;
-    inlineExtra =
-      '<span class="word-result-drill">' +
-        '<span class="word-result-actions">' + generateBtn + removeBtn + '</span>' +
-        '<span class="drill-correct" data-tooltip="Times answered correctly">✓ ' + correct + '</span>' +
-        '<span class="drill-incorrect" data-tooltip="Times answered incorrectly">✕ ' + incorrect + '</span>' +
-        '<span class="target-stepper" data-tooltip="Remaining drills to target">' +
-          '<span class="drill-target-label">🎯</span>' +
-          '<span class="drill-target-val" data-target="' + target + '">' + target + '</span>' +
-          '<button class="btn-target-adj">−</button>' +
-          '<button class="btn-target-adj">+</button>' +
-        '</span>' +
-      '</span>';
-  } else {
-    inlineExtra = '<span class="word-result-drill">' + removeBtn + '</span>';
-  }
-
-  const details = buildWordResultDetails(data.word, data, typeLabels);
-
-  row.innerHTML =
-    '<div class="word-result-main"><span class="result-word">' + esc(data.word) + '</span>' + badge + inlineExtra + '</div>' +
-    '<div class="word-result-body">' + details + buildWordResultImage(data.image_path, '') + '</div>';
+  row.innerHTML = buildWordResultRowMarkup({
+    data,
+    esc,
+    typeLabels,
+    buildWordResultDetails,
+    buildWordResultImage,
+    getWordBtnLabel,
+    generateType: state.generateType,
+    hasProviders: hasAvailableProvider(state.providers, PROVIDER_MODELS),
+    removeSymbol: 'x',
+    incorrectSymbol: '✕',
+  });
 
   row.querySelector('.result-word')?.addEventListener('click', () =>
     playWordAudio({ word: data.word }, 1, STORY_LEXICON_AUDIO_OPTIONS)
@@ -380,35 +365,34 @@ function renderStatus() {
   if (sel) sel.disabled = state.pendingGenerates > 0 || !(state.providers && PROVIDER_MODELS.some(p => state.providers[p.key]));
   const statusEl = els.addResultStatus;
   const actionEl = els.addResultAction;
-  const skippedHtml = state.skippedCount > 0 ? '<span class="status-skipped">' + state.skippedCount + ' skipped</span>' : '';
-  statusEl.className = 'modal-status ' + (state.pendingGenerates > 0 ? 'modal-status-loading' : 'modal-status-done');
-  statusEl.innerHTML =
-    '<span class="modal-status-counts">' +
-      '<span>' + state.addedWords.length + ' added</span>' +
-      skippedHtml +
-    '</span>';
-
   const hasProviders = hasAvailableProvider(state.providers, PROVIDER_MODELS);
   const genType = getGenerateType();
+  const tooltip = genType === 'image'
+    ? 'Uses an AI API request to find and download an image for each word'
+    : 'Uses an AI API request to get the reading, part-of-speech, meaning, and an example sentence for each word';
+  applyGenerateButtonState(els.addResultBody, {
+    disabled: !hasProviders,
+    tooltip,
+    label: getWordBtnLabel(state.generateType),
+  });
+  statusEl.className = 'modal-status ' + (state.pendingGenerates > 0 ? 'modal-status-loading' : 'modal-status-done');
+  statusEl.innerHTML = buildCountsHtml({ addedCount: state.addedWords.length, skippedCount: state.skippedCount });
   const enabled = els.addResultBody.querySelectorAll('.word-result-row .btn-generate:not(.btn-generate--busy):not([disabled])').length > 0 &&
     hasProviders;
   const labels = { 'word-info': 'Generate word info', 'image': 'Generate images' };
+  actionEl.innerHTML = buildWordResultActionHtml({
+    pendingGenerates: state.pendingGenerates,
+    enabled,
+    generateType: genType,
+    labels,
+    tooltip,
+    menuId: 'story-split-btn-menu',
+    mainButtonClass: 'story-split-btn-main',
+    arrowButtonClass: 'story-split-btn-arrow',
+  });
   if (state.pendingGenerates > 0) {
-    actionEl.innerHTML =
-      '<button class="btn-danger btn-generate--cancel">' +
-        '<span class="spinner"></span>Cancel generation' +
-      '</button>';
     actionEl.querySelector('button')?.addEventListener('mousedown', cancelAllGenerates);
   } else {
-    actionEl.innerHTML =
-      '<div class="split-btn-wrap">' +
-        '<button class="btn-save btn-generate--all split-btn-main story-split-btn-main"' + (enabled ? '' : ' disabled') + '>' + labels[genType] + '</button>' +
-        '<button class="btn-save btn-generate--all split-btn-arrow story-split-btn-arrow"' + (enabled ? '' : ' disabled') + '>▾</button>' +
-        '<div class="split-btn-menu" id="story-split-btn-menu" hidden>' +
-          ['word-info', 'image'].map(type => '<button class="split-btn-option' + (type === genType ? ' split-btn-option--active' : '') + '" data-type="' + type + '">' + labels[type] + '</button>').join('') +
-        '</div>' +
-      '</div>';
-
     const mainBtn = actionEl.querySelector('.split-btn-main');
     const arrowBtn = actionEl.querySelector('.split-btn-arrow');
     const menu = els.splitBtnMenu;
@@ -441,18 +425,14 @@ function initAddResultFooter() {
   const imageSourceOptions = buildImageSourceOptionsHtml(state.imageSources);
   const imageSourceTip = imageSourceUnavailableTooltip(state.imageSources);
 
-  els.addResultFooter.innerHTML =
-    '<select id="story-add-result-model-select" class="add-result-model-select"' + (hasProviders ? '' : ' disabled') + '>' +
-      (!hasProviders ? '<option value="" selected>no API keys configured</option>' : '') +
-      optgroupsHtml +
-    '</select>' +
-    (progTip ? '<span class="provider-info-icon" data-tooltip="' + esc(progTip) + '">?</span>' : '') +
-    '<div id="story-add-result-modal-action" style="margin-left:0.4rem;display:flex;align-items:center;gap:0.4rem"></div>' +
-    '<select id="story-add-result-image-source-select" class="add-result-model-select" style="display:none">' + imageSourceOptions + '</select>' +
-    (imageSourceTip ? '<span id="story-add-result-image-source-icon" class="provider-info-icon" style="display:none" data-tooltip="' + esc(imageSourceTip) + '">?</span>' : '') +
-    '<div id="story-add-result-modal-status" class="modal-status" style="padding:0;border:none;margin-left:auto"></div>' +
-    '<button id="story-btn-add-result-remove" class="btn-danger">Remove the added words</button>' +
-    '<button id="story-btn-add-result-close" class="btn-save">Close</button>';
+  els.addResultFooter.innerHTML = buildWordResultFooterHtml({
+    prefix: 'story-',
+    hasProviders,
+    optgroupsHtml,
+    progTip: esc(progTip),
+    imageSourceOptions,
+    imageSourceTip: imageSourceTip ? esc(imageSourceTip) : imageSourceTip,
+  });
 
   cacheFooterEls();
 

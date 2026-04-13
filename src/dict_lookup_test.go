@@ -2,6 +2,9 @@ package main
 
 import (
 	"database/sql"
+	"errors"
+	"os/exec"
+	"strings"
 	"sync"
 	"testing"
 
@@ -10,7 +13,7 @@ import (
 	_ "modernc.org/sqlite"
 )
 
-func testDictDB(t *testing.T) *sql.DB {
+func testRuntimeDictDB(t *testing.T) *sql.DB {
 	t.Helper()
 	db, err := sql.Open("sqlite", ":memory:")
 	if err != nil {
@@ -19,14 +22,20 @@ func testDictDB(t *testing.T) *sql.DB {
 	db.SetMaxOpenConns(1)
 
 	stmts := []string{
-		`CREATE TABLE jmdict_words (id TEXT PRIMARY KEY)`,
-		`CREATE TABLE jmdict_kanji (word_id TEXT NOT NULL, text TEXT NOT NULL, common INTEGER NOT NULL DEFAULT 0)`,
-		`CREATE TABLE jmdict_kana (word_id TEXT NOT NULL, text TEXT NOT NULL, common INTEGER NOT NULL DEFAULT 0, applies_to_kanji TEXT NOT NULL DEFAULT '["*"]')`,
-		`CREATE TABLE jmdict_senses (id INTEGER PRIMARY KEY AUTOINCREMENT, word_id TEXT NOT NULL, pos TEXT NOT NULL DEFAULT '[]', applies_to_kanji TEXT NOT NULL DEFAULT '["*"]', applies_to_kana TEXT NOT NULL DEFAULT '["*"]')`,
-		`CREATE TABLE jmdict_glosses (sense_id INTEGER NOT NULL, text TEXT NOT NULL)`,
-		`CREATE TABLE kanjidic (literal TEXT PRIMARY KEY, grade INTEGER, stroke_count INTEGER, frequency INTEGER, jlpt_level INTEGER)`,
-		`CREATE TABLE kanjidic_readings (literal TEXT NOT NULL, type TEXT NOT NULL, value TEXT NOT NULL)`,
-		`CREATE TABLE kanjidic_meanings (literal TEXT NOT NULL, value TEXT NOT NULL)`,
+		`CREATE TABLE dict_word_lookup (
+			lookup_text TEXT PRIMARY KEY,
+			word TEXT NOT NULL,
+			reading TEXT NOT NULL,
+			part_of_speech TEXT NOT NULL,
+			meaning TEXT NOT NULL,
+			glosses_json TEXT NOT NULL,
+			kanji_json TEXT NOT NULL
+		)`,
+		`CREATE TABLE dict_kanji_lookup (
+			literal TEXT PRIMARY KEY,
+			meanings_json TEXT NOT NULL,
+			readings_json TEXT NOT NULL
+		)`,
 	}
 	for _, stmt := range stmts {
 		if _, err := db.Exec(stmt); err != nil {
@@ -38,193 +47,13 @@ func testDictDB(t *testing.T) *sql.DB {
 	return db
 }
 
-func insertDictSense(t *testing.T, db *sql.DB, wordID, posJSON, appliesKanji, appliesKana string, glosses ...string) int64 {
-	t.Helper()
-	res, err := db.Exec(`
-		INSERT INTO jmdict_senses (word_id, pos, applies_to_kanji, applies_to_kana)
-		VALUES (?, ?, ?, ?)
-	`, wordID, posJSON, appliesKanji, appliesKana)
-	if err != nil {
-		t.Fatal(err)
-	}
-	senseID, err := res.LastInsertId()
-	if err != nil {
-		t.Fatal(err)
-	}
-	for _, gloss := range glosses {
-		if _, err := db.Exec(`INSERT INTO jmdict_glosses (sense_id, text) VALUES (?, ?)`, senseID, gloss); err != nil {
-			t.Fatal(err)
-		}
-	}
-	return senseID
-}
-
-func TestLookupDictionaryWordInDB_KanjiWord(t *testing.T) {
-	db := testDictDB(t)
-
-	if _, err := db.Exec(`INSERT INTO jmdict_words (id) VALUES ('w1')`); err != nil {
-		t.Fatal(err)
-	}
-	if _, err := db.Exec(`INSERT INTO jmdict_kanji (word_id, text, common) VALUES ('w1', '食べる', 1)`); err != nil {
-		t.Fatal(err)
-	}
-	if _, err := db.Exec(`INSERT INTO jmdict_kana (word_id, text, common, applies_to_kanji) VALUES ('w1', 'たべる', 1, '["食べる"]')`); err != nil {
-		t.Fatal(err)
-	}
-	insertDictSense(t, db, "w1", `["Ichidan verb","Transitive verb"]`, `["食べる"]`, `["たべる"]`, "to eat", "to consume")
-
-	if _, err := db.Exec(`INSERT INTO kanjidic_readings (literal, type, value) VALUES ('食', 'ja_kun', 'た.べる')`); err != nil {
-		t.Fatal(err)
-	}
-	if _, err := db.Exec(`INSERT INTO kanjidic (literal) VALUES ('食')`); err != nil {
-		t.Fatal(err)
-	}
-	if _, err := db.Exec(`INSERT INTO kanjidic_meanings (literal, value) VALUES ('食', 'eat'), ('食', 'food')`); err != nil {
-		t.Fatal(err)
-	}
-
-	info, err := lookupDictionaryWordInDB(db, "食べる")
-	if err != nil {
-		t.Fatal(err)
-	}
-	if info == nil {
-		t.Fatal("expected dictionary result, got nil")
-	}
-	if info.Reading != "たべる" {
-		t.Fatalf("reading: got %q, want %q", info.Reading, "たべる")
-	}
-	if info.PartOfSpeech != "ichidan-verb" {
-		t.Fatalf("part_of_speech: got %q, want %q", info.PartOfSpeech, "ichidan-verb")
-	}
-	if info.Meaning != "to eat; to consume" {
-		t.Fatalf("meaning: got %q", info.Meaning)
-	}
-	if len(info.Kanji) != 1 {
-		t.Fatalf("kanji count: got %d, want 1", len(info.Kanji))
-	}
-	if info.Kanji[0].Character != "食" {
-		t.Fatalf("kanji character: got %q", info.Kanji[0].Character)
-	}
-	if info.Kanji[0].Reading != "た" {
-		t.Fatalf("kanji reading: got %q, want %q", info.Kanji[0].Reading, "た")
-	}
-}
-
-func TestLookupDictionaryWordInDB_KanaWord(t *testing.T) {
-	db := testDictDB(t)
-
-	if _, err := db.Exec(`INSERT INTO jmdict_words (id) VALUES ('w1')`); err != nil {
-		t.Fatal(err)
-	}
-	if _, err := db.Exec(`INSERT INTO jmdict_kana (word_id, text, common, applies_to_kanji) VALUES ('w1', 'きれい', 1, '["*"]')`); err != nil {
-		t.Fatal(err)
-	}
-	insertDictSense(t, db, "w1", `["Na-adjective (keiyodoshi)"]`, `["*"]`, `["きれい"]`, "pretty", "clean")
-
-	info, err := lookupDictionaryWordInDB(db, "きれい")
-	if err != nil {
-		t.Fatal(err)
-	}
-	if info == nil {
-		t.Fatal("expected dictionary result, got nil")
-	}
-	if info.Reading != "きれい" {
-		t.Fatalf("reading: got %q, want %q", info.Reading, "きれい")
-	}
-	if info.PartOfSpeech != "na-adjective" {
-		t.Fatalf("part_of_speech: got %q, want %q", info.PartOfSpeech, "na-adjective")
-	}
-	if len(info.Kanji) != 0 {
-		t.Fatalf("kanji count: got %d, want 0", len(info.Kanji))
-	}
-}
-
-func TestLookupDictionaryWordInDB_InfersCompoundKanjiPrefixes(t *testing.T) {
-	db := testDictDB(t)
-
-	if _, err := db.Exec(`INSERT INTO jmdict_words (id) VALUES ('w1')`); err != nil {
-		t.Fatal(err)
-	}
-	if _, err := db.Exec(`INSERT INTO jmdict_kanji (word_id, text, common) VALUES ('w1', '日本語', 1)`); err != nil {
-		t.Fatal(err)
-	}
-	if _, err := db.Exec(`INSERT INTO jmdict_kana (word_id, text, common, applies_to_kanji) VALUES ('w1', 'にほんご', 1, '["日本語"]')`); err != nil {
-		t.Fatal(err)
-	}
-	insertDictSense(t, db, "w1", `["Noun"]`, `["日本語"]`, `["にほんご"]`, "Japanese language")
-
+func TestLookupDictionaryWordInDB_ReadsFlattenedTable(t *testing.T) {
+	db := testRuntimeDictDB(t)
 	if _, err := db.Exec(`
-		INSERT INTO kanjidic (literal) VALUES ('日'), ('本'), ('語')
-	`); err != nil {
-		t.Fatal(err)
-	}
-	if _, err := db.Exec(`
-		INSERT INTO kanjidic_readings (literal, type, value) VALUES
-			('日', 'ja_on', 'ニチ'),
-			('本', 'ja_on', 'ホン'),
-			('語', 'ja_on', 'ゴ')
-	`); err != nil {
-		t.Fatal(err)
-	}
-	if _, err := db.Exec(`
-		INSERT INTO kanjidic_meanings (literal, value) VALUES
-			('日', 'day'),
-			('本', 'book'),
-			('語', 'language')
-	`); err != nil {
-		t.Fatal(err)
-	}
-
-	info, err := lookupDictionaryWordInDB(db, "日本語")
-	if err != nil {
-		t.Fatal(err)
-	}
-	if info == nil {
-		t.Fatal("expected dictionary result, got nil")
-	}
-	if len(info.Kanji) != 3 {
-		t.Fatalf("kanji count: got %d, want 3", len(info.Kanji))
-	}
-	if info.PartOfSpeech != "noun" {
-		t.Fatalf("part_of_speech: got %q, want %q", info.PartOfSpeech, "noun")
-	}
-
-	got := []string{info.Kanji[0].Reading, info.Kanji[1].Reading, info.Kanji[2].Reading}
-	want := []string{"ニ", "ホン", "ゴ"}
-	for i := range want {
-		if got[i] != want[i] {
-			t.Fatalf("kanji readings: got %v, want %v", got, want)
-		}
-	}
-}
-
-func TestLookupDictionaryWordInDB_UsesFlattenedLookupTable(t *testing.T) {
-	db := testDictDB(t)
-
-	if _, err := db.Exec(`INSERT INTO jmdict_words (id) VALUES ('w1')`); err != nil {
-		t.Fatal(err)
-	}
-	if _, err := db.Exec(`INSERT INTO jmdict_kanji (word_id, text, common) VALUES ('w1', '食べる', 1)`); err != nil {
-		t.Fatal(err)
-	}
-	if _, err := db.Exec(`INSERT INTO jmdict_kana (word_id, text, common, applies_to_kanji) VALUES ('w1', 'たべる', 1, '["食べる"]')`); err != nil {
-		t.Fatal(err)
-	}
-	insertDictSense(t, db, "w1", `["Ichidan verb"]`, `["食べる"]`, `["たべる"]`, "to eat")
-	if _, err := db.Exec(`INSERT INTO kanjidic_readings (literal, type, value) VALUES ('食', 'ja_kun', 'た.べる')`); err != nil {
-		t.Fatal(err)
-	}
-	if _, err := db.Exec(`INSERT INTO kanjidic (literal) VALUES ('食')`); err != nil {
-		t.Fatal(err)
-	}
-	if _, err := db.Exec(`INSERT INTO kanjidic_meanings (literal, value) VALUES ('食', 'eat')`); err != nil {
-		t.Fatal(err)
-	}
-
-	if err := dictlookup.RebuildLookupTable(db); err != nil {
-		t.Fatal(err)
-	}
-	if _, err := db.Exec(`DROP TABLE jmdict_glosses`); err != nil {
+		INSERT INTO dict_word_lookup (
+			lookup_text, word, reading, part_of_speech, meaning, glosses_json, kanji_json
+		) VALUES (?, ?, ?, ?, ?, ?, ?)
+	`, "食べる", "食べる", "たべる", "ichidan-verb", "to eat", `["to eat"]`, `[{"character":"食","reading":"た","readings":["く","た","は","ショク","ジキ"],"meanings":["eat","food"]}]`); err != nil {
 		t.Fatal(err)
 	}
 
@@ -236,43 +65,75 @@ func TestLookupDictionaryWordInDB_UsesFlattenedLookupTable(t *testing.T) {
 	if info == nil {
 		t.Fatal("expected dictionary result, got nil")
 	}
-	if info.Meaning != "to eat" {
-		t.Fatalf("meaning: got %q, want %q", info.Meaning, "to eat")
+	if info.Reading != "たべる" || info.PartOfSpeech != "ichidan-verb" || info.Meaning != "to eat" {
+		t.Fatalf("unexpected word info: %+v", info)
+	}
+	if len(info.Glosses) != 1 || info.Glosses[0] != "to eat" {
+		t.Fatalf("glosses: got %v", info.Glosses)
+	}
+	if len(info.Kanji) != 1 || info.Kanji[0].Reading != "た" {
+		t.Fatalf("kanji: got %+v", info.Kanji)
 	}
 }
 
-func TestLookupKanjiInDB_UsesFlattenedLookupTable(t *testing.T) {
-	db := testDictDB(t)
-	if _, err := db.Exec(`INSERT INTO kanjidic (literal) VALUES ('食')`); err != nil {
-		t.Fatal(err)
-	}
-	if _, err := db.Exec(`INSERT INTO kanjidic_readings (literal, type, value) VALUES ('食', 'ja_kun', 'た.べる')`); err != nil {
-		t.Fatal(err)
-	}
-	if _, err := db.Exec(`INSERT INTO kanjidic_meanings (literal, value) VALUES ('食', 'eat'), ('食', 'food')`); err != nil {
-		t.Fatal(err)
-	}
-	if err := dictlookup.RebuildKanjiLookupTable(db); err != nil {
-		t.Fatal(err)
-	}
-	if _, err := db.Exec(`DROP TABLE kanjidic_readings`); err != nil {
-		t.Fatal(err)
-	}
-	info, candidates, err := dictlookup.LookupKanjiInDB(db, "食")
+func TestLookupDictionaryWordInDB_MissingTableReturnsClearError(t *testing.T) {
+	db, err := sql.Open("sqlite", ":memory:")
 	if err != nil {
 		t.Fatal(err)
+	}
+	defer db.Close()
+
+	dictLookupCache = sync.Map{}
+	_, err = lookupDictionaryWordInDB(db, "食べる")
+	if !errors.Is(err, dictlookup.ErrMissingWordLookupTable) {
+		t.Fatalf("expected missing lookup table error, got %v", err)
+	}
+}
+
+func TestLookupDictionaryKanjiInDB_ReadsFlattenedTable(t *testing.T) {
+	db := testRuntimeDictDB(t)
+	if _, err := db.Exec(`
+		INSERT INTO dict_kanji_lookup (literal, meanings_json, readings_json)
+		VALUES (?, ?, ?)
+	`, "食", `["eat","food"]`, `["く","た","は","ショク","ジキ"]`); err != nil {
+		t.Fatal(err)
+	}
+
+	info, err := lookupDictionaryKanjiInDB(db, "食")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if info == nil {
+		t.Fatal("expected kanji info, got nil")
 	}
 	if info.Character != "食" {
 		t.Fatalf("character: got %q", info.Character)
 	}
-	if len(info.Meanings) != 2 {
-		t.Fatalf("meanings: got %v", info.Meanings)
+	if len(info.Meanings) != 2 || len(info.Readings) != 5 {
+		t.Fatalf("kanji info: %+v", info)
 	}
-	if len(info.Readings) != 1 || info.Readings[0] != "た" {
-		t.Fatalf("readings: got %v", info.Readings)
+}
+
+func TestLookupDictionaryKanjiInDB_MissingTableReturnsClearError(t *testing.T) {
+	db, err := sql.Open("sqlite", ":memory:")
+	if err != nil {
+		t.Fatal(err)
 	}
-	if len(candidates) != 1 {
-		t.Fatalf("candidates: got %#v", candidates)
+	defer db.Close()
+
+	_, err = lookupDictionaryKanjiInDB(db, "食")
+	if !errors.Is(err, dictlookup.ErrMissingKanjiLookupTable) {
+		t.Fatalf("expected missing kanji lookup table error, got %v", err)
+	}
+}
+
+func TestBuildDictLookupCommandFailsClearly(t *testing.T) {
+	out, err := runGoCommand(t, "run", "./cmd/build-dict-lookup")
+	if err == nil {
+		t.Fatal("expected build-dict-lookup command to fail")
+	}
+	if !strings.Contains(out, "not supported from the slim runtime jdict.db artifact") {
+		t.Fatalf("unexpected output: %s", out)
 	}
 }
 
@@ -304,4 +165,12 @@ func TestCanonicalPartOfSpeechFromDict(t *testing.T) {
 			}
 		})
 	}
+}
+
+func runGoCommand(t *testing.T, args ...string) (string, error) {
+	t.Helper()
+	cmd := exec.Command("go", args...)
+	cmd.Dir = "."
+	out, err := cmd.CombinedOutput()
+	return string(out), err
 }

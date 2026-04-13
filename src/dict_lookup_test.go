@@ -8,8 +8,6 @@ import (
 	"sync"
 	"testing"
 
-	"jpvocab/internal/dictlookup"
-
 	_ "modernc.org/sqlite"
 )
 
@@ -85,7 +83,7 @@ func TestLookupDictionaryWordInDB_MissingTableReturnsClearError(t *testing.T) {
 
 	dictLookupCache = sync.Map{}
 	_, err = lookupDictionaryWordInDB(db, "食べる")
-	if !errors.Is(err, dictlookup.ErrMissingWordLookupTable) {
+	if !errors.Is(err, errMissingWordLookupTable) {
 		t.Fatalf("expected missing lookup table error, got %v", err)
 	}
 }
@@ -122,7 +120,7 @@ func TestLookupDictionaryKanjiInDB_MissingTableReturnsClearError(t *testing.T) {
 	defer db.Close()
 
 	_, err = lookupDictionaryKanjiInDB(db, "食")
-	if !errors.Is(err, dictlookup.ErrMissingKanjiLookupTable) {
+	if !errors.Is(err, errMissingKanjiLookupTable) {
 		t.Fatalf("expected missing kanji lookup table error, got %v", err)
 	}
 }

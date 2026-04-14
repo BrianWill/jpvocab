@@ -27,14 +27,7 @@ go build
 
 (On Windows, the executable will be named `jpvocab.exe`)
 
-The application is a webapp served from `http://localhost:49200/`, so you can open it in the web browser. However, it opens a window that presents the app using your systems native [webview](https://en.wikipedia.org/wiki/WebView).
-
-
-If you only want to use the app from your local browser, you can run just the server without the webview window:
-
-```bash
-go run . --server-only
-```
+The application is a webapp served from `http://localhost:49200/`. Open that URL in your browser after starting the server.
 
 ## AI translations and tutor bots
 

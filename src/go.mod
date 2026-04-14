@@ -6,7 +6,6 @@ require (
 	github.com/go-chi/chi/v5 v5.2.5
 	github.com/ikawaha/kagome-dict/ipa v1.2.6
 	github.com/ikawaha/kagome/v2 v2.11.0
-	github.com/wailsapp/wails/v3 v3.0.0-alpha.74
 	modernc.org/sqlite v1.47.0
 )
 
@@ -47,7 +46,6 @@ require (
 	github.com/samber/lo v1.52.0 // indirect
 	github.com/sergi/go-diff v1.4.0 // indirect
 	github.com/skeema/knownhosts v1.3.2 // indirect
-	github.com/wailsapp/go-webview2 v1.0.23 // indirect
 	github.com/xanzy/ssh-agent v0.3.3 // indirect
 	golang.org/x/crypto v0.47.0 // indirect
 	golang.org/x/net v0.49.0 // indirect

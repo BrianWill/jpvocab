@@ -8,7 +8,6 @@ This file is the developer-facing companion to `README.md`. It collects project 
 - Chi router
 - SQLite via `modernc.org/sqlite`
 - Vanilla JS + HTML/CSS
-- Wails v3 alpha for the desktop shell
 - Kagome for Japanese tokenization and morphology
 
 ## Project Layout
@@ -20,18 +19,9 @@ This file is the developer-facing companion to `README.md`. It collects project 
 
 ## Run Commands
 
-Run desktop app:
-
 ```bash
 cd src
 go run .
-```
-
-Run server only:
-
-```bash
-cd src
-go run . --server-only
 ```
 
 Run with hot reload:
@@ -171,10 +161,3 @@ The app seeds initial data when starting from an empty database.
 - SQL is kept in the `db_*.go` files.
 - Templates are parsed from disk on each request.
 - Schema compatibility is not preserved across every development change; resetting the DB from the admin UI is an accepted workflow.
-
-If `src/static/favicon.ico` changes, regenerate the checked-in Windows resource file:
-
-```bash
-cd src
-wails3 generate syso -icon static/favicon.ico -manifest wails.exe.manifest -out wails_windows.syso -arch amd64
-```

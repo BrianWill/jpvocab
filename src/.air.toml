@@ -5,7 +5,6 @@ tmp_dir = "tmp"
   cmd = "go build -o ./tmp/main.exe ."
   bin = "./tmp/main.exe"
   full_bin = "./tmp/main.exe"
-  env = ["SERVER_ONLY=true"]
   include_ext = ["go"]
   exclude_dir = ["tmp"]
   delay = 500

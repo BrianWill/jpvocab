@@ -2,6 +2,10 @@
 
 This file is random notes of possible features and bug fixes.
 
+- hmm, maybe just remove wails?
+    - user can pin tab to taskbar, so kinds same feel as standalone app anyway
+        - but not a feature on Mac? what about linux?
+
 - option to use seed data
     add seed data if flag is set and if db did not already exist
     default is to not add seed data

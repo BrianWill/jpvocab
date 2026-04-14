@@ -6,10 +6,6 @@ This file is random notes of possible features and bug fixes.
     - user can pin tab to taskbar, so kinds same feel as standalone app anyway
         - but not a feature on Mac? what about linux?
 
-- option to use seed data
-    add seed data if flag is set and if db did not already exist
-    default is to not add seed data
-
 - separate generation of example sentences from generation of word info
 
 - for repurposing English content, may be best to translate on paragraph or multi-graph level, then split into sentences?

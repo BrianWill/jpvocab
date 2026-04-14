@@ -22,6 +22,12 @@ export function createDrillElements() {
     lastWordCard: document.getElementById('last-word-card'),
     lastWordImage: document.getElementById('last-word-image'),
     lastWordJp: document.getElementById('last-word-jp'),
+    matchingArea: document.getElementById('matching-area'),
+    matchingHint: document.getElementById('matching-hint'),
+    matchingInfoList: document.getElementById('matching-info-list'),
+    matchingWordList: document.getElementById('matching-word-list'),
+    mainArea: document.querySelector('.main-area'),
+    pageBody: document.querySelector('.page-body'),
     progressBar: document.querySelector('.progress-bar'),
     promptExampleJp: document.getElementById('prompt-example-jp'),
     promptWordJp: document.getElementById('prompt-word-jp'),
@@ -72,11 +78,66 @@ export function updateFilterHint(els, activeFilters, filteredCount, totalCount, 
 
 function renderStats(els, state) {
   els.statToGo.textContent = (state.poolSize - state.doneCount) + ' to go of ' + state.poolSize;
-  els.sidebarTitle.textContent = 'Round ' + state.round;
+  if (els.sidebarTitle) els.sidebarTitle.textContent = 'Round ' + state.round;
   els.headerBegan.textContent = 'began ' + formatRelativeTime(state.drillStartedAt);
 
   const pct = state.poolSize > 0 ? (state.doneCount / state.poolSize) * 100 : 0;
   els.progressBar.style.width = pct + '%';
+}
+
+function matchingWordStatus(state, wordId) {
+  if (state.matchingCarryoverWordIds.includes(wordId)) return 'missed';
+  if (state.matchingFirstTryCorrectWordIds.includes(wordId)) return 'known';
+  return 'unseen';
+}
+
+function matchingHintText(state) {
+  if (isSessionComplete(state)) {
+    return state.poolSize === 0
+      ? 'There are no active words available with current drill settings.'
+      : 'All pairs completed.';
+  }
+  if (typeof state.matchingSelectedWordId === 'number') {
+    return 'Choose the matching word info on the right.';
+  }
+  return 'Choose a word on the left, then match it to its word info.';
+}
+
+function renderMatchingDrill(els, state) {
+  const matchedInfoIds = new Set(Object.values(state.matchingMatchedPairs || {}));
+  els.matchingWordList.innerHTML = '';
+  els.matchingInfoList.innerHTML = '';
+  els.matchingHint.textContent = matchingHintText(state);
+
+  state.matchingRoundWords.forEach(word => {
+    const button = document.createElement('button');
+    const status = matchingWordStatus(state, word.id);
+    const isMatched = typeof state.matchingMatchedPairs[word.id] === 'number';
+    button.type = 'button';
+    button.className = 'matching-word-row matching-status-' + status;
+    if (state.matchingSelectedWordId === word.id) button.classList.add('selected');
+    if (isMatched) button.classList.add('locked');
+    button.disabled = isMatched;
+    button.dataset.wordId = String(word.id);
+    button.textContent = word.word;
+    els.matchingWordList.appendChild(button);
+  });
+
+  state.matchingInfoWords.forEach(word => {
+    const card = document.createElement('button');
+    const isMatched = matchedInfoIds.has(word.id);
+    card.type = 'button';
+    card.className = 'matching-info-card';
+    if (isMatched) card.classList.add('locked');
+    card.disabled = isMatched;
+    card.dataset.infoId = String(word.id);
+    card.innerHTML = `
+      <div class="matching-info-reading">${renderReading(word.reading, word.word, word.kanjiData, word.pitchAccent)}</div>
+      <div class="matching-info-pos">${word.type || ''}</div>
+      <div class="matching-info-meaning">${word.meaning || ''}</div>
+    `;
+    els.matchingInfoList.appendChild(card);
+  });
 }
 
 function renderSidebar(els, state) {
@@ -171,9 +232,25 @@ function renderPrompt(els, state) {
 }
 
 export function renderDrill(els, state) {
+  renderStats(els, state);
+  els.pageBody.classList.toggle('matching-mode', state.matchingPairsMode);
+
+  if (state.matchingPairsMode) {
+    els.matchingArea.classList.remove('hidden');
+    els.sidebar.style.display = 'none';
+    els.tip.classList.remove('visible');
+    els.mainArea.classList.add('hidden');
+    els.actionPrompt.style.display = 'none';
+    els.lastWordCard.style.display = 'none';
+    renderMatchingDrill(els, state);
+    return;
+  }
+
+  els.matchingArea.classList.add('hidden');
+  els.sidebar.style.display = '';
+  els.mainArea.classList.remove('hidden');
   renderSidebar(els, state);
   renderLastAnswered(els, state);
-  renderStats(els, state);
   renderPrompt(els, state);
 }
 

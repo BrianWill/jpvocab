@@ -48,6 +48,40 @@ export async function postAnswer(sessionId, wordId, correct, sessionState) {
   if (!resp.ok) throw new Error('failed to save drill answer');
 }
 
+function includesWordId(ids, wordId) {
+  return Array.isArray(ids) && ids.includes(wordId);
+}
+
+function normalizeMatchingState(sessionState) {
+  const roundWords = Array.isArray(sessionState.matchingRoundWords)
+    ? sessionState.matchingRoundWords
+    : (Array.isArray(sessionState.remaining) ? sessionState.remaining : []);
+
+  const infoWords = Array.isArray(sessionState.matchingInfoWords) && sessionState.matchingInfoWords.length > 0
+    ? sessionState.matchingInfoWords
+    : roundWords;
+
+  return {
+    matchingRoundWords: roundWords,
+    matchingInfoWords: infoWords,
+    matchingSelectedWordId: typeof sessionState.matchingSelectedWordId === 'number'
+      ? sessionState.matchingSelectedWordId
+      : null,
+    matchingMatchedPairs: sessionState.matchingMatchedPairs && typeof sessionState.matchingMatchedPairs === 'object'
+      ? sessionState.matchingMatchedPairs
+      : {},
+    matchingCarryoverWordIds: Array.isArray(sessionState.matchingCarryoverWordIds)
+      ? sessionState.matchingCarryoverWordIds
+      : [],
+    matchingAttemptedWordIds: Array.isArray(sessionState.matchingAttemptedWordIds)
+      ? sessionState.matchingAttemptedWordIds
+      : [],
+    matchingFirstTryCorrectWordIds: Array.isArray(sessionState.matchingFirstTryCorrectWordIds)
+      ? sessionState.matchingFirstTryCorrectWordIds
+      : [],
+  };
+}
+
 export function createDrillState(filterKeys) {
   return {
     activeFilters: new Set(filterKeys),
@@ -57,7 +91,14 @@ export function createDrillState(filterKeys) {
     drillStartedAt: Date.now(),
     lastAnswered: null,
     lastAutoPlayedId: null,
+    matchingAttemptedWordIds: [],
+    matchingCarryoverWordIds: [],
+    matchingFirstTryCorrectWordIds: [],
+    matchingInfoWords: [],
+    matchingMatchedPairs: {},
     matchingPairsMode: false,
+    matchingRoundWords: [],
+    matchingSelectedWordId: null,
     pendingAnswerCorrect: null,
     pool: [],
     poolSize: 0,
@@ -109,7 +150,20 @@ export function applySidebarAnswer(sidebarItems, word, knew) {
   return nextItems;
 }
 
+export function isMatchingRoundComplete(sessionState) {
+  const { matchingRoundWords, matchingMatchedPairs } = normalizeMatchingState(sessionState);
+  return matchingRoundWords.length > 0 &&
+    matchingRoundWords.every(word => typeof matchingMatchedPairs[word.id] === 'number');
+}
+
 export function isSessionComplete(sessionState) {
+  if (sessionState.matchingPairsMode) {
+    const { matchingRoundWords } = normalizeMatchingState(sessionState);
+    return matchingRoundWords.length === 0 &&
+      sessionState.redo.length === 0 &&
+      sessionState.pool.length === 0;
+  }
+
   return !sessionState.currentWord &&
     sessionState.remaining.length === 0 &&
     sessionState.redo.length === 0 &&
@@ -129,6 +183,161 @@ export function buildRoundState(sessionState) {
     remaining,
     currentWord: remaining[0] || null,
     sidebarItems: createSidebarItems(remaining, redoSet),
+    matchingRoundWords: [],
+    matchingInfoWords: [],
+    matchingSelectedWordId: null,
+    matchingMatchedPairs: {},
+    matchingCarryoverWordIds: [],
+    matchingAttemptedWordIds: [],
+    matchingFirstTryCorrectWordIds: [],
+  };
+}
+
+export function buildMatchingRoundState(sessionState, shuffleInfoWords = words => words) {
+  const slots = Math.max(0, sessionState.roundSize - sessionState.redo.length);
+  const pool = [...sessionState.pool];
+  const picked = pool.splice(0, slots);
+  const remaining = [...sessionState.redo, ...picked];
+
+  return {
+    pool,
+    redo: [],
+    remaining,
+    currentWord: null,
+    sidebarItems: [],
+    matchingRoundWords: remaining,
+    matchingInfoWords: shuffleInfoWords(remaining),
+    matchingSelectedWordId: null,
+    matchingMatchedPairs: {},
+    matchingCarryoverWordIds: [],
+    matchingAttemptedWordIds: [],
+    matchingFirstTryCorrectWordIds: [],
+    awaitingAdvance: false,
+    pendingAnswerCorrect: null,
+  };
+}
+
+export function selectMatchingWord(sessionState, wordId) {
+  const { matchingRoundWords, matchingMatchedPairs } = normalizeMatchingState(sessionState);
+  const selectedWord = matchingRoundWords.find(word => word.id === wordId);
+  if (!selectedWord || typeof matchingMatchedPairs[wordId] === 'number') {
+    return sessionState;
+  }
+  return {
+    ...sessionState,
+    matchingSelectedWordId: wordId,
+  };
+}
+
+export function attemptMatchingPair(sessionState, infoWordId, shuffleInfoWords = words => words) {
+  const matchingState = normalizeMatchingState(sessionState);
+  const selectedWordId = matchingState.matchingSelectedWordId;
+  if (typeof selectedWordId !== 'number') return null;
+  if (typeof matchingState.matchingMatchedPairs[selectedWordId] === 'number') return null;
+  if (Object.values(matchingState.matchingMatchedPairs).includes(infoWordId)) return null;
+
+  const selectedWord = matchingState.matchingRoundWords.find(word => word.id === selectedWordId);
+  const infoWord = matchingState.matchingInfoWords.find(word => word.id === infoWordId);
+  if (!selectedWord || !infoWord) return null;
+
+  const isCorrect = selectedWordId === infoWordId;
+  const firstAttempt = !includesWordId(matchingState.matchingAttemptedWordIds, selectedWordId);
+  const matchingAttemptedWordIds = firstAttempt
+    ? [...matchingState.matchingAttemptedWordIds, selectedWordId]
+    : [...matchingState.matchingAttemptedWordIds];
+  const matchingCarryoverWordIds = (!isCorrect && firstAttempt)
+    ? [...matchingState.matchingCarryoverWordIds, selectedWordId]
+    : [...matchingState.matchingCarryoverWordIds];
+  const matchingFirstTryCorrectWordIds = (isCorrect && firstAttempt)
+    ? [...matchingState.matchingFirstTryCorrectWordIds, selectedWordId]
+    : [...matchingState.matchingFirstTryCorrectWordIds];
+
+  let nextState = {
+    ...sessionState,
+    matchingAttemptedWordIds,
+    matchingCarryoverWordIds,
+    matchingFirstTryCorrectWordIds,
+    lastAnswered: { word: selectedWord, knew: isCorrect && firstAttempt },
+  };
+
+  if (!isCorrect) {
+    nextState = {
+      ...nextState,
+      matchingSelectedWordId: selectedWordId,
+    };
+    return {
+      nextState,
+      answeredWord: selectedWord,
+      firstAttempt,
+      firstAttemptCorrect: false,
+    };
+  }
+
+  const matchingMatchedPairs = {
+    ...matchingState.matchingMatchedPairs,
+    [selectedWordId]: infoWordId,
+  };
+  const nextDoneCount = sessionState.doneCount + (firstAttempt ? 1 : 0);
+  nextState = {
+    ...nextState,
+    doneCount: nextDoneCount,
+    matchingMatchedPairs,
+    matchingSelectedWordId: null,
+  };
+
+  const completedRound = matchingState.matchingRoundWords.every(word =>
+    typeof (word.id === selectedWordId ? matchingMatchedPairs[selectedWordId] : matchingMatchedPairs[word.id]) === 'number'
+  );
+
+  if (!completedRound) {
+    return {
+      nextState,
+      answeredWord: selectedWord,
+      firstAttempt,
+      firstAttemptCorrect: firstAttempt,
+    };
+  }
+
+  const redo = matchingState.matchingRoundWords.filter(word =>
+    includesWordId(matchingCarryoverWordIds, word.id)
+  );
+
+  if (redo.length > 0 || sessionState.pool.length > 0) {
+    return {
+      nextState: {
+        ...nextState,
+        round: sessionState.round + 1,
+        ...buildMatchingRoundState({
+          ...sessionState,
+          pool: sessionState.pool,
+          redo,
+          roundSize: sessionState.roundSize,
+        }, shuffleInfoWords),
+      },
+      answeredWord: selectedWord,
+      firstAttempt,
+      firstAttemptCorrect: firstAttempt,
+    };
+  }
+
+  return {
+    nextState: {
+      ...nextState,
+      currentWord: null,
+      remaining: [],
+      redo: [],
+      matchingRoundWords: [],
+      matchingInfoWords: [],
+      matchingSelectedWordId: null,
+      matchingMatchedPairs: {},
+      matchingCarryoverWordIds: [],
+      matchingAttemptedWordIds: [],
+      matchingFirstTryCorrectWordIds: [],
+      sidebarItems: [],
+    },
+    answeredWord: selectedWord,
+    firstAttempt,
+    firstAttemptCorrect: firstAttempt,
   };
 }
 
@@ -257,6 +466,13 @@ export function serializeSessionState(state) {
     sidebarItems: state.sidebarItems,
     lastAnswered: state.lastAnswered,
     matchingPairsMode: state.matchingPairsMode,
+    matchingRoundWords: state.matchingRoundWords,
+    matchingInfoWords: state.matchingInfoWords,
+    matchingSelectedWordId: state.matchingSelectedWordId,
+    matchingMatchedPairs: state.matchingMatchedPairs,
+    matchingCarryoverWordIds: state.matchingCarryoverWordIds,
+    matchingAttemptedWordIds: state.matchingAttemptedWordIds,
+    matchingFirstTryCorrectWordIds: state.matchingFirstTryCorrectWordIds,
     skipAnswerReveal: state.skipAnswerReveal,
     awaitingAdvance: state.awaitingAdvance,
     pendingAnswerCorrect: state.pendingAnswerCorrect,

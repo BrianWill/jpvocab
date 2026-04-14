@@ -11,6 +11,8 @@ import {
 import { getSynthAudio } from './synth-cache.js';
 import {
   advanceAfterRevealState,
+  attemptMatchingPair,
+  buildMatchingRoundState,
   buildRoundState,
   createSession,
   createDrillState,
@@ -20,6 +22,7 @@ import {
   getNextRevealState,
   loadDrillData,
   postAnswer,
+  selectMatchingWord,
   serializeSessionState,
   updateSessionState,
 } from './drill-state.js';
@@ -114,6 +117,27 @@ function restoreSession(session) {
   state.sidebarFlash = null;
   state.sidebarItems = Array.isArray(sessionState.sidebarItems) ? sessionState.sidebarItems : [];
   state.lastAnswered = sessionState.lastAnswered || null;
+  state.matchingRoundWords = Array.isArray(sessionState.matchingRoundWords)
+    ? sessionState.matchingRoundWords
+    : (state.matchingPairsMode ? state.remaining : []);
+  state.matchingInfoWords = Array.isArray(sessionState.matchingInfoWords) && sessionState.matchingInfoWords.length > 0
+    ? sessionState.matchingInfoWords
+    : state.matchingRoundWords;
+  state.matchingSelectedWordId = typeof sessionState.matchingSelectedWordId === 'number'
+    ? sessionState.matchingSelectedWordId
+    : null;
+  state.matchingMatchedPairs = sessionState.matchingMatchedPairs && typeof sessionState.matchingMatchedPairs === 'object'
+    ? sessionState.matchingMatchedPairs
+    : {};
+  state.matchingCarryoverWordIds = Array.isArray(sessionState.matchingCarryoverWordIds)
+    ? sessionState.matchingCarryoverWordIds
+    : [];
+  state.matchingAttemptedWordIds = Array.isArray(sessionState.matchingAttemptedWordIds)
+    ? sessionState.matchingAttemptedWordIds
+    : [];
+  state.matchingFirstTryCorrectWordIds = Array.isArray(sessionState.matchingFirstTryCorrectWordIds)
+    ? sessionState.matchingFirstTryCorrectWordIds
+    : [];
 
   if (Array.isArray(sessionState.activeFilters) && sessionState.activeFilters.length > 0) {
     state.activeFilters.clear();
@@ -122,7 +146,7 @@ function restoreSession(session) {
 
   syncRestartFilterButtons(els, state.activeFilters);
   renderDrill(els, state);
-  prefetchRoundAudio(state.remaining);
+  if (!state.matchingPairsMode) prefetchRoundAudio(state.remaining);
 }
 
 async function init() {
@@ -160,13 +184,15 @@ async function init() {
   state.poolSize = Math.min(settings.maxWords, source.length);
   state.pool = shuffle(source).slice(0, state.poolSize);
   state.lastAutoPlayedId = null;
-  Object.assign(state, buildRoundState(state));
+  Object.assign(state, state.matchingPairsMode
+    ? buildMatchingRoundState(state, shuffle)
+    : buildRoundState(state));
   state.lastAnswered = null;
   state.sidebarFlash = null;
 
   state.sessionId = await createSession(serializeSessionState(state));
   renderDrill(els, state);
-  prefetchRoundAudio(state.remaining);
+  if (!state.matchingPairsMode) prefetchRoundAudio(state.remaining);
 }
 
 function reveal(knew) {
@@ -193,6 +219,7 @@ function reveal(knew) {
 }
 
 function advanceAfterReveal() {
+  if (state.matchingPairsMode) return;
   if (!state.awaitingAdvance) return;
 
   const nextState = advanceAfterRevealState(state);
@@ -234,12 +261,14 @@ function restartDrill(totalWords, roundSize, sourceWords) {
   state.awaitingAdvance = false;
   state.lastAutoPlayedId = null;
   state.pendingAnswerCorrect = null;
-  Object.assign(state, buildRoundState(state));
+  Object.assign(state, state.matchingPairsMode
+    ? buildMatchingRoundState(state, shuffle)
+    : buildRoundState(state));
   state.lastAnswered = null;
   state.sidebarFlash = null;
 
   renderDrill(els, state);
-  prefetchRoundAudio(state.remaining);
+  if (!state.matchingPairsMode) prefetchRoundAudio(state.remaining);
 }
 
 async function confirmRestart() {
@@ -259,6 +288,7 @@ async function confirmRestart() {
 els.sidebarList.addEventListener('click', event => {
   const item = event.target.closest('.sidebar-item');
   if (!item?.dataset.word) return;
+  if (state.matchingPairsMode) return;
   const word = JSON.parse(item.dataset.word);
   playDrillWordAudio(word);
 });
@@ -266,6 +296,7 @@ els.sidebarList.addEventListener('click', event => {
 els.sidebarList.addEventListener('mouseover', event => {
   const item = event.target.closest('.sidebar-item');
   if (!item || !item.dataset.word) return;
+  if (state.matchingPairsMode) return;
   const word = JSON.parse(item.dataset.word);
   populateWordTooltip(els.tip, word, renderReading);
   positionSidebarTooltip(els, item, els.tip);
@@ -274,7 +305,42 @@ els.sidebarList.addEventListener('mouseover', event => {
 els.sidebarList.addEventListener('mouseout', event => {
   const item = event.target.closest('.sidebar-item');
   if (!item) return;
+  if (state.matchingPairsMode) return;
   if (!item.contains(event.relatedTarget)) els.tip.classList.remove('visible');
+});
+
+els.matchingWordList.addEventListener('click', event => {
+  const button = event.target.closest('[data-word-id]');
+  if (!button || !state.matchingPairsMode) return;
+  const wordId = parseInt(button.dataset.wordId, 10);
+  if (Number.isNaN(wordId)) return;
+  Object.assign(state, selectMatchingWord(state, wordId));
+  renderDrill(els, state);
+});
+
+els.matchingInfoList.addEventListener('click', event => {
+  const card = event.target.closest('[data-info-id]');
+  if (!card || !state.matchingPairsMode) return;
+  const infoWordId = parseInt(card.dataset.infoId, 10);
+  if (Number.isNaN(infoWordId)) return;
+
+  const result = attemptMatchingPair(state, infoWordId, shuffle);
+  if (!result) return;
+
+  Object.assign(state, result.nextState);
+  renderDrill(els, state);
+
+  const sessionId = state.sessionId;
+  const sessionSnapshot = serializeSessionState(state);
+  if (result.firstAttempt) {
+    state.answerQueue = state.answerQueue
+      .then(() => postAnswer(sessionId, result.answeredWord.id, result.firstAttemptCorrect, sessionSnapshot))
+      .catch(err => console.error('Failed to save drill answer', err));
+    return;
+  }
+  state.answerQueue = state.answerQueue
+    .then(() => updateSessionState(sessionId, sessionSnapshot))
+    .catch(err => console.error('Failed to save drill session', err));
 });
 
 document.addEventListener('keydown', event => {
@@ -282,6 +348,7 @@ document.addEventListener('keydown', event => {
     closeRestartModal();
     return;
   }
+  if (state.matchingPairsMode) return;
   if (event.key === 'w' || event.key === 'W') {
     if (state.currentWord) playDrillWordAudio(state.currentWord, 0.8);
     return;
@@ -312,18 +379,23 @@ els.restartFilterButtons.forEach(btn => {
 });
 
 els.promptWordJp.addEventListener('click', () => {
+  if (state.matchingPairsMode) return;
   if (state.currentWord) playDrillWordAudio(state.currentWord);
 });
 els.promptExampleJp.addEventListener('click', () => {
+  if (state.matchingPairsMode) return;
   if (state.currentWord) playDrillSentenceAudio(state.currentWord);
 });
 els.lastWordJp.addEventListener('click', () => {
+  if (state.matchingPairsMode) return;
   if (state.lastAnswered) playDrillWordAudio(state.lastAnswered.word);
 });
 els.lastExampleJp.addEventListener('click', () => {
+  if (state.matchingPairsMode) return;
   if (state.lastAnswered) playDrillSentenceAudio(state.lastAnswered.word);
 });
 els.lastExampleEn.addEventListener('click', () => {
+  if (state.matchingPairsMode) return;
   if (state.lastAnswered?.word.exampleEn) playTts(state.lastAnswered.word.exampleEn, 'en-US');
 });
 

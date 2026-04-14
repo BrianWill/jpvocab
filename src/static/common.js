@@ -719,15 +719,11 @@ document.addEventListener('mouseover', e => {
   const pad = 8;
   const w = _hoverTooltip.offsetWidth;
   const h = _hoverTooltip.offsetHeight;
-  // CSS zoom on <html> scales the layout coordinate system but not clientX/Y or
-  // window.innerWidth/Height, so we must divide viewport-space values by the zoom
-  // factor to get the correct position in layout coordinates.
-  const zoom = parseFloat(localStorage.getItem('appZoom')) || 1.0;
-  const vw = window.innerWidth / zoom;
-  const vh = window.innerHeight / zoom;
-  let left = e.clientX / zoom + 14;
+  const vw = window.innerWidth;
+  const vh = window.innerHeight;
+  let left = e.clientX + 14;
   if (left + w > vw - pad) left = vw - w - pad;
-  let top = e.clientY / zoom + 18;
+  let top = e.clientY + 18;
   top = Math.max(pad, Math.min(top, vh - h - pad));
   _hoverTooltip.style.left = left + 'px';
   _hoverTooltip.style.top = top + 'px';
@@ -737,12 +733,11 @@ document.addEventListener('mousemove', e => {
   const pad = 8;
   const w = _hoverTooltip.offsetWidth;
   const h = _hoverTooltip.offsetHeight;
-  const zoom = parseFloat(localStorage.getItem('appZoom')) || 1.0;
-  const vw = window.innerWidth / zoom;
-  const vh = window.innerHeight / zoom;
-  let left = e.clientX / zoom + 14;
+  const vw = window.innerWidth;
+  const vh = window.innerHeight;
+  let left = e.clientX + 14;
   if (left + w > vw - pad) left = vw - w - pad;
-  let top = e.clientY / zoom + 18;
+  let top = e.clientY + 18;
   top = Math.max(pad, Math.min(top, vh - h - pad));
   _hoverTooltip.style.left = left + 'px';
   _hoverTooltip.style.top = top + 'px';
@@ -805,12 +800,11 @@ export function positionAnchoredWordTooltip(tooltipEl, options) {
   tooltipEl.style.visibility = 'hidden';
   tooltipEl.classList.add('visible');
 
-  const zoom = parseFloat(localStorage.getItem('appZoom')) || 1.0;
   const tooltipHeight = tooltipEl.offsetHeight;
-  const maxTop = Math.max(8, window.innerHeight / zoom - tooltipHeight - 8);
-  const top = Math.max(8, Math.min(anchorRect.top / zoom, maxTop));
+  const maxTop = Math.max(8, window.innerHeight - tooltipHeight - 8);
+  const top = Math.max(8, Math.min(anchorRect.top, maxTop));
 
-  tooltipEl.style.left = (left / zoom) + 'px';
+  tooltipEl.style.left = left + 'px';
   tooltipEl.style.top = top + 'px';
   tooltipEl.style.visibility = '';
 }

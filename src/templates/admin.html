@@ -2,7 +2,8 @@
 <div class="page-header">
   <h1>jpvocab — admin</h1>
   <form method="POST" action="/admin/reset-db" onsubmit="return confirm('Drop all tables and reinitialise? This cannot be undone.')">
-    <button class="btn-danger" type="submit">Reset DB</button>
+    <button class="btn-danger" type="submit" name="seed" value="0">Reset DB</button>
+    <button class="btn-danger" type="submit" name="seed" value="1">Reset DB + Seed</button>
   </form>
 </div>
 

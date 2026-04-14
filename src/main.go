@@ -52,6 +52,7 @@ func clearPendingWebviewCache(webviewUserDataPath string) error {
 
 func main() {
 	serverOnly := flag.Bool("server-only", false, "run the web server without opening the Wails desktop window")
+	seedDBFlag := flag.Bool("seed-db", false, "load seed data, but only when creating a brand-new database file")
 	skipLargeStories := flag.Bool("skip-large-seed-stories", false, "skip large stories during DB seeding")
 	populateLexiconFromWordLists := flag.Bool("populate-lexicon-from-wordlists", false, "when tracked lexicon is empty, insert all bundled word-list entries for large-list testing")
 	flag.Parse()
@@ -79,7 +80,7 @@ func main() {
 
 	initTokenizer()
 
-	db := initDB(dbPath)
+	db := initDB(dbPath, *seedDBFlag)
 	defer db.Close()
 
 	if *populateLexiconFromWordLists {

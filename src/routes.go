@@ -580,7 +580,8 @@ func adminDeleteWords(db *sql.DB) http.HandlerFunc {
 // and returns non-empty tokens preserving first-seen order.
 func adminResetDB(db *sql.DB) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		if err := resetDB(db); err != nil {
+		seed := r.FormValue("seed") == "1"
+		if err := resetDB(db, seed); err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
 		}

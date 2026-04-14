@@ -12,7 +12,9 @@ import (
 	_ "modernc.org/sqlite"
 )
 
-func initDB(path string) *sql.DB {
+func initDB(path string, seedRequested bool) *sql.DB {
+	seedOnCreate := seedRequested && !fileExists(path)
+
 	db, err := sql.Open("sqlite", path)
 	if err != nil {
 		log.Fatal("open db:", err)
@@ -25,7 +27,9 @@ func initDB(path string) *sql.DB {
 	db.SetMaxOpenConns(1)
 
 	migrate(db)
-	seedDB(db)
+	if seedOnCreate {
+		seedDB(db)
+	}
 	seedTutorPrompts(db)
 	return db
 }
@@ -149,7 +153,7 @@ func migrate(db *sql.DB) {
 }
 
 // resetDB drops all user tables and re-runs migrations, giving a clean slate.
-func resetDB(db *sql.DB) error {
+func resetDB(db *sql.DB, seed bool) error {
 	tables, err := listTables(db)
 	if err != nil {
 		return err
@@ -161,9 +165,16 @@ func resetDB(db *sql.DB) error {
 	}
 	db.Exec("PRAGMA user_version = 0")
 	migrate(db)
-	seedDB(db)
+	if seed {
+		seedDB(db)
+	}
 	seedTutorPrompts(db)
 	return nil
+}
+
+func fileExists(path string) bool {
+	_, err := os.Stat(path)
+	return err == nil
 }
 
 // columnInfo holds metadata for a single table column.

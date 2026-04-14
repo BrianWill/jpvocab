@@ -3,6 +3,8 @@ package main
 import (
 	"database/sql"
 	"fmt"
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 	"time"
@@ -64,6 +66,52 @@ func TestMigrate_Idempotent(t *testing.T) {
 	if len(after) != len(before) {
 		t.Errorf("second migrate changed table count: %d → %d\nbefore: %v\nafter:  %v",
 			len(before), len(after), before, after)
+	}
+}
+
+func TestInitDB_DoesNotSeedFreshDBWithoutFlag(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "fresh-no-seed.db")
+	db := initDB(path, false)
+	t.Cleanup(func() { db.Close() })
+
+	var count int
+	if err := db.QueryRow(`SELECT COUNT(*) FROM words`).Scan(&count); err != nil {
+		t.Fatal(err)
+	}
+	if count != 0 {
+		t.Fatalf("word count: got %d, want 0", count)
+	}
+}
+
+func TestInitDB_SeedsFreshDBWithFlag(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "fresh-seed.db")
+	db := initDB(path, true)
+	t.Cleanup(func() { db.Close() })
+
+	var count int
+	if err := db.QueryRow(`SELECT COUNT(*) FROM words`).Scan(&count); err != nil {
+		t.Fatal(err)
+	}
+	if count == 0 {
+		t.Fatal("expected seeded words in fresh database")
+	}
+}
+
+func TestInitDB_DoesNotSeedExistingDBEvenWithFlag(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "existing.db")
+	if err := os.WriteFile(path, nil, 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	db := initDB(path, false)
+	t.Cleanup(func() { db.Close() })
+
+	var count int
+	if err := db.QueryRow(`SELECT COUNT(*) FROM words`).Scan(&count); err != nil {
+		t.Fatal(err)
+	}
+	if count != 0 {
+		t.Fatalf("word count: got %d, want 0", count)
 	}
 }
 
@@ -625,23 +673,41 @@ func TestGetCurrentDrillSession_NormalisesSparseStoredJSON(t *testing.T) {
 
 // --- resetDB ---
 
-func TestResetDB_ClearsData(t *testing.T) {
+func TestResetDB_ClearsDataWithoutSeed(t *testing.T) {
 	db := testDB(t)
 	// Use sentinel words guaranteed not to appear in the seed data.
 	insertWord(db, "__test_reset_alpha__", "", "", "", "", "", "", 1)
 	insertWord(db, "__test_reset_beta__", "", "", "", "", "", "", 1)
 
-	if err := resetDB(db); err != nil {
+	if err := resetDB(db, false); err != nil {
 		t.Fatal("resetDB:", err)
 	}
 
-	// After reset the DB is re-migrated (and possibly re-seeded from seed files).
-	// Our manually-added words (tracked=1) must no longer be present; seed
-	// story tokenisation may re-add some base words with tracked=0, which is fine.
+	// After reset the DB is re-migrated without app seed data.
 	var count int
 	db.QueryRow(`SELECT COUNT(*) FROM words WHERE base_word IN ('__test_reset_alpha__', '__test_reset_beta__') AND tracked = 1`).Scan(&count)
 	if count != 0 {
 		t.Errorf("test words still present after reset: got %d, want 0", count)
+	}
+
+	db.QueryRow(`SELECT COUNT(*) FROM words`).Scan(&count)
+	if count != 0 {
+		t.Errorf("word count after unseeded reset: got %d, want 0", count)
+	}
+}
+
+func TestResetDB_WithSeedPopulatesWords(t *testing.T) {
+	db := testDB(t)
+	insertWord(db, "__test_reset_seed__", "", "", "", "", "", "", 1)
+
+	if err := resetDB(db, true); err != nil {
+		t.Fatal("resetDB:", err)
+	}
+
+	var count int
+	db.QueryRow(`SELECT COUNT(*) FROM words`).Scan(&count)
+	if count == 0 {
+		t.Fatal("expected seeded words after reset with seed")
 	}
 }
 

@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { getFieldLanguageErrorMsg, getFieldLanguageFilter, sanitizeFieldInput } from '../add-to-lexicon-utils.js';
+import { getFieldLanguageErrorMsg, getFieldLanguageFilter, sanitizeFieldInput } from '../lexicon-add-modal-field-utils.js';
 
 test('sanitizeFieldInput: strips latin letters from Japanese-only fields', () => {
   assert.equal(sanitizeFieldInput('abc猫def', 'example-jp'), '猫');

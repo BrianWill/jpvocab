@@ -7,7 +7,7 @@ import {
   generateWordAutofillRequest,
   generateWordImageRequest,
   streamBatchAdd,
-} from './add-to-lexicon-modal-utils.js';
+} from './lexicon-add-modal-utils.js';
 import {
   adjustWordTarget,
   bindWordResultImageUpload,
@@ -18,7 +18,7 @@ import {
   saveWordRowEdits,
   setWordRowImage,
   sortAddResultRows,
-} from './add-to-lexicon.js';
+} from './lexicon-add-modal.js';
 import {
   buildImageSourceOptionsHtml,
   buildProviderOptionsHtml,

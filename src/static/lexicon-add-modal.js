@@ -1,5 +1,5 @@
 import { esc, detailItemPosSelect, detailItemKanjiReadings, detailItemInput, detailItemExInput, getFirstImageFile } from './lexicon-utils.js';
-import { getFieldLanguageErrorMsg, getFieldLanguageFilter, getFieldLanguageKind, sanitizeFieldInput } from './add-to-lexicon-utils.js';
+import { getFieldLanguageErrorMsg, getFieldLanguageFilter, getFieldLanguageKind, sanitizeFieldInput } from './lexicon-add-modal-field-utils.js';
 
 const imagePlaceholderSvg =
   '<svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">' +

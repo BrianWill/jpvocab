@@ -1,4 +1,4 @@
-import { setWordRowImage } from './add-to-lexicon.js';
+import { setWordRowImage } from './lexicon-add-modal.js';
 
 export async function streamBatchAdd({ rawWords, signal, onUpdated, onDone, onRow }) {
   const form = new FormData();

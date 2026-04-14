@@ -2,7 +2,7 @@ import { checkVoicevoxAvailable, PROVIDER_MODELS, refreshTooltip } from './commo
 import { pluralize } from './format-utils.js';
 import { esc, renderReading } from './lexicon-utils.js';
 import { initGenerateModals, openTranslationModal, populateTranslationModelSelect } from './story-generate.js';
-import { initStoryAddToLexicon, addWordsToLexicon } from './story-add-to-lexicon.js';
+import { initStoryAddToLexicon, addWordsToLexicon } from './story-lexicon-add-modal.js';
 import { initPlayback, initSynthPlayback, showSentencePlayBtn, scheduleSentencePlayHide, hideSentencePlayBtn, cancelSentencePlayHide, stopPlayback } from './story-playback.js';
 
 // ── DOM refs ──────────────────────────────────────────────────────────────────

@@ -123,6 +123,9 @@ function restoreSession(session) {
   state.matchingInfoWords = Array.isArray(sessionState.matchingInfoWords) && sessionState.matchingInfoWords.length > 0
     ? sessionState.matchingInfoWords
     : state.matchingRoundWords;
+  state.matchingRedoWordIds = Array.isArray(sessionState.matchingRedoWordIds)
+    ? sessionState.matchingRedoWordIds
+    : [];
   state.matchingSelectedWordId = typeof sessionState.matchingSelectedWordId === 'number'
     ? sessionState.matchingSelectedWordId
     : null;
@@ -146,7 +149,8 @@ function restoreSession(session) {
 
   syncRestartFilterButtons(els, state.activeFilters);
   renderDrill(els, state);
-  if (!state.matchingPairsMode) prefetchRoundAudio(state.remaining);
+  if (state.matchingPairsMode) state.prefetchController?.abort();
+  else prefetchRoundAudio(state.remaining);
 }
 
 async function init() {
@@ -192,7 +196,8 @@ async function init() {
 
   state.sessionId = await createSession(serializeSessionState(state));
   renderDrill(els, state);
-  if (!state.matchingPairsMode) prefetchRoundAudio(state.remaining);
+  if (state.matchingPairsMode) state.prefetchController?.abort();
+  else prefetchRoundAudio(state.remaining);
 }
 
 function reveal(knew) {
@@ -268,7 +273,8 @@ function restartDrill(totalWords, roundSize, sourceWords) {
   state.sidebarFlash = null;
 
   renderDrill(els, state);
-  if (!state.matchingPairsMode) prefetchRoundAudio(state.remaining);
+  if (state.matchingPairsMode) state.prefetchController?.abort();
+  else prefetchRoundAudio(state.remaining);
 }
 
 async function confirmRestart() {

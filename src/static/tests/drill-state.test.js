@@ -2,6 +2,8 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
   advanceAfterRevealState,
+  attemptMatchingPair,
+  buildMatchingRoundState,
   DEFAULT_ROUND_SIZE,
   applySidebarAnswer,
   buildRoundState,
@@ -10,8 +12,10 @@ import {
   getAnswerFeedbackState,
   getFilteredWords,
   getNextRevealState,
+  isMatchingRoundComplete,
   isSessionComplete,
   matchesFilter,
+  selectMatchingWord,
   serializeSessionState,
 } from '../drill-state.js';
 
@@ -31,6 +35,8 @@ test('createDrillState: seeds defaults from filter keys', () => {
   assert.equal(state.currentWord, null);
   assert.equal(state.skipAnswerReveal, false);
   assert.equal(state.awaitingAdvance, false);
+  assert.deepEqual(state.matchingRoundWords, []);
+  assert.equal(state.matchingSelectedWordId, null);
   assert.deepEqual(state.pool, []);
   assert.deepEqual(state.redo, []);
 });
@@ -128,6 +134,123 @@ test('buildRoundState: allows redo to exceed round size without pulling from poo
   assert.deepEqual(result.pool, [otherWord]);
 });
 
+test('buildMatchingRoundState: fills the round and shuffles info cards independently', () => {
+  const result = buildMatchingRoundState({
+    roundSize: 2,
+    redo: [verbWord],
+    pool: [nounWord, otherWord],
+  }, words => [words[1], words[0]]);
+
+  assert.deepEqual(result.remaining, [verbWord, nounWord]);
+  assert.deepEqual(result.matchingRoundWords, [verbWord, nounWord]);
+  assert.deepEqual(result.matchingInfoWords, [nounWord, verbWord]);
+  assert.deepEqual(result.matchingRedoWordIds, [verbWord.id]);
+  assert.equal(result.matchingSelectedWordId, null);
+  assert.deepEqual(result.pool, [otherWord]);
+});
+
+test('selectMatchingWord: selects unmatched words and ignores matched ones', () => {
+  const state = {
+    matchingRoundWords: [nounWord, verbWord],
+    matchingMatchedPairs: { [verbWord.id]: verbWord.id },
+    matchingSelectedWordId: null,
+  };
+
+  assert.equal(selectMatchingWord(state, nounWord.id).matchingSelectedWordId, nounWord.id);
+  assert.equal(selectMatchingWord(state, verbWord.id).matchingSelectedWordId, null);
+});
+
+test('attemptMatchingPair: first-try correct match increments done count and locks pair', () => {
+  const result = attemptMatchingPair({
+    matchingPairsMode: true,
+    doneCount: 0,
+    round: 1,
+    roundSize: 2,
+    pool: [],
+    redo: [],
+    remaining: [nounWord, verbWord],
+    matchingRoundWords: [nounWord, verbWord],
+    matchingInfoWords: [verbWord, nounWord],
+    matchingSelectedWordId: nounWord.id,
+    matchingMatchedPairs: {},
+    matchingCarryoverWordIds: [],
+    matchingAttemptedWordIds: [],
+    matchingFirstTryCorrectWordIds: [],
+  }, nounWord.id, words => words);
+
+  assert.equal(result.firstAttempt, true);
+  assert.equal(result.firstAttemptCorrect, true);
+  assert.equal(result.nextState.doneCount, 1);
+  assert.equal(result.nextState.matchingMatchedPairs[nounWord.id], nounWord.id);
+  assert.equal(result.nextState.matchingSelectedWordId, null);
+  assert.deepEqual(result.nextState.matchingFirstTryCorrectWordIds, [nounWord.id]);
+});
+
+test('attemptMatchingPair: wrong first attempt marks carryover and keeps word unmatched', () => {
+  const result = attemptMatchingPair({
+    matchingPairsMode: true,
+    doneCount: 0,
+    round: 1,
+    roundSize: 2,
+    pool: [],
+    redo: [],
+    remaining: [nounWord, verbWord],
+    matchingRoundWords: [nounWord, verbWord],
+    matchingInfoWords: [verbWord, nounWord],
+    matchingSelectedWordId: nounWord.id,
+    matchingMatchedPairs: {},
+    matchingCarryoverWordIds: [],
+    matchingAttemptedWordIds: [],
+    matchingFirstTryCorrectWordIds: [],
+  }, verbWord.id, words => words);
+
+  assert.equal(result.firstAttempt, true);
+  assert.equal(result.firstAttemptCorrect, false);
+  assert.equal(result.nextState.doneCount, 0);
+  assert.deepEqual(result.nextState.matchingCarryoverWordIds, [nounWord.id]);
+  assert.equal(result.nextState.matchingMatchedPairs[nounWord.id], undefined);
+  assert.equal(result.nextState.matchingSelectedWordId, nounWord.id);
+});
+
+test('attemptMatchingPair: later correct match after miss stays carried-over and finishes round', () => {
+  const result = attemptMatchingPair({
+    matchingPairsMode: true,
+    doneCount: 0,
+    round: 1,
+    roundSize: 2,
+    pool: [otherWord],
+    redo: [],
+    remaining: [nounWord, verbWord],
+    matchingRoundWords: [nounWord, verbWord],
+    matchingInfoWords: [verbWord, nounWord],
+    matchingSelectedWordId: nounWord.id,
+    matchingMatchedPairs: { [verbWord.id]: verbWord.id },
+    matchingCarryoverWordIds: [nounWord.id],
+    matchingAttemptedWordIds: [nounWord.id, verbWord.id],
+    matchingFirstTryCorrectWordIds: [verbWord.id],
+  }, nounWord.id, words => [words[1], words[0]]);
+
+  assert.equal(result.firstAttempt, false);
+  assert.equal(result.nextState.round, 2);
+  assert.deepEqual(result.nextState.redo, []);
+  assert.deepEqual(result.nextState.matchingCarryoverWordIds, []);
+  assert.deepEqual(result.nextState.remaining, [nounWord, otherWord]);
+  assert.deepEqual(result.nextState.matchingRoundWords, [nounWord, otherWord]);
+  assert.deepEqual(result.nextState.matchingInfoWords, [otherWord, nounWord]);
+  assert.equal(result.nextState.doneCount, 0);
+});
+
+test('isMatchingRoundComplete: requires every round word to be matched', () => {
+  assert.equal(isMatchingRoundComplete({
+    matchingRoundWords: [nounWord, verbWord],
+    matchingMatchedPairs: { [nounWord.id]: nounWord.id },
+  }), false);
+  assert.equal(isMatchingRoundComplete({
+    matchingRoundWords: [nounWord, verbWord],
+    matchingMatchedPairs: { [nounWord.id]: nounWord.id, [verbWord.id]: verbWord.id },
+  }), true);
+});
+
 test('getNextRevealState: advances within the same round on a known answer', () => {
   const state = {
     currentWord: nounWord,
@@ -179,6 +302,14 @@ test('getNextRevealState: carries missed words into the next round', () => {
     currentWord: nounWord,
     round: 2,
     pool: [],
+    matchingRoundWords: [],
+    matchingInfoWords: [],
+    matchingRedoWordIds: [],
+    matchingSelectedWordId: null,
+    matchingMatchedPairs: {},
+    matchingCarryoverWordIds: [],
+    matchingAttemptedWordIds: [],
+    matchingFirstTryCorrectWordIds: [],
   });
 });
 
@@ -287,6 +418,15 @@ test('serializeSessionState: keeps durable progress fields and converts filters 
     remaining: [otherWord],
     sidebarItems: [{ word: katakanaWord, status: 'known' }],
     lastAnswered: { word: katakanaWord, knew: true },
+    matchingPairsMode: true,
+    matchingRoundWords: [nounWord, otherWord],
+    matchingInfoWords: [otherWord, nounWord],
+    matchingRedoWordIds: [nounWord.id],
+    matchingSelectedWordId: nounWord.id,
+    matchingMatchedPairs: { [otherWord.id]: otherWord.id },
+    matchingCarryoverWordIds: [nounWord.id],
+    matchingAttemptedWordIds: [nounWord.id, otherWord.id],
+    matchingFirstTryCorrectWordIds: [otherWord.id],
     skipAnswerReveal: false,
     awaitingAdvance: true,
     pendingAnswerCorrect: true,
@@ -306,6 +446,15 @@ test('serializeSessionState: keeps durable progress fields and converts filters 
     remaining: [otherWord],
     sidebarItems: [{ word: katakanaWord, status: 'known' }],
     lastAnswered: { word: katakanaWord, knew: true },
+    matchingPairsMode: true,
+    matchingRoundWords: [nounWord, otherWord],
+    matchingInfoWords: [otherWord, nounWord],
+    matchingRedoWordIds: [nounWord.id],
+    matchingSelectedWordId: nounWord.id,
+    matchingMatchedPairs: { [otherWord.id]: otherWord.id },
+    matchingCarryoverWordIds: [nounWord.id],
+    matchingAttemptedWordIds: [nounWord.id, otherWord.id],
+    matchingFirstTryCorrectWordIds: [otherWord.id],
     skipAnswerReveal: false,
     awaitingAdvance: true,
     pendingAnswerCorrect: true,
@@ -325,6 +474,15 @@ test('serializeSessionState: preserves partial state and filter insertion order'
     remaining: [],
     sidebarItems: [],
     lastAnswered: null,
+    matchingPairsMode: false,
+    matchingRoundWords: [],
+    matchingInfoWords: [],
+    matchingRedoWordIds: [],
+    matchingSelectedWordId: null,
+    matchingMatchedPairs: {},
+    matchingCarryoverWordIds: [],
+    matchingAttemptedWordIds: [],
+    matchingFirstTryCorrectWordIds: [],
     skipAnswerReveal: true,
     awaitingAdvance: false,
     pendingAnswerCorrect: null,

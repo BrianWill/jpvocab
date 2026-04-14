@@ -23,7 +23,6 @@ export function createDrillElements() {
     lastWordImage: document.getElementById('last-word-image'),
     lastWordJp: document.getElementById('last-word-jp'),
     matchingArea: document.getElementById('matching-area'),
-    matchingHint: document.getElementById('matching-hint'),
     matchingInfoList: document.getElementById('matching-info-list'),
     matchingWordList: document.getElementById('matching-word-list'),
     mainArea: document.querySelector('.main-area'),
@@ -86,30 +85,33 @@ function renderStats(els, state) {
 }
 
 function matchingWordStatus(state, wordId) {
-  if (state.matchingCarryoverWordIds.includes(wordId)) return 'missed';
+  const isMatched = typeof state.matchingMatchedPairs[wordId] === 'number';
+  if (state.matchingCarryoverWordIds.includes(wordId)) {
+    return isMatched ? 'missed-resolved' : 'missed-pending';
+  }
   if (state.matchingFirstTryCorrectWordIds.includes(wordId)) return 'known';
+  if (state.matchingRedoWordIds.includes(wordId)) return 'redo';
   return 'unseen';
-}
-
-function matchingHintText(state) {
-  if (isSessionComplete(state)) {
-    return state.poolSize === 0
-      ? 'There are no active words available with current drill settings.'
-      : 'All pairs completed.';
-  }
-  if (typeof state.matchingSelectedWordId === 'number') {
-    return 'Choose the matching word info on the right.';
-  }
-  return 'Choose a word on the left, then match it to its word info.';
 }
 
 function renderMatchingDrill(els, state) {
   const matchedInfoIds = new Set(Object.values(state.matchingMatchedPairs || {}));
+  const infoStatusById = new Map();
+  Object.entries(state.matchingMatchedPairs || {}).forEach(([wordId, infoId]) => {
+    const numericWordId = parseInt(wordId, 10);
+    const status = matchingWordStatus(state, numericWordId);
+    infoStatusById.set(infoId, status);
+  });
   els.matchingWordList.innerHTML = '';
   els.matchingInfoList.innerHTML = '';
-  els.matchingHint.textContent = matchingHintText(state);
 
-  state.matchingRoundWords.forEach(word => {
+  const sortedRoundWords = [...state.matchingRoundWords].sort((a, b) => {
+    const aRedo = state.matchingRedoWordIds.includes(a.id) ? 1 : 0;
+    const bRedo = state.matchingRedoWordIds.includes(b.id) ? 1 : 0;
+    return bRedo - aRedo;
+  });
+
+  sortedRoundWords.forEach(word => {
     const button = document.createElement('button');
     const status = matchingWordStatus(state, word.id);
     const isMatched = typeof state.matchingMatchedPairs[word.id] === 'number';
@@ -126,15 +128,19 @@ function renderMatchingDrill(els, state) {
   state.matchingInfoWords.forEach(word => {
     const card = document.createElement('button');
     const isMatched = matchedInfoIds.has(word.id);
+    const status = infoStatusById.get(word.id);
     card.type = 'button';
     card.className = 'matching-info-card';
+    if (status) card.classList.add('matching-status-' + status);
     if (isMatched) card.classList.add('locked');
     card.disabled = isMatched;
     card.dataset.infoId = String(word.id);
     card.innerHTML = `
-      <div class="matching-info-reading">${renderReading(word.reading, word.word, word.kanjiData, word.pitchAccent)}</div>
-      <div class="matching-info-pos">${word.type || ''}</div>
       <div class="matching-info-meaning">${word.meaning || ''}</div>
+      <div class="matching-info-meta">
+        <div class="matching-info-reading">${renderReading(word.reading, word.word, word.kanjiData, word.pitchAccent)}</div>
+        <div class="matching-info-pos">${word.type || ''}</div>
+      </div>
     `;
     els.matchingInfoList.appendChild(card);
   });
@@ -239,7 +245,7 @@ export function renderDrill(els, state) {
     els.matchingArea.classList.remove('hidden');
     els.sidebar.style.display = 'none';
     els.tip.classList.remove('visible');
-    els.mainArea.classList.add('hidden');
+    els.mainArea.style.display = 'none';
     els.actionPrompt.style.display = 'none';
     els.lastWordCard.style.display = 'none';
     renderMatchingDrill(els, state);
@@ -248,7 +254,7 @@ export function renderDrill(els, state) {
 
   els.matchingArea.classList.add('hidden');
   els.sidebar.style.display = '';
-  els.mainArea.classList.remove('hidden');
+  els.mainArea.style.display = '';
   renderSidebar(els, state);
   renderLastAnswered(els, state);
   renderPrompt(els, state);

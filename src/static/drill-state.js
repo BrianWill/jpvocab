@@ -64,6 +64,9 @@ function normalizeMatchingState(sessionState) {
   return {
     matchingRoundWords: roundWords,
     matchingInfoWords: infoWords,
+    matchingRedoWordIds: Array.isArray(sessionState.matchingRedoWordIds)
+      ? sessionState.matchingRedoWordIds
+      : [],
     matchingSelectedWordId: typeof sessionState.matchingSelectedWordId === 'number'
       ? sessionState.matchingSelectedWordId
       : null,
@@ -97,6 +100,7 @@ export function createDrillState(filterKeys) {
     matchingInfoWords: [],
     matchingMatchedPairs: {},
     matchingPairsMode: false,
+    matchingRedoWordIds: [],
     matchingRoundWords: [],
     matchingSelectedWordId: null,
     pendingAnswerCorrect: null,
@@ -185,6 +189,7 @@ export function buildRoundState(sessionState) {
     sidebarItems: createSidebarItems(remaining, redoSet),
     matchingRoundWords: [],
     matchingInfoWords: [],
+    matchingRedoWordIds: [],
     matchingSelectedWordId: null,
     matchingMatchedPairs: {},
     matchingCarryoverWordIds: [],
@@ -207,6 +212,7 @@ export function buildMatchingRoundState(sessionState, shuffleInfoWords = words =
     sidebarItems: [],
     matchingRoundWords: remaining,
     matchingInfoWords: shuffleInfoWords(remaining),
+    matchingRedoWordIds: sessionState.redo.map(word => word.id),
     matchingSelectedWordId: null,
     matchingMatchedPairs: {},
     matchingCarryoverWordIds: [],
@@ -333,6 +339,7 @@ export function attemptMatchingPair(sessionState, infoWordId, shuffleInfoWords =
       matchingCarryoverWordIds: [],
       matchingAttemptedWordIds: [],
       matchingFirstTryCorrectWordIds: [],
+      matchingRedoWordIds: [],
       sidebarItems: [],
     },
     answeredWord: selectedWord,
@@ -468,6 +475,7 @@ export function serializeSessionState(state) {
     matchingPairsMode: state.matchingPairsMode,
     matchingRoundWords: state.matchingRoundWords,
     matchingInfoWords: state.matchingInfoWords,
+    matchingRedoWordIds: state.matchingRedoWordIds,
     matchingSelectedWordId: state.matchingSelectedWordId,
     matchingMatchedPairs: state.matchingMatchedPairs,
     matchingCarryoverWordIds: state.matchingCarryoverWordIds,

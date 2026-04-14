@@ -2,7 +2,6 @@
 
 This file is random notes of possible features and bug fixes.
 
-
 - separate generation of example sentences from generation of word info
 
 - for repurposing English content, may be best to translate on paragraph or multi-graph level, then split into sentences?
@@ -17,14 +16,12 @@ This file is random notes of possible features and bug fixes.
 - add more common Japanese words to the word insertion blacklist?
     already filtering based on POS, but some common things sneak through, like　です
     
-
 - memory usage
     nearly 300mb
         mainly the dict?
 
 - activity page
     - stats on number of tracked words in lexicon vs untracked
-
 
 - mic STT : why only last a few seconds? what causes it to stop?
     - should user have to hit button to stop STT? also stop STT when user submits the message?

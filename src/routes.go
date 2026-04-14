@@ -96,6 +96,9 @@ func serverInit(db *sql.DB) {
 
 	r.Get("/api/settings/drill", apiGetDrillSettings(db))
 	r.Put("/api/settings/drill", apiPutDrillSettings(db))
+	r.Get("/api/backups", apiListBackups())
+	r.Post("/api/backups", apiCreateBackup(db))
+	r.Post("/api/backups/{id}/restore", apiRestoreBackup(db))
 
 	r.Get("/api/tutor/prompts", apiGetTutorPrompts(db))
 	r.Post("/api/tutor/prompts", apiCreateTutorPrompt(db))

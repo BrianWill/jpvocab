@@ -576,6 +576,103 @@ body {
   line-height: 1.35;
   color: #6c7086;
 }
+.settings-backup-actions {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+.settings-backup-status {
+  margin-top: -0.2rem;
+  font-size: 0.76rem;
+  color: #6c7086;
+}
+.settings-backup-status--success { color: #a6e3a1; }
+.settings-backup-status--error { color: #f38ba8; }
+.settings-backup-panel {
+  margin-top: 0.4rem;
+  border: 1px solid #313244;
+  border-radius: 8px;
+  background: #11111b;
+  padding: 0.75rem;
+}
+.settings-backup-panel-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin-bottom: 0.6rem;
+}
+.settings-backup-panel-title {
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: #cdd6f4;
+}
+.settings-backup-close-btn {
+  padding: 0.25rem 0.55rem;
+}
+.settings-backup-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  max-height: 17rem;
+  overflow: auto;
+}
+.settings-backup-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  border: 1px solid #313244;
+  border-radius: 6px;
+  background: rgba(30, 30, 46, 0.92);
+  padding: 0.65rem 0.75rem;
+}
+.settings-backup-meta {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.18rem;
+}
+.settings-backup-name {
+  color: #cdd6f4;
+  font-size: 0.82rem;
+  font-weight: 600;
+  line-height: 1.2;
+}
+.settings-backup-time {
+  color: #bac2de;
+  font-size: 0.76rem;
+}
+.settings-backup-hint,
+.settings-backup-empty {
+  color: #6c7086;
+  font-size: 0.74rem;
+  line-height: 1.35;
+}
+.settings-backup-empty {
+  margin-bottom: 0.35rem;
+}
+.settings-backup-restore-btn {
+  flex-shrink: 0;
+}
+.settings-restore-confirm {
+  margin-top: 0.75rem;
+  border-top: 1px solid #313244;
+  padding-top: 0.75rem;
+}
+.settings-restore-confirm-title {
+  color: #f9e2af;
+  font-size: 0.8rem;
+  font-weight: 600;
+  margin-bottom: 0.3rem;
+}
+.settings-restore-confirm-actions {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  margin-top: 0.6rem;
+}
 .restart-field {
   display: flex;
   align-items: center;
@@ -615,3 +712,27 @@ body {
   min-height: 1.1em;
 }
 .filter-hint.error { color: #f38ba8; }
+
+@media (max-width: 780px) {
+  .settings-body {
+    flex-direction: column;
+  }
+  .settings-col-divider {
+    width: auto;
+    height: 1px;
+    margin: 1rem 0;
+  }
+  .settings-backup-row,
+  .restart-field-data,
+  .restart-field {
+    align-items: flex-start;
+  }
+  .settings-backup-row,
+  .restart-field {
+    flex-direction: column;
+  }
+  .settings-backup-actions,
+  .settings-restore-confirm-actions {
+    justify-content: flex-start;
+  }
+}

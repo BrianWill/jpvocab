@@ -67,6 +67,36 @@ func parseSSEBatchResults(t *testing.T, body string) []batchWordResult {
 	return results
 }
 
+func setupBackupTestEnv(t *testing.T) {
+	t.Helper()
+	t.Chdir(t.TempDir())
+	if err := os.MkdirAll(filepath.Join("static", "images", "words"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func writeTestWordImageFile(t *testing.T, relPath string) {
+	t.Helper()
+	fullPath := filepath.Join("static", filepath.FromSlash(relPath))
+	if err := os.MkdirAll(filepath.Dir(fullPath), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	data := []byte{
+		0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a,
+		0x00, 0x00, 0x00, 0x0d, 0x49, 0x48, 0x44, 0x52,
+		0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x01,
+		0x08, 0x06, 0x00, 0x00, 0x00, 0x1f, 0x15, 0xc4,
+		0x89, 0x00, 0x00, 0x00, 0x0d, 0x49, 0x44, 0x41,
+		0x54, 0x78, 0x9c, 0x63, 0xf8, 0xcf, 0xc0, 0x00,
+		0x00, 0x03, 0x01, 0x01, 0x00, 0xc9, 0xfe, 0x92,
+		0xef, 0x00, 0x00, 0x00, 0x00, 0x49, 0x45, 0x4e,
+		0x44, 0xae, 0x42, 0x60, 0x82,
+	}
+	if err := os.WriteFile(fullPath, data, 0o644); err != nil {
+		t.Fatal(err)
+	}
+}
+
 func TestAPIUpdateWord_InvalidID(t *testing.T) {
 	db := testDB(t)
 	req := httptest.NewRequest(http.MethodPatch, "/api/words/nope", bytes.NewBufferString(`{}`))
@@ -1301,4 +1331,268 @@ func TestAPIGetTokenUsage_EmptyReturnsStructure(t *testing.T) {
 	if resp.Totals.Calls != 0 || resp.Totals.InputTokens != 0 || resp.Totals.OutputTokens != 0 {
 		t.Errorf("expected all-zero totals for empty DB, got %+v", resp.Totals)
 	}
+}
+
+func TestAPICreateBackup_CreatesFiles(t *testing.T) {
+	setupBackupTestEnv(t)
+	db := testDB(t)
+
+	wordID := insertTestWord(t, db, "保存", 3)
+	if err := updateWordImagePath(db, wordID, "images/words/保存.png"); err != nil {
+		t.Fatal(err)
+	}
+	writeTestWordImageFile(t, "images/words/保存.png")
+
+	req := httptest.NewRequest(http.MethodPost, "/api/backups", nil)
+	rec := httptest.NewRecorder()
+
+	apiCreateBackup(db).ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusCreated {
+		t.Fatalf("status: got %d, want %d body=%q", rec.Code, http.StatusCreated, rec.Body.String())
+	}
+	var manifest backupManifest
+	if err := json.NewDecoder(rec.Body).Decode(&manifest); err != nil {
+		t.Fatal(err)
+	}
+	if manifest.BackupID == "" {
+		t.Fatal("expected backup id")
+	}
+	if _, err := os.Stat(filepath.Join("backups", manifest.BackupID, "manifest.json")); err != nil {
+		t.Fatalf("manifest missing: %v", err)
+	}
+	if _, err := os.Stat(filepath.Join("backups", manifest.BackupID, "data.json")); err != nil {
+		t.Fatalf("data missing: %v", err)
+	}
+	if _, err := os.Stat(filepath.Join("backups", manifest.BackupID, "images", "words", "保存.png")); err != nil {
+		t.Fatalf("image backup missing: %v", err)
+	}
+}
+
+func TestAPIListBackups_ReturnsNewestFirst(t *testing.T) {
+	setupBackupTestEnv(t)
+	db := testDB(t)
+
+	insertTestWord(t, db, "最初", 1)
+	first, err := createBackup(db)
+	if err != nil {
+		t.Fatal(err)
+	}
+	insertTestWord(t, db, "次", 1)
+	second, err := createBackup(db)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	req := httptest.NewRequest(http.MethodGet, "/api/backups", nil)
+	rec := httptest.NewRecorder()
+	apiListBackups().ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status: got %d, want %d", rec.Code, http.StatusOK)
+	}
+	var resp struct {
+		Backups []backupListItem `json:"backups"`
+	}
+	if err := json.NewDecoder(rec.Body).Decode(&resp); err != nil {
+		t.Fatal(err)
+	}
+	if len(resp.Backups) != 2 {
+		t.Fatalf("backup count: got %d, want 2", len(resp.Backups))
+	}
+	if resp.Backups[0].ID != second.BackupID || resp.Backups[1].ID != first.BackupID {
+		t.Fatalf("backup order: got %+v", resp.Backups)
+	}
+	if resp.Backups[0].Counts["words"] < resp.Backups[1].Counts["words"] {
+		t.Fatalf("expected newer backup to include at least as many words: %+v", resp.Backups)
+	}
+}
+
+func TestAPIRestoreBackup_RoundTripRestoresDataAndImages(t *testing.T) {
+	setupBackupTestEnv(t)
+	db := testDB(t)
+
+	wordID := insertTestWord(t, db, "戻る", 2)
+	if err := updateWordImagePath(db, wordID, "images/words/戻る.png"); err != nil {
+		t.Fatal(err)
+	}
+	writeTestWordImageFile(t, "images/words/戻る.png")
+
+	if _, err := insertTutorPrompt(db, "Backup Prompt", "system", "hello", "en"); err != nil {
+		t.Fatal(err)
+	}
+	if err := putDrillSettings(db, drillSettings{
+		MaxWords:          15,
+		RoundSize:         4,
+		WordTypes:         []string{"verbs", "nouns"},
+		NewWordTarget:     7,
+		SkipAnswerReveal:  true,
+		MatchingPairsMode: true,
+	}); err != nil {
+		t.Fatal(err)
+	}
+	storyID, err := insertStory(db, "Backup Story", []storySentenceInput{{
+		Words:            []storyWordInput{{DisplayWord: "戻る", BaseWord: "戻る"}},
+		JPText:           ptrString("戻る。"),
+		OrigLang:         "jp",
+		IsParagraphStart: true,
+	}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	state := drillSessionState{
+		PoolSize:     1,
+		RoundSize:    1,
+		Round:        1,
+		Pool:         []wordJSON{{ID: wordID, Word: "戻る"}},
+		Remaining:    []wordJSON{},
+		Redo:         []wordJSON{},
+		SidebarItems: []drillSidebarItem{},
+	}
+	sessionID, err := createDrillSession(db, state)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := recordDrillAnswer(db, sessionID, wordID, true, state); err != nil {
+		t.Fatal(err)
+	}
+	insertTokenUsage(db, "openai", "gpt-4o-mini", "backup-test", 10, 3)
+	if err := insertActivityEvent(db, activityEventTutorUserMessage, nil, "Backup Event", activityEventMeta{Mode: "free"}); err != nil {
+		t.Fatal(err)
+	}
+
+	manifest, err := createBackup(db)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if _, err := db.Exec(`DELETE FROM story_sentences`); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := db.Exec(`DELETE FROM stories`); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := db.Exec(`DELETE FROM drill_answers`); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := db.Exec(`DELETE FROM drill_sessions`); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := db.Exec(`DELETE FROM words`); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := db.Exec(`DELETE FROM tutor_prompts`); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := db.Exec(`DELETE FROM user_settings`); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := db.Exec(`DELETE FROM activity_events`); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := db.Exec(`DELETE FROM token_usage`); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Remove(filepath.Join("static", "images", "words", "戻る.png")); err != nil {
+		t.Fatal(err)
+	}
+	writeTestWordImageFile(t, "images/words/extra.png")
+
+	body := bytes.NewBufferString(`{"createSafetyBackup":false}`)
+	req := httptest.NewRequest(http.MethodPost, "/api/backups/"+manifest.BackupID+"/restore", body)
+	req = withURLParam(req, "id", manifest.BackupID)
+	rec := httptest.NewRecorder()
+	apiRestoreBackup(db).ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status: got %d, want %d body=%q", rec.Code, http.StatusOK, rec.Body.String())
+	}
+	var restoredWordCount int
+	if err := db.QueryRow(`SELECT COUNT(*) FROM words WHERE base_word = '戻る'`).Scan(&restoredWordCount); err != nil {
+		t.Fatal(err)
+	}
+	if restoredWordCount != 1 {
+		t.Fatalf("restored word count: got %d, want 1", restoredWordCount)
+	}
+	var restoredStoryCount int
+	if err := db.QueryRow(`SELECT COUNT(*) FROM stories WHERE id = ?`, storyID).Scan(&restoredStoryCount); err != nil {
+		t.Fatal(err)
+	}
+	if restoredStoryCount != 1 {
+		t.Fatalf("restored story count: got %d, want 1", restoredStoryCount)
+	}
+	settings, err := getDrillSettings(db)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if settings.NewWordTarget != 7 || !settings.SkipAnswerReveal || !settings.MatchingPairsMode {
+		t.Fatalf("restored settings: %+v", settings)
+	}
+	if _, err := os.Stat(filepath.Join("static", "images", "words", "戻る.png")); err != nil {
+		t.Fatalf("restored image missing: %v", err)
+	}
+	if _, err := os.Stat(filepath.Join("static", "images", "words", "extra.png")); !os.IsNotExist(err) {
+		t.Fatalf("extra image should be removed on restore, err=%v", err)
+	}
+}
+
+func TestAPIRestoreBackup_RejectsMissingManifest(t *testing.T) {
+	setupBackupTestEnv(t)
+	db := testDB(t)
+	backupID := "2026-04-14_21-37-05"
+	dir := filepath.Join("backups", backupID)
+	if err := os.MkdirAll(dir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(dir, "data.json"), []byte(`{}`), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	req := httptest.NewRequest(http.MethodPost, "/api/backups/"+backupID+"/restore", bytes.NewBufferString(`{}`))
+	req = withURLParam(req, "id", backupID)
+	rec := httptest.NewRecorder()
+	apiRestoreBackup(db).ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusBadRequest {
+		t.Fatalf("status: got %d, want %d body=%q", rec.Code, http.StatusBadRequest, rec.Body.String())
+	}
+}
+
+func TestAPIRestoreBackup_CreateSafetyBackupFirst(t *testing.T) {
+	setupBackupTestEnv(t)
+	db := testDB(t)
+
+	insertTestWord(t, db, "元", 1)
+	manifest, err := createBackup(db)
+	if err != nil {
+		t.Fatal(err)
+	}
+	insertTestWord(t, db, "現在", 1)
+
+	req := httptest.NewRequest(http.MethodPost, "/api/backups/"+manifest.BackupID+"/restore", bytes.NewBufferString(`{"createSafetyBackup":true}`))
+	req = withURLParam(req, "id", manifest.BackupID)
+	rec := httptest.NewRecorder()
+	apiRestoreBackup(db).ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status: got %d, want %d body=%q", rec.Code, http.StatusOK, rec.Body.String())
+	}
+	backups, err := listBackups()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(backups) != 2 {
+		t.Fatalf("backup count after safety restore: got %d, want 2", len(backups))
+	}
+	var currentCount int
+	if err := db.QueryRow(`SELECT COUNT(*) FROM words WHERE base_word = '現在'`).Scan(&currentCount); err != nil {
+		t.Fatal(err)
+	}
+	if currentCount != 0 {
+		t.Fatalf("expected current-only word to be removed after restore, got count=%d", currentCount)
+	}
+}
+
+func ptrString(value string) *string {
+	return &value
 }

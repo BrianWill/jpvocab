@@ -152,6 +152,32 @@ function injectSettingsModal() {
               <button type="button" id="settings-vv-preview" class="btn-cancel" style="white-space:nowrap">▶ Preview</button>
             </div>
           </div>
+          <div class="settings-section-label settings-section-label--spaced">Data</div>
+          <div class="restart-field restart-field-data">
+            <label>Backups</label>
+            <div class="settings-backup-actions">
+              <button type="button" id="settings-create-backup-btn" class="btn-cancel">Create backup</button>
+              <button type="button" id="settings-restore-backup-btn" class="btn-cancel">Restore backup</button>
+            </div>
+          </div>
+          <div id="settings-backup-status" class="settings-backup-status hidden"></div>
+          <div id="settings-backup-panel" class="settings-backup-panel hidden">
+            <div class="settings-backup-panel-header">
+              <div class="settings-backup-panel-title">Available backups</div>
+              <button type="button" id="settings-backup-close-btn" class="btn-cancel settings-backup-close-btn">Close</button>
+            </div>
+            <div id="settings-backup-empty" class="settings-backup-empty hidden">No backups yet.</div>
+            <div id="settings-backup-list" class="settings-backup-list"></div>
+            <div id="settings-restore-confirm" class="settings-restore-confirm hidden">
+              <div class="settings-restore-confirm-title">Restore selected backup?</div>
+              <div id="settings-restore-confirm-copy" class="settings-backup-hint"></div>
+              <div class="settings-restore-confirm-actions">
+                <button type="button" id="settings-restore-safe-btn" class="btn-save">Create backup first</button>
+                <button type="button" id="settings-restore-direct-btn" class="btn-danger">Restore without backup</button>
+                <button type="button" id="settings-restore-cancel-btn" class="btn-cancel">Cancel</button>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
       <div class="modal-footer">
@@ -468,12 +494,90 @@ function initializeSettings() {
   if (!settingsBtn || !settingsModal) return;
 
   const saveBtn = document.getElementById('settings-save-btn');
+  const createBackupBtn = document.getElementById('settings-create-backup-btn');
+  const restoreBackupBtn = document.getElementById('settings-restore-backup-btn');
+  const backupPanel = document.getElementById('settings-backup-panel');
+  const backupList = document.getElementById('settings-backup-list');
+  const backupEmpty = document.getElementById('settings-backup-empty');
+  const backupStatus = document.getElementById('settings-backup-status');
+  const restoreConfirm = document.getElementById('settings-restore-confirm');
+  const restoreConfirmCopy = document.getElementById('settings-restore-confirm-copy');
+  let selectedBackupID = '';
+
+  const setBackupStatus = (message = '', tone = '') => {
+    if (!backupStatus) return;
+    backupStatus.textContent = message;
+    backupStatus.className = 'settings-backup-status';
+    if (!message) {
+      backupStatus.classList.add('hidden');
+      return;
+    }
+    if (tone) backupStatus.classList.add('settings-backup-status--' + tone);
+  };
+
+  const closeRestorePanel = () => {
+    backupPanel?.classList.add('hidden');
+    restoreConfirm?.classList.add('hidden');
+    selectedBackupID = '';
+  };
+
   const closeModal = () => {
+    closeRestorePanel();
+    setBackupStatus('');
     settingsModal.classList.add('hidden');
   };
 
   const setDirty = () => saveBtn?.classList.add('btn-save--dirty');
   const clearDirty = () => saveBtn?.classList.remove('btn-save--dirty');
+  const formatBackupTime = value => {
+    const dt = new Date(value);
+    if (Number.isNaN(dt.getTime())) return value;
+    return dt.toLocaleString([], {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric',
+      hour: 'numeric',
+      minute: '2-digit',
+      second: '2-digit',
+    });
+  };
+  const backupCountsText = counts => {
+    const parts = [];
+    if (counts?.words) parts.push(counts.words + ' words');
+    if (counts?.stories) parts.push(counts.stories + ' stories');
+    if (counts?.drill_sessions) parts.push(counts.drill_sessions + ' drill sessions');
+    return parts.join(' · ');
+  };
+  const renderBackupList = backups => {
+    if (!backupList || !backupEmpty) return;
+    backupList.innerHTML = '';
+    if (!Array.isArray(backups) || backups.length === 0) {
+      backupEmpty.classList.remove('hidden');
+      return;
+    }
+    backupEmpty.classList.add('hidden');
+    backups.forEach(item => {
+      const row = document.createElement('div');
+      row.className = 'settings-backup-row';
+      row.innerHTML = `
+        <div class="settings-backup-meta">
+          <div class="settings-backup-name">${item.id}</div>
+          <div class="settings-backup-time">${formatBackupTime(item.createdAt || item.id)}</div>
+          <div class="settings-backup-hint">${backupCountsText(item.counts)}</div>
+        </div>
+        <button type="button" class="btn-cancel settings-backup-restore-btn" data-backup-id="${item.id}">Restore</button>
+      `;
+      backupList.appendChild(row);
+    });
+  };
+  const loadBackups = async () => {
+    const res = await fetch('/api/backups');
+    if (!res.ok) throw new Error(await res.text());
+    const payload = await res.json();
+    renderBackupList(payload.backups || []);
+    backupPanel?.classList.remove('hidden');
+    restoreConfirm?.classList.add('hidden');
+  };
 
   // Open: fetch current settings, populate, and reset dirty state
   settingsBtn.addEventListener('click', async () => {
@@ -511,6 +615,8 @@ function initializeSettings() {
       document.getElementById('settings-vv-intonation-val').textContent = parseFloat(vvIntonation.value).toFixed(2);
     }
 
+    closeRestorePanel();
+    setBackupStatus('');
     clearDirty();
     settingsModal.classList.remove('hidden');
   });
@@ -656,6 +762,87 @@ function initializeSettings() {
     } finally {
       btn.disabled = false;
     }
+  });
+
+  createBackupBtn?.addEventListener('click', async () => {
+    createBackupBtn.disabled = true;
+    restoreBackupBtn.disabled = true;
+    setBackupStatus('Creating backup…');
+    try {
+      const res = await fetch('/api/backups', { method: 'POST' });
+      if (!res.ok) throw new Error(await res.text());
+      const backup = await res.json();
+      setBackupStatus('Backup created: ' + backup.backupID, 'success');
+      if (backupPanel && !backupPanel.classList.contains('hidden')) {
+        await loadBackups();
+      }
+    } catch (err) {
+      setBackupStatus(err?.message || 'Backup creation failed.', 'error');
+    } finally {
+      createBackupBtn.disabled = false;
+      restoreBackupBtn.disabled = false;
+    }
+  });
+
+  restoreBackupBtn?.addEventListener('click', async () => {
+    restoreBackupBtn.disabled = true;
+    createBackupBtn.disabled = true;
+    setBackupStatus('');
+    try {
+      await loadBackups();
+    } catch (err) {
+      setBackupStatus(err?.message || 'Unable to load backups.', 'error');
+    } finally {
+      restoreBackupBtn.disabled = false;
+      createBackupBtn.disabled = false;
+    }
+  });
+
+  document.getElementById('settings-backup-close-btn')?.addEventListener('click', closeRestorePanel);
+  document.getElementById('settings-restore-cancel-btn')?.addEventListener('click', () => {
+    restoreConfirm?.classList.add('hidden');
+    selectedBackupID = '';
+  });
+
+  backupList?.addEventListener('click', event => {
+    const btn = event.target.closest('[data-backup-id]');
+    if (!btn) return;
+    selectedBackupID = btn.dataset.backupId || '';
+    restoreConfirmCopy.textContent = 'Restore backup ' + selectedBackupID + '? This will replace the current database contents and uploaded word images.';
+    restoreConfirm?.classList.remove('hidden');
+  });
+
+  const runRestore = async createSafetyBackup => {
+    if (!selectedBackupID) return;
+    const safeBtn = document.getElementById('settings-restore-safe-btn');
+    const directBtn = document.getElementById('settings-restore-direct-btn');
+    const cancelBtn = document.getElementById('settings-restore-cancel-btn');
+    safeBtn.disabled = true;
+    directBtn.disabled = true;
+    cancelBtn.disabled = true;
+    setBackupStatus('Restoring backup…');
+    try {
+      const res = await fetch('/api/backups/' + encodeURIComponent(selectedBackupID) + '/restore', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ createSafetyBackup }),
+      });
+      if (!res.ok) throw new Error(await res.text());
+      setBackupStatus('Backup restored. Reloading…', 'success');
+      window.location.reload();
+    } catch (err) {
+      safeBtn.disabled = false;
+      directBtn.disabled = false;
+      cancelBtn.disabled = false;
+      setBackupStatus(err?.message || 'Restore failed.', 'error');
+    }
+  };
+
+  document.getElementById('settings-restore-safe-btn')?.addEventListener('click', () => {
+    runRestore(true);
+  });
+  document.getElementById('settings-restore-direct-btn')?.addEventListener('click', () => {
+    runRestore(false);
   });
 }
 

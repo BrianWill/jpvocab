@@ -95,3 +95,8 @@ dict/*.db
 dict/build-db/
 dict/jdict.db-wal
 dict/jdict.db-shm
+
+# -------------
+# Backups
+# -------------
+src/backups/

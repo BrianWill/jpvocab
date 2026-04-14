@@ -2,6 +2,10 @@
 
 This file is random notes of possible features and bug fixes.
 
+- backup feature
+    just make copy of db?
+    export / import json?
+
 - separate generation of example sentences from generation of word info
 
 - for repurposing English content, may be best to translate on paragraph or multi-graph level, then split into sentences?

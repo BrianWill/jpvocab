@@ -27,6 +27,7 @@ export function createDrillElements() {
     promptWordJp: document.getElementById('prompt-word-jp'),
     promptSection: document.querySelector('.prompt-section'),
     restartBackdrop: document.getElementById('restart-modal-backdrop'),
+    restartMatchingPairsMode: document.getElementById('restart-matching-pairs-mode'),
     restartRoundSize: document.getElementById('restart-round-size'),
     restartSkipAnswerReveal: document.getElementById('restart-skip-answer-reveal'),
     restartStartBtn: document.getElementById('restart-start-btn'),

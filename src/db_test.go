@@ -879,6 +879,9 @@ func TestGetDrillSettings_Defaults(t *testing.T) {
 	if settings.SkipAnswerReveal {
 		t.Error("SkipAnswerReveal: got true, want false")
 	}
+	if settings.MatchingPairsMode {
+		t.Error("MatchingPairsMode: got true, want false")
+	}
 	wantTypes := []string{"katakana", "verbs", "nouns", "other"}
 	if len(settings.WordTypes) != len(wantTypes) {
 		t.Fatalf("WordTypes length: got %d, want %d (%v)", len(settings.WordTypes), len(wantTypes), settings.WordTypes)
@@ -896,7 +899,8 @@ func TestGetDrillSettings_IgnoresInvalidStoredValues(t *testing.T) {
 		('drill_max_words', '"bad"'),
 		('drill_round_size', '0'),
 		('drill_word_types', 'not-json'),
-		('drill_skip_answer_reveal', '"bad"')`); err != nil {
+		('drill_skip_answer_reveal', '"bad"'),
+		('drill_matching_pairs_mode', '"bad"')`); err != nil {
 		t.Fatal(err)
 	}
 
@@ -913,6 +917,9 @@ func TestGetDrillSettings_IgnoresInvalidStoredValues(t *testing.T) {
 	if settings.SkipAnswerReveal {
 		t.Error("SkipAnswerReveal: got true, want false")
 	}
+	if settings.MatchingPairsMode {
+		t.Error("MatchingPairsMode: got true, want false")
+	}
 	wantTypes := []string{"katakana", "verbs", "nouns", "other"}
 	for i := range wantTypes {
 		if settings.WordTypes[i] != wantTypes[i] {
@@ -924,10 +931,11 @@ func TestGetDrillSettings_IgnoresInvalidStoredValues(t *testing.T) {
 func TestPutDrillSettings_RoundTripsAndDeletesInvalidMaxWords(t *testing.T) {
 	db := testDB(t)
 	if err := putDrillSettings(db, drillSettings{
-		MaxWords:         25,
-		RoundSize:        7,
-		WordTypes:        []string{"verbs", "nouns"},
-		SkipAnswerReveal: false,
+		MaxWords:          25,
+		RoundSize:         7,
+		WordTypes:         []string{"verbs", "nouns"},
+		SkipAnswerReveal:  false,
+		MatchingPairsMode: true,
 	}); err != nil {
 		t.Fatal(err)
 	}
@@ -942,15 +950,19 @@ func TestPutDrillSettings_RoundTripsAndDeletesInvalidMaxWords(t *testing.T) {
 	if settings.SkipAnswerReveal {
 		t.Error("SkipAnswerReveal: got true, want false")
 	}
+	if !settings.MatchingPairsMode {
+		t.Error("MatchingPairsMode: got false, want true")
+	}
 	if len(settings.WordTypes) != 2 || settings.WordTypes[0] != "verbs" || settings.WordTypes[1] != "nouns" {
 		t.Errorf("WordTypes: got %v", settings.WordTypes)
 	}
 
 	if err := putDrillSettings(db, drillSettings{
-		MaxWords:         0,
-		RoundSize:        9,
-		WordTypes:        []string{"other"},
-		SkipAnswerReveal: false,
+		MaxWords:          0,
+		RoundSize:         9,
+		WordTypes:         []string{"other"},
+		SkipAnswerReveal:  false,
+		MatchingPairsMode: false,
 	}); err != nil {
 		t.Fatal(err)
 	}
@@ -975,6 +987,9 @@ func TestPutDrillSettings_RoundTripsAndDeletesInvalidMaxWords(t *testing.T) {
 	}
 	if settings.SkipAnswerReveal {
 		t.Error("SkipAnswerReveal after overwrite: got true, want false")
+	}
+	if settings.MatchingPairsMode {
+		t.Error("MatchingPairsMode after overwrite: got true, want false")
 	}
 	if len(settings.WordTypes) != 1 || settings.WordTypes[0] != "other" {
 		t.Errorf("WordTypes after overwrite: got %v", settings.WordTypes)

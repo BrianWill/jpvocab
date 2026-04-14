@@ -2,10 +2,6 @@
 
 This file is random notes of possible features and bug fixes.
 
-- hmm, maybe just remove wails?
-    - user can pin tab to taskbar, so kinds same feel as standalone app anyway
-        - but not a feature on Mac? what about linux?
-
 - separate generation of example sentences from generation of word info
 
 - for repurposing English content, may be best to translate on paragraph or multi-graph level, then split into sentences?
@@ -25,19 +21,12 @@ This file is random notes of possible features and bug fixes.
     nearly 300mb
         mainly the dict?
 
-- the wails zoom override is interferring with layout
-    not full equivalent of browser zoom
-
 - activity page
     - stats on number of tracked words in lexicon vs untracked
 
 
 - mic STT : why only last a few seconds? what causes it to stop?
     - should user have to hit button to stop STT? also stop STT when user submits the message?
-
-- drill
-    - modal to edit current word
-        - sidebar, edit button appears when hovered
 
 - story list
     - add a date last viewed to optionally sort by?
@@ -52,11 +41,14 @@ This file is random notes of possible features and bug fixes.
     - chunk translation should translate English sentences into Japanese
         in this setup, going for decent natural translations by chunk rather than by sentence?
             if so, need to also translate back to English sentence-by-sentence to get gloss of each Japanese sentence?
-    
+    - scan text to auto suggest noted words from the frequently occuring unique words in the story
+        - maybe just auto add high-frequency words to noted words, 
+            e.g. add all words in story tha occur more than N times
+            - filter out proper names, particles, conjunctions, etc.
+            
 - tutor:
     - debug view should show system prompt / prompt
     - ability to hold separate chats at same time in separate tabs
-        - wouldn't work in wails, but that's OK?
     - prompts should all be tolerant of swapping between English and Japanese. If English, don't provide critque of their language, but otherwise just procede whether they answer in Japanese or English.
     - single click on words in bot messages to add them to the dictionary
     - maybe play the AI's correction? use different voice?
@@ -95,23 +87,6 @@ This file is random notes of possible features and bug fixes.
         - this could be just another chat bot
             seems wasteful maybe to use tokens, but the tokens should be pretty cheap
 
-
-- wails
-    - double scrollbar appears on start of wails
-    - on mac, cmd+-/+ does weird zoom behavior
-        (but ctrl+scroll and ctrl+-/+ is fine)
-    - custom scroll behaviour breaks page layout
-    - mac wails needs icon
-    - test linux
-        linux icon for wails?
-
-- story page
-    - scan text to auto suggest noted words from the frequently occuring unique words in the story
-        - maybe just auto add high-frequency words to noted words, 
-            e.g. add all words in story tha occur more than N times
-            - filter out proper names, particles, conjunctions, etc.
-
-- increase the base size of fonts i.e. effective base zoom level
 
 - README
     - explain drilling theory / workflow

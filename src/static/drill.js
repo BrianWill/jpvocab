@@ -104,6 +104,9 @@ function restoreSession(session) {
   state.remaining = Array.isArray(sessionState.remaining) ? sessionState.remaining : [];
   state.currentWord = state.remaining[0] || null;
   state.skipAnswerReveal = sessionState.skipAnswerReveal === true;
+  if (typeof sessionState.matchingPairsMode === 'boolean') {
+    state.matchingPairsMode = sessionState.matchingPairsMode;
+  }
   state.awaitingAdvance = sessionState.awaitingAdvance === true;
   state.pendingAnswerCorrect = typeof sessionState.pendingAnswerCorrect === 'boolean'
     ? sessionState.pendingAnswerCorrect
@@ -128,6 +131,9 @@ async function init() {
   state.words = allWords.filter(word => word.correct < word.target);
   state.settingsMaxWords = settings.maxWords;
   state.skipAnswerReveal = settings.skipAnswerReveal === true;
+  state.matchingPairsMode = settings.matchingPairsMode === true;
+  els.restartSkipAnswerReveal.checked = state.skipAnswerReveal;
+  els.restartMatchingPairsMode.checked = state.matchingPairsMode;
   if (settings.roundSize > 0) {
     state.roundSize = settings.roundSize;
     state.requestedRoundSize = settings.roundSize;
@@ -208,6 +214,7 @@ function openRestartModal() {
   els.restartTotalWords.value = state.settingsMaxWords;
   els.restartRoundSize.value = state.requestedRoundSize;
   els.restartSkipAnswerReveal.checked = state.skipAnswerReveal;
+  els.restartMatchingPairsMode.checked = state.matchingPairsMode;
   refreshFilterHint();
   els.restartBackdrop.classList.remove('hidden');
 }
@@ -243,6 +250,7 @@ async function confirmRestart() {
   const nextRoundSize = Math.max(1, Math.min(total, requestedRoundSize));
   state.requestedRoundSize = requestedRoundSize;
   state.skipAnswerReveal = els.restartSkipAnswerReveal.checked;
+  state.matchingPairsMode = els.restartMatchingPairsMode.checked;
   closeRestartModal();
   restartDrill(total, nextRoundSize, filtered);
   state.sessionId = await createSession(serializeSessionState(state));

@@ -6,24 +6,26 @@ import (
 )
 
 type drillSettings struct {
-	MaxWords         int      `json:"maxWords"`
-	RoundSize        int      `json:"roundSize"`
-	WordTypes        []string `json:"wordTypes"`
-	NewWordTarget    int      `json:"newWordTarget"`
-	SkipAnswerReveal bool     `json:"skipAnswerReveal"`
+	MaxWords          int      `json:"maxWords"`
+	RoundSize         int      `json:"roundSize"`
+	WordTypes         []string `json:"wordTypes"`
+	NewWordTarget     int      `json:"newWordTarget"`
+	SkipAnswerReveal  bool     `json:"skipAnswerReveal"`
+	MatchingPairsMode bool     `json:"matchingPairsMode"`
 }
 
 func getDrillSettings(db *sql.DB) (drillSettings, error) {
 	s := drillSettings{
-		MaxWords:         100,
-		RoundSize:        10,
-		WordTypes:        []string{"katakana", "verbs", "nouns", "other"},
-		NewWordTarget:    8,
-		SkipAnswerReveal: false,
+		MaxWords:          100,
+		RoundSize:         10,
+		WordTypes:         []string{"katakana", "verbs", "nouns", "other"},
+		NewWordTarget:     8,
+		SkipAnswerReveal:  false,
+		MatchingPairsMode: false,
 	}
 	rows, err := db.Query(`
 		SELECT key, value FROM user_settings
-		WHERE key IN ('drill_max_words', 'drill_round_size', 'drill_word_types', 'drill_new_word_target', 'drill_skip_answer_reveal')
+		WHERE key IN ('drill_max_words', 'drill_round_size', 'drill_word_types', 'drill_new_word_target', 'drill_skip_answer_reveal', 'drill_matching_pairs_mode')
 	`)
 	if err != nil {
 		return s, err
@@ -57,6 +59,11 @@ func getDrillSettings(db *sql.DB) (drillSettings, error) {
 			var enabled bool
 			if json.Unmarshal([]byte(v), &enabled) == nil {
 				s.SkipAnswerReveal = enabled
+			}
+		case "drill_matching_pairs_mode":
+			var enabled bool
+			if json.Unmarshal([]byte(v), &enabled) == nil {
+				s.MatchingPairsMode = enabled
 			}
 		}
 	}
@@ -94,5 +101,8 @@ func putDrillSettings(db *sql.DB, s drillSettings) error {
 	if err := upsert("drill_new_word_target", s.NewWordTarget); err != nil {
 		return err
 	}
-	return upsert("drill_skip_answer_reveal", s.SkipAnswerReveal)
+	if err := upsert("drill_skip_answer_reveal", s.SkipAnswerReveal); err != nil {
+		return err
+	}
+	return upsert("drill_matching_pairs_mode", s.MatchingPairsMode)
 }

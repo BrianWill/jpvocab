@@ -104,6 +104,10 @@ function injectSettingsModal() {
             <label for="settings-skip-answer-reveal">Skip answer reveal</label>
             <input type="checkbox" id="settings-skip-answer-reveal" class="settings-tts-autoplay">
           </div>
+          <div class="restart-field">
+            <label for="settings-matching-pairs-mode">Matching pairs mode</label>
+            <input type="checkbox" id="settings-matching-pairs-mode" class="settings-tts-autoplay">
+          </div>
         </div>
         <div class="settings-col-divider"></div>
         <div class="settings-col" style="flex:3">
@@ -480,10 +484,12 @@ function initializeSettings() {
     const roundInput = document.getElementById('settings-round-size');
     const newWordTargetInput = document.getElementById('settings-new-word-target');
     const skipAnswerRevealInput = document.getElementById('settings-skip-answer-reveal');
+    const matchingPairsModeInput = document.getElementById('settings-matching-pairs-mode');
     if (totalInput) totalInput.value = settings.maxWords;
     if (roundInput) roundInput.value = settings.roundSize;
     if (newWordTargetInput) newWordTargetInput.value = settings.newWordTarget;
     if (skipAnswerRevealInput) skipAnswerRevealInput.checked = settings.skipAnswerReveal === true;
+    if (matchingPairsModeInput) matchingPairsModeInput.checked = settings.matchingPairsMode === true;
 
     settingsModal.querySelectorAll('.filter-chip[data-setting-filter]').forEach(btn => {
       btn.classList.toggle('active', settings.wordTypes.includes(btn.dataset.settingFilter));
@@ -522,6 +528,7 @@ function initializeSettings() {
     const roundVal = parseInt(document.getElementById('settings-round-size')?.value, 10);
     const newWordTargetVal = parseInt(document.getElementById('settings-new-word-target')?.value, 10);
     const skipAnswerReveal = document.getElementById('settings-skip-answer-reveal')?.checked ?? false;
+    const matchingPairsMode = document.getElementById('settings-matching-pairs-mode')?.checked ?? false;
     const wordTypes = DRILL_FILTER_KEYS.filter(f =>
       settingsModal.querySelector(`[data-setting-filter="${f}"]`)?.classList.contains('active')
     );
@@ -536,6 +543,7 @@ function initializeSettings() {
         newWordTarget: isNaN(newWordTargetVal) ? 8 : Math.max(1, Math.min(999, newWordTargetVal)),
         wordTypes,
         skipAnswerReveal,
+        matchingPairsMode,
       }),
     });
 
@@ -593,6 +601,7 @@ function initializeSettings() {
   }
 
   document.getElementById('settings-skip-answer-reveal')?.addEventListener('change', setDirty);
+  document.getElementById('settings-matching-pairs-mode')?.addEventListener('change', setDirty);
 
   const previewVoice = (voiceURI, lang, sample) => {
     const voice = voiceURI

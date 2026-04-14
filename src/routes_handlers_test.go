@@ -462,6 +462,9 @@ func TestAPIGetDrillSettings_ReturnsDefaults(t *testing.T) {
 	if settings.SkipAnswerReveal {
 		t.Error("SkipAnswerReveal: got true, want false")
 	}
+	if settings.MatchingPairsMode {
+		t.Error("MatchingPairsMode: got true, want false")
+	}
 }
 
 func TestAPIGetWords_EmptyReturnsArray(t *testing.T) {
@@ -1244,7 +1247,7 @@ func TestAPIGetKanji_ReturnsInserted(t *testing.T) {
 
 func TestAPIPutDrillSettings_RoundTrips(t *testing.T) {
 	db := testDB(t)
-	req := httptest.NewRequest(http.MethodPut, "/api/settings/drill", bytes.NewBufferString(`{"maxWords":12,"roundSize":5,"wordTypes":["verbs","other"],"skipAnswerReveal":false}`))
+	req := httptest.NewRequest(http.MethodPut, "/api/settings/drill", bytes.NewBufferString(`{"maxWords":12,"roundSize":5,"wordTypes":["verbs","other"],"skipAnswerReveal":false,"matchingPairsMode":true}`))
 	rec := httptest.NewRecorder()
 
 	apiPutDrillSettings(db).ServeHTTP(rec, req)
@@ -1261,6 +1264,9 @@ func TestAPIPutDrillSettings_RoundTrips(t *testing.T) {
 	}
 	if settings.SkipAnswerReveal {
 		t.Error("SkipAnswerReveal: got true, want false")
+	}
+	if !settings.MatchingPairsMode {
+		t.Error("MatchingPairsMode: got false, want true")
 	}
 }
 

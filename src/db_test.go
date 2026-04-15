@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"reflect"
 	"strings"
 	"testing"
 	"time"
@@ -414,20 +415,24 @@ func TestGetActivityStats_Buckets(t *testing.T) {
 
 func TestGetActivityStats_ExcludesUntracked(t *testing.T) {
 	db := testDB(t)
-	// One manually-added word (tracked=1, the default).
+	// Counted in both lexicon size and active words.
 	db.Exec(`INSERT INTO words (base_word, drill_count, drill_target) VALUES ('空', 0, 3)`)
-	// One story-sourced word (tracked=0) — must be invisible to stats.
+	// Counted in lexicon size, but not active words because it has reached target.
+	db.Exec(`INSERT INTO words (base_word, drill_count, drill_target) VALUES ('山', 3, 3)`)
+	// Story-sourced words (tracked=0) must be invisible to both stats even if
+	// they are below target or have reached target.
 	db.Exec(`INSERT INTO words (base_word, drill_count, drill_target, tracked) VALUES ('海', 0, 3, 0)`)
+	db.Exec(`INSERT INTO words (base_word, drill_count, drill_target, tracked) VALUES ('川', 4, 4, 0)`)
 
 	stats, err := getActivityStats(db)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if stats.LexiconSize != 1 {
-		t.Errorf("LexiconSize: got %d, want 1 (tracked=0 word must be excluded)", stats.LexiconSize)
+	if stats.LexiconSize != 2 {
+		t.Errorf("LexiconSize: got %d, want 2 (only tracked words should be counted)", stats.LexiconSize)
 	}
 	if stats.ActiveWords != 1 {
-		t.Errorf("ActiveWords: got %d, want 1", stats.ActiveWords)
+		t.Errorf("ActiveWords: got %d, want 1 (only tracked words below target should be counted)", stats.ActiveWords)
 	}
 }
 
@@ -1338,6 +1343,55 @@ func TestInsertStory_AndGetStoryByID(t *testing.T) {
 	}
 	if story.Sentences[1].IsParagraphStart {
 		t.Error("sentence 2 should not be marked as paragraph start")
+	}
+}
+
+func TestInsertStory_InsertsStoryWordsAsUntracked(t *testing.T) {
+	db := testDB(t)
+
+	jp := "庭園へ行く。"
+	_, err := insertStory(db, "Garden Story", []storySentenceInput{
+		{
+			Words: []storyWordInput{
+				{DisplayWord: "庭園", BaseWord: "庭園"},
+				{DisplayWord: "へ", BaseWord: "へ"},
+				{DisplayWord: "行く", BaseWord: "行く"},
+				{DisplayWord: "。", BaseWord: "。"},
+			},
+			JPText:           &jp,
+			OrigLang:         "jp",
+			IsParagraphStart: true,
+		},
+	})
+	if err != nil {
+		t.Fatalf("insertStory: %v", err)
+	}
+
+	rows, err := db.Query(`SELECT base_word, tracked FROM words ORDER BY base_word`)
+	if err != nil {
+		t.Fatalf("query words: %v", err)
+	}
+	defer rows.Close()
+
+	got := map[string]int{}
+	for rows.Next() {
+		var baseWord string
+		var tracked int
+		if err := rows.Scan(&baseWord, &tracked); err != nil {
+			t.Fatalf("scan word: %v", err)
+		}
+		got[baseWord] = tracked
+	}
+	if err := rows.Err(); err != nil {
+		t.Fatalf("iterate words: %v", err)
+	}
+
+	want := map[string]int{
+		"庭園": 0,
+		"行く": 0,
+	}
+	if !reflect.DeepEqual(got, want) {
+		t.Fatalf("tracked flags: got %#v, want %#v", got, want)
 	}
 }
 

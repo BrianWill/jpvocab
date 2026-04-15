@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { clampPlaybackRate, speechPlaybackLangForStory, splitByClause } from '../story-playback-utils.js';
+import { clampPlaybackRate, playbackModeForStory, speechPlaybackLangForStory, splitByClause } from '../story-playback-utils.js';
 
 test('clampPlaybackRate: clamps to configured min and max', () => {
   assert.equal(clampPlaybackRate(0.2), 0.5);
@@ -38,4 +38,10 @@ test('speechPlaybackLangForStory: selects english only for all-English stories',
   assert.equal(speechPlaybackLangForStory({ sentences: [{ orig_lang: 'en' }, { orig_lang: 'en' }] }), 'en-US');
   assert.equal(speechPlaybackLangForStory({ sentences: [{ orig_lang: 'jp' }, { orig_lang: 'en' }] }), 'ja-JP');
   assert.equal(speechPlaybackLangForStory({ sentences: [] }), 'ja-JP');
+});
+
+test('playbackModeForStory: prefers youtube, then local media metadata, then speech', () => {
+  assert.equal(playbackModeForStory({ mediaType: 'youtube', mediaUrl: 'https://www.youtube.com/embed/abc?enablejsapi=1' }), 'youtube');
+  assert.equal(playbackModeForStory({ mediaType: 'local_video', mediaUrl: 'D:\\clips\\story.mp4' }), 'local-media');
+  assert.equal(playbackModeForStory({ sentences: [] }), 'speech');
 });

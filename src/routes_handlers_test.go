@@ -635,7 +635,7 @@ func TestAPIGetStories_ReturnsTitle(t *testing.T) {
 			OrigLang:         "jp",
 			IsParagraphStart: true,
 		},
-	})
+	}, storyMediaInput{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -729,6 +729,61 @@ func TestAPICreateStory_Success(t *testing.T) {
 	}
 }
 
+func TestAPICreateStory_SubtitleImportWithYouTubeMedia(t *testing.T) {
+	db := testDB(t)
+	body := `{"title":"Timed Story","content":"WEBVTT\n\n00:00:01.250 --> 00:00:03.000\nHello there.\n\n00:00:04.500 --> 00:00:06.000\n今日は庭園に行く。\n","mediaType":"youtube","mediaUrl":"https://youtu.be/abc123?t=15"}`
+	req := httptest.NewRequest(http.MethodPost, "/api/stories", bytes.NewBufferString(body))
+	rec := httptest.NewRecorder()
+
+	apiCreateStory(db).ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusCreated {
+		t.Fatalf("status: got %d, want %d body=%q", rec.Code, http.StatusCreated, rec.Body.String())
+	}
+	var story storyJSON
+	if err := json.NewDecoder(rec.Body).Decode(&story); err != nil {
+		t.Fatal(err)
+	}
+	if story.MediaType != "youtube" {
+		t.Fatalf("mediaType: got %q, want youtube", story.MediaType)
+	}
+	if story.MediaURL != "https://www.youtube.com/embed/abc123?enablejsapi=1" {
+		t.Fatalf("mediaUrl: got %q", story.MediaURL)
+	}
+	if len(story.Sentences) != 2 {
+		t.Fatalf("sentences: got %d, want 2", len(story.Sentences))
+	}
+	if story.Sentences[0].StartTimeMS == nil || *story.Sentences[0].StartTimeMS != 1250 {
+		t.Fatalf("sentence 1 startTimeMs: got %+v", story.Sentences[0].StartTimeMS)
+	}
+	if story.Sentences[1].StartTimeMS == nil || *story.Sentences[1].StartTimeMS != 4500 {
+		t.Fatalf("sentence 2 startTimeMs: got %+v", story.Sentences[1].StartTimeMS)
+	}
+}
+
+func TestAPICreateStory_AcceptsLocalMediaPath(t *testing.T) {
+	db := testDB(t)
+	body := `{"title":"Local Media Story","content":"今日は庭園に行きます。","mediaType":"local_video","mediaUrl":"D:\\media\\garden.mp4"}`
+	req := httptest.NewRequest(http.MethodPost, "/api/stories", bytes.NewBufferString(body))
+	rec := httptest.NewRecorder()
+
+	apiCreateStory(db).ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusCreated {
+		t.Fatalf("status: got %d, want %d body=%q", rec.Code, http.StatusCreated, rec.Body.String())
+	}
+	var story storyJSON
+	if err := json.NewDecoder(rec.Body).Decode(&story); err != nil {
+		t.Fatal(err)
+	}
+	if story.MediaType != "local_video" {
+		t.Fatalf("mediaType: got %q, want local_video", story.MediaType)
+	}
+	if story.MediaURL != `D:\media\garden.mp4` {
+		t.Fatalf("mediaUrl: got %q", story.MediaURL)
+	}
+}
+
 func TestAPICreateStory_ClassifiesMixedLanguageSentences(t *testing.T) {
 	db := testDB(t)
 	req := httptest.NewRequest(http.MethodPost, "/api/stories", bytes.NewBufferString(`{"title":"Mixed Story","content":"This is a test.\n\n今日はmeetingがあります。"}`))
@@ -759,7 +814,7 @@ func TestAPIGetStory_ReturnsStoryByID(t *testing.T) {
 	title := "Garden Story"
 	id, err := insertStory(db, title, []storySentenceInput{
 		{Words: []storyWordInput{{DisplayWord: "庭園", BaseWord: "庭園"}}, OrigLang: "jp", IsParagraphStart: true},
-	})
+	}, storyMediaInput{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -843,7 +898,7 @@ func TestAPIDeleteStory_Success(t *testing.T) {
 	id, err := insertStory(db, "Garden Story", []storySentenceInput{
 		{Words: []storyWordInput{{DisplayWord: "庭園", BaseWord: "庭園"}}, OrigLang: "jp", IsParagraphStart: true},
 		{Words: []storyWordInput{{DisplayWord: "歩く", BaseWord: "歩く"}}, OrigLang: "jp", IsParagraphStart: false},
-	})
+	}, storyMediaInput{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -960,7 +1015,7 @@ func TestAPIStoryNotedWords_AddAndRemove(t *testing.T) {
 			OrigLang:         "jp",
 			IsParagraphStart: true,
 		},
-	})
+	}, storyMediaInput{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1046,7 +1101,7 @@ func TestAPIGetWordInfo_ReturnsWordInfo(t *testing.T) {
 	db := testDB(t)
 	_, err := insertStory(db, "Word Info Story", []storySentenceInput{
 		{Words: []storyWordInput{{DisplayWord: "猫", BaseWord: "猫"}}, OrigLang: "jp", IsParagraphStart: true},
-	})
+	}, storyMediaInput{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1436,7 +1491,7 @@ func TestAPIRestoreBackup_RoundTripRestoresDataAndImages(t *testing.T) {
 		JPText:           ptrString("戻る。"),
 		OrigLang:         "jp",
 		IsParagraphStart: true,
-	}})
+	}}, storyMediaInput{})
 	if err != nil {
 		t.Fatal(err)
 	}

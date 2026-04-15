@@ -1258,6 +1258,7 @@ func TestInsertStory_AndGetStoryByID(t *testing.T) {
 	jp2 := "今日も頑張ろう。"
 	en1 := "Good morning."
 	en2 := "Let's do our best today too."
+	startTime1 := int64(1250)
 
 	id, err := insertStory(db, title, []storySentenceInput{
 		{
@@ -1267,6 +1268,7 @@ func TestInsertStory_AndGetStoryByID(t *testing.T) {
 			},
 			JPText:           &jp1,
 			ENText:           &en1,
+			StartTimeMS:      &startTime1,
 			OrigLang:         "jp",
 			IsParagraphStart: true,
 		},
@@ -1281,6 +1283,9 @@ func TestInsertStory_AndGetStoryByID(t *testing.T) {
 			ENText:   &en2,
 			OrigLang: "jp",
 		},
+	}, storyMediaInput{
+		MediaType: "youtube",
+		MediaURL:  "https://www.youtube.com/embed/test123?enablejsapi=1",
 	})
 	if err != nil {
 		t.Fatalf("insertStory: %v", err)
@@ -1303,6 +1308,12 @@ func TestInsertStory_AndGetStoryByID(t *testing.T) {
 		t.Fatal("expected created_at timestamp")
 	}
 	parseDBDateTime(t, story.CreatedAt)
+	if story.MediaType != "youtube" {
+		t.Fatalf("media type: got %q, want youtube", story.MediaType)
+	}
+	if story.MediaURL != "https://www.youtube.com/embed/test123?enablejsapi=1" {
+		t.Fatalf("media url: got %q", story.MediaURL)
+	}
 	if story.SentenceCount != 2 {
 		t.Fatalf("sentence count: got %d, want 2", story.SentenceCount)
 	}
@@ -1327,6 +1338,9 @@ func TestInsertStory_AndGetStoryByID(t *testing.T) {
 	if story.Sentences[0].ENText == nil || *story.Sentences[0].ENText != en1 {
 		t.Errorf("sentence 1 english: got %+v", story.Sentences[0].ENText)
 	}
+	if story.Sentences[0].StartTimeMS == nil || *story.Sentences[0].StartTimeMS != startTime1 {
+		t.Errorf("sentence 1 startTimeMs: got %+v, want %d", story.Sentences[0].StartTimeMS, startTime1)
+	}
 	if story.Sentences[0].JPText == nil || *story.Sentences[0].JPText != jp1 {
 		t.Errorf("sentence 1 japanese: got %+v", story.Sentences[0].JPText)
 	}
@@ -1344,7 +1358,7 @@ func TestInsertStory_AndGetStoryByID(t *testing.T) {
 func TestInsertStory_RequiresAtLeastOneSentence(t *testing.T) {
 	db := testDB(t)
 
-	_, err := insertStory(db, "No sentences", nil)
+	_, err := insertStory(db, "No sentences", nil, storyMediaInput{})
 	if err == nil {
 		t.Fatal("expected error for missing sentences")
 	}
@@ -1357,7 +1371,7 @@ func TestInsertStory_RequiresAtLeastOneWordPerSentence(t *testing.T) {
 	db := testDB(t)
 
 	text := "庭園。"
-	_, err := insertStory(db, "Missing words", []storySentenceInput{{JPText: &text, OrigLang: "jp"}})
+	_, err := insertStory(db, "Missing words", []storySentenceInput{{JPText: &text, OrigLang: "jp"}}, storyMediaInput{})
 	if err == nil {
 		t.Fatal("expected error for missing words")
 	}
@@ -1371,7 +1385,7 @@ func TestInsertStory_RequiresTitle(t *testing.T) {
 
 	_, err := insertStory(db, "", []storySentenceInput{
 		{Words: []storyWordInput{{DisplayWord: "庭園", BaseWord: "庭園"}}, OrigLang: "jp"},
-	})
+	}, storyMediaInput{})
 	if err == nil {
 		t.Fatal("expected error for missing title")
 	}
@@ -1398,7 +1412,7 @@ func TestInsertStory_RollsBackActivityEventOnFailure(t *testing.T) {
 			OrigLang:         "jp",
 			IsParagraphStart: true,
 		},
-	})
+	}, storyMediaInput{})
 	if err == nil {
 		t.Fatal("expected insertStory to fail")
 	}
@@ -1427,7 +1441,7 @@ func TestStoryNotedWords_PersistOnStory(t *testing.T) {
 			OrigLang:         "jp",
 			IsParagraphStart: true,
 		},
-	})
+	}, storyMediaInput{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1468,6 +1482,59 @@ func TestStoryNotedWords_PersistOnStory(t *testing.T) {
 	}
 	if len(story.NotedWords) != 1 || story.NotedWords[0].BaseWord != "庭園" {
 		t.Fatalf("unexpected noted words after remove: %+v", story.NotedWords)
+	}
+}
+
+func TestBuildStorySentencesFromSubtitle_SRT(t *testing.T) {
+	content := "1\n00:00:01,250 --> 00:00:03,000\nãŠã¯ã‚ˆã†ã€‚\n\n2\n00:00:04,500 --> 00:00:06,000\nä»Šæ—¥ã‚‚\né ‘å¼µã‚ã†ã€‚\n"
+
+	sentences := buildStorySentencesFromSubtitle(content)
+	if len(sentences) != 3 {
+		t.Fatalf("sentence count: got %d, want 3", len(sentences))
+	}
+	if sentences[0].StartTimeMS == nil || *sentences[0].StartTimeMS != 1250 {
+		t.Fatalf("sentence 1 startTimeMs: got %+v", sentences[0].StartTimeMS)
+	}
+	if !sentences[0].IsParagraphStart {
+		t.Fatal("sentence 1 should be paragraph start")
+	}
+	if sentences[1].StartTimeMS == nil || *sentences[1].StartTimeMS != 4500 {
+		t.Fatalf("sentence 2 startTimeMs: got %+v", sentences[1].StartTimeMS)
+	}
+	if sentences[1].IsParagraphStart || sentences[2].IsParagraphStart {
+		t.Fatal("subtitle continuation lines should not start new paragraphs")
+	}
+}
+
+func TestBuildStorySentencesFromSubtitle_VTT(t *testing.T) {
+	content := "WEBVTT\n\n00:00:00.900 --> 00:00:02.100\nHello there.\n\n00:00:05.000 --> 00:00:06.500\nä»Šæ—¥ã¯åº­åœ’ã«è¡Œãã€‚\n"
+
+	sentences := buildStorySentencesFromSubtitle(content)
+	if len(sentences) != 2 {
+		t.Fatalf("sentence count: got %d, want 2", len(sentences))
+	}
+	if sentences[0].OrigLang != "en" || sentences[0].StartTimeMS == nil || *sentences[0].StartTimeMS != 900 {
+		t.Fatalf("sentence 1: got %+v", sentences[0])
+	}
+	if sentences[1].OrigLang != "jp" || sentences[1].StartTimeMS == nil || *sentences[1].StartTimeMS != 5000 {
+		t.Fatalf("sentence 2: got %+v", sentences[1])
+	}
+}
+
+func TestNormalizeYouTubeEmbedURL(t *testing.T) {
+	cases := map[string]string{
+		"https://www.youtube.com/watch?v=abc123":           "https://www.youtube.com/embed/abc123?enablejsapi=1",
+		"https://youtu.be/xyz789?t=30":                     "https://www.youtube.com/embed/xyz789?enablejsapi=1",
+		"https://www.youtube.com/embed/embed123?start=10": "https://www.youtube.com/embed/embed123?enablejsapi=1",
+	}
+	for input, want := range cases {
+		got, err := normalizeYouTubeEmbedURL(input)
+		if err != nil {
+			t.Fatalf("normalizeYouTubeEmbedURL(%q): %v", input, err)
+		}
+		if got != want {
+			t.Fatalf("normalizeYouTubeEmbedURL(%q): got %q, want %q", input, got, want)
+		}
 	}
 }
 

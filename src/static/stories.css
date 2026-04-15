@@ -147,7 +147,8 @@
 }
 
 .story-add-modal-main .modal-field input,
-.story-add-modal-main .modal-field textarea {
+.story-add-modal-main .modal-field textarea,
+.story-add-modal-main .modal-field select {
   background: #11111b;
   border: 1px solid #313244;
   border-radius: 4px;
@@ -156,8 +157,22 @@
 }
 
 .story-add-modal-main .modal-field input:focus,
-.story-add-modal-main .modal-field textarea:focus {
+.story-add-modal-main .modal-field textarea:focus,
+.story-add-modal-main .modal-field select:focus {
   outline: 1px solid #89b4fa;
+}
+
+.story-add-help {
+  margin: -0.15rem 0 0;
+  color: #7b8cb8;
+  font-size: 0.82rem;
+  line-height: 1.5;
+}
+
+.story-add-media-grid {
+  display: grid;
+  gap: 1rem;
+  grid-template-columns: minmax(0, 220px) minmax(0, 1fr);
 }
 
 #story-title-input {
@@ -176,7 +191,8 @@
 }
 
 #story-content-input::placeholder,
-#story-title-input::placeholder {
+#story-title-input::placeholder,
+#story-media-url-input::placeholder {
   color: #313244;
 }
 
@@ -185,5 +201,9 @@
     align-items: flex-start;
     flex-direction: column;
     gap: 0.3rem;
+  }
+
+  .story-add-media-grid {
+    grid-template-columns: 1fr;
   }
 }

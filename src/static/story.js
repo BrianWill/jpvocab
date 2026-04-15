@@ -4,6 +4,7 @@ import { esc, renderReading } from './lexicon-utils.js';
 import { initGenerateModals, openTranslationModal, populateTranslationModelSelect } from './story-generate.js';
 import { initStoryAddToLexicon, addWordsToLexicon } from './story-lexicon-add-modal.js';
 import { initPlayback, initSynthPlayback, showSentencePlayBtn, scheduleSentencePlayHide, hideSentencePlayBtn, cancelSentencePlayHide, stopPlayback } from './story-playback.js';
+import { storyCanSeekSentenceInMedia, storyHasLocalMedia, storyMediaTypeLabel, storyUsesYouTubeMedia } from './story-media-utils.js';
 
 // ── DOM refs ──────────────────────────────────────────────────────────────────
 const els = {
@@ -30,6 +31,10 @@ const els = {
   speedInc: document.getElementById('story-speed-inc'),
   speedVal: document.getElementById('story-speed-val'),
   storyLayout: document.getElementById('story-layout'),
+  storyLocalMediaNote: document.getElementById('story-local-media-note'),
+  storyLocalMediaPath: document.getElementById('story-local-media-path'),
+  storyLocalMediaType: document.getElementById('story-local-media-type'),
+  storyMediaPanel: document.getElementById('story-media-panel'),
   storyMeta: document.getElementById('story-meta'),
   storyContent: document.getElementById('story-content'),
   storyError: document.getElementById('story-error'),
@@ -43,6 +48,8 @@ const els = {
   storyTitle: document.getElementById('story-title'),
   playbackBtn: document.getElementById('story-playback-btn'),
   playbackIcon: document.getElementById('story-playback-icon'),
+  youtubePlayer: document.getElementById('story-youtube-player'),
+  youtubeWrap: document.getElementById('story-youtube-wrap'),
 };
 els.genTranslationModalClose = els.genTranslationModalBackdrop.querySelector('.modal-close');
 
@@ -95,10 +102,13 @@ const state = {
 };
 
 function storyMetaLabel(story) {
-  return [
+  const parts = [
     pluralize(story.sentenceCount || 0, 'sentence'),
     pluralize(story.lexiconWordCount || 0, 'lexicon word'),
-  ].join(' | ');
+  ];
+  const mediaLabel = storyMediaTypeLabel(story.mediaType);
+  if (mediaLabel) parts.push(mediaLabel);
+  return parts.join(' | ');
 }
 
 function sentenceDisplayText(sentence) {
@@ -121,7 +131,31 @@ function sentenceDisplaysTranslatedJapanese(sentence) {
 }
 
 function storyCanUseSynthPlayback(story) {
-  return (story?.sentences || []).every(sentence => sentence.orig_lang !== 'en');
+  return !storyUsesYouTubeMedia(story) && (story?.sentences || []).every(sentence => sentence.orig_lang !== 'en');
+}
+
+function renderStoryMedia(story) {
+  const hasYouTubeMedia = storyUsesYouTubeMedia(story);
+  const hasLocalMedia = storyHasLocalMedia(story);
+
+  els.storyMediaPanel.hidden = !hasYouTubeMedia && !hasLocalMedia;
+  els.youtubeWrap.hidden = !hasYouTubeMedia;
+  els.storyLocalMediaNote.hidden = !hasLocalMedia;
+
+  if (hasYouTubeMedia) {
+    els.youtubePlayer.dataset.mediaUrl = story.mediaUrl || '';
+  } else {
+    els.youtubePlayer.dataset.mediaUrl = '';
+    els.youtubePlayer.innerHTML = '';
+  }
+
+  if (hasLocalMedia) {
+    els.storyLocalMediaType.textContent = storyMediaTypeLabel(story.mediaType);
+    els.storyLocalMediaPath.textContent = story.mediaUrl || '';
+  } else {
+    els.storyLocalMediaType.textContent = '';
+    els.storyLocalMediaPath.textContent = '';
+  }
 }
 
 // ── Story ID ──────────────────────────────────────────────────────────────────
@@ -394,6 +428,7 @@ function renderStory(story) {
   document.title = `${story.title} | Story`;
   els.storyTitle.textContent = story.title;
   els.storyMeta.textContent = storyMetaLabel(story);
+  renderStoryMedia(story);
 
   const SEPARATOR = '　';
   state.sentenceSpans = [];
@@ -496,7 +531,8 @@ function renderStory(story) {
       } else {
         sentenceSpan.textContent = sentenceDisplayText(sentence);
       }
-      sentenceSpan.addEventListener('mouseenter', () => showSentencePlayBtn(sentenceIdx));
+      const canSeekInMedia = storyCanSeekSentenceInMedia(story, sentence);
+      sentenceSpan.addEventListener('mouseenter', () => showSentencePlayBtn(sentenceIdx, { canSeekInMedia }));
       sentenceSpan.addEventListener('mouseleave', scheduleSentencePlayHide);
       currentParagraph.appendChild(sentenceSpan);
       currentParagraph.appendChild(document.createTextNode(' '));

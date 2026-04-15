@@ -86,6 +86,8 @@ func migrate(db *sql.DB) {
 			title               TEXT     NOT NULL,
 			story_words_json    TEXT     NOT NULL DEFAULT '[]',
 			noted_words_json    TEXT     NOT NULL DEFAULT '[]',
+			media_type          TEXT     NOT NULL DEFAULT '',
+			media_url           TEXT,
 			sentence_count      INTEGER  NOT NULL DEFAULT 0,
 			lexicon_word_count  INTEGER  NOT NULL DEFAULT 0,
 			created_at          DATETIME NOT NULL DEFAULT (datetime('now'))
@@ -97,6 +99,7 @@ func migrate(db *sql.DB) {
 			words_json         TEXT    NOT NULL,
 			jp_text            TEXT,
 			en_text            TEXT,
+			start_time_ms      INTEGER,
 			orig_lang          TEXT    NOT NULL DEFAULT 'jp',
 			is_paragraph_start INTEGER NOT NULL DEFAULT 0 CHECK (is_paragraph_start IN (0, 1)),
 			is_chunk_start     INTEGER NOT NULL DEFAULT 0 CHECK (is_chunk_start IN (0, 1)),
@@ -128,6 +131,15 @@ func migrate(db *sql.DB) {
 			meta_json  TEXT     NOT NULL DEFAULT '{}',
 			created_at DATETIME NOT NULL DEFAULT (datetime('now'))
 		)`,
+		func(db *sql.DB) error {
+			return addColumnIfMissing(db, "stories", "media_type", `ALTER TABLE stories ADD COLUMN media_type TEXT NOT NULL DEFAULT ''`)
+		},
+		func(db *sql.DB) error {
+			return addColumnIfMissing(db, "stories", "media_url", `ALTER TABLE stories ADD COLUMN media_url TEXT`)
+		},
+		func(db *sql.DB) error {
+			return addColumnIfMissing(db, "story_sentences", "start_time_ms", `ALTER TABLE story_sentences ADD COLUMN start_time_ms INTEGER`)
+		},
 	}
 
 	var version int
@@ -175,6 +187,20 @@ func resetDB(db *sql.DB, seed bool) error {
 func fileExists(path string) bool {
 	_, err := os.Stat(path)
 	return err == nil
+}
+
+func addColumnIfMissing(db *sql.DB, tableName, columnName, alterSQL string) error {
+	columns, err := listColumns(db, tableName)
+	if err != nil {
+		return err
+	}
+	for _, column := range columns {
+		if column.Name == columnName {
+			return nil
+		}
+	}
+	_, err = db.Exec(alterSQL)
+	return err
 }
 
 // columnInfo holds metadata for a single table column.
@@ -657,7 +683,7 @@ func seedDB(db *sql.DB) {
 				sentences = append(sentences, input)
 			}
 		}
-		if _, err := insertStoryTx(tx, story.Title, sentences); err != nil {
+		if _, err := insertStoryTx(tx, story.Title, sentences, storyMediaInput{}); err != nil {
 			tx.Rollback()
 			log.Fatal("seed: insert story:", err)
 		}

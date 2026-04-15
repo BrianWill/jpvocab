@@ -462,6 +462,50 @@
   color: #f38ba8;
 }
 
+.story-media-panel {
+  margin: 0 0 1.25rem;
+}
+
+.story-youtube-frame-shell {
+  background: #11111b;
+  border: 1px solid #313244;
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+.story-youtube-player {
+  aspect-ratio: 16 / 9;
+  min-height: 240px;
+  width: 100%;
+}
+
+.story-local-media-note {
+  background: #181825;
+  border: 1px solid #313244;
+  border-radius: 12px;
+  padding: 0.95rem 1rem;
+}
+
+.story-local-media-type {
+  color: #f9c74f;
+  font-size: 0.78rem;
+  letter-spacing: 0.08em;
+  margin: 0 0 0.4rem;
+  text-transform: uppercase;
+}
+
+.story-local-media-path {
+  color: #cdd6f4;
+  font-family: Consolas, "Courier New", monospace;
+  margin: 0 0 0.45rem;
+  overflow-wrap: anywhere;
+}
+
+.story-local-media-help {
+  color: #7b8cb8;
+  margin: 0;
+}
+
 @media (max-width: 720px) {
   .story-shell {
     padding: 0 1rem;

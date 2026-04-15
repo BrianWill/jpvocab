@@ -1,6 +1,7 @@
 import { getTtsVoice, getVoicevoxSettings } from './common.js';
 import { getSynthAudio } from './synth-cache.js';
-import { clampPlaybackRate, speechPlaybackLangForStory, splitByClause } from './story-playback-utils.js';
+import { clampPlaybackRate, playbackModeForStory, speechPlaybackLangForStory, splitByClause } from './story-playback-utils.js';
+import { storyCanSeekSentenceInMedia } from './story-media-utils.js';
 
 let _els, _state, _storyId;
 
@@ -8,6 +9,10 @@ let _els, _state, _storyId;
 const SPEED_STEPPER_INTERVAL = 230;
 
 async function restartPlaybackForRateChange() {
+  if (_state.playbackMode === 'youtube') {
+    if (_state.youtubePlayer?.setPlaybackRate) _state.youtubePlayer.setPlaybackRate(_state.playbackRate);
+    return;
+  }
   if (_state.synthMode) {
     if (_state.audioEl) _state.audioEl.playbackRate = _state.playbackRate;
     return;
@@ -73,6 +78,7 @@ const ICON_STOP_SM = '<svg width="13" height="13" viewBox="0 0 24 24" fill="curr
 const ICON_LOADING_SM = '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true" class="synth-spinner"><circle cx="12" cy="12" r="9" stroke-opacity="0.25"/><path stroke-linecap="round" d="M12 3a9 9 0 0 1 9 9"/></svg>';
 
 function isSentencePlaying(idx) {
+  if (_state.playbackMode === 'youtube') return _state.youtubePlaying && _state.activeIdx === idx;
   if (_state.synthMode) return _state.audioSentenceIdx === idx && !!_state.audioEl && !_state.audioEl.paused;
   return _state.activeIdx === idx && window.speechSynthesis.speaking;
 }
@@ -137,9 +143,10 @@ export function cancelSentencePlayHide() {
   }
 }
 
-export function showSentencePlayBtn(idx) {
+export function showSentencePlayBtn(idx, opts = {}) {
   cancelSentencePlayHide();
   _state.sentencePlayBtnTargetIdx = idx;
+  _state.sentencePlayBtnCanSeekInMedia = !!opts.canSeekInMedia;
   const span = _state.sentenceSpans[idx];
   const firstWord = span?.querySelector('.story-word');
   const rect = (firstWord ?? span)?.getBoundingClientRect();
@@ -150,6 +157,88 @@ export function showSentencePlayBtn(idx) {
   _els.sentencePlayBtn.style.left = `${rect.left - btnSize / 1.4}px`;
   _els.sentencePlayBtn.style.top = `${rect.top - btnSize / 1.4}px`;
   updateSentencePlayBtnIcon();
+}
+
+let _youtubeAPIPromise = null;
+
+function loadYouTubeAPI() {
+  if (_youtubeAPIPromise) return _youtubeAPIPromise;
+  _youtubeAPIPromise = new Promise(resolve => {
+    if (window.YT?.Player) {
+      resolve(window.YT);
+      return;
+    }
+    const prev = window.onYouTubeIframeAPIReady;
+    window.onYouTubeIframeAPIReady = () => {
+      if (typeof prev === 'function') prev();
+      resolve(window.YT);
+    };
+    const script = document.createElement('script');
+    script.src = 'https://www.youtube.com/iframe_api';
+    script.async = true;
+    document.head.appendChild(script);
+  });
+  return _youtubeAPIPromise;
+}
+
+function youtubeVideoIDFromEmbed(url) {
+  const match = String(url || '').match(/\/embed\/([^?&/]+)/);
+  return match ? match[1] : '';
+}
+
+async function ensureYouTubePlayer() {
+  if (!_state.story || !_els.youtubePlayer) return null;
+  if (_state.playbackMode !== 'youtube') return null;
+  const mediaUrl = _state.story.mediaUrl || _els.youtubePlayer.dataset.mediaUrl || '';
+  const videoId = youtubeVideoIDFromEmbed(mediaUrl);
+  if (!videoId) return null;
+  if (_state.youtubePlayer && _state.youtubeVideoId === videoId) return _state.youtubePlayer;
+
+  const YT = await loadYouTubeAPI();
+  return new Promise(resolve => {
+    _state.youtubeVideoId = videoId;
+    _state.youtubePlayer = new YT.Player(_els.youtubePlayer, {
+      videoId,
+      playerVars: {
+        autoplay: 0,
+        controls: 1,
+        origin: window.location.origin,
+        playsinline: 1,
+      },
+      events: {
+        onReady: event => {
+          event.target.setPlaybackRate?.(_state.playbackRate);
+          resolve(event.target);
+        },
+        onStateChange: event => {
+          const ytState = window.YT?.PlayerState;
+          _state.youtubePlaying = event.data === ytState?.PLAYING;
+          if (event.data === ytState?.ENDED) clearHighlight();
+          setPlaybackPlaying(_state.youtubePlaying);
+        },
+      },
+    });
+  });
+}
+
+async function startYouTubePlayback(sentenceIdx = 0) {
+  const player = await ensureYouTubePlayer();
+  if (!player) return;
+  const sentence = _state.story?.sentences?.[sentenceIdx] || null;
+  const startSeconds = storyCanSeekSentenceInMedia(_state.story, sentence)
+    ? sentence.startTimeMs / 1000
+    : 0;
+  _state.youtubePlaying = true;
+  if (sentence) setActiveIdx(sentenceIdx);
+  player.seekTo(startSeconds, true);
+  player.playVideo();
+  setPlaybackPlaying(true);
+}
+
+function stopYouTubePlayback() {
+  _state.youtubePlayer?.pauseVideo?.();
+  _state.youtubePlaying = false;
+  setPlaybackPlaying(false);
 }
 
 // ── Speech-synthesis mode ─────────────────────────────────────────────────────
@@ -292,6 +381,10 @@ function startAudio(sentenceIdx = _state.audioSentenceIdx, clauseIdx = _state.au
 
 // ── Exported stop (used by generate modals as stopPlayback callback) ──────────
 export function stopPlayback() {
+  if (_state.playbackMode === 'youtube') {
+    stopYouTubePlayback();
+    return;
+  }
   if (_state.synthMode) { if (_state.audioEl && !_state.audioEl.paused) stopAudio(); }
   else if (window.speechSynthesis.speaking) stopSpeechPlayback();
 }
@@ -299,6 +392,7 @@ export function stopPlayback() {
 // ── Synth-mode init ───────────────────────────────────────────────────────────
 // Called when VoiceVox is confirmed available. Enables on-demand synth playback.
 export function initSynthPlayback() {
+  if (_state.playbackMode === 'youtube') return;
   _state.synthMode = true;
   _state.audioMode = false;
   _els.seekbar.hidden = true;
@@ -325,14 +419,17 @@ export function initPlayback(els, state, storyId) {
     if (idx < 0) return;
 
     if (isSentencePlaying(idx)) {
-      if (state.synthMode) stopAudio();
+      if (state.playbackMode === 'youtube') stopYouTubePlayback();
+      else if (state.synthMode) stopAudio();
       else stopSpeechPlayback();
       els.sentencePlayBtn.innerHTML = ICON_PLAY_SM;
       els.sentencePlayBtn.setAttribute('aria-label', 'Play from this sentence');
       return;
     }
 
-    if (state.synthMode) {
+    if (state.playbackMode === 'youtube' && state.sentencePlayBtnCanSeekInMedia) {
+      await startYouTubePlayback(idx);
+    } else if (state.synthMode) {
       // Stop whatever is playing immediately, then synthesize the new sentence.
       if (state.audioEl && !state.audioEl.paused) stopAudio();
       state.synthLoadingIdx = idx;
@@ -354,6 +451,14 @@ export function initPlayback(els, state, storyId) {
   });
 
   els.playbackBtn.addEventListener('click', async () => {
+    if (state.playbackMode === 'youtube') {
+      if (state.youtubePlaying) {
+        stopYouTubePlayback();
+      } else {
+        await startYouTubePlayback(state.activeIdx >= 0 ? state.activeIdx : 0);
+      }
+      return;
+    }
     if (state.synthMode) {
       if (state.audioEl && !state.audioEl.paused) {
         stopAudio();
@@ -370,7 +475,8 @@ export function initPlayback(els, state, storyId) {
   });
 
   window.addEventListener('beforeunload', () => {
-    if (state.synthMode) state.audioEl?.pause();
+    if (state.playbackMode === 'youtube') stopYouTubePlayback();
+    else if (state.synthMode) state.audioEl?.pause();
     else stopSpeechPlayback();
   });
 
@@ -383,4 +489,24 @@ export function initPlayback(els, state, storyId) {
     e.preventDefault();
     els.playbackBtn.click();
   });
+
+  const refreshPlaybackMode = async () => {
+    state.playbackMode = playbackModeForStory(state.story);
+    state.youtubePlaying = false;
+    if (state.playbackMode === 'youtube') {
+      state.synthMode = false;
+      _els.seekbar.hidden = true;
+      _els.currentTime.hidden = true;
+      _els.duration.hidden = true;
+      await ensureYouTubePlayer();
+    }
+  };
+
+  const observer = new MutationObserver(() => {
+    refreshPlaybackMode().catch(() => {});
+  });
+  if (els.youtubePlayer) {
+    observer.observe(els.youtubePlayer, { attributes: true, attributeFilter: ['data-media-url'] });
+  }
+  refreshPlaybackMode().catch(() => {});
 }

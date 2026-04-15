@@ -7,14 +7,18 @@ import {
   DEFAULT_ROUND_SIZE,
   applySidebarAnswer,
   buildRoundState,
+  createEmptyMatchingState,
   createDrillState,
   createSidebarItems,
   getAnswerFeedbackState,
   getFilteredWords,
   getNextRevealState,
+  hasRestorableSessionState,
   isMatchingRoundComplete,
   isSessionComplete,
   matchesFilter,
+  restoreMatchingSessionState,
+  restoreStandardSessionState,
   selectMatchingWord,
   serializeSessionState,
 } from '../drill-state.js';
@@ -132,6 +136,26 @@ test('buildRoundState: allows redo to exceed round size without pulling from poo
 
   assert.deepEqual(result.remaining, [verbWord, nounWord]);
   assert.deepEqual(result.pool, [otherWord]);
+});
+
+test('buildRoundState: clears all matching-only fields for standard mode', () => {
+  const result = buildRoundState({
+    roundSize: 2,
+    redo: [],
+    pool: [nounWord, otherWord],
+  });
+
+  assert.deepEqual(result, {
+    pool: [],
+    redo: [],
+    remaining: [nounWord, otherWord],
+    currentWord: nounWord,
+    sidebarItems: [
+      { word: nounWord, status: 'unseen' },
+      { word: otherWord, status: 'unseen' },
+    ],
+    ...createEmptyMatchingState(),
+  });
 });
 
 test('buildMatchingRoundState: fills the round and shuffles info cards independently', () => {
@@ -368,6 +392,24 @@ test('getAnswerFeedbackState: records answer result without advancing', () => {
   });
 });
 
+test('getAnswerFeedbackState: keeps the answered word current until advance', () => {
+  const state = {
+    currentWord: nounWord,
+    remaining: [nounWord, otherWord],
+    redo: [],
+    pool: [katakanaWord],
+    round: 2,
+    doneCount: 4,
+    sidebarItems: createSidebarItems([nounWord, otherWord]),
+  };
+
+  const result = getAnswerFeedbackState(state, false);
+  assert.equal(result.currentWord, nounWord);
+  assert.deepEqual(result.remaining, [nounWord, otherWord]);
+  assert.equal(result.awaitingAdvance, true);
+  assert.equal(result.pendingAnswerCorrect, false);
+});
+
 test('advanceAfterRevealState: advances using pending answer result', () => {
   const state = {
     currentWord: nounWord,
@@ -395,6 +437,73 @@ test('advanceAfterRevealState: advances using pending answer result', () => {
     awaitingAdvance: false,
     pendingAnswerCorrect: null,
   });
+});
+
+test('restoreStandardSessionState: ignores stale matching state and keeps reveal state', () => {
+  const restored = restoreStandardSessionState({
+    remaining: [nounWord, otherWord],
+    redo: [verbWord],
+    sidebarItems: [{ word: nounWord, status: 'known' }],
+    lastAnswered: { word: nounWord, knew: true },
+    awaitingAdvance: true,
+    pendingAnswerCorrect: true,
+    matchingPairsMode: false,
+    matchingRoundWords: [katakanaWord],
+    matchingInfoWords: [katakanaWord],
+    matchingRedoWordIds: [katakanaWord.id],
+    matchingSelectedWordId: katakanaWord.id,
+    matchingMatchedPairs: { [katakanaWord.id]: katakanaWord.id },
+    matchingCarryoverWordIds: [katakanaWord.id],
+    matchingAttemptedWordIds: [katakanaWord.id],
+    matchingFirstTryCorrectWordIds: [katakanaWord.id],
+  });
+
+  assert.deepEqual(restored, {
+    remaining: [nounWord, otherWord],
+    redo: [verbWord],
+    currentWord: nounWord,
+    lastAnswered: { word: nounWord, knew: true },
+    sidebarItems: [{ word: nounWord, status: 'known' }],
+    awaitingAdvance: true,
+    pendingAnswerCorrect: true,
+    ...createEmptyMatchingState(),
+  });
+});
+
+test('restoreMatchingSessionState: falls back to remaining only in matching mode', () => {
+  const restored = restoreMatchingSessionState({
+    matchingPairsMode: true,
+    remaining: [nounWord, otherWord],
+    redo: [verbWord],
+  });
+
+  assert.deepEqual(restored, {
+    remaining: [nounWord, otherWord],
+    redo: [verbWord],
+    currentWord: null,
+    lastAnswered: null,
+    sidebarItems: [],
+    awaitingAdvance: false,
+    pendingAnswerCorrect: null,
+    matchingRoundWords: [nounWord, otherWord],
+    matchingInfoWords: [nounWord, otherWord],
+    matchingRedoWordIds: [],
+    matchingSelectedWordId: null,
+    matchingMatchedPairs: {},
+    matchingCarryoverWordIds: [],
+    matchingAttemptedWordIds: [],
+    matchingFirstTryCorrectWordIds: [],
+  });
+});
+
+test('hasRestorableSessionState: restores standard reveal sessions without matching fields', () => {
+  assert.equal(hasRestorableSessionState({
+    matchingPairsMode: false,
+    poolSize: 10,
+    remaining: [nounWord, otherWord],
+    awaitingAdvance: true,
+    pendingAnswerCorrect: false,
+  }), true);
 });
 
 test('advanceAfterRevealState: returns null when not awaiting advance', () => {
@@ -491,4 +600,39 @@ test('serializeSessionState: preserves partial state and filter insertion order'
   assert.deepEqual(serialized.activeFilters, ['other', 'verbs']);
   assert.equal(serialized.lastAnswered, null);
   assert.equal(serialized.pendingAnswerCorrect, null);
+});
+
+test('serializeSessionState + restoreStandardSessionState: stale matching fields do not affect standard restore', () => {
+  const serialized = serializeSessionState({
+    poolSize: 5,
+    requestedRoundSize: 5,
+    roundSize: 2,
+    round: 1,
+    doneCount: 1,
+    activeFilters: new Set(['nouns']),
+    pool: [verbWord],
+    redo: [],
+    remaining: [nounWord, otherWord],
+    sidebarItems: [{ word: nounWord, status: 'known' }],
+    lastAnswered: { word: nounWord, knew: true },
+    matchingPairsMode: false,
+    matchingRoundWords: [katakanaWord],
+    matchingInfoWords: [katakanaWord],
+    matchingRedoWordIds: [katakanaWord.id],
+    matchingSelectedWordId: katakanaWord.id,
+    matchingMatchedPairs: { [katakanaWord.id]: katakanaWord.id },
+    matchingCarryoverWordIds: [katakanaWord.id],
+    matchingAttemptedWordIds: [katakanaWord.id],
+    matchingFirstTryCorrectWordIds: [katakanaWord.id],
+    skipAnswerReveal: false,
+    awaitingAdvance: true,
+    pendingAnswerCorrect: true,
+  });
+
+  const restored = restoreStandardSessionState(serialized);
+  assert.equal(restored.currentWord, nounWord);
+  assert.equal(restored.awaitingAdvance, true);
+  assert.equal(restored.pendingAnswerCorrect, true);
+  assert.deepEqual(restored.matchingRoundWords, []);
+  assert.deepEqual(restored.matchingMatchedPairs, {});
 });

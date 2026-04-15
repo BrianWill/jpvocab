@@ -52,10 +52,23 @@ function includesWordId(ids, wordId) {
   return Array.isArray(ids) && ids.includes(wordId);
 }
 
+export function createEmptyMatchingState() {
+  return {
+    matchingRoundWords: [],
+    matchingInfoWords: [],
+    matchingRedoWordIds: [],
+    matchingSelectedWordId: null,
+    matchingMatchedPairs: {},
+    matchingCarryoverWordIds: [],
+    matchingAttemptedWordIds: [],
+    matchingFirstTryCorrectWordIds: [],
+  };
+}
+
 function normalizeMatchingState(sessionState) {
   const roundWords = Array.isArray(sessionState.matchingRoundWords)
     ? sessionState.matchingRoundWords
-    : (Array.isArray(sessionState.remaining) ? sessionState.remaining : []);
+    : (sessionState.matchingPairsMode && Array.isArray(sessionState.remaining) ? sessionState.remaining : []);
 
   const infoWords = Array.isArray(sessionState.matchingInfoWords) && sessionState.matchingInfoWords.length > 0
     ? sessionState.matchingInfoWords
@@ -117,6 +130,7 @@ export function createDrillState(filterKeys) {
     skipAnswerReveal: false,
     sidebarItems: [],
     words: [],
+    ...createEmptyMatchingState(),
   };
 }
 
@@ -187,14 +201,7 @@ export function buildRoundState(sessionState) {
     remaining,
     currentWord: remaining[0] || null,
     sidebarItems: createSidebarItems(remaining, redoSet),
-    matchingRoundWords: [],
-    matchingInfoWords: [],
-    matchingRedoWordIds: [],
-    matchingSelectedWordId: null,
-    matchingMatchedPairs: {},
-    matchingCarryoverWordIds: [],
-    matchingAttemptedWordIds: [],
-    matchingFirstTryCorrectWordIds: [],
+    ...createEmptyMatchingState(),
   };
 }
 
@@ -223,6 +230,64 @@ export function buildMatchingRoundState(sessionState, shuffleWords = words => wo
     awaitingAdvance: false,
     pendingAnswerCorrect: null,
   };
+}
+
+export function restoreStandardSessionState(sessionState) {
+  const remaining = Array.isArray(sessionState.remaining) ? sessionState.remaining : [];
+  const redo = Array.isArray(sessionState.redo) ? sessionState.redo : [];
+  const sidebarItems = Array.isArray(sessionState.sidebarItems) ? sessionState.sidebarItems : [];
+  const awaitingAdvance = sessionState.awaitingAdvance === true;
+  const pendingAnswerCorrect = awaitingAdvance && typeof sessionState.pendingAnswerCorrect === 'boolean'
+    ? sessionState.pendingAnswerCorrect
+    : null;
+
+  return {
+    remaining,
+    redo,
+    currentWord: remaining[0] || null,
+    lastAnswered: sessionState.lastAnswered || null,
+    sidebarItems,
+    awaitingAdvance,
+    pendingAnswerCorrect,
+    ...createEmptyMatchingState(),
+  };
+}
+
+export function restoreMatchingSessionState(sessionState) {
+  const matchingState = normalizeMatchingState({
+    ...sessionState,
+    matchingPairsMode: true,
+  });
+
+  return {
+    remaining: Array.isArray(sessionState.remaining) ? sessionState.remaining : [],
+    redo: Array.isArray(sessionState.redo) ? sessionState.redo : [],
+    currentWord: null,
+    lastAnswered: sessionState.lastAnswered || null,
+    sidebarItems: [],
+    awaitingAdvance: false,
+    pendingAnswerCorrect: null,
+    ...matchingState,
+  };
+}
+
+export function hasRestorableSessionState(sessionState) {
+  if (sessionState.matchingPairsMode) {
+    const { matchingRoundWords } = restoreMatchingSessionState(sessionState);
+    return (sessionState.poolSize || 0) > 0 ||
+      matchingRoundWords.length > 0 ||
+      (Array.isArray(sessionState.redo) && sessionState.redo.length > 0) ||
+      (Array.isArray(sessionState.pool) && sessionState.pool.length > 0);
+  }
+
+  const restored = restoreStandardSessionState(sessionState);
+  return (sessionState.poolSize || 0) > 0 ||
+    restored.currentWord !== null ||
+    restored.remaining.length > 0 ||
+    restored.redo.length > 0 ||
+    restored.awaitingAdvance ||
+    restored.lastAnswered !== null ||
+    (Array.isArray(sessionState.pool) && sessionState.pool.length > 0);
 }
 
 export function selectMatchingWord(sessionState, wordId) {

@@ -1,4 +1,5 @@
 import { isTtsAutoplayEnabled, playWordAudio, positionAnchoredWordTooltip, renderWordTooltipKanji } from './common.js';
+import { renderReading } from './lexicon-utils.js';
 import { formatRelativeTime } from './format-utils.js';
 import { isSessionComplete } from './drill-state.js';
 
@@ -260,6 +261,7 @@ export function renderDrill(els, state) {
   els.matchingArea.style.display = 'none';
   els.sidebar.style.display = '';
   els.mainArea.style.display = '';
+  els.tip.classList.remove('visible');
   renderSidebar(els, state);
   renderLastAnswered(els, state);
   renderPrompt(els, state);

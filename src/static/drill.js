@@ -4,6 +4,7 @@ import {
   DRILL_FILTER_KEYS,
   getVoicevoxSettings,
   playTts,
+  populateWordTooltip,
   playWordAudio,
   playSentenceAudio,
 } from './common.js';
@@ -15,12 +16,16 @@ import {
   buildRoundState,
   createSession,
   createDrillState,
+  createEmptyMatchingState,
   DEFAULT_ROUND_SIZE,
   getAnswerFeedbackState,
   getFilteredWords,
   getNextRevealState,
+  hasRestorableSessionState,
   loadDrillData,
   postAnswer,
+  restoreMatchingSessionState,
+  restoreStandardSessionState,
   selectMatchingWord,
   serializeSessionState,
   updateSessionState,
@@ -39,6 +44,9 @@ const state = createDrillState(DRILL_FILTER_KEYS);
 const DRILL_AUDIO_OPTIONS = { preferSynthesis: true, fallbackToBrowserTts: true };
 state.prefetchController = null;
 state.answerQueue = Promise.resolve();
+state.hoveredMatchingWordId = null;
+state.isPointerInMatchingWordList = false;
+state.matchingTooltipPointer = null;
 
 async function prefetchRoundAudio(remaining) {
   if (state.prefetchController) state.prefetchController.abort();
@@ -76,6 +84,11 @@ function getSelectedMatchingWord() {
   return getMatchingRoundWord(state.matchingSelectedWordId);
 }
 
+function getHoveredMatchingWord() {
+  if (typeof state.hoveredMatchingWordId !== 'number') return null;
+  return getMatchingRoundWord(state.hoveredMatchingWordId);
+}
+
 function positionMatchingWordTooltip(clientX, clientY) {
   const pad = 8;
   const w = els.tip.offsetWidth;
@@ -96,6 +109,11 @@ function showMatchingWordTooltip(event, word) {
     return;
   }
 
+  state.matchingTooltipPointer = {
+    clientX: event.clientX,
+    clientY: event.clientY,
+  };
+
   els.tip.querySelector('[data-word-tooltip="word"]').textContent = word.word || '';
   els.tip.querySelector('[data-word-tooltip="reading"]').innerHTML =
     renderReading(word.reading, word.word, word.kanjiData, word.pitchAccent);
@@ -111,6 +129,59 @@ function showMatchingWordTooltip(event, word) {
   els.tip.style.top = '-9999px';
   els.tip.classList.add('visible');
   positionMatchingWordTooltip(event.clientX, event.clientY);
+}
+
+function showHoveredMatchingWordTooltip() {
+  const word = getHoveredMatchingWord();
+  if (!word || !state.matchingTooltipPointer) {
+    els.tip.classList.remove('visible');
+    return;
+  }
+
+  showMatchingWordTooltip(state.matchingTooltipPointer, word);
+}
+
+function showSelectedMatchingWordTooltip() {
+  if (!state.matchingPairsMode) {
+    els.tip.classList.remove('visible');
+    return;
+  }
+
+  const word = getSelectedMatchingWord();
+  if (!word) {
+    els.tip.classList.remove('visible');
+    return;
+  }
+
+  if (!state.matchingTooltipPointer) {
+    els.tip.classList.remove('visible');
+    return;
+  }
+
+  els.tip.querySelector('[data-word-tooltip="word"]').textContent = word.word || '';
+  els.tip.querySelector('[data-word-tooltip="reading"]').innerHTML =
+    renderReading(word.reading, word.word, word.kanjiData, word.pitchAccent);
+  els.tip.querySelector('[data-word-tooltip="pos"]').textContent = word.type || '';
+  els.tip.querySelector('[data-word-tooltip="meaning"]').textContent = '';
+  els.tip.querySelector('[data-word-tooltip="example"]').textContent = word.exampleJp;
+  els.tip.querySelector('[data-word-tooltip="example-en"]').textContent = '';
+  populateWordTooltipKanjiOnly(word);
+  const imgEl = els.tip.querySelector('[data-word-tooltip="image"]');
+  imgEl.removeAttribute('src');
+  imgEl.style.display = 'none';
+  els.tip.style.left = '-9999px';
+  els.tip.style.top = '-9999px';
+  els.tip.classList.add('visible');
+  positionMatchingWordTooltip(state.matchingTooltipPointer.clientX, state.matchingTooltipPointer.clientY);
+}
+
+function renderDrillUI() {
+  renderDrill(els, state);
+  if (state.matchingPairsMode && state.isPointerInMatchingWordList) {
+    showHoveredMatchingWordTooltip();
+    return;
+  }
+  showSelectedMatchingWordTooltip();
 }
 
 function populateWordTooltipKanjiOnly(word) {
@@ -164,44 +235,16 @@ function restoreSession(session) {
   state.round = sessionState.round || 1;
   state.doneCount = sessionState.doneCount || 0;
   state.pool = Array.isArray(sessionState.pool) ? sessionState.pool : [];
-  state.redo = Array.isArray(sessionState.redo) ? sessionState.redo : [];
-  state.remaining = Array.isArray(sessionState.remaining) ? sessionState.remaining : [];
-  state.currentWord = state.remaining[0] || null;
   state.skipAnswerReveal = sessionState.skipAnswerReveal === true;
-  if (typeof sessionState.matchingPairsMode === 'boolean') {
-    state.matchingPairsMode = sessionState.matchingPairsMode;
-  }
-  state.awaitingAdvance = sessionState.awaitingAdvance === true;
-  state.pendingAnswerCorrect = typeof sessionState.pendingAnswerCorrect === 'boolean'
-    ? sessionState.pendingAnswerCorrect
-    : null;
   state.sidebarFlash = null;
-  state.sidebarItems = Array.isArray(sessionState.sidebarItems) ? sessionState.sidebarItems : [];
-  state.lastAnswered = sessionState.lastAnswered || null;
-  state.matchingRoundWords = Array.isArray(sessionState.matchingRoundWords)
-    ? sessionState.matchingRoundWords
-    : (state.matchingPairsMode ? state.remaining : []);
-  state.matchingInfoWords = Array.isArray(sessionState.matchingInfoWords) && sessionState.matchingInfoWords.length > 0
-    ? sessionState.matchingInfoWords
-    : state.matchingRoundWords;
-  state.matchingRedoWordIds = Array.isArray(sessionState.matchingRedoWordIds)
-    ? sessionState.matchingRedoWordIds
-    : [];
-  state.matchingSelectedWordId = typeof sessionState.matchingSelectedWordId === 'number'
-    ? sessionState.matchingSelectedWordId
-    : null;
-  state.matchingMatchedPairs = sessionState.matchingMatchedPairs && typeof sessionState.matchingMatchedPairs === 'object'
-    ? sessionState.matchingMatchedPairs
-    : {};
-  state.matchingCarryoverWordIds = Array.isArray(sessionState.matchingCarryoverWordIds)
-    ? sessionState.matchingCarryoverWordIds
-    : [];
-  state.matchingAttemptedWordIds = Array.isArray(sessionState.matchingAttemptedWordIds)
-    ? sessionState.matchingAttemptedWordIds
-    : [];
-  state.matchingFirstTryCorrectWordIds = Array.isArray(sessionState.matchingFirstTryCorrectWordIds)
-    ? sessionState.matchingFirstTryCorrectWordIds
-    : [];
+  state.matchingPairsMode = sessionState.matchingPairsMode === true;
+
+  Object.assign(
+    state,
+    state.matchingPairsMode
+      ? restoreMatchingSessionState(sessionState)
+      : restoreStandardSessionState(sessionState)
+  );
 
   if (Array.isArray(sessionState.activeFilters) && sessionState.activeFilters.length > 0) {
     state.activeFilters.clear();
@@ -209,9 +252,14 @@ function restoreSession(session) {
   }
 
   syncRestartFilterButtons(els, state.activeFilters);
-  renderDrill(els, state);
-  if (state.matchingPairsMode) state.prefetchController?.abort();
-  else prefetchRoundAudio(state.remaining);
+  renderDrillUI();
+  if (state.matchingPairsMode) {
+    state.prefetchController?.abort();
+  } else if (state.awaitingAdvance) {
+    state.prefetchController?.abort();
+  } else {
+    prefetchRoundAudio(state.remaining);
+  }
 }
 
 async function init() {
@@ -236,9 +284,7 @@ async function init() {
 
   if (currentSession) {
     const sessionState = currentSession.state || {};
-    const hasRestorableState = (sessionState.poolSize || 0) > 0 ||
-      (Array.isArray(sessionState.remaining) && sessionState.remaining.length > 0);
-    if (hasRestorableState) {
+    if (hasRestorableSessionState(sessionState)) {
       restoreSession(currentSession);
       return;
     }
@@ -251,12 +297,15 @@ async function init() {
   state.lastAutoPlayedId = null;
   Object.assign(state, state.matchingPairsMode
     ? buildMatchingRoundState(state, shuffle)
-    : buildRoundState(state));
+    : {
+      ...buildRoundState(state),
+      ...createEmptyMatchingState(),
+    });
   state.lastAnswered = null;
   state.sidebarFlash = null;
 
   state.sessionId = await createSession(serializeSessionState(state));
-  renderDrill(els, state);
+  renderDrillUI();
   if (state.matchingPairsMode) state.prefetchController?.abort();
   else prefetchRoundAudio(state.remaining);
 }
@@ -272,7 +321,7 @@ function reveal(knew) {
     playDrillWordAudio(answered).catch(() => {});
   }
   state.sidebarFlash = { word: answered.word, knew };
-  renderDrill(els, state);
+  renderDrillUI();
   if (!state.awaitingAdvance) prefetchRoundAudio(state.remaining);
 
   // Capture state snapshot now; queue the network call so answers are sent in
@@ -293,7 +342,7 @@ function advanceAfterReveal() {
 
   Object.assign(state, nextState);
   state.sidebarFlash = null;
-  renderDrill(els, state);
+  renderDrillUI();
   prefetchRoundAudio(state.remaining);
 
   const sessionId = state.sessionId;
@@ -337,11 +386,14 @@ function restartDrill(totalWords, roundSize, sourceWords) {
   state.pendingAnswerCorrect = null;
   Object.assign(state, state.matchingPairsMode
     ? buildMatchingRoundState(state, shuffle)
-    : buildRoundState(state));
+    : {
+      ...buildRoundState(state),
+      ...createEmptyMatchingState(),
+    });
   state.lastAnswered = null;
   state.sidebarFlash = null;
 
-  renderDrill(els, state);
+  renderDrillUI();
   if (state.matchingPairsMode) state.prefetchController?.abort();
   else prefetchRoundAudio(state.remaining);
 }
@@ -393,7 +445,7 @@ els.matchingWordList.addEventListener('click', event => {
   const nextState = selectMatchingWord(state, wordId);
   if (nextState === state) return;
   Object.assign(state, nextState);
-  renderDrill(els, state);
+  renderDrillUI();
   queueSessionStateSave();
   if (word) playDrillWordAudio(word).catch(() => {});
 });
@@ -401,22 +453,58 @@ els.matchingWordList.addEventListener('click', event => {
 els.matchingWordList.addEventListener('mouseover', event => {
   const button = event.target.closest('[data-word-id]');
   if (!button || !state.matchingPairsMode) return;
+  state.isPointerInMatchingWordList = true;
   const wordId = parseInt(button.dataset.wordId, 10);
   if (Number.isNaN(wordId)) return;
+  state.hoveredMatchingWordId = wordId;
   showMatchingWordTooltip(event, getMatchingRoundWord(wordId));
 });
 
 els.matchingWordList.addEventListener('mousemove', event => {
+  if (!state.matchingPairsMode) return;
+  state.isPointerInMatchingWordList = true;
+  state.matchingTooltipPointer = {
+    clientX: event.clientX,
+    clientY: event.clientY,
+  };
   const button = event.target.closest('[data-word-id]');
-  if (!button || !state.matchingPairsMode) return;
+  if (button) {
+    const wordId = parseInt(button.dataset.wordId, 10);
+    if (!Number.isNaN(wordId)) state.hoveredMatchingWordId = wordId;
+  }
   if (!els.tip.classList.contains('visible')) return;
-  positionMatchingWordTooltip(event.clientX, event.clientY);
+  if (state.hoveredMatchingWordId !== null) {
+    showHoveredMatchingWordTooltip();
+  } else {
+    positionMatchingWordTooltip(event.clientX, event.clientY);
+  }
 });
 
 els.matchingWordList.addEventListener('mouseout', event => {
   const button = event.target.closest('[data-word-id]');
   if (!button || !state.matchingPairsMode) return;
-  if (!button.contains(event.relatedTarget)) els.tip.classList.remove('visible');
+  if (!button.contains(event.relatedTarget)) showHoveredMatchingWordTooltip();
+});
+
+els.matchingWordList.addEventListener('mouseleave', () => {
+  if (!state.matchingPairsMode) return;
+  state.isPointerInMatchingWordList = false;
+  state.hoveredMatchingWordId = null;
+  showSelectedMatchingWordTooltip();
+});
+
+document.addEventListener('mousemove', event => {
+  if (!state.matchingPairsMode) return;
+  state.matchingTooltipPointer = {
+    clientX: event.clientX,
+    clientY: event.clientY,
+  };
+  if (event.target.closest?.('#matching-word-list')) return;
+  if (!getSelectedMatchingWord()) {
+    els.tip.classList.remove('visible');
+    return;
+  }
+  showSelectedMatchingWordTooltip();
 });
 
 els.matchingInfoList.addEventListener('click', event => {
@@ -429,7 +517,7 @@ els.matchingInfoList.addEventListener('click', event => {
   if (!result) return;
 
   Object.assign(state, result.nextState);
-  renderDrill(els, state);
+  renderDrillUI();
 
   const sessionId = state.sessionId;
   const sessionSnapshot = serializeSessionState(state);
@@ -525,7 +613,7 @@ attachNumberStepper(els.restartRoundSize);
 
 // Keeps the "began X minutes ago" timestamp in renderStats fresh.
 setInterval(() => {
-  renderDrill(els, state);
+  renderDrillUI();
 }, 30_000);
 
 

@@ -139,7 +139,7 @@ test('buildMatchingRoundState: fills the round and shuffles info cards independe
     roundSize: 2,
     redo: [verbWord],
     pool: [nounWord, otherWord],
-  }, words => [words[1], words[0]]);
+  }, words => [...words].reverse());
 
   assert.deepEqual(result.remaining, [verbWord, nounWord]);
   assert.deepEqual(result.matchingRoundWords, [verbWord, nounWord]);
@@ -228,7 +228,7 @@ test('attemptMatchingPair: later correct match after miss stays carried-over and
     matchingCarryoverWordIds: [nounWord.id],
     matchingAttemptedWordIds: [nounWord.id, verbWord.id],
     matchingFirstTryCorrectWordIds: [verbWord.id],
-  }, nounWord.id, words => [words[1], words[0]]);
+  }, nounWord.id, words => [...words].reverse());
 
   assert.equal(result.firstAttempt, false);
   assert.equal(result.nextState.round, 2);

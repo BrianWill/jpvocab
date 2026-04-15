@@ -104,13 +104,7 @@ function renderMatchingDrill(els, state) {
   els.matchingWordList.innerHTML = '';
   els.matchingInfoList.innerHTML = '';
 
-  const sortedRoundWords = [...state.matchingRoundWords].sort((a, b) => {
-    const aRedo = state.matchingRedoWordIds.includes(a.id) ? 1 : 0;
-    const bRedo = state.matchingRedoWordIds.includes(b.id) ? 1 : 0;
-    return bRedo - aRedo;
-  });
-
-  sortedRoundWords.forEach(word => {
+  state.matchingRoundWords.forEach(word => {
     const button = document.createElement('button');
     const status = matchingWordStatus(state, word.id);
     const isMatched = typeof state.matchingMatchedPairs[word.id] === 'number';
@@ -242,13 +236,23 @@ export function renderDrill(els, state) {
   els.pageBody.classList.toggle('matching-mode', state.matchingPairsMode);
 
   if (state.matchingPairsMode) {
-    els.matchingArea.classList.remove('hidden');
+    const sessionComplete = isSessionComplete(state);
     els.sidebar.style.display = 'none';
     els.tip.classList.remove('visible');
-    els.mainArea.style.display = 'none';
-    els.actionPrompt.style.display = 'none';
     els.lastWordCard.style.display = 'none';
-    renderMatchingDrill(els, state);
+    if (sessionComplete) {
+      els.matchingWordList.innerHTML = '';
+      els.matchingInfoList.innerHTML = '';
+    }
+    els.matchingArea.classList.toggle('hidden', sessionComplete);
+    els.matchingArea.style.display = sessionComplete ? 'none' : '';
+    els.mainArea.style.display = sessionComplete ? '' : 'none';
+    if (sessionComplete) {
+      renderPrompt(els, state);
+    } else {
+      els.actionPrompt.style.display = 'none';
+      renderMatchingDrill(els, state);
+    }
     return;
   }
 

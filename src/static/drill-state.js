@@ -198,11 +198,13 @@ export function buildRoundState(sessionState) {
   };
 }
 
-export function buildMatchingRoundState(sessionState, shuffleInfoWords = words => words) {
+export function buildMatchingRoundState(sessionState, shuffleWords = words => words) {
   const slots = Math.max(0, sessionState.roundSize - sessionState.redo.length);
   const pool = [...sessionState.pool];
   const picked = pool.splice(0, slots);
   const remaining = [...sessionState.redo, ...picked];
+  const shuffledRedo = shuffleWords(sessionState.redo);
+  const shuffledFresh = shuffleWords(picked);
 
   return {
     pool,
@@ -210,8 +212,8 @@ export function buildMatchingRoundState(sessionState, shuffleInfoWords = words =
     remaining,
     currentWord: null,
     sidebarItems: [],
-    matchingRoundWords: remaining,
-    matchingInfoWords: shuffleInfoWords(remaining),
+    matchingRoundWords: [...shuffledRedo, ...shuffledFresh],
+    matchingInfoWords: shuffleWords(remaining),
     matchingRedoWordIds: sessionState.redo.map(word => word.id),
     matchingSelectedWordId: null,
     matchingMatchedPairs: {},
@@ -235,7 +237,7 @@ export function selectMatchingWord(sessionState, wordId) {
   };
 }
 
-export function attemptMatchingPair(sessionState, infoWordId, shuffleInfoWords = words => words) {
+export function attemptMatchingPair(sessionState, infoWordId, shuffleWords = words => words) {
   const matchingState = normalizeMatchingState(sessionState);
   const selectedWordId = matchingState.matchingSelectedWordId;
   if (typeof selectedWordId !== 'number') return null;
@@ -318,7 +320,7 @@ export function attemptMatchingPair(sessionState, infoWordId, shuffleInfoWords =
           pool: sessionState.pool,
           redo,
           roundSize: sessionState.roundSize,
-        }, shuffleInfoWords),
+        }, shuffleWords),
       },
       answeredWord: selectedWord,
       firstAttempt,

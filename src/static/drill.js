@@ -303,6 +303,14 @@ function advanceAfterReveal() {
     .catch(err => console.error('Failed to save drill session', err));
 }
 
+function queueSessionStateSave() {
+  const sessionId = state.sessionId;
+  const sessionSnapshot = serializeSessionState(state);
+  state.answerQueue = state.answerQueue
+    .then(() => updateSessionState(sessionId, sessionSnapshot))
+    .catch(err => console.error('Failed to save drill session', err));
+}
+
 function openRestartModal() {
   els.restartTotalWords.value = state.settingsMaxWords;
   els.restartRoundSize.value = state.requestedRoundSize;
@@ -382,8 +390,11 @@ els.matchingWordList.addEventListener('click', event => {
   const wordId = parseInt(button.dataset.wordId, 10);
   if (Number.isNaN(wordId)) return;
   const word = getMatchingRoundWord(wordId);
-  Object.assign(state, selectMatchingWord(state, wordId));
+  const nextState = selectMatchingWord(state, wordId);
+  if (nextState === state) return;
+  Object.assign(state, nextState);
   renderDrill(els, state);
+  queueSessionStateSave();
   if (word) playDrillWordAudio(word).catch(() => {});
 });
 
@@ -428,9 +439,7 @@ els.matchingInfoList.addEventListener('click', event => {
       .catch(err => console.error('Failed to save drill answer', err));
     return;
   }
-  state.answerQueue = state.answerQueue
-    .then(() => updateSessionState(sessionId, sessionSnapshot))
-    .catch(err => console.error('Failed to save drill session', err));
+  queueSessionStateSave();
 });
 
 document.addEventListener('keydown', event => {

@@ -60,7 +60,13 @@
       "Bash(mv jmdict-eng-3.6.2.json jmdict-eng.json)",
       "Bash(mv kanjidic2-en-3.6.2.json kanjidic2-en.json)",
       "Bash(rm jmdict-eng.json.zip kanjidic2-en.json.zip)",
-      "Bash(powershell.exe:*)"
+      "Bash(powershell.exe:*)",
+      "Bash(netstat -ano)",
+      "Bash(taskkill:*)",
+      "Bash(ls D:/code/projects_jj/jpvocab/src/*.db D:/code/projects_jj/jpvocab/src/*.gz)",
+      "Bash(./tmp/main.exe)",
+      "Bash(kill %1)",
+      "Bash(ls D:/code/projects_jj/jpvocab/src/jdict*)"
     ]
   },
   "outputStyle": "Explanatory"

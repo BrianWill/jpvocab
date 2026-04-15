@@ -114,6 +114,15 @@ type drillSessionState struct {
 	Remaining            []wordJSON         `json:"remaining"`
 	SidebarItems         []drillSidebarItem `json:"sidebarItems"`
 	LastAnswered         *drillLastAnswered `json:"lastAnswered,omitempty"`
+	MatchingPairsMode    bool               `json:"matchingPairsMode,omitempty"`
+	MatchingRoundWords   []wordJSON         `json:"matchingRoundWords"`
+	MatchingInfoWords    []wordJSON         `json:"matchingInfoWords"`
+	MatchingRedoWordIDs  []int64            `json:"matchingRedoWordIds"`
+	MatchingSelectedWord *int64             `json:"matchingSelectedWordId,omitempty"`
+	MatchingMatchedPairs map[string]int64   `json:"matchingMatchedPairs"`
+	MatchingCarryoverIDs []int64            `json:"matchingCarryoverWordIds"`
+	MatchingAttemptedIDs []int64            `json:"matchingAttemptedWordIds"`
+	MatchingFirstTryIDs  []int64            `json:"matchingFirstTryCorrectWordIds"`
 	SkipAnswerReveal     *bool              `json:"skipAnswerReveal,omitempty"`
 	AwaitingAdvance      bool               `json:"awaitingAdvance,omitempty"`
 	PendingAnswerCorrect *bool              `json:"pendingAnswerCorrect,omitempty"`
@@ -144,6 +153,27 @@ func normaliseDrillSessionState(state *drillSessionState) {
 	}
 	if state.SidebarItems == nil {
 		state.SidebarItems = []drillSidebarItem{}
+	}
+	if state.MatchingRoundWords == nil {
+		state.MatchingRoundWords = []wordJSON{}
+	}
+	if state.MatchingInfoWords == nil {
+		state.MatchingInfoWords = []wordJSON{}
+	}
+	if state.MatchingRedoWordIDs == nil {
+		state.MatchingRedoWordIDs = []int64{}
+	}
+	if state.MatchingMatchedPairs == nil {
+		state.MatchingMatchedPairs = map[string]int64{}
+	}
+	if state.MatchingCarryoverIDs == nil {
+		state.MatchingCarryoverIDs = []int64{}
+	}
+	if state.MatchingAttemptedIDs == nil {
+		state.MatchingAttemptedIDs = []int64{}
+	}
+	if state.MatchingFirstTryIDs == nil {
+		state.MatchingFirstTryIDs = []int64{}
 	}
 }
 

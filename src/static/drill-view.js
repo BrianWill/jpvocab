@@ -130,11 +130,11 @@ function renderMatchingDrill(els, state) {
     card.dataset.infoId = String(word.id);
     const imagePath = typeof word.imagePath === 'string' ? word.imagePath.trim() : '';
     card.innerHTML = `
-      <div class="matching-info-meaning">${word.meaning || ''}</div>
-      ${imagePath ? `<img class="matching-info-image" src="/static/${imagePath}" alt="">` : ''}
-      <div class="matching-info-meta">
+      <div class="matching-info-top">
+        <div class="matching-info-meaning">${word.meaning || ''}</div>
         <div class="matching-info-pos">${word.type || ''}</div>
       </div>
+      ${imagePath ? `<img class="matching-info-image" src="/static/${imagePath}" alt="">` : ''}
     `;
     els.matchingInfoList.appendChild(card);
   });
@@ -257,6 +257,7 @@ export function renderDrill(els, state) {
   }
 
   els.matchingArea.classList.add('hidden');
+  els.matchingArea.style.display = 'none';
   els.sidebar.style.display = '';
   els.mainArea.style.display = '';
   renderSidebar(els, state);

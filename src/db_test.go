@@ -583,9 +583,72 @@ func TestCreateDrillSession_NormalisesNilSlicesInStoredState(t *testing.T) {
 	if err := db.QueryRow(`SELECT state_json FROM drill_sessions WHERE id = ?`, sessionID).Scan(&stateJSON); err != nil {
 		t.Fatal(err)
 	}
-	want := `{"poolSize":0,"roundSize":0,"round":3,"doneCount":0,"activeFilters":[],"pool":[],"redo":[],"remaining":[],"sidebarItems":[],"skipAnswerReveal":false}`
+	want := `{"poolSize":0,"roundSize":0,"round":3,"doneCount":0,"activeFilters":[],"pool":[],"redo":[],"remaining":[],"sidebarItems":[],"matchingRoundWords":[],"matchingInfoWords":[],"matchingRedoWordIds":[],"matchingMatchedPairs":{},"matchingCarryoverWordIds":[],"matchingAttemptedWordIds":[],"matchingFirstTryCorrectWordIds":[],"skipAnswerReveal":false}`
 	if stateJSON != want {
 		t.Errorf("state_json: got %s, want %s", stateJSON, want)
+	}
+}
+
+func TestUpdateDrillSessionState_PreservesMatchingModeState(t *testing.T) {
+	db := testDB(t)
+	sessionID, err := createDrillSession(db, drillSessionState{Round: 1})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	selectedWordID := int64(11)
+	state := drillSessionState{
+		Round:               2,
+		DoneCount:           1,
+		MatchingPairsMode:   true,
+		Remaining:           []wordJSON{{ID: 11, Word: "猫"}, {ID: 12, Word: "犬"}},
+		MatchingRoundWords:  []wordJSON{{ID: 12, Word: "犬"}, {ID: 11, Word: "猫"}},
+		MatchingInfoWords:   []wordJSON{{ID: 11, Word: "猫", Meaning: "cat"}, {ID: 12, Word: "犬", Meaning: "dog"}},
+		MatchingRedoWordIDs: []int64{11},
+		MatchingSelectedWord: &selectedWordID,
+		MatchingMatchedPairs: map[string]int64{"12": 12},
+		MatchingCarryoverIDs: []int64{11},
+		MatchingAttemptedIDs: []int64{11, 12},
+		MatchingFirstTryIDs:  []int64{12},
+	}
+
+	if err := updateDrillSessionState(db, sessionID, state); err != nil {
+		t.Fatal(err)
+	}
+
+	current, err := getCurrentDrillSession(db)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if current == nil {
+		t.Fatal("expected current session")
+	}
+	if !current.State.MatchingPairsMode {
+		t.Fatal("MatchingPairsMode should be true")
+	}
+	if got := current.State.MatchingRoundWords; len(got) != 2 || got[0].ID != 12 || got[1].ID != 11 {
+		t.Fatalf("MatchingRoundWords: got %+v", got)
+	}
+	if got := current.State.MatchingInfoWords; len(got) != 2 || got[0].ID != 11 || got[1].ID != 12 {
+		t.Fatalf("MatchingInfoWords: got %+v", got)
+	}
+	if got := current.State.MatchingRedoWordIDs; len(got) != 1 || got[0] != 11 {
+		t.Fatalf("MatchingRedoWordIDs: got %+v", got)
+	}
+	if current.State.MatchingSelectedWord == nil || *current.State.MatchingSelectedWord != 11 {
+		t.Fatalf("MatchingSelectedWord: got %+v", current.State.MatchingSelectedWord)
+	}
+	if got := current.State.MatchingMatchedPairs["12"]; got != 12 {
+		t.Fatalf("MatchingMatchedPairs: got %+v", current.State.MatchingMatchedPairs)
+	}
+	if got := current.State.MatchingCarryoverIDs; len(got) != 1 || got[0] != 11 {
+		t.Fatalf("MatchingCarryoverIDs: got %+v", got)
+	}
+	if got := current.State.MatchingAttemptedIDs; len(got) != 2 || got[0] != 11 || got[1] != 12 {
+		t.Fatalf("MatchingAttemptedIDs: got %+v", got)
+	}
+	if got := current.State.MatchingFirstTryIDs; len(got) != 1 || got[0] != 12 {
+		t.Fatalf("MatchingFirstTryIDs: got %+v", got)
 	}
 }
 

@@ -378,10 +378,17 @@
 
 .matching-info-card {
   padding: 0.95rem 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  align-items: stretch;
+}
+
+.matching-info-top {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
   gap: 0.75rem 1rem;
-  align-items: start;
+  align-items: baseline;
 }
 
 .matching-info-card.locked {
@@ -416,7 +423,9 @@
   color: #7f849c;
   text-transform: uppercase;
   letter-spacing: 0.07em;
+  line-height: 1.2;
   text-align: right;
+  white-space: nowrap;
 }
 
 .matching-info-meaning {
@@ -427,19 +436,13 @@
 
 .matching-info-image {
   display: block;
-  max-width: 100%;
-  max-height: calc(1.45em * 2);
+  align-self: flex-start;
+  max-width: min(100%, 10rem);
+  max-height: 5.2rem;
   width: auto;
   height: auto;
   border-radius: 6px;
-  object-fit: cover;
-}
-
-.matching-info-meta {
-  display: flex;
-  flex-direction: column;
-  gap: 0.3rem;
-  align-items: flex-end;
+  object-fit: contain;
 }
 .kanji-entry {
   display: flex;

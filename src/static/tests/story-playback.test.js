@@ -42,6 +42,6 @@ test('speechPlaybackLangForStory: selects english only for all-English stories',
 
 test('playbackModeForStory: prefers youtube, then local media metadata, then speech', () => {
   assert.equal(playbackModeForStory({ mediaType: 'youtube', mediaUrl: 'https://www.youtube.com/embed/abc?enablejsapi=1' }), 'youtube');
-  assert.equal(playbackModeForStory({ mediaType: 'local_video', mediaUrl: 'D:\\clips\\story.mp4' }), 'local-media');
+  assert.equal(playbackModeForStory({ mediaType: 'local', mediaUrl: 'D:\\clips\\story.mp4' }), 'local-media');
   assert.equal(playbackModeForStory({ sentences: [] }), 'speech');
 });

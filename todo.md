@@ -2,6 +2,10 @@
 
 This file is random notes of possible features and bug fixes.
 
+- drill:
+    non-matching pairs mode not displaying word info correctly 
+    non-matching pairs mode not persisting state correctly between reloads?
+
 - separate generation of example sentences from generation of word info
 
 - for repurposing English content, may be best to translate on paragraph or multi-graph level, then split into sentences?

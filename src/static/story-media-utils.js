@@ -4,17 +4,15 @@ export function storyUsesYouTubeMedia(story) {
 
 export function storyHasLocalMedia(story) {
   const mediaType = story?.mediaType || '';
-  return (mediaType === 'local_audio' || mediaType === 'local_video') && !!story?.mediaUrl;
+  return mediaType === 'local' && !!story?.mediaUrl;
 }
 
 export function storyMediaTypeLabel(mediaType) {
   switch (mediaType) {
     case 'youtube':
       return 'YouTube';
-    case 'local_audio':
-      return 'Local audio';
-    case 'local_video':
-      return 'Local video';
+    case 'local':
+      return 'Local media';
     default:
       return '';
   }

@@ -111,9 +111,9 @@ func insertStoryTx(tx *sql.Tx, title string, sentences []storySentenceInput, med
 	media.MediaType = strings.TrimSpace(media.MediaType)
 	media.MediaURL = strings.TrimSpace(media.MediaURL)
 	switch media.MediaType {
-	case "", "youtube", "local_audio", "local_video":
+	case "", "youtube", "local":
 	default:
-		return 0, errors.New("story media type must be youtube, local_audio, local_video, or empty")
+		return 0, errors.New("story media type must be youtube, local, or empty")
 	}
 	if media.MediaType == "" {
 		media.MediaURL = ""
@@ -897,8 +897,15 @@ func normalizeStoryMedia(mediaType, mediaURL string) (storyMediaInput, error) {
 		MediaType: strings.TrimSpace(mediaType),
 		MediaURL:  strings.TrimSpace(mediaURL),
 	}
-	if media.MediaType == "" || media.MediaURL == "" {
+	if media.MediaURL == "" {
 		return storyMediaInput{}, nil
+	}
+	if media.MediaType == "" {
+		inferredType, err := inferStoryMediaType(media.MediaURL)
+		if err != nil {
+			return storyMediaInput{}, err
+		}
+		media.MediaType = inferredType
 	}
 	switch media.MediaType {
 	case "youtube":
@@ -907,11 +914,42 @@ func normalizeStoryMedia(mediaType, mediaURL string) (storyMediaInput, error) {
 			return storyMediaInput{}, err
 		}
 		media.MediaURL = normalized
-	case "local_audio", "local_video":
+	case "local":
 	default:
 		return storyMediaInput{}, errors.New("invalid story media type")
 	}
 	return media, nil
+}
+
+func inferStoryMediaType(raw string) (string, error) {
+	trimmed := strings.TrimSpace(raw)
+	if trimmed == "" {
+		return "", nil
+	}
+	if strings.HasPrefix(strings.ToLower(trimmed), "http://") || strings.HasPrefix(strings.ToLower(trimmed), "https://") {
+		if _, err := normalizeYouTubeEmbedURL(trimmed); err != nil {
+			return "", err
+		}
+		return "youtube", nil
+	}
+
+	return "local", nil
+}
+
+func storyMediaPathExt(raw string) string {
+	trimmed := strings.TrimSpace(raw)
+	if trimmed == "" {
+		return ""
+	}
+	if idx := strings.IndexAny(trimmed, "?#"); idx >= 0 {
+		trimmed = trimmed[:idx]
+	}
+	lastSlash := strings.LastIndexAny(trimmed, `/\`)
+	lastDot := strings.LastIndex(trimmed, ".")
+	if lastDot <= lastSlash {
+		return ""
+	}
+	return trimmed[lastDot:]
 }
 
 func normalizeYouTubeEmbedURL(raw string) (string, error) {

@@ -731,7 +731,7 @@ func TestAPICreateStory_Success(t *testing.T) {
 
 func TestAPICreateStory_SubtitleImportWithYouTubeMedia(t *testing.T) {
 	db := testDB(t)
-	body := `{"title":"Timed Story","content":"WEBVTT\n\n00:00:01.250 --> 00:00:03.000\nHello there.\n\n00:00:04.500 --> 00:00:06.000\n今日は庭園に行く。\n","mediaType":"youtube","mediaUrl":"https://youtu.be/abc123?t=15"}`
+	body := `{"title":"Timed Story","content":"WEBVTT\n\n00:00:01.250 --> 00:00:03.000\nHello there.\n\n00:00:04.500 --> 00:00:06.000\n今日は庭園に行く。\n","mediaUrl":"https://youtu.be/abc123?t=15"}`
 	req := httptest.NewRequest(http.MethodPost, "/api/stories", bytes.NewBufferString(body))
 	rec := httptest.NewRecorder()
 
@@ -763,7 +763,7 @@ func TestAPICreateStory_SubtitleImportWithYouTubeMedia(t *testing.T) {
 
 func TestAPICreateStory_AcceptsLocalMediaPath(t *testing.T) {
 	db := testDB(t)
-	body := `{"title":"Local Media Story","content":"今日は庭園に行きます。","mediaType":"local_video","mediaUrl":"D:\\media\\garden.mp4"}`
+	body := `{"title":"Local Media Story","content":"今日は庭園に行きます。","mediaUrl":"D:\\media\\garden.mp4"}`
 	req := httptest.NewRequest(http.MethodPost, "/api/stories", bytes.NewBufferString(body))
 	rec := httptest.NewRecorder()
 
@@ -776,10 +776,33 @@ func TestAPICreateStory_AcceptsLocalMediaPath(t *testing.T) {
 	if err := json.NewDecoder(rec.Body).Decode(&story); err != nil {
 		t.Fatal(err)
 	}
-	if story.MediaType != "local_video" {
-		t.Fatalf("mediaType: got %q, want local_video", story.MediaType)
+	if story.MediaType != "local" {
+		t.Fatalf("mediaType: got %q, want local", story.MediaType)
 	}
 	if story.MediaURL != `D:\media\garden.mp4` {
+		t.Fatalf("mediaUrl: got %q", story.MediaURL)
+	}
+}
+
+func TestAPICreateStory_AcceptsArbitraryLocalMediaPath(t *testing.T) {
+	db := testDB(t)
+	body := `{"title":"Loose Media Story","content":"今日は庭園に行きます。","mediaUrl":"D:\\media\\garden.txt"}`
+	req := httptest.NewRequest(http.MethodPost, "/api/stories", bytes.NewBufferString(body))
+	rec := httptest.NewRecorder()
+
+	apiCreateStory(db).ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusCreated {
+		t.Fatalf("status: got %d, want %d body=%q", rec.Code, http.StatusCreated, rec.Body.String())
+	}
+	var story storyJSON
+	if err := json.NewDecoder(rec.Body).Decode(&story); err != nil {
+		t.Fatal(err)
+	}
+	if story.MediaType != "local" {
+		t.Fatalf("mediaType: got %q, want local", story.MediaType)
+	}
+	if story.MediaURL != `D:\media\garden.txt` {
 		t.Fatalf("mediaUrl: got %q", story.MediaURL)
 	}
 }

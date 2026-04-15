@@ -131,15 +131,6 @@ func migrate(db *sql.DB) {
 			meta_json  TEXT     NOT NULL DEFAULT '{}',
 			created_at DATETIME NOT NULL DEFAULT (datetime('now'))
 		)`,
-		func(db *sql.DB) error {
-			return addColumnIfMissing(db, "stories", "media_type", `ALTER TABLE stories ADD COLUMN media_type TEXT NOT NULL DEFAULT ''`)
-		},
-		func(db *sql.DB) error {
-			return addColumnIfMissing(db, "stories", "media_url", `ALTER TABLE stories ADD COLUMN media_url TEXT`)
-		},
-		func(db *sql.DB) error {
-			return addColumnIfMissing(db, "story_sentences", "start_time_ms", `ALTER TABLE story_sentences ADD COLUMN start_time_ms INTEGER`)
-		},
 	}
 
 	var version int

@@ -21,7 +21,6 @@ const els = {
   empty: document.getElementById('stories-empty'),
   list: document.getElementById('stories-list'),
   storyContentInput: document.getElementById('story-content-input'),
-  storyMediaTypeInput: document.getElementById('story-media-type-input'),
   storyMediaUrlInput: document.getElementById('story-media-url-input'),
   storyTitleInput: document.getElementById('story-title-input'),
 };
@@ -82,7 +81,6 @@ function renderError() {
 function openAddModal() {
   els.storyTitleInput.value = '';
   els.storyContentInput.value = '';
-  els.storyMediaTypeInput.value = '';
   els.storyMediaUrlInput.value = '';
   els.addError.classList.add('hidden');
   els.addConfirmBtn.disabled = false;
@@ -107,7 +105,6 @@ async function confirmAdd() {
       body: JSON.stringify({
         title: els.storyTitleInput.value,
         content: els.storyContentInput.value,
-        mediaType: els.storyMediaTypeInput.value,
         mediaUrl: els.storyMediaUrlInput.value,
       }),
     });

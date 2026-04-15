@@ -598,13 +598,13 @@ func TestUpdateDrillSessionState_PreservesMatchingModeState(t *testing.T) {
 
 	selectedWordID := int64(11)
 	state := drillSessionState{
-		Round:               2,
-		DoneCount:           1,
-		MatchingPairsMode:   true,
-		Remaining:           []wordJSON{{ID: 11, Word: "猫"}, {ID: 12, Word: "犬"}},
-		MatchingRoundWords:  []wordJSON{{ID: 12, Word: "犬"}, {ID: 11, Word: "猫"}},
-		MatchingInfoWords:   []wordJSON{{ID: 11, Word: "猫", Meaning: "cat"}, {ID: 12, Word: "犬", Meaning: "dog"}},
-		MatchingRedoWordIDs: []int64{11},
+		Round:                2,
+		DoneCount:            1,
+		MatchingPairsMode:    true,
+		Remaining:            []wordJSON{{ID: 11, Word: "猫"}, {ID: 12, Word: "犬"}},
+		MatchingRoundWords:   []wordJSON{{ID: 12, Word: "犬"}, {ID: 11, Word: "猫"}},
+		MatchingInfoWords:    []wordJSON{{ID: 11, Word: "猫", Meaning: "cat"}, {ID: 12, Word: "犬", Meaning: "dog"}},
+		MatchingRedoWordIDs:  []int64{11},
 		MatchingSelectedWord: &selectedWordID,
 		MatchingMatchedPairs: map[string]int64{"12": 12},
 		MatchingCarryoverIDs: []int64{11},
@@ -1521,10 +1521,56 @@ func TestBuildStorySentencesFromSubtitle_VTT(t *testing.T) {
 	}
 }
 
+func TestParseStoryContent_DetectsJapaneseSubtitleFormats(t *testing.T) {
+	cases := []struct {
+		name         string
+		content      string
+		wantCount    int
+		wantFirstMS  int64
+		wantSecondMS int64
+		wantSecondJP string
+	}{
+		{
+			name:         "srt",
+			content:      "1\n00:00:01,250 --> 00:00:03,000\nおはよう。\n\n2\n00:00:04,500 --> 00:00:06,000\n今日は庭園に行く。\n",
+			wantCount:    2,
+			wantFirstMS:  1250,
+			wantSecondMS: 4500,
+			wantSecondJP: "今日は庭園に行く。",
+		},
+		{
+			name:         "vtt",
+			content:      "WEBVTT\n\n00:00:00.900 --> 00:00:02.100\nこんばんは。\n\n00:00:05.000 --> 00:00:06.500\n今日は庭園に行く。\n",
+			wantCount:    2,
+			wantFirstMS:  900,
+			wantSecondMS: 5000,
+			wantSecondJP: "今日は庭園に行く。",
+		},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			sentences := parseStoryContent(tc.content)
+			if len(sentences) != tc.wantCount {
+				t.Fatalf("sentence count: got %d, want %d", len(sentences), tc.wantCount)
+			}
+			if sentences[0].OrigLang != "jp" || sentences[0].StartTimeMS == nil || *sentences[0].StartTimeMS != tc.wantFirstMS {
+				t.Fatalf("sentence 1: got %+v", sentences[0])
+			}
+			if sentences[1].OrigLang != "jp" || sentences[1].JPText == nil || *sentences[1].JPText != tc.wantSecondJP {
+				t.Fatalf("sentence 2 jp text: got %+v", sentences[1])
+			}
+			if sentences[1].StartTimeMS == nil || *sentences[1].StartTimeMS != tc.wantSecondMS {
+				t.Fatalf("sentence 2 startTimeMs: got %+v", sentences[1].StartTimeMS)
+			}
+		})
+	}
+}
+
 func TestNormalizeYouTubeEmbedURL(t *testing.T) {
 	cases := map[string]string{
-		"https://www.youtube.com/watch?v=abc123":           "https://www.youtube.com/embed/abc123?enablejsapi=1",
-		"https://youtu.be/xyz789?t=30":                     "https://www.youtube.com/embed/xyz789?enablejsapi=1",
+		"https://www.youtube.com/watch?v=abc123":          "https://www.youtube.com/embed/abc123?enablejsapi=1",
+		"https://youtu.be/xyz789?t=30":                    "https://www.youtube.com/embed/xyz789?enablejsapi=1",
 		"https://www.youtube.com/embed/embed123?start=10": "https://www.youtube.com/embed/embed123?enablejsapi=1",
 	}
 	for input, want := range cases {
@@ -1535,6 +1581,62 @@ func TestNormalizeYouTubeEmbedURL(t *testing.T) {
 		if got != want {
 			t.Fatalf("normalizeYouTubeEmbedURL(%q): got %q, want %q", input, got, want)
 		}
+	}
+}
+
+func TestNormalizeStoryMedia_InfersTypeFromURLOrPath(t *testing.T) {
+	cases := []struct {
+		name      string
+		mediaURL  string
+		wantType  string
+		wantURL   string
+		wantError string
+	}{
+		{
+			name:     "youtube url",
+			mediaURL: "https://youtu.be/xyz789?t=30",
+			wantType: "youtube",
+			wantURL:  "https://www.youtube.com/embed/xyz789?enablejsapi=1",
+		},
+		{
+			name:     "local audio path",
+			mediaURL: `D:\audio\story.m4a`,
+			wantType: "local",
+			wantURL:  `D:\audio\story.m4a`,
+		},
+		{
+			name:     "local video path",
+			mediaURL: `/tmp/story.webm`,
+			wantType: "local",
+			wantURL:  `/tmp/story.webm`,
+		},
+		{
+			name:     "arbitrary local path",
+			mediaURL: `/tmp/story.txt`,
+			wantType: "local",
+			wantURL:  `/tmp/story.txt`,
+		},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			got, err := normalizeStoryMedia("", tc.mediaURL)
+			if tc.wantError != "" {
+				if err == nil || err.Error() != tc.wantError {
+					t.Fatalf("normalizeStoryMedia error: got %v, want %q", err, tc.wantError)
+				}
+				return
+			}
+			if err != nil {
+				t.Fatalf("normalizeStoryMedia: %v", err)
+			}
+			if got.MediaType != tc.wantType {
+				t.Fatalf("media type: got %q, want %q", got.MediaType, tc.wantType)
+			}
+			if got.MediaURL != tc.wantURL {
+				t.Fatalf("media url: got %q, want %q", got.MediaURL, tc.wantURL)
+			}
+		})
 	}
 }
 

@@ -163,16 +163,10 @@
 }
 
 .story-add-help {
-  margin: -0.15rem 0 0;
+  margin: -0.15rem 0 -0.1rem;
   color: #7b8cb8;
   font-size: 0.82rem;
   line-height: 1.5;
-}
-
-.story-add-media-grid {
-  display: grid;
-  gap: 1rem;
-  grid-template-columns: minmax(0, 220px) minmax(0, 1fr);
 }
 
 #story-title-input {
@@ -181,12 +175,18 @@
   width: 100%;
 }
 
+#story-media-url-input {
+  font-size: 0.9rem;
+  padding: 0.55rem 0.6rem;
+  width: 100%;
+}
+
 #story-content-input {
   font-size: 0.95rem;
   line-height: 1.7;
   padding: 0.5rem 0.6rem;
   width: 100%;
-  min-height: 20rem;
+  min-height: 13rem;
   resize: vertical;
 }
 
@@ -201,9 +201,5 @@
     align-items: flex-start;
     flex-direction: column;
     gap: 0.3rem;
-  }
-
-  .story-add-media-grid {
-    grid-template-columns: 1fr;
   }
 }

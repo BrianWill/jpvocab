@@ -549,8 +549,8 @@
 .lex-tooltip.story-word-tooltip {
   white-space: normal;
   width: auto;
-  max-width: 440px;
-  min-width: 220px;
+  max-width: 560px;
+  min-width: 320px;
   padding: 0.6rem 0.8rem;
 }
 

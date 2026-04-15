@@ -920,15 +920,13 @@ export function renderWordTooltipKanji(container, word) {
   if (!word.kanjiData || word.kanjiData.length === 0) return;
   word.kanjiData.forEach(entry => {
     if (!entry.character) return;
-    const isOn = /[\u30A0-\u30FF]/.test(entry.reading);
     const div = document.createElement('div');
     div.className = 'kanji-entry';
     div.innerHTML =
-      '<div class="kanji-char">' + entry.character + '</div>' +
       '<div class="kanji-detail">' +
-        '<div class="kanji-readings"><span class="kanji-' + (isOn ? 'on' : 'kun') + '">' + entry.reading + '</span></div>' +
         '<div class="kanji-meanings">' + (entry.meanings || []).join(', ') + '</div>' +
-      '</div>';
+      '</div>' +
+      '<div class="kanji-char">' + entry.character + '</div>';
     container.appendChild(div);
   });
 }

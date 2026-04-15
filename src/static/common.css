@@ -169,9 +169,90 @@ body {
 .word-tooltip {
   padding: 0.6rem 0.8rem;
   width: auto;
-  min-width: 220px;
-  max-width: 420px;
+  min-width: 320px;
+  max-width: 560px;
   z-index: 120;
+}
+
+.word-tooltip .last-word-grid,
+.story-word-tooltip .last-word-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 0.55rem;
+}
+
+.word-tooltip .last-word-row,
+.story-word-tooltip .last-word-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 0.95fr);
+  gap: 0.9rem 1.25rem;
+  align-items: start;
+}
+
+.word-tooltip .last-word-row-image,
+.word-tooltip .last-word-row-example,
+.story-word-tooltip .last-word-row-image {
+  display: block;
+}
+
+.story-word-tooltip .last-word-row-example {
+  display: block;
+}
+
+.word-tooltip .last-word-row-word,
+.story-word-tooltip .last-word-row-word {
+  min-height: 0;
+  align-items: end;
+}
+
+.word-tooltip .last-word-cell,
+.story-word-tooltip .last-word-cell {
+  min-width: 0;
+}
+
+.word-tooltip .last-word-cell-left,
+.story-word-tooltip .last-word-cell-left {
+  text-align: left;
+}
+
+.word-tooltip .last-word-cell-right,
+.story-word-tooltip .last-word-cell-right {
+  text-align: right;
+  display: flex;
+  justify-content: flex-end;
+}
+
+.word-tooltip .last-word-cell-full,
+.story-word-tooltip .last-word-cell-full {
+  width: 100%;
+  display: flex;
+  justify-content: flex-start;
+}
+
+.word-tooltip .last-word-cell-word,
+.story-word-tooltip .last-word-cell-word {
+  display: flex;
+  align-items: flex-end;
+  align-self: end;
+}
+
+.word-tooltip .last-word-image,
+.story-word-tooltip .last-word-image {
+  display: block;
+  width: auto;
+  max-width: min(100%, 18rem);
+  max-height: 12rem;
+  height: auto;
+  border-radius: 4px;
+  object-fit: contain;
+}
+
+.word-tooltip .last-kanji-info,
+.story-word-tooltip .last-kanji-info {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  width: 100%;
 }
 
 .tooltip-cols {
@@ -202,10 +283,24 @@ body {
   margin-bottom: 0.45rem;
 }
 
+.word-tooltip .tooltip-word,
+.story-word-tooltip .tooltip-word {
+  font-size: 1.6rem;
+  margin-bottom: 0;
+}
+
 .tooltip-reading {
   font-size: 0.85rem;
   color: #a6adc8;
   margin-bottom: 0.35rem;
+}
+
+.word-tooltip .tooltip-reading,
+.story-word-tooltip .tooltip-reading {
+  font-size: 1rem;
+  line-height: 1.25;
+  color: #b4befe;
+  margin-bottom: 0;
 }
 
 .tooltip-pos {
@@ -216,11 +311,26 @@ body {
   margin-bottom: 0.3rem;
 }
 
+.word-tooltip .tooltip-pos,
+.story-word-tooltip .tooltip-pos {
+  font-size: 0.76rem;
+  line-height: 1.2;
+  letter-spacing: 0.07em;
+  color: #7f849c;
+  margin-bottom: 0;
+}
+
 .tooltip-meaning {
   font-size: 0.9rem;
   font-weight: 600;
   color: #cdd6f4;
   margin-bottom: 0.5rem;
+}
+
+.word-tooltip .tooltip-meaning,
+.story-word-tooltip .tooltip-meaning {
+  font-size: 1.05rem;
+  margin-bottom: 0;
 }
 
 .tooltip-example {
@@ -229,9 +339,28 @@ body {
   line-height: 1.4;
 }
 
+.word-tooltip .tooltip-example,
+.story-word-tooltip .tooltip-example {
+  font-size: 0.95rem;
+}
+
+.word-tooltip .tooltip-example,
+.word-tooltip .tooltip-example-en,
+.story-word-tooltip .tooltip-example,
+.story-word-tooltip .tooltip-example-en {
+  display: inline;
+}
+
 .tooltip-example-en {
   font-style: italic;
   color: #6c7086;
+}
+
+.word-tooltip .tooltip-example-en,
+.story-word-tooltip .tooltip-example-en {
+  font-size: 0.9rem;
+  text-align: left;
+  margin-left: 0.5rem;
 }
 
 .word-tooltip-kanji {
@@ -245,10 +374,29 @@ body {
 
 .word-tooltip-kanji:empty { display: none; }
 
+.word-tooltip .word-tooltip-kanji,
+.word-tooltip .last-kanji-info,
+.story-word-tooltip .word-tooltip-kanji,
+.story-word-tooltip .last-kanji-info {
+  gap: 0.45rem;
+  width: auto;
+  max-width: 100%;
+  align-items: flex-end;
+  border-left: none;
+  padding-left: 0;
+}
+
 .word-tooltip-kanji .kanji-entry {
   display: flex;
   gap: 0.6rem;
   align-items: flex-start;
+}
+
+.word-tooltip .kanji-entry,
+.story-word-tooltip .kanji-entry {
+  width: auto;
+  justify-content: flex-end;
+  gap: 1.4rem;
 }
 
 .word-tooltip-kanji .kanji-char {
@@ -270,6 +418,18 @@ body {
   font-size: 0.62rem;
   color: #7f849c;
   line-height: 1.35;
+}
+
+.word-tooltip .kanji-detail,
+.story-word-tooltip .kanji-detail {
+  align-items: flex-end;
+}
+
+.word-tooltip .kanji-meanings,
+.story-word-tooltip .kanji-meanings {
+  font-size: 0.68rem;
+  line-height: 1.4;
+  text-align: right;
 }
 
 /* --- Number stepper --- */

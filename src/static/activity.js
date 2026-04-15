@@ -1,4 +1,4 @@
-import { populateWordTooltip, positionAnchoredWordTooltip, playJapaneseText, WORD_TTS_RATE } from './common.js';
+import { populateWordTooltip, playJapaneseText, WORD_TTS_RATE } from './common.js';
 import { escapeHtml } from './html-utils.js';
 import { pluralize } from './format-utils.js';
 import { renderReading } from './lexicon-utils.js';
@@ -316,27 +316,38 @@ els.dayModalCloseBtn.addEventListener('click', closeDayModal);
 
 // ── Tooltip ───────────────────────────────────────────────────────────────────
 
-function showWordTooltip(item) {
+function showWordTooltip(item, event) {
   if (!item.dataset.wordInfo) return;
   const data = JSON.parse(item.dataset.wordInfo);
   populateWordTooltip(els.wordTooltip, data, renderReading);
-  positionWordTooltip(item);
+  positionWordTooltip(event);
   els.wordTooltip.classList.add('visible');
 }
 
-function positionWordTooltip(item) {
-  const itemRect = item.getBoundingClientRect();
-  const modalRect = els.dayModal.getBoundingClientRect();
-  const overlap = 162;
-  positionAnchoredWordTooltip(els.wordTooltip, {
-    anchorRect: itemRect,
-    left: modalRect.right - overlap,
-  });
+function positionWordTooltip(event) {
+  if (!event) return;
+  const pad = 8;
+  const w = els.wordTooltip.offsetWidth;
+  const h = els.wordTooltip.offsetHeight;
+  const vw = window.innerWidth;
+  const vh = window.innerHeight;
+  let left = event.clientX + 14;
+  if (left + w > vw - pad) left = vw - w - pad;
+  let top = event.clientY + 18;
+  top = Math.max(pad, Math.min(top, vh - h - pad));
+  els.wordTooltip.style.left = left + 'px';
+  els.wordTooltip.style.top = top + 'px';
 }
 
 document.addEventListener('mouseover', e => {
   const wordItem = e.target.closest('.day-word-item[data-word-info]');
-  if (wordItem) showWordTooltip(wordItem);
+  if (wordItem) showWordTooltip(wordItem, e);
+});
+
+document.addEventListener('mousemove', e => {
+  const wordItem = e.target.closest('.day-word-item[data-word-info]');
+  if (!wordItem || !els.wordTooltip.classList.contains('visible')) return;
+  positionWordTooltip(e);
 });
 
 document.addEventListener('mouseout', e => {

@@ -216,53 +216,89 @@
   padding: 1.5rem 2rem 0;
   flex-shrink: 0;
 }
-.last-word-cols {
-  display: flex;
-  align-items: flex-start;
-  gap: 1.5rem;
-}
-.last-word-main {
-  flex: 1;
+.last-word-grid {
   display: flex;
   flex-direction: column;
-  gap: 0.4rem;
+  gap: 0.55rem;
 }
-.last-word-right {
-  flex: 1;
+.last-word-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 0.95fr);
+  gap: 0.9rem 1.25rem;
+  align-items: start;
+}
+.last-word-row-word {
+  min-height: 4.75rem;
+  align-items: end;
+}
+.last-word-card .last-word-row-word {
+  min-height: 6.5rem;
+}
+.last-word-row-example {
+  display: block;
+}
+.last-word-cell {
+  min-width: 0;
+}
+.last-word-cell-left {
+  text-align: left;
+}
+.last-word-cell-right {
+  text-align: right;
+  display: flex;
+  justify-content: flex-end;
+}
+.last-word-cell-word {
+  display: flex;
+  align-items: flex-end;
+  align-self: end;
 }
 .last-word-card .tooltip-word.knew { color: #a6e3a1; }
 .last-word-card .tooltip-word.missed { color: #f38ba8; }
-.last-word-card .tooltip-word { font-size: 1.4rem; cursor: pointer; }
+.last-word-card .tooltip-word { font-size: 1.6rem; cursor: pointer; }
 .last-word-card .tooltip-word:hover { filter: brightness(1.25); }
 .word-tooltip .tooltip-reading,
 .last-word-card .tooltip-reading { font-size: 1rem; }
 .word-tooltip .tooltip-reading { line-height: 1.2; }
-.last-word-card .tooltip-pos { font-size: 0.75rem; padding-top: 0.4rem; }
+.last-word-card .tooltip-pos {
+  font-size: 0.76rem;
+  line-height: 1.2;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  color: #7f849c;
+}
 .last-word-card .tooltip-meaning { font-size: 1.05rem; }
-.last-word-card .tooltip-example { font-size: 0.95rem; padding-top: 0.6rem; cursor: pointer; }
+.last-word-card .tooltip-example { font-size: 0.95rem; cursor: pointer; }
+.last-word-card .tooltip-example,
+.last-word-card .tooltip-example-en { display: inline; }
 .last-word-card .tooltip-example:hover { color: #7f849c; }
-.last-word-card .tooltip-example-en { font-size: 0.9rem; cursor: pointer; }
+.last-word-card .tooltip-example-en {
+  font-size: 0.9rem;
+  cursor: pointer;
+  text-align: left;
+  margin-left: 0.5rem;
+}
 .last-word-card .tooltip-example-en:hover { color: #a07060; }
 
 .last-word-image {
   display: block;
-  width: 100%;
+  width: auto;
+  max-width: min(100%, 15.5rem);
+  max-height: 15.5rem;
   height: auto;
-  margin-top: 0.75rem;
   border-radius: 4px;
+  object-fit: contain;
 }
 
 .last-kanji-info {
   display: flex;
   flex-direction: column;
-  align-items: center;
-  gap: 0.7rem;
-  border-left: 1px solid #313244;
-  padding-left: 1.5rem;
-  flex: 1;
+  align-items: flex-end;
+  width: 100%;
 }
-.last-word-card .last-kanji-info:empty {
-  border-left-color: transparent;
+.last-word-kanji-list {
+  width: auto;
+  max-width: 100%;
 }
 
 .matching-area {
@@ -299,6 +335,10 @@
   letter-spacing: 0.08em;
 }
 
+.matching-column:first-child .matching-column-title {
+  text-align: right;
+}
+
 .matching-list {
   display: flex;
   flex-direction: column;
@@ -330,6 +370,7 @@
   padding: 0.9rem 1rem;
   font-size: 1.35rem;
   font-weight: 700;
+  text-align: right;
 }
 
 .matching-word-row.selected {
@@ -415,7 +456,39 @@
   font-size: 1rem;
   line-height: 1.25;
   color: #b4befe;
-  text-align: right;
+  text-align: left;
+  padding-top: 0.15rem;
+}
+
+.matching-info-reveal {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.2fr);
+  gap: 0.75rem 1rem;
+  padding-top: 0.45rem;
+  align-items: start;
+}
+
+.matching-info-reveal-col {
+  min-width: 0;
+}
+
+.matching-info-reveal-col-reading {
+  display: flex;
+  align-items: flex-start;
+}
+
+.matching-info-reveal-col-kanji {
+  display: flex;
+  justify-content: flex-end;
+  align-items: flex-start;
+}
+
+.matching-info-kanji {
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+  width: auto;
+  align-items: flex-end;
 }
 
 .matching-info-pos {
@@ -446,9 +519,10 @@
 }
 .kanji-entry {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   gap: 1.4rem;
-  width: 100%;
+  width: auto;
+  justify-content: flex-end;
 }
 .kanji-char {
   font-size: 1.4rem;
@@ -460,17 +534,19 @@
 .kanji-detail {
   display: flex;
   flex-direction: column;
-  align-items: flex-start;
+  align-items: flex-end;
   gap: 0.1rem;
 }
 .kanji-readings {
   font-size: 0.78rem;
   min-height: 1.1em;
+  line-height: 1.1;
 }
 .kanji-meanings {
   font-size: 0.68rem;
   color: #585b70;
   line-height: 1.4;
+  text-align: right;
 }
 
 .action-bar {

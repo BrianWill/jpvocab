@@ -1,4 +1,4 @@
-import { isTtsAutoplayEnabled, playWordAudio, positionAnchoredWordTooltip, renderWordTooltipKanji } from './common.js';
+import { isTtsAutoplayEnabled, playWordAudio, positionAnchoredWordTooltip } from './common.js';
 import { renderReading } from './lexicon-utils.js';
 import { formatRelativeTime } from './format-utils.js';
 import { isSessionComplete } from './drill-state.js';
@@ -97,10 +97,13 @@ function matchingWordStatus(state, wordId) {
 function renderMatchingDrill(els, state) {
   const matchedInfoIds = new Set(Object.values(state.matchingMatchedPairs || {}));
   const infoStatusById = new Map();
+  const matchedWordByInfoId = new Map();
   Object.entries(state.matchingMatchedPairs || {}).forEach(([wordId, infoId]) => {
     const numericWordId = parseInt(wordId, 10);
     const status = matchingWordStatus(state, numericWordId);
+    const matchedWord = state.matchingRoundWords.find(word => word.id === numericWordId) || null;
     infoStatusById.set(infoId, status);
+    if (matchedWord) matchedWordByInfoId.set(infoId, matchedWord);
   });
   els.matchingWordList.innerHTML = '';
   els.matchingInfoList.innerHTML = '';
@@ -113,7 +116,6 @@ function renderMatchingDrill(els, state) {
     button.className = 'matching-word-row matching-status-' + status;
     if (state.matchingSelectedWordId === word.id) button.classList.add('selected');
     if (isMatched) button.classList.add('locked');
-    button.disabled = isMatched;
     button.dataset.wordId = String(word.id);
     button.textContent = word.word;
     els.matchingWordList.appendChild(button);
@@ -123,6 +125,7 @@ function renderMatchingDrill(els, state) {
     const card = document.createElement('button');
     const isMatched = matchedInfoIds.has(word.id);
     const status = infoStatusById.get(word.id);
+    const matchedWord = matchedWordByInfoId.get(word.id);
     card.type = 'button';
     card.className = 'matching-info-card';
     if (status) card.classList.add('matching-status-' + status);
@@ -137,8 +140,64 @@ function renderMatchingDrill(els, state) {
       </div>
       ${imagePath ? `<img class="matching-info-image" src="/static/${imagePath}" alt="">` : ''}
     `;
+    if (matchedWord) card.appendChild(buildMatchingReveal(matchedWord));
     els.matchingInfoList.appendChild(card);
   });
+}
+
+function buildKanjiMeaningsList(word, extraClass = '') {
+  const wrap = document.createElement('div');
+  wrap.className = ('matching-info-kanji ' + extraClass).trim();
+
+  if (!Array.isArray(word.kanjiData) || word.kanjiData.length === 0) return wrap;
+
+  word.kanjiData.forEach(entry => {
+    const item = document.createElement('div');
+    item.className = 'kanji-entry';
+
+    const char = document.createElement('div');
+    char.className = 'kanji-char';
+    char.textContent = entry.character || '';
+
+    const detail = document.createElement('div');
+    detail.className = 'kanji-detail';
+
+    const meanings = document.createElement('div');
+    meanings.className = 'kanji-meanings';
+    meanings.textContent = Array.isArray(entry.meanings) ? entry.meanings.join(', ') : '';
+
+    detail.appendChild(meanings);
+    item.appendChild(detail);
+    item.appendChild(char);
+    wrap.appendChild(item);
+  });
+
+  return wrap;
+}
+
+function buildMatchingReveal(word) {
+  const wrap = document.createElement('div');
+  wrap.className = 'matching-info-reveal';
+  const readingCol = document.createElement('div');
+  readingCol.className = 'matching-info-reveal-col matching-info-reveal-col-reading';
+  const kanjiCol = document.createElement('div');
+  kanjiCol.className = 'matching-info-reveal-col matching-info-reveal-col-kanji';
+
+  if (word.reading) {
+    const reading = document.createElement('div');
+    reading.className = 'matching-info-reading';
+    reading.innerHTML = renderReading(word.reading, word.word, word.kanjiData, word.pitchAccent);
+    readingCol.appendChild(reading);
+  }
+
+  if (Array.isArray(word.kanjiData) && word.kanjiData.length > 0) {
+    kanjiCol.appendChild(buildKanjiMeaningsList(word));
+  }
+
+  wrap.appendChild(readingCol);
+  wrap.appendChild(kanjiCol);
+
+  return wrap;
 }
 
 function renderSidebar(els, state) {
@@ -178,7 +237,8 @@ function renderLastAnswered(els, state) {
   els.lastMeaning.textContent = answered.meaning;
   els.lastExampleJp.textContent = answered.exampleJp;
   els.lastExampleEn.textContent = answered.exampleEn;
-  renderWordTooltipKanji(els.lastKanjiInfo, answered);
+  els.lastKanjiInfo.innerHTML = '';
+  els.lastKanjiInfo.appendChild(buildKanjiMeaningsList(answered, 'last-word-kanji-list'));
   const imagePath = typeof answered.imagePath === 'string' ? answered.imagePath.trim() : '';
   if (imagePath) {
     els.lastWordImage.src = '/static/' + imagePath;

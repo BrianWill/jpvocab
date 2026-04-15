@@ -30,18 +30,40 @@
 </div>
 
 <!-- Floating tooltips -->
-<div class="tooltip word-tooltip" id="tooltip">
-  <div class="tooltip-cols">
-    <div class="tooltip-main">
-      <div class="tooltip-word" data-word-tooltip="word"></div>
-      <div class="tooltip-reading" data-word-tooltip="reading"></div>
-      <div class="tooltip-pos" data-word-tooltip="pos"></div>
-      <div class="tooltip-meaning" data-word-tooltip="meaning"></div>
-      <div class="tooltip-example" data-word-tooltip="example"></div>
-      <div class="tooltip-example-en" data-word-tooltip="example-en"></div>
-      <img class="tooltip-word-image" data-word-tooltip="image" alt="" style="display:none">
+<div class="tooltip word-tooltip drill-sidebar-tooltip" id="tooltip">
+  <div class="last-word-grid">
+    <div class="last-word-row last-word-row-word">
+      <div class="last-word-cell last-word-cell-left last-word-cell-word">
+        <div class="tooltip-word" data-word-tooltip="word"></div>
+      </div>
     </div>
-    <div class="last-kanji-info word-tooltip-kanji" data-word-tooltip="kanji"></div>
+    <div class="last-word-row">
+      <div class="last-word-cell last-word-cell-left">
+        <div class="tooltip-meaning" data-word-tooltip="meaning"></div>
+      </div>
+      <div class="last-word-cell last-word-cell-right">
+        <div class="tooltip-pos" data-word-tooltip="pos"></div>
+      </div>
+    </div>
+    <div class="last-word-row">
+      <div class="last-word-cell last-word-cell-left">
+        <div class="tooltip-reading" data-word-tooltip="reading"></div>
+      </div>
+      <div class="last-word-cell last-word-cell-right">
+        <div class="last-kanji-info" data-word-tooltip="kanji"></div>
+      </div>
+    </div>
+    <div class="last-word-row last-word-row-example">
+      <div class="last-word-cell last-word-cell-full">
+        <div class="tooltip-example" data-word-tooltip="example"></div>
+        <div class="tooltip-example-en" data-word-tooltip="example-en"></div>
+      </div>
+    </div>
+    <div class="last-word-row last-word-row-image">
+      <div class="last-word-cell last-word-cell-full">
+        <img class="last-word-image" data-word-tooltip="image" alt="" style="display:none">
+      </div>
+    </div>
   </div>
 </div>
 
@@ -82,18 +104,36 @@
   </div>
 
   <div class="last-word-card" id="last-word-card" style="display:none">
-    <div class="last-word-cols">
-      <div class="last-word-main">
-        <div id="last-word-jp" class="tooltip-word"></div>
-        <div id="last-reading" class="tooltip-reading"></div>
-        <div id="last-pos" class="tooltip-pos"></div>
-        <div id="last-meaning" class="tooltip-meaning"></div>
-        <div id="last-example-jp" class="tooltip-example"></div>
-        <div id="last-example-en" class="tooltip-example-en"></div>
+    <div class="last-word-grid">
+      <div class="last-word-row last-word-row-word">
+        <div class="last-word-cell last-word-cell-left last-word-cell-word">
+          <div id="last-word-jp" class="tooltip-word"></div>
+        </div>
+        <div class="last-word-cell last-word-cell-right">
+          <img id="last-word-image" class="last-word-image" alt="" style="display:none">
+        </div>
       </div>
-      <div class="last-word-right">
-        <div id="last-kanji-info" class="last-kanji-info"></div>
-        <img id="last-word-image" class="last-word-image" alt="" style="display:none">
+      <div class="last-word-row">
+        <div class="last-word-cell last-word-cell-left">
+          <div id="last-meaning" class="tooltip-meaning"></div>
+        </div>
+        <div class="last-word-cell last-word-cell-right">
+          <div id="last-pos" class="tooltip-pos"></div>
+        </div>
+      </div>
+      <div class="last-word-row">
+        <div class="last-word-cell last-word-cell-left">
+          <div id="last-reading" class="tooltip-reading"></div>
+        </div>
+        <div class="last-word-cell last-word-cell-right">
+          <div id="last-kanji-info" class="last-kanji-info"></div>
+        </div>
+      </div>
+      <div class="last-word-row last-word-row-example">
+        <div class="last-word-cell last-word-cell-full">
+          <div id="last-example-jp" class="tooltip-example"></div>
+          <div id="last-example-en" class="tooltip-example-en"></div>
+        </div>
       </div>
     </div>
   </div>

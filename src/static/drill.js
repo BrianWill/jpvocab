@@ -3,8 +3,8 @@ import {
   checkVoicevoxAvailable,
   DRILL_FILTER_KEYS,
   getVoicevoxSettings,
-  playTts,
   populateWordTooltip,
+  playTts,
   playWordAudio,
   playSentenceAudio,
 } from './common.js';
@@ -44,9 +44,6 @@ const state = createDrillState(DRILL_FILTER_KEYS);
 const DRILL_AUDIO_OPTIONS = { preferSynthesis: true, fallbackToBrowserTts: true };
 state.prefetchController = null;
 state.answerQueue = Promise.resolve();
-state.hoveredMatchingWordId = null;
-state.isPointerInMatchingWordList = false;
-state.matchingTooltipPointer = null;
 
 async function prefetchRoundAudio(remaining) {
   if (state.prefetchController) state.prefetchController.abort();
@@ -79,125 +76,12 @@ function getMatchingRoundWord(wordId) {
   return state.matchingRoundWords.find(word => word.id === wordId) || null;
 }
 
-function getSelectedMatchingWord() {
-  if (typeof state.matchingSelectedWordId !== 'number') return null;
-  return getMatchingRoundWord(state.matchingSelectedWordId);
-}
-
-function getHoveredMatchingWord() {
-  if (typeof state.hoveredMatchingWordId !== 'number') return null;
-  return getMatchingRoundWord(state.hoveredMatchingWordId);
-}
-
-function positionMatchingWordTooltip(clientX, clientY) {
-  const pad = 8;
-  const w = els.tip.offsetWidth;
-  const h = els.tip.offsetHeight;
-  const vw = window.innerWidth;
-  const vh = window.innerHeight;
-  let left = clientX + 14;
-  if (left + w > vw - pad) left = vw - w - pad;
-  let top = clientY + 18;
-  top = Math.max(pad, Math.min(top, vh - h - pad));
-  els.tip.style.left = left + 'px';
-  els.tip.style.top = top + 'px';
-}
-
-function showMatchingWordTooltip(event, word) {
-  if (!event || !word) {
-    els.tip.classList.remove('visible');
-    return;
-  }
-
-  state.matchingTooltipPointer = {
-    clientX: event.clientX,
-    clientY: event.clientY,
-  };
-
-  els.tip.querySelector('[data-word-tooltip="word"]').textContent = word.word || '';
-  els.tip.querySelector('[data-word-tooltip="reading"]').innerHTML =
-    renderReading(word.reading, word.word, word.kanjiData, word.pitchAccent);
-  els.tip.querySelector('[data-word-tooltip="pos"]').textContent = word.type || '';
-  els.tip.querySelector('[data-word-tooltip="meaning"]').textContent = '';
-  els.tip.querySelector('[data-word-tooltip="example"]').textContent = word.exampleJp;
-  els.tip.querySelector('[data-word-tooltip="example-en"]').textContent = '';
-  populateWordTooltipKanjiOnly(word);
-  const imgEl = els.tip.querySelector('[data-word-tooltip="image"]');
-  imgEl.removeAttribute('src');
-  imgEl.style.display = 'none';
-  els.tip.style.left = '-9999px';
-  els.tip.style.top = '-9999px';
-  els.tip.classList.add('visible');
-  positionMatchingWordTooltip(event.clientX, event.clientY);
-}
-
-function showHoveredMatchingWordTooltip() {
-  const word = getHoveredMatchingWord();
-  if (!word || !state.matchingTooltipPointer) {
-    els.tip.classList.remove('visible');
-    return;
-  }
-
-  showMatchingWordTooltip(state.matchingTooltipPointer, word);
-}
-
-function showSelectedMatchingWordTooltip() {
-  if (!state.matchingPairsMode) {
-    els.tip.classList.remove('visible');
-    return;
-  }
-
-  const word = getSelectedMatchingWord();
-  if (!word) {
-    els.tip.classList.remove('visible');
-    return;
-  }
-
-  if (!state.matchingTooltipPointer) {
-    els.tip.classList.remove('visible');
-    return;
-  }
-
-  els.tip.querySelector('[data-word-tooltip="word"]').textContent = word.word || '';
-  els.tip.querySelector('[data-word-tooltip="reading"]').innerHTML =
-    renderReading(word.reading, word.word, word.kanjiData, word.pitchAccent);
-  els.tip.querySelector('[data-word-tooltip="pos"]').textContent = word.type || '';
-  els.tip.querySelector('[data-word-tooltip="meaning"]').textContent = '';
-  els.tip.querySelector('[data-word-tooltip="example"]').textContent = word.exampleJp;
-  els.tip.querySelector('[data-word-tooltip="example-en"]').textContent = '';
-  populateWordTooltipKanjiOnly(word);
-  const imgEl = els.tip.querySelector('[data-word-tooltip="image"]');
-  imgEl.removeAttribute('src');
-  imgEl.style.display = 'none';
-  els.tip.style.left = '-9999px';
-  els.tip.style.top = '-9999px';
-  els.tip.classList.add('visible');
-  positionMatchingWordTooltip(state.matchingTooltipPointer.clientX, state.matchingTooltipPointer.clientY);
-}
-
 function renderDrillUI() {
   renderDrill(els, state);
-  if (state.matchingPairsMode && state.isPointerInMatchingWordList) {
-    showHoveredMatchingWordTooltip();
+  if (state.matchingPairsMode) {
+    els.tip.classList.remove('visible');
     return;
   }
-  showSelectedMatchingWordTooltip();
-}
-
-function populateWordTooltipKanjiOnly(word) {
-  const kanjiEl = els.tip.querySelector('[data-word-tooltip="kanji"]');
-  kanjiEl.innerHTML = '';
-  (word.kanjiData || []).forEach(entry => {
-    const div = document.createElement('div');
-    div.className = 'kanji-entry';
-    div.innerHTML =
-      '<div class="kanji-char">' + (entry.character || '') + '</div>' +
-      '<div class="kanji-detail">' +
-        '<div class="kanji-readings">' + (entry.reading || '') + '</div>' +
-        '<div class="kanji-meanings">' + ((entry.meanings || []).join(', ')) + '</div>' +
-      '</div>';
-    kanjiEl.appendChild(div);
-  });
 }
 
 function shuffle(items) {
@@ -448,63 +332,6 @@ els.matchingWordList.addEventListener('click', event => {
   renderDrillUI();
   queueSessionStateSave();
   if (word) playDrillWordAudio(word).catch(() => {});
-});
-
-els.matchingWordList.addEventListener('mouseover', event => {
-  const button = event.target.closest('[data-word-id]');
-  if (!button || !state.matchingPairsMode) return;
-  state.isPointerInMatchingWordList = true;
-  const wordId = parseInt(button.dataset.wordId, 10);
-  if (Number.isNaN(wordId)) return;
-  state.hoveredMatchingWordId = wordId;
-  showMatchingWordTooltip(event, getMatchingRoundWord(wordId));
-});
-
-els.matchingWordList.addEventListener('mousemove', event => {
-  if (!state.matchingPairsMode) return;
-  state.isPointerInMatchingWordList = true;
-  state.matchingTooltipPointer = {
-    clientX: event.clientX,
-    clientY: event.clientY,
-  };
-  const button = event.target.closest('[data-word-id]');
-  if (button) {
-    const wordId = parseInt(button.dataset.wordId, 10);
-    if (!Number.isNaN(wordId)) state.hoveredMatchingWordId = wordId;
-  }
-  if (!els.tip.classList.contains('visible')) return;
-  if (state.hoveredMatchingWordId !== null) {
-    showHoveredMatchingWordTooltip();
-  } else {
-    positionMatchingWordTooltip(event.clientX, event.clientY);
-  }
-});
-
-els.matchingWordList.addEventListener('mouseout', event => {
-  const button = event.target.closest('[data-word-id]');
-  if (!button || !state.matchingPairsMode) return;
-  if (!button.contains(event.relatedTarget)) showHoveredMatchingWordTooltip();
-});
-
-els.matchingWordList.addEventListener('mouseleave', () => {
-  if (!state.matchingPairsMode) return;
-  state.isPointerInMatchingWordList = false;
-  state.hoveredMatchingWordId = null;
-  showSelectedMatchingWordTooltip();
-});
-
-document.addEventListener('mousemove', event => {
-  if (!state.matchingPairsMode) return;
-  state.matchingTooltipPointer = {
-    clientX: event.clientX,
-    clientY: event.clientY,
-  };
-  if (event.target.closest?.('#matching-word-list')) return;
-  if (!getSelectedMatchingWord()) {
-    els.tip.classList.remove('visible');
-    return;
-  }
-  showSelectedMatchingWordTooltip();
 });
 
 els.matchingInfoList.addEventListener('click', event => {

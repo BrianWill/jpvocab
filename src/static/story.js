@@ -148,21 +148,20 @@ function buildWordTooltipHtml(word, sentenceEnglish, wordInfo, isNoted = isWordN
   const wordReading = wordInfo.reading
     ? renderReading(wordInfo.reading, wordDisplay, wordInfo.kanjiData, wordInfo.pitchAccent)
     : '';
+  const imagePath = typeof wordInfo.imagePath === 'string' ? wordInfo.imagePath.trim() : '';
 
   // Kanji panel
   const kanjiEntries = (wordInfo.kanjiData || []).map(entry => {
     if (!entry.character) return '';
-    const isOn = /[\u30A0-\u30FF]/.test(entry.reading);
     return '<div class="kanji-entry">' +
-      '<div class="kanji-char">' + esc(entry.character) + '</div>' +
       '<div class="kanji-detail">' +
-        '<div class="kanji-readings"><span class="kanji-' + (isOn ? 'on' : 'kun') + '">' + esc(entry.reading) + '</span></div>' +
         '<div class="kanji-meanings">' + esc((entry.meanings || []).join(', ')) + '</div>' +
       '</div>' +
+      '<div class="kanji-char">' + esc(entry.character) + '</div>' +
     '</div>';
   }).filter(Boolean).join('');
   const kanjiHtml = kanjiEntries
-    ? '<div class="word-tooltip-kanji">' + kanjiEntries + '</div>'
+    ? '<div class="last-kanji-info word-tooltip-kanji">' + kanjiEntries + '</div>'
     : '';
 
   let footerHtml;
@@ -178,14 +177,41 @@ function buildWordTooltipHtml(word, sentenceEnglish, wordInfo, isNoted = isWordN
   }
 
   return (sentenceEnglish ? '<div class="story-tip-sentence">' + escapeTooltipText(sentenceEnglish) + '</div>' : '') +
-    '<div class="tooltip-cols">' +
-      '<div class="tooltip-main">' +
-        '<div class="tooltip-word">' + esc(wordDisplay) + '</div>' +
-        (wordReading ? '<div class="tooltip-reading">' + wordReading + '</div>' : '') +
-        (wordInfo.type ? '<div class="tooltip-pos">' + esc(wordInfo.type) + '</div>' : '') +
-        (wordInfo.english ? '<div class="tooltip-meaning">' + esc(wordInfo.english) + '</div>' : '') +
+    '<div class="last-word-grid">' +
+      '<div class="last-word-row last-word-row-word">' +
+        '<div class="last-word-cell last-word-cell-left last-word-cell-word">' +
+          '<div class="tooltip-word">' + esc(wordDisplay) + '</div>' +
+        '</div>' +
       '</div>' +
-      kanjiHtml +
+      '<div class="last-word-row">' +
+        '<div class="last-word-cell last-word-cell-left">' +
+          (wordInfo.english ? '<div class="tooltip-meaning">' + esc(wordInfo.english) + '</div>' : '') +
+        '</div>' +
+        '<div class="last-word-cell last-word-cell-right">' +
+          (wordInfo.type ? '<div class="tooltip-pos">' + esc(wordInfo.type) + '</div>' : '') +
+        '</div>' +
+      '</div>' +
+      '<div class="last-word-row">' +
+        '<div class="last-word-cell last-word-cell-left">' +
+          (wordReading ? '<div class="tooltip-reading">' + wordReading + '</div>' : '') +
+        '</div>' +
+        '<div class="last-word-cell last-word-cell-right">' +
+          kanjiHtml +
+        '</div>' +
+      '</div>' +
+      '<div class="last-word-row">' +
+        '<div class="last-word-cell last-word-cell-left">' +
+          (wordInfo.exampleJp ? '<div class="tooltip-example">' + esc(wordInfo.exampleJp) + '</div>' : '') +
+        '</div>' +
+        '<div class="last-word-cell last-word-cell-right">' +
+          (wordInfo.exampleEn ? '<div class="tooltip-example-en">' + esc(wordInfo.exampleEn) + '</div>' : '') +
+        '</div>' +
+      '</div>' +
+      '<div class="last-word-row last-word-row-image">' +
+        '<div class="last-word-cell last-word-cell-full">' +
+          (imagePath ? '<img class="last-word-image" src="/static/' + esc(imagePath) + '" alt="">' : '') +
+        '</div>' +
+      '</div>' +
     '</div>' +
     footerHtml;
 }

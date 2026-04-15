@@ -6,7 +6,6 @@ import {
   playTts,
   playWordAudio,
   playSentenceAudio,
-  populateWordTooltip,
 } from './common.js';
 import { getSynthAudio } from './synth-cache.js';
 import {
@@ -66,6 +65,68 @@ function playDrillWordAudio(word, rate = 1) {
 
 function playDrillSentenceAudio(word, rate = 1) {
   return playSentenceAudio(word, rate, DRILL_AUDIO_OPTIONS);
+}
+
+function getMatchingRoundWord(wordId) {
+  return state.matchingRoundWords.find(word => word.id === wordId) || null;
+}
+
+function getSelectedMatchingWord() {
+  if (typeof state.matchingSelectedWordId !== 'number') return null;
+  return getMatchingRoundWord(state.matchingSelectedWordId);
+}
+
+function positionMatchingWordTooltip(clientX, clientY) {
+  const pad = 8;
+  const w = els.tip.offsetWidth;
+  const h = els.tip.offsetHeight;
+  const vw = window.innerWidth;
+  const vh = window.innerHeight;
+  let left = clientX + 14;
+  if (left + w > vw - pad) left = vw - w - pad;
+  let top = clientY + 18;
+  top = Math.max(pad, Math.min(top, vh - h - pad));
+  els.tip.style.left = left + 'px';
+  els.tip.style.top = top + 'px';
+}
+
+function showMatchingWordTooltip(event, word) {
+  if (!event || !word) {
+    els.tip.classList.remove('visible');
+    return;
+  }
+
+  els.tip.querySelector('[data-word-tooltip="word"]').textContent = word.word || '';
+  els.tip.querySelector('[data-word-tooltip="reading"]').innerHTML =
+    renderReading(word.reading, word.word, word.kanjiData, word.pitchAccent);
+  els.tip.querySelector('[data-word-tooltip="pos"]').textContent = word.type || '';
+  els.tip.querySelector('[data-word-tooltip="meaning"]').textContent = '';
+  els.tip.querySelector('[data-word-tooltip="example"]').textContent = word.exampleJp;
+  els.tip.querySelector('[data-word-tooltip="example-en"]').textContent = '';
+  populateWordTooltipKanjiOnly(word);
+  const imgEl = els.tip.querySelector('[data-word-tooltip="image"]');
+  imgEl.removeAttribute('src');
+  imgEl.style.display = 'none';
+  els.tip.style.left = '-9999px';
+  els.tip.style.top = '-9999px';
+  els.tip.classList.add('visible');
+  positionMatchingWordTooltip(event.clientX, event.clientY);
+}
+
+function populateWordTooltipKanjiOnly(word) {
+  const kanjiEl = els.tip.querySelector('[data-word-tooltip="kanji"]');
+  kanjiEl.innerHTML = '';
+  (word.kanjiData || []).forEach(entry => {
+    const div = document.createElement('div');
+    div.className = 'kanji-entry';
+    div.innerHTML =
+      '<div class="kanji-char">' + (entry.character || '') + '</div>' +
+      '<div class="kanji-detail">' +
+        '<div class="kanji-readings">' + (entry.reading || '') + '</div>' +
+        '<div class="kanji-meanings">' + ((entry.meanings || []).join(', ')) + '</div>' +
+      '</div>';
+    kanjiEl.appendChild(div);
+  });
 }
 
 function shuffle(items) {
@@ -320,8 +381,31 @@ els.matchingWordList.addEventListener('click', event => {
   if (!button || !state.matchingPairsMode) return;
   const wordId = parseInt(button.dataset.wordId, 10);
   if (Number.isNaN(wordId)) return;
+  const word = getMatchingRoundWord(wordId);
   Object.assign(state, selectMatchingWord(state, wordId));
   renderDrill(els, state);
+  if (word) playDrillWordAudio(word).catch(() => {});
+});
+
+els.matchingWordList.addEventListener('mouseover', event => {
+  const button = event.target.closest('[data-word-id]');
+  if (!button || !state.matchingPairsMode) return;
+  const wordId = parseInt(button.dataset.wordId, 10);
+  if (Number.isNaN(wordId)) return;
+  showMatchingWordTooltip(event, getMatchingRoundWord(wordId));
+});
+
+els.matchingWordList.addEventListener('mousemove', event => {
+  const button = event.target.closest('[data-word-id]');
+  if (!button || !state.matchingPairsMode) return;
+  if (!els.tip.classList.contains('visible')) return;
+  positionMatchingWordTooltip(event.clientX, event.clientY);
+});
+
+els.matchingWordList.addEventListener('mouseout', event => {
+  const button = event.target.closest('[data-word-id]');
+  if (!button || !state.matchingPairsMode) return;
+  if (!button.contains(event.relatedTarget)) els.tip.classList.remove('visible');
 });
 
 els.matchingInfoList.addEventListener('click', event => {
@@ -354,7 +438,17 @@ document.addEventListener('keydown', event => {
     closeRestartModal();
     return;
   }
-  if (state.matchingPairsMode) return;
+  if (state.matchingPairsMode) {
+    if (event.key === 'w' || event.key === 'W') {
+      const word = getSelectedMatchingWord();
+      if (word) playDrillWordAudio(word, 0.8);
+    }
+    if (event.key === 's' || event.key === 'S') {
+      const word = getSelectedMatchingWord();
+      if (word?.exampleJp) playDrillSentenceAudio(word, 0.8);
+    }
+    return;
+  }
   if (event.key === 'w' || event.key === 'W') {
     if (state.currentWord) playDrillWordAudio(state.currentWord, 0.8);
     return;

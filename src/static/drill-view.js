@@ -1,6 +1,5 @@
 import { isTtsAutoplayEnabled, playWordAudio, positionAnchoredWordTooltip, renderWordTooltipKanji } from './common.js';
 import { formatRelativeTime } from './format-utils.js';
-import { renderReading } from './lexicon-utils.js';
 import { isSessionComplete } from './drill-state.js';
 
 const DRILL_AUDIO_OPTIONS = { preferSynthesis: true, fallbackToBrowserTts: true };
@@ -135,10 +134,11 @@ function renderMatchingDrill(els, state) {
     if (isMatched) card.classList.add('locked');
     card.disabled = isMatched;
     card.dataset.infoId = String(word.id);
+    const imagePath = typeof word.imagePath === 'string' ? word.imagePath.trim() : '';
     card.innerHTML = `
       <div class="matching-info-meaning">${word.meaning || ''}</div>
+      ${imagePath ? `<img class="matching-info-image" src="/static/${imagePath}" alt="">` : ''}
       <div class="matching-info-meta">
-        <div class="matching-info-reading">${renderReading(word.reading, word.word, word.kanjiData, word.pitchAccent)}</div>
         <div class="matching-info-pos">${word.type || ''}</div>
       </div>
     `;

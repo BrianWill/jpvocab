@@ -425,6 +425,16 @@
   line-height: 1.45;
 }
 
+.matching-info-image {
+  display: block;
+  max-width: 100%;
+  max-height: calc(1.45em * 2);
+  width: auto;
+  height: auto;
+  border-radius: 6px;
+  object-fit: cover;
+}
+
 .matching-info-meta {
   display: flex;
   flex-direction: column;

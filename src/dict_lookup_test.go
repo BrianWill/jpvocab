@@ -27,7 +27,8 @@ func testRuntimeDictDB(t *testing.T) *sql.DB {
 			part_of_speech TEXT NOT NULL,
 			meaning TEXT NOT NULL,
 			glosses_json TEXT NOT NULL,
-			kanji_json TEXT NOT NULL
+			kanji_json TEXT NOT NULL,
+			pitch_accent INTEGER
 		)`,
 		`CREATE TABLE dict_kanji_lookup (
 			literal TEXT PRIMARY KEY,
@@ -49,9 +50,9 @@ func TestLookupDictionaryWordInDB_ReadsFlattenedTable(t *testing.T) {
 	db := testRuntimeDictDB(t)
 	if _, err := db.Exec(`
 		INSERT INTO dict_word_lookup (
-			lookup_text, word, reading, part_of_speech, meaning, glosses_json, kanji_json
-		) VALUES (?, ?, ?, ?, ?, ?, ?)
-	`, "食べる", "食べる", "たべる", "ichidan-verb", "to eat", `["to eat"]`, `[{"character":"食","reading":"た","readings":["く","た","は","ショク","ジキ"],"meanings":["eat","food"]}]`); err != nil {
+			lookup_text, word, reading, part_of_speech, meaning, glosses_json, kanji_json, pitch_accent
+		) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+	`, "食べる", "食べる", "たべる", "ichidan-verb", "to eat", `["to eat"]`, `[{"character":"食","reading":"た","readings":["く","た","は","ショク","ジキ"],"meanings":["eat","food"]}]`, 2); err != nil {
 		t.Fatal(err)
 	}
 
@@ -65,6 +66,9 @@ func TestLookupDictionaryWordInDB_ReadsFlattenedTable(t *testing.T) {
 	}
 	if info.Reading != "たべる" || info.PartOfSpeech != "ichidan-verb" || info.Meaning != "to eat" {
 		t.Fatalf("unexpected word info: %+v", info)
+	}
+	if info.PitchAccent == nil || *info.PitchAccent != 2 {
+		t.Fatalf("pitch accent: got %v, want 2", info.PitchAccent)
 	}
 	if len(info.Glosses) != 1 || info.Glosses[0] != "to eat" {
 		t.Fatalf("glosses: got %v", info.Glosses)

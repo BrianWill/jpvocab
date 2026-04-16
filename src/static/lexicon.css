@@ -5,7 +5,8 @@
 
 :root {
   --lexicon-cols: 4rem minmax(7rem, 20%) minmax(9.5rem, 14%) minmax(8rem, 10%) minmax(9.5rem, 0.55fr) 2.4rem 2.4rem 3.4rem 0.2rem;
-  --lexicon-row-height: 92px;
+  --lexicon-row-height: 96px;
+  --lexicon-item-height: 96px;
 }
 
 .table-wrap {
@@ -17,6 +18,7 @@
 .word-table {
   width: 100%;
   min-width: 1100px;
+  height: 100%;
   display: flex;
   flex-direction: column;
   min-height: 0;
@@ -54,10 +56,12 @@
   overflow-y: auto;
   min-height: 0;
   flex: 1;
+  overflow-anchor: none;
 }
 
 .word-table-body {
   position: relative;
+  min-height: 0;
 }
 
 .word-group {
@@ -67,7 +71,12 @@
   height: var(--lexicon-row-height);
   border-bottom: 1px solid #181825;
   overflow: hidden;
-  margin-top: 0.25rem;
+  margin-top: 0;
+  left: 0;
+  position: absolute;
+  right: 0;
+  top: 0;
+  overflow-anchor: none;
 }
 .word-group:hover { background: #181825; }
 .word-group.word-group--drop-target {

@@ -220,22 +220,24 @@ func enrichWordsKanjiDataEntries(db *sql.DB, words []wordJSON) error {
 func fillWordInfoFromDictionary(
 	word, reading, partOfSpeech, meaning, kanjiData string,
 	upsertKanjiFn func(character string, meanings, readings []string) (int64, error),
-) (string, string, string, string, error) {
+) (string, *int, string, string, string, error) {
+	var pitchAccent *int
 	if kanjiData == "" {
 		kanjiData = "[]"
 	}
 	if !dictIsReady() {
-		return reading, partOfSpeech, meaning, kanjiData, nil
+		return reading, pitchAccent, partOfSpeech, meaning, kanjiData, nil
 	}
 
 	info, err := lookupDictionaryWord(word)
 	if err != nil || info == nil {
-		return reading, partOfSpeech, meaning, kanjiData, nil
+		return reading, pitchAccent, partOfSpeech, meaning, kanjiData, nil
 	}
 
 	if strings.TrimSpace(reading) == "" {
 		reading = info.Reading
 	}
+	pitchAccent = info.PitchAccent
 	if strings.TrimSpace(partOfSpeech) == "" {
 		partOfSpeech = info.PartOfSpeech
 	}
@@ -243,14 +245,14 @@ func fillWordInfoFromDictionary(
 		meaning = info.Meaning
 	}
 	if kanjiData != "[]" {
-		return reading, partOfSpeech, meaning, kanjiData, nil
+		return reading, pitchAccent, partOfSpeech, meaning, kanjiData, nil
 	}
 
 	kd := make([]kanjiDataEntry, 0, len(info.Kanji))
 	for _, k := range info.Kanji {
 		kID, err := upsertKanjiFn(k.Character, k.Meanings, k.Readings)
 		if err != nil {
-			return reading, partOfSpeech, meaning, kanjiData, err
+			return reading, pitchAccent, partOfSpeech, meaning, kanjiData, err
 		}
 		kd = append(kd, kanjiDataEntry{
 			ID:        kID,
@@ -262,9 +264,9 @@ func fillWordInfoFromDictionary(
 	}
 	b, err := json.Marshal(kd)
 	if err != nil {
-		return reading, partOfSpeech, meaning, kanjiData, err
+		return reading, pitchAccent, partOfSpeech, meaning, kanjiData, err
 	}
-	return reading, partOfSpeech, meaning, string(b), nil
+	return reading, pitchAccent, partOfSpeech, meaning, string(b), nil
 }
 
 // insertWord adds a single word to the lexicon. Only the word itself is
@@ -279,7 +281,8 @@ func insertWord(db *sql.DB, word, reading, partOfSpeech, meaning, exampleJP, exa
 		kat = 1
 	}
 	var err error
-	reading, partOfSpeech, meaning, kanjiData, err = fillWordInfoFromDictionary(
+	var pitchAccent *int
+	reading, pitchAccent, partOfSpeech, meaning, kanjiData, err = fillWordInfoFromDictionary(
 		word, reading, partOfSpeech, meaning, kanjiData,
 		func(character string, meanings, readings []string) (int64, error) {
 			return upsertKanji(db, character, meanings, readings)
@@ -289,9 +292,9 @@ func insertWord(db *sql.DB, word, reading, partOfSpeech, meaning, exampleJP, exa
 		return err
 	}
 	_, err = db.Exec(`
-		INSERT INTO words (base_word, reading, part_of_speech, meaning, example_jp, example_en, drill_target, is_katakana, kanji_data)
-		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-	`, word, reading, partOfSpeech, meaning, exampleJP, exampleEN, drillTarget, kat, kanjiData)
+		INSERT INTO words (base_word, reading, pitch_accent, part_of_speech, meaning, example_jp, example_en, drill_target, is_katakana, kanji_data)
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+	`, word, reading, pitchAccent, partOfSpeech, meaning, exampleJP, exampleEN, drillTarget, kat, kanjiData)
 	return err
 }
 
@@ -308,7 +311,8 @@ func insertWordReturningID(db *sql.DB, word, reading, partOfSpeech, meaning, exa
 		kat = 1
 	}
 	var err error
-	reading, partOfSpeech, meaning, kanjiData, err = fillWordInfoFromDictionary(
+	var pitchAccent *int
+	reading, pitchAccent, partOfSpeech, meaning, kanjiData, err = fillWordInfoFromDictionary(
 		word, reading, partOfSpeech, meaning, kanjiData,
 		func(character string, meanings, readings []string) (int64, error) {
 			return upsertKanji(db, character, meanings, readings)
@@ -318,11 +322,12 @@ func insertWordReturningID(db *sql.DB, word, reading, partOfSpeech, meaning, exa
 		return 0, err
 	}
 	res, err := db.Exec(`
-		INSERT INTO words (base_word, reading, part_of_speech, meaning, example_jp, example_en, drill_target, is_katakana, kanji_data)
-		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+		INSERT INTO words (base_word, reading, pitch_accent, part_of_speech, meaning, example_jp, example_en, drill_target, is_katakana, kanji_data)
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 		ON CONFLICT(base_word) DO UPDATE SET
 			tracked        = 1,
 			reading        = CASE WHEN COALESCE(reading, '')        = '' THEN excluded.reading        ELSE reading        END,
+			pitch_accent   = CASE WHEN pitch_accent IS NULL         THEN excluded.pitch_accent   ELSE pitch_accent  END,
 			part_of_speech = CASE WHEN COALESCE(part_of_speech, '') = '' THEN excluded.part_of_speech ELSE part_of_speech END,
 			meaning        = CASE WHEN COALESCE(meaning, '')        = '' THEN excluded.meaning        ELSE meaning        END,
 			example_jp     = CASE WHEN COALESCE(example_jp, '')     = '' THEN excluded.example_jp     ELSE example_jp     END,
@@ -330,7 +335,7 @@ func insertWordReturningID(db *sql.DB, word, reading, partOfSpeech, meaning, exa
 			drill_target   = excluded.drill_target,
 			kanji_data     = CASE WHEN COALESCE(kanji_data, '[]')   = '[]' THEN excluded.kanji_data  ELSE kanji_data     END
 		WHERE tracked = 0
-	`, word, reading, partOfSpeech, meaning, exampleJP, exampleEN, drillTarget, kat, kanjiData)
+	`, word, reading, pitchAccent, partOfSpeech, meaning, exampleJP, exampleEN, drillTarget, kat, kanjiData)
 	if err != nil {
 		return 0, err
 	}
@@ -778,7 +783,7 @@ func insertWordsIfAbsent(tx *sql.Tx, baseWords []string) ([]string, error) {
 		if containsKatakana(word) {
 			kat = 1
 		}
-		reading, partOfSpeech, meaning, kanjiData, err := fillWordInfoFromDictionary(
+		reading, pitchAccent, partOfSpeech, meaning, kanjiData, err := fillWordInfoFromDictionary(
 			word, "", "", "", "",
 			func(character string, meanings, readings []string) (int64, error) {
 				return upsertKanjiTx(tx, character, meanings, readings)
@@ -788,9 +793,9 @@ func insertWordsIfAbsent(tx *sql.Tx, baseWords []string) ([]string, error) {
 			return nil, err
 		}
 		if _, err := tx.Exec(`
-			INSERT OR IGNORE INTO words (base_word, reading, part_of_speech, meaning, is_katakana, kanji_data, tracked)
-			VALUES (?, ?, ?, ?, ?, ?, 0)
-		`, word, reading, partOfSpeech, meaning, kat, kanjiData); err != nil {
+			INSERT OR IGNORE INTO words (base_word, reading, pitch_accent, part_of_speech, meaning, is_katakana, kanji_data, tracked)
+			VALUES (?, ?, ?, ?, ?, ?, ?, 0)
+		`, word, reading, pitchAccent, partOfSpeech, meaning, kat, kanjiData); err != nil {
 			return nil, err
 		}
 		accepted = append(accepted, word)

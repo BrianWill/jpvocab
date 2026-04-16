@@ -266,17 +266,22 @@ test('renderReading: mixed on+kun — 大好き: 大(on ダイ) + 好(kun す) +
     '<span class="reading-seg reading-kana">き</span>');
 });
 
-test('renderReading: reading field content is ignored when kanjiData present', () => {
-  // The reading param value does not affect the coloured output
-  const r1 = renderReading('だいすき', '大好き', [{ id: 1, reading: 'ダイ' }, { id: 2, reading: 'す' }]);
-  const r2 = renderReading('anything', '大好き', [{ id: 1, reading: 'ダイ' }, { id: 2, reading: 'す' }]);
-  assert.equal(r1, r2);
+test('renderReading: fills missing ateji reading before kana suffix — 流行る: はや + る', () => {
+  const result = renderReading('はやる', '流行る', [
+    { id: 1, reading: '' },
+    { id: 2, reading: '' },
+  ]);
+  assert.equal(result,
+    '<span class="reading-seg reading-kana">はや</span>' +
+    '<span class="reading-seg reading-kana">る</span>');
 });
 
-test('renderReading: extra kanji in word beyond kanjiData entries are skipped', () => {
-  // Only one kanji entry but word has two kanji
+test('renderReading: missing trailing kanji reading is filled from full reading', () => {
+  // Only one kanji entry but word has two kanji.
   const result = renderReading('てんき', '天気', [{ id: 1, reading: 'テン' }]);
-  assert.equal(result, '<span class="reading-seg reading-on">テン</span>');
+  assert.equal(result,
+    '<span class="reading-seg reading-on">テン</span>' +
+    '<span class="reading-seg reading-kana">き</span>');
 });
 
 test('renderReading: pitch accent zero marks all but first mora high', () => {

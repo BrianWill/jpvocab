@@ -29,30 +29,14 @@ export function renderReading(reading, word, kanjiData, pitchAccent) {
   const hasPitch = pitchAccent !== null && pitchAccent !== undefined;
 
   if (!hasPitch) {
-    // No pitch data — one span per kanji reading or kana buffer, existing behaviour.
+    // No pitch data - one span per kanji reading or kana buffer.
     if (!kanjiData || kanjiData.length === 0) return esc(reading);
-    const kanjiReadings = kanjiData.map(e => e?.reading);
-    let kanjiIdx = 0;
     let html = '';
-    let kanaBuffer = '';
-    function flushKana() {
-      if (!kanaBuffer) return;
-      html += '<span class="reading-seg reading-kana">' + esc(kanaBuffer) + '</span>';
-      kanaBuffer = '';
+    const { segments, fallbackPlain } = _readingSegments(reading, word, kanjiData);
+    if (fallbackPlain) return esc(reading);
+    for (const seg of segments) {
+      html += '<span class="reading-seg reading-' + seg.type + '">' + esc(seg.text) + '</span>';
     }
-    for (const ch of word) {
-      const cp = ch.codePointAt(0);
-      if (isKanji(ch)) {
-        flushKana();
-        if (kanjiIdx >= kanjiReadings.length) continue;
-        const r = kanjiReadings[kanjiIdx++];
-        if (!r) continue;
-        html += '<span class="reading-seg reading-' + (_isKatakana(r) ? 'on' : 'kun') + '">' + esc(r) + '</span>';
-      } else if ((cp >= 0x3040 && cp <= 0x309F) || (cp >= 0x30A0 && cp <= 0x30FF)) {
-        kanaBuffer += ch;
-      }
-    }
-    flushKana();
     return html || esc(reading);
   }
 
@@ -67,26 +51,11 @@ export function renderReading(reading, word, kanjiData, pitchAccent) {
     return i > 0 && i < pitchAccent;
   }
 
-  const segments = [];
+  let segments = [];
   if (!kanjiData || kanjiData.length === 0) {
     segments.push({ text: reading, type: 'kana' });
   } else {
-    const kanjiReadings = kanjiData.map(e => e?.reading);
-    let kanjiIdx = 0;
-    let kanaBuffer = '';
-    for (const ch of word) {
-      const cp = ch.codePointAt(0);
-      if (isKanji(ch)) {
-        if (kanaBuffer) { segments.push({ text: kanaBuffer, type: 'kana' }); kanaBuffer = ''; }
-        if (kanjiIdx < kanjiReadings.length) {
-          const r = kanjiReadings[kanjiIdx++];
-          if (r) segments.push({ text: r, type: _isKatakana(r) ? 'on' : 'kun' });
-        }
-      } else if ((cp >= 0x3040 && cp <= 0x309F) || (cp >= 0x30A0 && cp <= 0x30FF)) {
-        kanaBuffer += ch;
-      }
-    }
-    if (kanaBuffer) segments.push({ text: kanaBuffer, type: 'kana' });
+    segments = _readingSegments(reading, word, kanjiData).segments;
   }
 
   let moraIdx = 0;
@@ -113,6 +82,67 @@ export function renderReading(reading, word, kanjiData, pitchAccent) {
     html += '<span class="' + cls + '">' + inner + '</span>';
   }
   return html || esc(reading);
+}
+
+function _readingSegments(reading, word, kanjiData) {
+  const segments = [];
+  const kanjiReadings = kanjiData.map(e => e?.reading);
+  let kanjiIdx = 0;
+  let kanaBuffer = '';
+
+  function flushKana() {
+    if (!kanaBuffer) return;
+    segments.push({ text: kanaBuffer, type: 'kana' });
+    kanaBuffer = '';
+  }
+
+  for (const ch of word) {
+    const cp = ch.codePointAt(0);
+    if (isKanji(ch)) {
+      flushKana();
+      if (kanjiIdx >= kanjiReadings.length) continue;
+      const r = kanjiReadings[kanjiIdx++];
+      if (!r) continue;
+      segments.push({ text: r, type: _isKatakana(r) ? 'on' : 'kun' });
+    } else if (_isKanaCodePoint(cp)) {
+      kanaBuffer += ch;
+    }
+  }
+  flushKana();
+
+  return _fillMissingReadingSegments(reading, segments);
+}
+
+function _fillMissingReadingSegments(reading, segments) {
+  const segmentReading = segments.map(seg => seg.text).join('');
+  const normalizedReading = _katakanaToHiragana(reading);
+  const normalizedSegments = _katakanaToHiragana(segmentReading);
+  if (normalizedSegments === normalizedReading) return { segments, fallbackPlain: false };
+  if (!normalizedSegments) return { segments: [{ text: reading, type: 'kana' }], fallbackPlain: true };
+
+  const start = normalizedReading.indexOf(normalizedSegments);
+  if (start < 0) return { segments: [{ text: reading, type: 'kana' }], fallbackPlain: true };
+
+  const chars = Array.from(reading);
+  const filled = [];
+  const prefix = chars.slice(0, start).join('');
+  const suffix = chars.slice(start + Array.from(normalizedSegments).length).join('');
+  if (prefix) filled.push({ text: prefix, type: 'kana' });
+  filled.push(...segments);
+  if (suffix) filled.push({ text: suffix, type: 'kana' });
+  return { segments: filled, fallbackPlain: false };
+}
+
+function _isKanaCodePoint(cp) {
+  return (cp >= 0x3040 && cp <= 0x309F) || (cp >= 0x30A0 && cp <= 0x30FF);
+}
+
+function _katakanaToHiragana(s) {
+  return Array.from(s || '').map(ch => {
+    const cp = ch.codePointAt(0);
+    if (cp >= 0x30A1 && cp <= 0x30F6) return String.fromCodePoint(cp - 0x60);
+    return ch;
+  }).join('');
 }
 
 // Splits a hiragana/katakana reading string into morae.

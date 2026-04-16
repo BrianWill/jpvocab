@@ -6,7 +6,6 @@ import { computeVisibleRange, mergeWordPage, removeWordAtIndex } from './lexicon
 
 const LEXICON_AUDIO_OPTIONS = { preferSynthesis: true, fallbackToBrowserTts: true };
 const VIRTUAL_PAGE_SIZE = 80;
-const VIRTUAL_ITEM_HEIGHT = 118;
 const VIRTUAL_OVERSCAN = 6;
 
 const els = {
@@ -47,6 +46,15 @@ export const state = {
 };
 
 let activeDropGroup = null;
+let virtualItemHeight = 96;
+
+function readVirtualItemHeight() {
+  const cssValue = getComputedStyle(document.documentElement)
+    .getPropertyValue('--lexicon-item-height')
+    .trim();
+  const parsed = Number.parseFloat(cssValue);
+  virtualItemHeight = Number.isFinite(parsed) && parsed > 0 ? parsed : 96;
+}
 
 function currentSort() {
   const activeBtn = els.sortBtns.find(btn => btn.classList.contains('btn-sort--active'));
@@ -238,21 +246,26 @@ function renderPlaceholderGroup() {
   return group;
 }
 
+function positionWordGroup(group, index) {
+  group.dataset.index = index;
+  group.style.transform = 'translateY(' + (index * virtualItemHeight) + 'px)';
+  return group;
+}
+
 function buildWordGroup(w, index) {
   const group = document.createElement('div');
   group.className = 'word-group';
   group.dataset.wordId = w.id;
-  group.dataset.index = index;
   group._word = w;
   group.innerHTML = renderWordGroupHTML(w);
-  return group;
+  return positionWordGroup(group, index);
 }
 
 function visibleRange() {
   return computeVisibleRange({
     scrollTop: els.wordTableScroll.scrollTop,
     viewportHeight: els.wordTableScroll.clientHeight || 1,
-    itemHeight: VIRTUAL_ITEM_HEIGHT,
+    itemHeight: virtualItemHeight,
     totalItems: state.totalWords,
     overscan: VIRTUAL_OVERSCAN,
   });
@@ -319,11 +332,13 @@ function mutateCachedWord(wordId, mutateFn) {
 
 async function resetAndReload({ preserveScroll = false } = {}) {
   const priorScrollTop = preserveScroll ? els.wordTableScroll.scrollTop : 0;
+  const priorTotalWords = state.totalWords;
+  const priorActiveWords = state.activeWords;
   state.requestVersion++;
   state.loadedPages = new Set();
   state.pendingPages = new Map();
-  state.totalWords = 0;
-  state.activeWords = 0;
+  state.totalWords = preserveScroll ? priorTotalWords : 0;
+  state.activeWords = preserveScroll ? priorActiveWords : 0;
   state.wordSlots = [];
   syncCachedWords();
   updateWordCount();
@@ -339,13 +354,14 @@ export function getSortedWords() {
 
 export function renderTable() {
   const { start, end } = visibleRange();
-  els.wordTableTopSpacer.style.height = (start * VIRTUAL_ITEM_HEIGHT) + 'px';
-  els.wordTableBottomSpacer.style.height = (Math.max(0, state.totalWords - end) * VIRTUAL_ITEM_HEIGHT) + 'px';
+  els.wordTableTopSpacer.style.height = '0px';
+  els.wordTableBottomSpacer.style.height = '0px';
+  els.wordTableBody.style.height = (state.totalWords * virtualItemHeight) + 'px';
   els.wordTableBody.innerHTML = '';
   const frag = document.createDocumentFragment();
   for (let i = start; i < end; i++) {
     const word = state.wordSlots[i];
-    frag.appendChild(word ? buildWordGroup(word, i) : renderPlaceholderGroup());
+    frag.appendChild(word ? buildWordGroup(word, i) : positionWordGroup(renderPlaceholderGroup(), i));
   }
   els.wordTableBody.appendChild(frag);
 }
@@ -364,6 +380,7 @@ export function updateWordImagePath(wordId, imagePath) {
 }
 
 async function init() {
+  readVirtualItemHeight();
   const providers = await fetch('/api/providers').then(r => r.json());
   state.providers = providers.ai;
   state.imageSources = providers.image_sources;
@@ -377,6 +394,14 @@ els.wordTableScroll.addEventListener('scroll', () => {
   renderTable();
   ensureVisiblePagesLoaded();
 });
+if ('ResizeObserver' in window) {
+  const wordTableResizeObserver = new ResizeObserver(() => {
+    readVirtualItemHeight();
+    renderTable();
+    ensureVisiblePagesLoaded();
+  });
+  wordTableResizeObserver.observe(els.wordTableScroll);
+}
 els.wordTableBody.addEventListener('dragover', onWordTableDragOver);
 els.wordTableBody.addEventListener('dragleave', onWordTableDragLeave);
 els.wordTableBody.addEventListener('drop', onWordTableDrop);

@@ -18,6 +18,7 @@ type dictionaryKanjiInfo struct {
 type dictionaryWordInfo struct {
 	Word         string                `json:"word"`
 	Reading      string                `json:"reading"`
+	PitchAccent  *int                  `json:"pitch_accent,omitempty"`
 	PartOfSpeech string                `json:"part_of_speech"`
 	Meaning      string                `json:"meaning"`
 	Glosses      []string              `json:"glosses"`
@@ -101,17 +102,32 @@ func lookupWordFromTable(dictDB *sql.DB, word string) (*dictionaryWordInfo, erro
 	var glossesJSON string
 	var kanjiJSON string
 	err := dictDB.QueryRow(`
-		SELECT word, reading, part_of_speech, meaning, glosses_json, kanji_json
+		SELECT word, reading, pitch_accent, part_of_speech, meaning, glosses_json, kanji_json
 		FROM dict_word_lookup
 		WHERE lookup_text = ?
 	`, word).Scan(
 		&info.Word,
 		&info.Reading,
+		&info.PitchAccent,
 		&info.PartOfSpeech,
 		&info.Meaning,
 		&glossesJSON,
 		&kanjiJSON,
 	)
+	if isMissingPitchLookupColumnErr(err) {
+		err = dictDB.QueryRow(`
+			SELECT word, reading, part_of_speech, meaning, glosses_json, kanji_json
+			FROM dict_word_lookup
+			WHERE lookup_text = ?
+		`, word).Scan(
+			&info.Word,
+			&info.Reading,
+			&info.PartOfSpeech,
+			&info.Meaning,
+			&glossesJSON,
+			&kanjiJSON,
+		)
+	}
 	if err == sql.ErrNoRows {
 		return nil, nil
 	}
@@ -195,6 +211,10 @@ func isMissingWordLookupTableErr(err error) bool {
 
 func isMissingKanjiLookupTableErr(err error) bool {
 	return err != nil && strings.Contains(strings.ToLower(err.Error()), "no such table: dict_kanji_lookup")
+}
+
+func isMissingPitchLookupColumnErr(err error) bool {
+	return err != nil && strings.Contains(strings.ToLower(err.Error()), "no such column: pitch_accent")
 }
 
 func kanaToHiragana(s string) string {

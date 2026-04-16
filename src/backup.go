@@ -47,7 +47,21 @@ type backupListItem struct {
 type backupData map[string][]map[string]any
 
 func backupsDir() string {
-	return "backups"
+	return filepath.Join(backupRootDir(), "backups")
+}
+
+func backupRootDir() string {
+	wd, err := os.Getwd()
+	if err != nil {
+		return "."
+	}
+	if filepath.Base(wd) != "src" {
+		return "."
+	}
+	if _, err := os.Stat(filepath.Join(wd, "go.mod")); err != nil {
+		return "."
+	}
+	return filepath.Dir(wd)
 }
 
 func backupDirByID(id string) string {

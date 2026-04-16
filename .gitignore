@@ -99,4 +99,4 @@ dict/jdict.db-shm
 # -------------
 # Backups
 # -------------
-src/backups/
+backups/

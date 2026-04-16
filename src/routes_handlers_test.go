@@ -75,6 +75,24 @@ func setupBackupTestEnv(t *testing.T) {
 	}
 }
 
+func TestBackupsDir_WhenRunFromSrcUsesRepoRoot(t *testing.T) {
+	root := t.TempDir()
+	srcDir := filepath.Join(root, "src")
+	if err := os.MkdirAll(srcDir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(srcDir, "go.mod"), []byte("module example.test\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	t.Chdir(srcDir)
+
+	got := backupsDir()
+	want := filepath.Join(root, "backups")
+	if got != want {
+		t.Fatalf("backupsDir(): got %q, want %q", got, want)
+	}
+}
+
 func writeTestWordImageFile(t *testing.T, relPath string) {
 	t.Helper()
 	fullPath := filepath.Join("static", filepath.FromSlash(relPath))

@@ -2,7 +2,9 @@
 
 This file is random notes of possible features and bug fixes.
 
-- add pitch info back into the dictionary
+- in lexicon, do example sentences interfere with fixed height per word? how to display overflow?
+    - maybe japanese sentence above english sentence, and just cut off part of sentence that doesn't fit with elipses
+        - hovering the sentence shows the full sentence
 
 - separate generation of example sentences from generation of word info
 

@@ -1,7 +1,7 @@
 import { isTtsAutoplayEnabled, playWordAudio, positionAnchoredWordTooltip } from './common.js';
 import { renderReading } from './lexicon-utils.js';
 import { formatRelativeTime } from './format-utils.js';
-import { isSessionComplete } from './drill-state.js';
+import { isMatchingRoundComplete, isSessionComplete } from './drill-state.js';
 
 const DRILL_AUDIO_OPTIONS = { preferSynthesis: true, fallbackToBrowserTts: true };
 
@@ -24,6 +24,8 @@ export function createDrillElements() {
     lastWordJp: document.getElementById('last-word-jp'),
     matchingArea: document.getElementById('matching-area'),
     matchingInfoList: document.getElementById('matching-info-list'),
+    matchingNextRoundBtn: document.getElementById('matching-next-round-btn'),
+    matchingNextRow: document.getElementById('matching-next-row'),
     matchingWordList: document.getElementById('matching-word-list'),
     mainArea: document.querySelector('.main-area'),
     pageBody: document.querySelector('.page-body'),
@@ -298,6 +300,7 @@ export function renderDrill(els, state) {
 
   if (state.matchingPairsMode) {
     const sessionComplete = isSessionComplete(state);
+    const roundComplete = !sessionComplete && isMatchingRoundComplete(state);
     els.sidebar.style.display = 'none';
     els.tip.classList.remove('visible');
     els.lastWordCard.style.display = 'none';
@@ -307,6 +310,7 @@ export function renderDrill(els, state) {
     }
     els.matchingArea.classList.toggle('hidden', sessionComplete);
     els.matchingArea.style.display = sessionComplete ? 'none' : '';
+    els.matchingNextRow.style.display = roundComplete ? '' : 'none';
     els.mainArea.style.display = sessionComplete ? '' : 'none';
     if (sessionComplete) {
       renderPrompt(els, state);
@@ -319,6 +323,7 @@ export function renderDrill(els, state) {
 
   els.matchingArea.classList.add('hidden');
   els.matchingArea.style.display = 'none';
+  els.matchingNextRow.style.display = 'none';
   els.sidebar.style.display = '';
   els.mainArea.style.display = '';
   els.tip.classList.remove('visible');

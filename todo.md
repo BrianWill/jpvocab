@@ -2,6 +2,34 @@
 
 This file is random notes of possible features and bug fixes.
 
+- timestamp of added words is behind by 25 minutes?
+    wrong time zone?
+
+- in matching pairs mode, when last word of round is matched, the user should have to press a button to move to next round
+    - "Next round" button appears above the words and meaning lists to indicate this
+        - hotkey for the button is space
+        - should be true for last round as well: user hits button before they see the "Done" message
+
+- on loading the drill page, the new drill modal "words per round" value should match the saved setting
+
+- what happened to story media/url?
+    check history: did it somehow get reverted?
+
+- suru is stuck in lexicon and shows up highlighted in stories
+    - should stories not highlight inactive words of lexicon?
+    - better way to blacklist words from lexicon and story highlighting?
+
+- story noted words sidebar should just stay open? never collapse
+
+- in drill, should save drill state at end of drill and start of every round (if not already)
+
+- activity page: day's word list should not list the same word as both drilled (correct) and drilled (incorrect)
+    - each word should only appear once in each category
+- activity page word info tooltip: kanji meaning should be shown left of the kanji, not above
+    - refer to word info hover overlay in drill as reference
+
+- for matching pairs, if the words and meanings line up, shuffle the meanings again
+
 - in lexicon, do example sentences interfere with fixed height per word? how to display overflow?
     - maybe japanese sentence above english sentence, and just cut off part of sentence that doesn't fit with elipses
         - hovering the sentence shows the full sentence

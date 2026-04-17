@@ -2,6 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
   advanceAfterRevealState,
+  advanceMatchingRoundState,
   attemptMatchingPair,
   buildMatchingRoundState,
   DEFAULT_ROUND_SIZE,
@@ -200,7 +201,7 @@ test('attemptMatchingPair: first-try correct match increments done count and loc
     matchingCarryoverWordIds: [],
     matchingAttemptedWordIds: [],
     matchingFirstTryCorrectWordIds: [],
-  }, nounWord.id, words => words);
+  }, nounWord.id);
 
   assert.equal(result.firstAttempt, true);
   assert.equal(result.firstAttemptCorrect, true);
@@ -226,7 +227,7 @@ test('attemptMatchingPair: wrong first attempt marks carryover and keeps word un
     matchingCarryoverWordIds: [],
     matchingAttemptedWordIds: [],
     matchingFirstTryCorrectWordIds: [],
-  }, verbWord.id, words => words);
+  }, verbWord.id);
 
   assert.equal(result.firstAttempt, true);
   assert.equal(result.firstAttemptCorrect, false);
@@ -236,7 +237,7 @@ test('attemptMatchingPair: wrong first attempt marks carryover and keeps word un
   assert.equal(result.nextState.matchingSelectedWordId, nounWord.id);
 });
 
-test('attemptMatchingPair: later correct match after miss stays carried-over and finishes round', () => {
+test('attemptMatchingPair: later correct match after miss pauses before advancing round', () => {
   const result = attemptMatchingPair({
     matchingPairsMode: true,
     doneCount: 0,
@@ -252,16 +253,68 @@ test('attemptMatchingPair: later correct match after miss stays carried-over and
     matchingCarryoverWordIds: [nounWord.id],
     matchingAttemptedWordIds: [nounWord.id, verbWord.id],
     matchingFirstTryCorrectWordIds: [verbWord.id],
-  }, nounWord.id, words => [...words].reverse());
+  }, nounWord.id);
 
   assert.equal(result.firstAttempt, false);
-  assert.equal(result.nextState.round, 2);
-  assert.deepEqual(result.nextState.redo, []);
-  assert.deepEqual(result.nextState.matchingCarryoverWordIds, []);
-  assert.deepEqual(result.nextState.remaining, [nounWord, otherWord]);
-  assert.deepEqual(result.nextState.matchingRoundWords, [nounWord, otherWord]);
-  assert.deepEqual(result.nextState.matchingInfoWords, [otherWord, nounWord]);
+  assert.equal(result.nextState.round, 1);
+  assert.equal(result.nextState.matchingRoundAwaitingAdvance, true);
+  assert.deepEqual(result.nextState.matchingCarryoverWordIds, [nounWord.id]);
+  assert.deepEqual(result.nextState.remaining, [nounWord, verbWord]);
+  assert.deepEqual(result.nextState.matchingRoundWords, [nounWord, verbWord]);
   assert.equal(result.nextState.doneCount, 0);
+});
+
+test('advanceMatchingRoundState: starts next matching round from completed round', () => {
+  const result = advanceMatchingRoundState({
+    matchingPairsMode: true,
+    doneCount: 0,
+    round: 1,
+    roundSize: 2,
+    pool: [otherWord],
+    redo: [],
+    remaining: [nounWord, verbWord],
+    matchingRoundWords: [nounWord, verbWord],
+    matchingInfoWords: [verbWord, nounWord],
+    matchingSelectedWordId: null,
+    matchingMatchedPairs: { [nounWord.id]: nounWord.id, [verbWord.id]: verbWord.id },
+    matchingCarryoverWordIds: [nounWord.id],
+    matchingAttemptedWordIds: [nounWord.id, verbWord.id],
+    matchingFirstTryCorrectWordIds: [verbWord.id],
+    matchingRoundAwaitingAdvance: true,
+  }, words => [...words].reverse());
+
+  assert.equal(result.round, 2);
+  assert.deepEqual(result.redo, []);
+  assert.deepEqual(result.matchingCarryoverWordIds, []);
+  assert.deepEqual(result.remaining, [nounWord, otherWord]);
+  assert.deepEqual(result.matchingRoundWords, [nounWord, otherWord]);
+  assert.deepEqual(result.matchingInfoWords, [otherWord, nounWord]);
+  assert.equal(result.matchingRoundAwaitingAdvance, false);
+});
+
+test('advanceMatchingRoundState: shows done only after advancing final completed round', () => {
+  const result = advanceMatchingRoundState({
+    matchingPairsMode: true,
+    doneCount: 2,
+    round: 1,
+    roundSize: 2,
+    pool: [],
+    redo: [],
+    remaining: [nounWord, verbWord],
+    matchingRoundWords: [nounWord, verbWord],
+    matchingInfoWords: [verbWord, nounWord],
+    matchingSelectedWordId: null,
+    matchingMatchedPairs: { [nounWord.id]: nounWord.id, [verbWord.id]: verbWord.id },
+    matchingCarryoverWordIds: [],
+    matchingAttemptedWordIds: [nounWord.id, verbWord.id],
+    matchingFirstTryCorrectWordIds: [nounWord.id, verbWord.id],
+    matchingRoundAwaitingAdvance: true,
+  }, words => words);
+
+  assert.deepEqual(result.matchingRoundWords, []);
+  assert.deepEqual(result.matchingInfoWords, []);
+  assert.deepEqual(result.remaining, []);
+  assert.equal(isSessionComplete(result), true);
 });
 
 test('isMatchingRoundComplete: requires every round word to be matched', () => {
@@ -334,6 +387,7 @@ test('getNextRevealState: carries missed words into the next round', () => {
     matchingCarryoverWordIds: [],
     matchingAttemptedWordIds: [],
     matchingFirstTryCorrectWordIds: [],
+    matchingRoundAwaitingAdvance: false,
   });
 });
 
@@ -493,6 +547,7 @@ test('restoreMatchingSessionState: falls back to remaining only in matching mode
     matchingCarryoverWordIds: [],
     matchingAttemptedWordIds: [],
     matchingFirstTryCorrectWordIds: [],
+    matchingRoundAwaitingAdvance: false,
   });
 });
 
@@ -536,16 +591,18 @@ test('serializeSessionState: keeps durable progress fields and converts filters 
     matchingCarryoverWordIds: [nounWord.id],
     matchingAttemptedWordIds: [nounWord.id, otherWord.id],
     matchingFirstTryCorrectWordIds: [otherWord.id],
+    matchingRoundAwaitingAdvance: true,
     skipAnswerReveal: false,
     awaitingAdvance: true,
     pendingAnswerCorrect: true,
     currentWord: otherWord,
     sessionId: 99,
+    settingsMaxWords: 50,
+    settingsRoundSize: 10,
   };
 
   assert.deepEqual(serializeSessionState(state), {
     poolSize: 25,
-    requestedRoundSize: 10,
     roundSize: 7,
     round: 3,
     doneCount: 11,
@@ -564,6 +621,7 @@ test('serializeSessionState: keeps durable progress fields and converts filters 
     matchingCarryoverWordIds: [nounWord.id],
     matchingAttemptedWordIds: [nounWord.id, otherWord.id],
     matchingFirstTryCorrectWordIds: [otherWord.id],
+    matchingRoundAwaitingAdvance: true,
     skipAnswerReveal: false,
     awaitingAdvance: true,
     pendingAnswerCorrect: true,
@@ -573,7 +631,6 @@ test('serializeSessionState: keeps durable progress fields and converts filters 
 test('serializeSessionState: preserves partial state and filter insertion order', () => {
   const serialized = serializeSessionState({
     poolSize: 0,
-    requestedRoundSize: 5,
     roundSize: 5,
     round: 3,
     doneCount: 1,
@@ -605,7 +662,6 @@ test('serializeSessionState: preserves partial state and filter insertion order'
 test('serializeSessionState + restoreStandardSessionState: stale matching fields do not affect standard restore', () => {
   const serialized = serializeSessionState({
     poolSize: 5,
-    requestedRoundSize: 5,
     roundSize: 2,
     round: 1,
     doneCount: 1,

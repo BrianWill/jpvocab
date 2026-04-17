@@ -310,6 +310,11 @@
   gap: 1rem;
 }
 
+.matching-next-row {
+  display: flex;
+  justify-content: center;
+}
+
 .matching-board {
   display: grid;
   grid-template-columns: minmax(220px, 0.9fr) minmax(320px, 1.1fr);
@@ -368,8 +373,8 @@
 
 .matching-word-row {
   padding: 0.9rem 1rem;
-  font-size: 1.35rem;
-  font-weight: 700;
+  font-size: 2rem;
+  font-weight: 300;
   text-align: right;
 }
 
@@ -406,7 +411,10 @@
   background: rgba(243, 139, 168, 0.05);
 }
 
-.matching-word-row.locked,
+.matching-word-row.locked {
+  opacity: 0.92;
+}
+
 .matching-info-card.locked {
   cursor: default;
   opacity: 0.92;

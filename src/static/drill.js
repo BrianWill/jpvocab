@@ -11,6 +11,7 @@ import {
 import { getSynthAudio } from './synth-cache.js';
 import {
   advanceAfterRevealState,
+  advanceMatchingRoundState,
   attemptMatchingPair,
   buildMatchingRoundState,
   buildRoundState,
@@ -114,7 +115,6 @@ function restoreSession(session) {
 
   const sessionState = session.state || {};
   state.poolSize = sessionState.poolSize || 0;
-  state.requestedRoundSize = sessionState.requestedRoundSize || state.requestedRoundSize || DEFAULT_ROUND_SIZE;
   state.roundSize = sessionState.roundSize || DEFAULT_ROUND_SIZE;
   state.round = sessionState.round || 1;
   state.doneCount = sessionState.doneCount || 0;
@@ -151,6 +151,7 @@ async function init() {
 
   state.words = allWords.filter(word => word.correct < word.target);
   state.settingsMaxWords = settings.maxWords;
+  state.settingsRoundSize = settings.roundSize;
   state.skipAnswerReveal = settings.skipAnswerReveal === true;
   state.matchingPairsMode = settings.matchingPairsMode === true;
   els.restartSkipAnswerReveal.checked = state.skipAnswerReveal;
@@ -244,9 +245,18 @@ function queueSessionStateSave() {
     .catch(err => console.error('Failed to save drill session', err));
 }
 
+function advanceMatchingRound() {
+  if (!state.matchingPairsMode) return;
+  const nextState = advanceMatchingRoundState(state, shuffle);
+  if (!nextState) return;
+  Object.assign(state, nextState);
+  renderDrillUI();
+  queueSessionStateSave();
+}
+
 function openRestartModal() {
   els.restartTotalWords.value = state.settingsMaxWords;
-  els.restartRoundSize.value = state.requestedRoundSize;
+  els.restartRoundSize.value = state.settingsRoundSize || state.requestedRoundSize;
   els.restartSkipAnswerReveal.checked = state.skipAnswerReveal;
   els.restartMatchingPairsMode.checked = state.matchingPairsMode;
   refreshFilterHint();
@@ -286,7 +296,7 @@ async function confirmRestart() {
   const filtered = getCurrentFilteredWords();
   const maxPoolSize = Math.max(1, parseInt(els.restartTotalWords.value, 10) || filtered.length);
   const total = Math.min(maxPoolSize, filtered.length);
-  const requestedRoundSize = Math.max(1, parseInt(els.restartRoundSize.value, 10) || state.requestedRoundSize);
+  const requestedRoundSize = Math.max(1, parseInt(els.restartRoundSize.value, 10) || state.settingsRoundSize || state.requestedRoundSize);
   const nextRoundSize = Math.max(1, Math.min(total, requestedRoundSize));
   state.requestedRoundSize = requestedRoundSize;
   state.skipAnswerReveal = els.restartSkipAnswerReveal.checked;
@@ -326,12 +336,12 @@ els.matchingWordList.addEventListener('click', event => {
   const wordId = parseInt(button.dataset.wordId, 10);
   if (Number.isNaN(wordId)) return;
   const word = getMatchingRoundWord(wordId);
+  if (word) playDrillWordAudio(word).catch(() => {});
   const nextState = selectMatchingWord(state, wordId);
   if (nextState === state) return;
   Object.assign(state, nextState);
   renderDrillUI();
   queueSessionStateSave();
-  if (word) playDrillWordAudio(word).catch(() => {});
 });
 
 els.matchingInfoList.addEventListener('click', event => {
@@ -340,7 +350,7 @@ els.matchingInfoList.addEventListener('click', event => {
   const infoWordId = parseInt(card.dataset.infoId, 10);
   if (Number.isNaN(infoWordId)) return;
 
-  const result = attemptMatchingPair(state, infoWordId, shuffle);
+  const result = attemptMatchingPair(state, infoWordId);
   if (!result) return;
 
   Object.assign(state, result.nextState);
@@ -370,6 +380,10 @@ document.addEventListener('keydown', event => {
     if (event.key === 's' || event.key === 'S') {
       const word = getSelectedMatchingWord();
       if (word?.exampleJp) playDrillSentenceAudio(word, 0.8);
+    }
+    if (event.key === ' ') {
+      event.preventDefault();
+      advanceMatchingRound();
     }
     return;
   }
@@ -424,6 +438,7 @@ els.lastExampleEn.addEventListener('click', () => {
 });
 
 els.headerRestartBtn.addEventListener('click', openRestartModal);
+els.matchingNextRoundBtn.addEventListener('click', advanceMatchingRound);
 els.dontKnowBtn.addEventListener('click', () => reveal(false));
 els.knowBtn.addEventListener('click', () => reveal(true));
 els.nextBtn.addEventListener('click', advanceAfterReveal);

@@ -62,6 +62,7 @@ export function createEmptyMatchingState() {
     matchingCarryoverWordIds: [],
     matchingAttemptedWordIds: [],
     matchingFirstTryCorrectWordIds: [],
+    matchingRoundAwaitingAdvance: false,
   };
 }
 
@@ -95,6 +96,7 @@ function normalizeMatchingState(sessionState) {
     matchingFirstTryCorrectWordIds: Array.isArray(sessionState.matchingFirstTryCorrectWordIds)
       ? sessionState.matchingFirstTryCorrectWordIds
       : [],
+    matchingRoundAwaitingAdvance: sessionState.matchingRoundAwaitingAdvance === true,
   };
 }
 
@@ -114,6 +116,7 @@ export function createDrillState(filterKeys) {
     matchingMatchedPairs: {},
     matchingPairsMode: false,
     matchingRedoWordIds: [],
+    matchingRoundAwaitingAdvance: false,
     matchingRoundWords: [],
     matchingSelectedWordId: null,
     pendingAnswerCorrect: null,
@@ -127,6 +130,7 @@ export function createDrillState(filterKeys) {
     sidebarFlash: null,
     sessionId: null,
     settingsMaxWords: null,
+    settingsRoundSize: null,
     skipAnswerReveal: false,
     sidebarItems: [],
     words: [],
@@ -227,6 +231,7 @@ export function buildMatchingRoundState(sessionState, shuffleWords = words => wo
     matchingCarryoverWordIds: [],
     matchingAttemptedWordIds: [],
     matchingFirstTryCorrectWordIds: [],
+    matchingRoundAwaitingAdvance: false,
     awaitingAdvance: false,
     pendingAnswerCorrect: null,
   };
@@ -302,7 +307,7 @@ export function selectMatchingWord(sessionState, wordId) {
   };
 }
 
-export function attemptMatchingPair(sessionState, infoWordId, shuffleWords = words => words) {
+export function attemptMatchingPair(sessionState, infoWordId) {
   const matchingState = normalizeMatchingState(sessionState);
   const selectedWordId = matchingState.matchingSelectedWordId;
   if (typeof selectedWordId !== 'number') return null;
@@ -355,6 +360,7 @@ export function attemptMatchingPair(sessionState, infoWordId, shuffleWords = wor
     ...nextState,
     doneCount: nextDoneCount,
     matchingMatchedPairs,
+    matchingRoundAwaitingAdvance: false,
     matchingSelectedWordId: null,
   };
 
@@ -371,47 +377,54 @@ export function attemptMatchingPair(sessionState, infoWordId, shuffleWords = wor
     };
   }
 
-  const redo = matchingState.matchingRoundWords.filter(word =>
-    includesWordId(matchingCarryoverWordIds, word.id)
-  );
-
-  if (redo.length > 0 || sessionState.pool.length > 0) {
-    return {
-      nextState: {
-        ...nextState,
-        round: sessionState.round + 1,
-        ...buildMatchingRoundState({
-          ...sessionState,
-          pool: sessionState.pool,
-          redo,
-          roundSize: sessionState.roundSize,
-        }, shuffleWords),
-      },
-      answeredWord: selectedWord,
-      firstAttempt,
-      firstAttemptCorrect: firstAttempt,
-    };
-  }
-
   return {
     nextState: {
       ...nextState,
-      currentWord: null,
-      remaining: [],
-      redo: [],
-      matchingRoundWords: [],
-      matchingInfoWords: [],
+      matchingRoundAwaitingAdvance: true,
       matchingSelectedWordId: null,
-      matchingMatchedPairs: {},
-      matchingCarryoverWordIds: [],
-      matchingAttemptedWordIds: [],
-      matchingFirstTryCorrectWordIds: [],
-      matchingRedoWordIds: [],
-      sidebarItems: [],
     },
     answeredWord: selectedWord,
     firstAttempt,
     firstAttemptCorrect: firstAttempt,
+  };
+}
+
+export function advanceMatchingRoundState(sessionState, shuffleWords = words => words) {
+  const matchingState = normalizeMatchingState(sessionState);
+  if (!isMatchingRoundComplete(sessionState)) return null;
+
+  const redo = matchingState.matchingRoundWords.filter(word =>
+    includesWordId(matchingState.matchingCarryoverWordIds, word.id)
+  );
+
+  if (redo.length > 0 || sessionState.pool.length > 0) {
+    return {
+      ...sessionState,
+      round: sessionState.round + 1,
+      ...buildMatchingRoundState({
+        ...sessionState,
+        pool: sessionState.pool,
+        redo,
+        roundSize: sessionState.roundSize,
+      }, shuffleWords),
+    };
+  }
+
+  return {
+    ...sessionState,
+    currentWord: null,
+    remaining: [],
+    redo: [],
+    matchingRoundWords: [],
+    matchingInfoWords: [],
+    matchingSelectedWordId: null,
+    matchingMatchedPairs: {},
+    matchingCarryoverWordIds: [],
+    matchingAttemptedWordIds: [],
+    matchingFirstTryCorrectWordIds: [],
+    matchingRedoWordIds: [],
+    matchingRoundAwaitingAdvance: false,
+    sidebarItems: [],
   };
 }
 
@@ -529,7 +542,6 @@ export function advanceAfterRevealState(sessionState) {
 export function serializeSessionState(state) {
   return {
     poolSize: state.poolSize,
-    requestedRoundSize: state.requestedRoundSize,
     roundSize: state.roundSize,
     round: state.round,
     doneCount: state.doneCount,
@@ -548,6 +560,7 @@ export function serializeSessionState(state) {
     matchingCarryoverWordIds: state.matchingCarryoverWordIds,
     matchingAttemptedWordIds: state.matchingAttemptedWordIds,
     matchingFirstTryCorrectWordIds: state.matchingFirstTryCorrectWordIds,
+    ...(state.matchingRoundAwaitingAdvance ? { matchingRoundAwaitingAdvance: true } : {}),
     skipAnswerReveal: state.skipAnswerReveal,
     awaitingAdvance: state.awaitingAdvance,
     pendingAnswerCorrect: state.pendingAnswerCorrect,

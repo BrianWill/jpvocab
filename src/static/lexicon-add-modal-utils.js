@@ -11,10 +11,29 @@ export async function streamBatchAdd({ rawWords, signal, onUpdated, onDone, onRo
     signal,
   });
   if (!res.ok) throw new Error(await res.text());
+  if (res.status === 204 || !res.body) {
+    onDone?.({ done: true });
+    return;
+  }
 
   const reader = res.body.getReader();
   const dec = new TextDecoder();
   let buf = '';
+  let completed = false;
+  const handleLine = line => {
+    if (!line.startsWith('data: ')) return;
+    const data = JSON.parse(line.slice(6));
+    if (data.updated) {
+      onUpdated?.(data);
+      return;
+    }
+    if (data.done) {
+      completed = true;
+      onDone?.(data);
+      return;
+    }
+    onRow?.(data);
+  };
   while (true) {
     const { done, value } = await reader.read();
     if (done) break;
@@ -22,19 +41,15 @@ export async function streamBatchAdd({ rawWords, signal, onUpdated, onDone, onRo
     const lines = buf.split('\n');
     buf = lines.pop();
     for (const line of lines) {
-      if (!line.startsWith('data: ')) continue;
-      const data = JSON.parse(line.slice(6));
-      if (data.updated) {
-        onUpdated?.(data);
-        continue;
-      }
-      if (data.done) {
-        onDone?.(data);
+      handleLine(line);
+      if (completed) {
         return;
       }
-      onRow?.(data);
     }
   }
+  buf += dec.decode();
+  if (buf.trim()) handleLine(buf.trim());
+  if (!completed) onDone?.({ done: true });
 }
 
 export function applyWordRowDetailsUpdate({ containerEl, data, buildWordResultDetails, typeLabels, getWordBtnLabel, generateType, onBusyResolved }) {

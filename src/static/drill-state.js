@@ -209,6 +209,25 @@ export function buildRoundState(sessionState) {
   };
 }
 
+function hasSameWordOrder(leftWords, rightWords) {
+  return leftWords.length === rightWords.length &&
+    leftWords.every((word, index) => word.id === rightWords[index]?.id);
+}
+
+function buildMatchingInfoWords(roundWords, remaining, shuffleWords) {
+  const shuffled = shuffleWords(remaining);
+  if (roundWords.length <= 1 || !hasSameWordOrder(roundWords, shuffled)) {
+    return shuffled;
+  }
+
+  for (let attempt = 0; attempt < 10; attempt++) {
+    const retry = shuffleWords(remaining);
+    if (!hasSameWordOrder(roundWords, retry)) return retry;
+  }
+
+  return [...shuffled.slice(1), shuffled[0]];
+}
+
 export function buildMatchingRoundState(sessionState, shuffleWords = words => words) {
   const slots = Math.max(0, sessionState.roundSize - sessionState.redo.length);
   const pool = [...sessionState.pool];
@@ -216,6 +235,7 @@ export function buildMatchingRoundState(sessionState, shuffleWords = words => wo
   const remaining = [...sessionState.redo, ...picked];
   const shuffledRedo = shuffleWords(sessionState.redo);
   const shuffledFresh = shuffleWords(picked);
+  const matchingRoundWords = [...shuffledRedo, ...shuffledFresh];
 
   return {
     pool,
@@ -223,8 +243,8 @@ export function buildMatchingRoundState(sessionState, shuffleWords = words => wo
     remaining,
     currentWord: null,
     sidebarItems: [],
-    matchingRoundWords: [...shuffledRedo, ...shuffledFresh],
-    matchingInfoWords: shuffleWords(remaining),
+    matchingRoundWords,
+    matchingInfoWords: buildMatchingInfoWords(matchingRoundWords, remaining, shuffleWords),
     matchingRedoWordIds: sessionState.redo.map(word => word.id),
     matchingSelectedWordId: null,
     matchingMatchedPairs: {},

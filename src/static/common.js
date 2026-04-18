@@ -1,5 +1,22 @@
 import { getSynthAudio } from './synth-cache.js';
 
+export const DRILL_MODE_FLASHCARDS = 'flashcards';
+export const DRILL_MODE_FLASHCARDS_SKIP_REVEAL = 'flashcards-skip-answer-reveal';
+export const DRILL_MODE_MATCHING_PAIRS = 'matching-pairs';
+
+export function drillModeFromSettings(settings = {}) {
+  if (settings.matchingPairsMode === true) return DRILL_MODE_MATCHING_PAIRS;
+  if (settings.skipAnswerReveal === true) return DRILL_MODE_FLASHCARDS_SKIP_REVEAL;
+  return DRILL_MODE_FLASHCARDS;
+}
+
+export function drillModeToSettings(mode) {
+  return {
+    skipAnswerReveal: mode === DRILL_MODE_FLASHCARDS_SKIP_REVEAL,
+    matchingPairsMode: mode === DRILL_MODE_MATCHING_PAIRS,
+  };
+}
+
 // ── Settings modal step helpers ────────────────────────────────────────────
 const STEPPER_INTERVAL = 230;
 
@@ -101,12 +118,12 @@ function injectSettingsModal() {
             </div>
           </div>
           <div class="restart-field">
-            <label for="settings-skip-answer-reveal">Skip answer reveal</label>
-            <input type="checkbox" id="settings-skip-answer-reveal" class="settings-tts-autoplay">
-          </div>
-          <div class="restart-field">
-            <label for="settings-matching-pairs-mode">Matching pairs mode</label>
-            <input type="checkbox" id="settings-matching-pairs-mode" class="settings-tts-autoplay">
+            <label for="settings-drill-mode">Drill mode</label>
+            <select id="settings-drill-mode" class="settings-tts-select">
+              <option value="flashcards">Flashcards</option>
+              <option value="flashcards-skip-answer-reveal">Flashcards (skip answer reveal)</option>
+              <option value="matching-pairs">Matching pairs</option>
+            </select>
           </div>
         </div>
         <div class="settings-col-divider"></div>
@@ -587,13 +604,11 @@ function initializeSettings() {
     const totalInput = document.getElementById('settings-total-words');
     const roundInput = document.getElementById('settings-round-size');
     const newWordTargetInput = document.getElementById('settings-new-word-target');
-    const skipAnswerRevealInput = document.getElementById('settings-skip-answer-reveal');
-    const matchingPairsModeInput = document.getElementById('settings-matching-pairs-mode');
+    const drillModeInput = document.getElementById('settings-drill-mode');
     if (totalInput) totalInput.value = settings.maxWords;
     if (roundInput) roundInput.value = settings.roundSize;
     if (newWordTargetInput) newWordTargetInput.value = settings.newWordTarget;
-    if (skipAnswerRevealInput) skipAnswerRevealInput.checked = settings.skipAnswerReveal === true;
-    if (matchingPairsModeInput) matchingPairsModeInput.checked = settings.matchingPairsMode === true;
+    if (drillModeInput) drillModeInput.value = drillModeFromSettings(settings);
 
     settingsModal.querySelectorAll('.filter-chip[data-setting-filter]').forEach(btn => {
       btn.classList.toggle('active', settings.wordTypes.includes(btn.dataset.settingFilter));
@@ -633,8 +648,7 @@ function initializeSettings() {
     const totalVal = parseInt(document.getElementById('settings-total-words')?.value, 10);
     const roundVal = parseInt(document.getElementById('settings-round-size')?.value, 10);
     const newWordTargetVal = parseInt(document.getElementById('settings-new-word-target')?.value, 10);
-    const skipAnswerReveal = document.getElementById('settings-skip-answer-reveal')?.checked ?? false;
-    const matchingPairsMode = document.getElementById('settings-matching-pairs-mode')?.checked ?? false;
+    const drillModeSettings = drillModeToSettings(document.getElementById('settings-drill-mode')?.value);
     const wordTypes = DRILL_FILTER_KEYS.filter(f =>
       settingsModal.querySelector(`[data-setting-filter="${f}"]`)?.classList.contains('active')
     );
@@ -648,8 +662,7 @@ function initializeSettings() {
         roundSize: isNaN(roundVal) ? 10 : Math.max(1, Math.min(995, roundVal)),
         newWordTarget: isNaN(newWordTargetVal) ? 8 : Math.max(1, Math.min(999, newWordTargetVal)),
         wordTypes,
-        skipAnswerReveal,
-        matchingPairsMode,
+        ...drillModeSettings,
       }),
     });
 
@@ -706,8 +719,7 @@ function initializeSettings() {
     });
   }
 
-  document.getElementById('settings-skip-answer-reveal')?.addEventListener('change', setDirty);
-  document.getElementById('settings-matching-pairs-mode')?.addEventListener('change', setDirty);
+  document.getElementById('settings-drill-mode')?.addEventListener('change', setDirty);
 
   const previewVoice = (voiceURI, lang, sample) => {
     const voice = voiceURI

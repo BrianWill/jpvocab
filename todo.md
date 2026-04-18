@@ -10,20 +10,18 @@ This file is random notes of possible features and bug fixes.
 - lexicon
     - better way to blacklist words from lexicon and story highlighting?
 
-- in drill, should save drill state at end of drill and start of every round (if not already)
-
 - activity page: day's word list should not list the same word as both drilled (correct) and drilled (incorrect)
     - each word should only appear once in each category
 - activity page word info tooltip: kanji meaning should be shown left of the kanji, not above
     - refer to word info hover overlay in drill as reference
 
-- for matching pairs, if the words and meanings line up, shuffle the meanings again
-
 - in lexicon, do example sentences interfere with fixed height per word? how to display overflow?
     - maybe japanese sentence above english sentence, and just cut off part of sentence that doesn't fit with elipses
         - hovering the sentence shows the full sentence
 
-- separate generation of example sentences from generation of word info
+- remove example sentences?
+    - separate generation of example sentences from generation of word info
+    - maybe then get rid of English TTS voice setting?
 
 - for repurposing English content, may be best to translate on paragraph or multi-graph level, then split into sentences?
     - would require translating back

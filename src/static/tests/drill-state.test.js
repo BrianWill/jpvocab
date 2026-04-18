@@ -174,6 +174,22 @@ test('buildMatchingRoundState: fills the round and shuffles info cards independe
   assert.deepEqual(result.pool, [otherWord]);
 });
 
+test('buildMatchingRoundState: reshuffles info cards when they match word order', () => {
+  let calls = 0;
+  const result = buildMatchingRoundState({
+    roundSize: 2,
+    redo: [],
+    pool: [nounWord, otherWord],
+  }, words => {
+    calls += 1;
+    return calls >= 4 ? [...words].reverse() : [...words];
+  });
+
+  assert.deepEqual(result.matchingRoundWords, [nounWord, otherWord]);
+  assert.deepEqual(result.matchingInfoWords, [otherWord, nounWord]);
+  assert.equal(calls, 4);
+});
+
 test('selectMatchingWord: selects unmatched words and ignores matched ones', () => {
   const state = {
     matchingRoundWords: [nounWord, verbWord],

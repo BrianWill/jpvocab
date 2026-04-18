@@ -2,6 +2,8 @@ import {
   attachNumberStepper,
   checkVoicevoxAvailable,
   DRILL_FILTER_KEYS,
+  drillModeFromSettings,
+  drillModeToSettings,
   getVoicevoxSettings,
   populateWordTooltip,
   playTts,
@@ -108,6 +110,19 @@ function refreshFilterHint() {
   );
 }
 
+function queueAnswerSave(sessionId, wordId, correct, sessionSnapshot) {
+  state.answerQueue = state.answerQueue
+    .then(() => postAnswer(sessionId, wordId, correct, sessionSnapshot))
+    .catch(err => console.error('Failed to save drill answer', err));
+}
+
+function queueSessionStateSave(sessionSnapshot = serializeSessionState(state)) {
+  const sessionId = state.sessionId;
+  state.answerQueue = state.answerQueue
+    .then(() => updateSessionState(sessionId, sessionSnapshot))
+    .catch(err => console.error('Failed to save drill session', err));
+}
+
 function restoreSession(session) {
   state.sessionId = session.id;
   const startedAt = Date.parse(session.startedAt);
@@ -154,8 +169,7 @@ async function init() {
   state.settingsRoundSize = settings.roundSize;
   state.skipAnswerReveal = settings.skipAnswerReveal === true;
   state.matchingPairsMode = settings.matchingPairsMode === true;
-  els.restartSkipAnswerReveal.checked = state.skipAnswerReveal;
-  els.restartMatchingPairsMode.checked = state.matchingPairsMode;
+  els.restartDrillMode.value = drillModeFromSettings(settings);
   if (settings.roundSize > 0) {
     state.roundSize = settings.roundSize;
     state.requestedRoundSize = settings.roundSize;
@@ -200,7 +214,21 @@ function reveal(knew) {
 
   const answered = state.currentWord;
   if (state.skipAnswerReveal) {
+    const isRoundEnding = state.remaining.length === 1;
+    const answeredRoundState = isRoundEnding ? getAnswerFeedbackState(state, knew) : null;
     Object.assign(state, getNextRevealState(state, knew));
+    state.sidebarFlash = { word: answered.word, knew };
+    renderDrillUI();
+    if (!state.awaitingAdvance) prefetchRoundAudio(state.remaining);
+
+    const sessionId = state.sessionId;
+    if (answeredRoundState) {
+      queueAnswerSave(sessionId, answered.id, knew, serializeSessionState(answeredRoundState));
+      queueSessionStateSave(serializeSessionState(state));
+    } else {
+      queueAnswerSave(sessionId, answered.id, knew, serializeSessionState(state));
+    }
+    return;
   } else {
     Object.assign(state, getAnswerFeedbackState(state, knew));
     playDrillWordAudio(answered).catch(() => {});
@@ -211,11 +239,7 @@ function reveal(knew) {
 
   // Capture state snapshot now; queue the network call so answers are sent in
   // order without blocking the UI between answers.
-  const sessionId = state.sessionId;
-  const sessionSnapshot = serializeSessionState(state);
-  state.answerQueue = state.answerQueue
-    .then(() => postAnswer(sessionId, answered.id, knew, sessionSnapshot))
-    .catch(err => console.error('Failed to save drill answer', err));
+  queueAnswerSave(state.sessionId, answered.id, knew, serializeSessionState(state));
 }
 
 function advanceAfterReveal() {
@@ -230,19 +254,7 @@ function advanceAfterReveal() {
   renderDrillUI();
   prefetchRoundAudio(state.remaining);
 
-  const sessionId = state.sessionId;
-  const sessionSnapshot = serializeSessionState(state);
-  state.answerQueue = state.answerQueue
-    .then(() => updateSessionState(sessionId, sessionSnapshot))
-    .catch(err => console.error('Failed to save drill session', err));
-}
-
-function queueSessionStateSave() {
-  const sessionId = state.sessionId;
-  const sessionSnapshot = serializeSessionState(state);
-  state.answerQueue = state.answerQueue
-    .then(() => updateSessionState(sessionId, sessionSnapshot))
-    .catch(err => console.error('Failed to save drill session', err));
+  queueSessionStateSave();
 }
 
 function advanceMatchingRound() {
@@ -257,8 +269,7 @@ function advanceMatchingRound() {
 function openRestartModal() {
   els.restartTotalWords.value = state.settingsMaxWords;
   els.restartRoundSize.value = state.settingsRoundSize || state.requestedRoundSize;
-  els.restartSkipAnswerReveal.checked = state.skipAnswerReveal;
-  els.restartMatchingPairsMode.checked = state.matchingPairsMode;
+  els.restartDrillMode.value = drillModeFromSettings(state);
   refreshFilterHint();
   els.restartBackdrop.classList.remove('hidden');
 }
@@ -299,8 +310,7 @@ async function confirmRestart() {
   const requestedRoundSize = Math.max(1, parseInt(els.restartRoundSize.value, 10) || state.settingsRoundSize || state.requestedRoundSize);
   const nextRoundSize = Math.max(1, Math.min(total, requestedRoundSize));
   state.requestedRoundSize = requestedRoundSize;
-  state.skipAnswerReveal = els.restartSkipAnswerReveal.checked;
-  state.matchingPairsMode = els.restartMatchingPairsMode.checked;
+  Object.assign(state, drillModeToSettings(els.restartDrillMode.value));
   closeRestartModal();
   restartDrill(total, nextRoundSize, filtered);
   state.sessionId = await createSession(serializeSessionState(state));
@@ -359,9 +369,7 @@ els.matchingInfoList.addEventListener('click', event => {
   const sessionId = state.sessionId;
   const sessionSnapshot = serializeSessionState(state);
   if (result.firstAttempt) {
-    state.answerQueue = state.answerQueue
-      .then(() => postAnswer(sessionId, result.answeredWord.id, result.firstAttemptCorrect, sessionSnapshot))
-      .catch(err => console.error('Failed to save drill answer', err));
+    queueAnswerSave(sessionId, result.answeredWord.id, result.firstAttemptCorrect, sessionSnapshot);
     return;
   }
   queueSessionStateSave();

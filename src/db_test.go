@@ -27,6 +27,63 @@ func testDB(t *testing.T) *sql.DB {
 	return db
 }
 
+func withTemporaryWordLists(t *testing.T, lists []wordList) {
+	t.Helper()
+	oldLists := loadedWordLists
+	oldLookup := wordListEntryByWord
+	loadedWordLists = lists
+	wordListEntryByWord = make(map[string]wordListEntry)
+	for _, wl := range lists {
+		for _, entry := range wl.Entries {
+			wordListEntryByWord[entry.Word] = entry
+		}
+	}
+	t.Cleanup(func() {
+		loadedWordLists = oldLists
+		wordListEntryByWord = oldLookup
+	})
+}
+
+func TestMigrateMarksExistingBlacklistedWordsUntracked(t *testing.T) {
+	db, err := sql.Open("sqlite", ":memory:")
+	if err != nil {
+		t.Fatal("open:", err)
+	}
+	db.SetMaxOpenConns(1)
+	t.Cleanup(func() { db.Close() })
+
+	for _, stmt := range []string{
+		`
+		CREATE TABLE words (
+			id INTEGER PRIMARY KEY AUTOINCREMENT,
+			base_word TEXT NOT NULL UNIQUE,
+			tracked INTEGER NOT NULL DEFAULT 1
+		)`,
+		`INSERT INTO words (base_word, tracked) VALUES ('する', 1), ('猫', 1)`,
+		`PRAGMA user_version = 13`,
+	} {
+		if _, err := db.Exec(stmt); err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	migrate(db)
+
+	var tracked int
+	if err := db.QueryRow(`SELECT tracked FROM words WHERE base_word = 'する'`).Scan(&tracked); err != nil {
+		t.Fatal(err)
+	}
+	if tracked != 0 {
+		t.Fatalf("blacklisted tracked value: got %d, want 0", tracked)
+	}
+	if err := db.QueryRow(`SELECT tracked FROM words WHERE base_word = '猫'`).Scan(&tracked); err != nil {
+		t.Fatal(err)
+	}
+	if tracked != 1 {
+		t.Fatalf("non-blacklisted tracked value: got %d, want 1", tracked)
+	}
+}
+
 func parseDBDateTime(t *testing.T, value string) time.Time {
 	t.Helper()
 	for _, layout := range []string{time.RFC3339, "2006-01-02 15:04:05"} {
@@ -875,6 +932,47 @@ func TestInsertWordReturningID(t *testing.T) {
 	}
 }
 
+func TestInsertWordReturningID_RejectsBlacklistedWord(t *testing.T) {
+	db := testDB(t)
+	id, err := insertWordReturningID(db, "する", "する", "verb", "to do", "", "", "", 2)
+	if err == nil {
+		t.Fatal("expected error for blacklisted word")
+	}
+	if err.Error() != lexiconBlacklistReason {
+		t.Fatalf("error: got %q, want %q", err.Error(), lexiconBlacklistReason)
+	}
+	if id != 0 {
+		t.Fatalf("id: got %d, want 0", id)
+	}
+	var count int
+	if err := db.QueryRow(`SELECT COUNT(*) FROM words WHERE base_word = 'する'`).Scan(&count); err != nil {
+		t.Fatal(err)
+	}
+	if count != 0 {
+		t.Fatalf("blacklisted word should not be inserted, got count %d", count)
+	}
+}
+
+func TestInsertWordReturningID_DoesNotPromoteBlacklistedUntrackedWord(t *testing.T) {
+	db := testDB(t)
+	if _, err := db.Exec(`INSERT INTO words (base_word, tracked) VALUES ('する', 0)`); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := insertWordReturningID(db, "する", "する", "verb", "to do", "", "", "", 2); err == nil {
+		t.Fatal("expected error for blacklisted word")
+	}
+	var tracked, target int
+	if err := db.QueryRow(`SELECT tracked, drill_target FROM words WHERE base_word = 'する'`).Scan(&tracked, &target); err != nil {
+		t.Fatal(err)
+	}
+	if tracked != 0 {
+		t.Fatalf("tracked: got %d, want 0", tracked)
+	}
+	if target != 1 {
+		t.Fatalf("target: got %d, want original default 1", target)
+	}
+}
+
 // --- updateWordFill ---
 
 func TestUpdateWordFill(t *testing.T) {
@@ -970,6 +1068,44 @@ func TestPopulateLexiconFromWordListsIfTrackedEmpty_InsertsEntries(t *testing.T)
 	}
 	if count != inserted {
 		t.Fatalf("tracked count: got %d, want %d", count, inserted)
+	}
+}
+
+func TestPopulateLexiconFromWordListsIfTrackedEmpty_SkipsBlacklistedEntries(t *testing.T) {
+	db := testDB(t)
+	withTemporaryWordLists(t, []wordList{
+		{
+			Slug: "blacklist-test",
+			Name: "Blacklist Test",
+			Entries: []wordListEntry{
+				{Word: "する", Reading: "する", PartOfSpeech: "verb", Meaning: "to do"},
+				{Word: "猫", Reading: "ねこ", PartOfSpeech: "noun", Meaning: "cat"},
+			},
+		},
+	})
+
+	inserted, skipped, err := populateLexiconFromWordListsIfTrackedEmpty(db)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if skipped {
+		t.Fatal("expected populate to run")
+	}
+	if inserted != 1 {
+		t.Fatalf("inserted: got %d, want 1", inserted)
+	}
+	var count int
+	if err := db.QueryRow(`SELECT COUNT(*) FROM words WHERE base_word = 'する'`).Scan(&count); err != nil {
+		t.Fatal(err)
+	}
+	if count != 0 {
+		t.Fatalf("blacklisted word-list entry should not be inserted, got count %d", count)
+	}
+	if err := db.QueryRow(`SELECT COUNT(*) FROM words WHERE base_word = '猫' AND tracked = 1`).Scan(&count); err != nil {
+		t.Fatal(err)
+	}
+	if count != 1 {
+		t.Fatalf("non-blacklisted word-list entry should be inserted, got count %d", count)
 	}
 }
 
@@ -1484,6 +1620,42 @@ func TestInsertStory_InsertsStoryWordsAsUntracked(t *testing.T) {
 	}
 	if !reflect.DeepEqual(got, want) {
 		t.Fatalf("tracked flags: got %#v, want %#v", got, want)
+	}
+}
+
+func TestInsertStory_DoesNotInsertBlacklistedStoryWords(t *testing.T) {
+	db := testDB(t)
+
+	jp := "宿題をする。"
+	_, err := insertStory(db, "Blacklisted Story", []storySentenceInput{
+		{
+			Words: []storyWordInput{
+				{DisplayWord: "宿題", BaseWord: "宿題"},
+				{DisplayWord: "を", BaseWord: "を"},
+				{DisplayWord: "する", BaseWord: "する"},
+				{DisplayWord: "。", BaseWord: "。"},
+			},
+			JPText:           &jp,
+			OrigLang:         "jp",
+			IsParagraphStart: true,
+		},
+	}, storyMediaInput{})
+	if err != nil {
+		t.Fatalf("insertStory: %v", err)
+	}
+
+	var count int
+	if err := db.QueryRow(`SELECT COUNT(*) FROM words WHERE base_word = 'する'`).Scan(&count); err != nil {
+		t.Fatal(err)
+	}
+	if count != 0 {
+		t.Fatalf("blacklisted story word should not be inserted, got count %d", count)
+	}
+	if err := db.QueryRow(`SELECT COUNT(*) FROM words WHERE base_word = '宿題' AND tracked = 0`).Scan(&count); err != nil {
+		t.Fatal(err)
+	}
+	if count != 1 {
+		t.Fatalf("non-blacklisted story word should be inserted untracked, got count %d", count)
 	}
 }
 

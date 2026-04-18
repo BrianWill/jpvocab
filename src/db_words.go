@@ -273,6 +273,10 @@ func fillWordInfoFromDictionary(
 // required; all other fields are optional and default to empty / zero.
 // kanjiData should be a JSON string like `[{"id":1,"reading":"はし"}]` or empty.
 func insertWord(db *sql.DB, word, reading, partOfSpeech, meaning, exampleJP, exampleEN, kanjiData string, drillTarget int) error {
+	word = strings.TrimSpace(word)
+	if isLexiconBlacklistedWord(word) {
+		return fmt.Errorf(lexiconBlacklistReason)
+	}
 	if drillTarget < 1 {
 		drillTarget = 1
 	}
@@ -303,6 +307,10 @@ func insertWord(db *sql.DB, word, reading, partOfSpeech, meaning, exampleJP, exa
 // promoted: tracked is set to 1 and all provided fields are applied.
 // Returns an error if the word already exists with tracked=1.
 func insertWordReturningID(db *sql.DB, word, reading, partOfSpeech, meaning, exampleJP, exampleEN, kanjiData string, drillTarget int) (int64, error) {
+	word = strings.TrimSpace(word)
+	if isLexiconBlacklistedWord(word) {
+		return 0, fmt.Errorf(lexiconBlacklistReason)
+	}
 	if drillTarget < 1 {
 		drillTarget = 1
 	}
@@ -716,8 +724,10 @@ func containsKatakana(s string) bool {
 	return false
 }
 
-// wordInsertBlacklist is the combined set of Japanese particles and conjunctions
-// that should never be added to the lexicon as standalone vocabulary words.
+const lexiconBlacklistReason = "excluded from lexicon"
+
+// wordInsertBlacklist is the combined set of Japanese particles, conjunctions,
+// and standalone utility words that should never be added to the lexicon.
 var wordInsertBlacklist = func() map[string]struct{} {
 	particles := []string{
 		// case / postpositional particles
@@ -740,13 +750,50 @@ var wordInsertBlacklist = func() map[string]struct{} {
 		"かつ", "だが", "けれども", "ゆえに", "したがって", "さて", "では",
 		"それでも", "なのに", "ともかく", "ともあれ",
 	}
+	utilityWords := []string{
+		"する",
+	}
 	all := append(particles, conjunctions...)
+	all = append(all, utilityWords...)
 	set := make(map[string]struct{}, len(all))
 	for _, w := range all {
 		set[w] = struct{}{}
 	}
 	return set
 }()
+
+func isLexiconBlacklistedWord(word string) bool {
+	_, blacklisted := wordInsertBlacklist[strings.TrimSpace(word)]
+	return blacklisted
+}
+
+func markBlacklistedWordsUntracked(db *sql.DB) error {
+	if len(wordInsertBlacklist) == 0 {
+		return nil
+	}
+	tables, err := listTables(db)
+	if err != nil {
+		return err
+	}
+	hasWords := false
+	for _, table := range tables {
+		if table == "words" {
+			hasWords = true
+			break
+		}
+	}
+	if !hasWords {
+		return nil
+	}
+	placeholders := strings.Repeat("?,", len(wordInsertBlacklist))
+	placeholders = strings.TrimRight(placeholders, ",")
+	args := make([]any, 0, len(wordInsertBlacklist))
+	for word := range wordInsertBlacklist {
+		args = append(args, word)
+	}
+	_, err = db.Exec("UPDATE words SET tracked = 0 WHERE base_word IN ("+placeholders+")", args...)
+	return err
+}
 
 // containsJapaneseLetter reports whether s contains at least one hiragana,
 // katakana, or CJK unified ideograph. Used to exclude pure punctuation tokens
@@ -776,7 +823,7 @@ func insertWordsIfAbsent(tx *sql.Tx, baseWords []string) ([]string, error) {
 		if !containsJapaneseLetter(word) {
 			continue
 		}
-		if _, blacklisted := wordInsertBlacklist[word]; blacklisted {
+		if isLexiconBlacklistedWord(word) {
 			continue
 		}
 		kat := 0

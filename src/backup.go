@@ -381,6 +381,9 @@ func restoreBackup(db *sql.DB, id string, createSafetyBackup bool) error {
 	if err := tx.Commit(); err != nil {
 		return err
 	}
+	if err := markBlacklistedWordsUntracked(db); err != nil {
+		return err
+	}
 
 	if err := restoreBackupImages(id); err != nil {
 		return err

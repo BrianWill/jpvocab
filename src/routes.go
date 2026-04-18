@@ -53,7 +53,7 @@ func serverInit(db *sql.DB) {
 	r.Get("/drill", appPage("drill.html", "drill"))
 	r.Get("/tutor", appPage("tutor.html", "tutor"))
 	r.Get("/stories", appPage("stories.html", "stories"))
-	r.Get("/stories/{id}", appPage("story.html", "story-detail"))
+	r.Get("/stories/{id}", appPage("story.html", "stories"))
 	r.Get("/token-usage", appPage("token-usage.html", "token-usage"))
 
 	r.Handle("/static/*", http.StripPrefix("/static/", http.FileServer(http.Dir("static"))))
@@ -401,7 +401,9 @@ func adminAddWordsBatch(db *sql.DB) http.HandlerFunc {
 		var uniqueNorms []string
 		for _, raw := range rawWords {
 			norm := toBaseForm(raw)
-			if seen[norm] {
+			if isLexiconBlacklistedWord(norm) {
+				entries = append(entries, entry{input: raw, norm: norm})
+			} else if seen[norm] {
 				entries = append(entries, entry{input: raw, norm: norm, isBatchDup: true})
 			} else {
 				seen[norm] = true
@@ -441,6 +443,10 @@ func adminAddWordsBatch(db *sql.DB) http.HandlerFunc {
 
 			if e.isBatchDup {
 				send(batchWordResult{Input: e.input, Word: e.norm, Added: false, Reason: "duplicate in input"})
+				continue
+			}
+			if isLexiconBlacklistedWord(e.norm) {
+				send(batchWordResult{Input: e.input, Word: e.norm, Added: false, Reason: lexiconBlacklistReason})
 				continue
 			}
 			if info, exists := existingInfo[e.norm]; exists {

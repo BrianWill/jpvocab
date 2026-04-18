@@ -329,6 +329,67 @@ func TestAdminAddWordsBatch_UsesCorrectPerWordWordListInfo(t *testing.T) {
 	}
 }
 
+func TestAdminAddWordsBatch_SkipsBlacklistedWord(t *testing.T) {
+	db := testDB(t)
+	req := newMultipartRequest(t, http.MethodPost, "/admin/words/batch", map[string]string{
+		"words":    "する",
+		"autofill": "on",
+	})
+	rec := httptest.NewRecorder()
+
+	adminAddWordsBatch(db).ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status: got %d, want %d body=%q", rec.Code, http.StatusOK, rec.Body.String())
+	}
+	results := parseSSEBatchResults(t, rec.Body.String())
+	if len(results) != 1 {
+		t.Fatalf("result count: got %d, want 1 body=%q", len(results), rec.Body.String())
+	}
+	result := results[0]
+	if result.Word != "する" {
+		t.Fatalf("word: got %q, want する", result.Word)
+	}
+	if result.Added {
+		t.Fatal("blacklisted word should not be added")
+	}
+	if result.Reason != lexiconBlacklistReason {
+		t.Fatalf("reason: got %q, want %q", result.Reason, lexiconBlacklistReason)
+	}
+	var count int
+	if err := db.QueryRow(`SELECT COUNT(*) FROM words WHERE base_word = 'する'`).Scan(&count); err != nil {
+		t.Fatal(err)
+	}
+	if count != 0 {
+		t.Fatalf("blacklisted word should not be inserted, got count %d", count)
+	}
+}
+
+func TestAdminAddWordsBatch_SkipsInflectionNormalizingToBlacklistedWord(t *testing.T) {
+	db := testDB(t)
+	req := newMultipartRequest(t, http.MethodPost, "/admin/words/batch", map[string]string{
+		"words":    "しました",
+		"autofill": "off",
+	})
+	rec := httptest.NewRecorder()
+
+	adminAddWordsBatch(db).ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status: got %d, want %d body=%q", rec.Code, http.StatusOK, rec.Body.String())
+	}
+	results := parseSSEBatchResults(t, rec.Body.String())
+	if len(results) != 1 {
+		t.Fatalf("result count: got %d, want 1 body=%q", len(results), rec.Body.String())
+	}
+	if results[0].Word != "する" {
+		t.Fatalf("normalized word: got %q, want する", results[0].Word)
+	}
+	if results[0].Added || results[0].Reason != lexiconBlacklistReason {
+		t.Fatalf("result: got %+v, want skipped blacklisted word", results[0])
+	}
+}
+
 func TestAdminAddWordsBatch_PromotedTrackedZeroWordKeepsItsOwnInfo(t *testing.T) {
 	db := testDB(t)
 
@@ -369,6 +430,58 @@ func TestAdminAddWordsBatch_PromotedTrackedZeroWordKeepsItsOwnInfo(t *testing.T)
 	}
 	if result.Meaning != "yellow" {
 		t.Fatalf("meaning: got %q, want %q", result.Meaning, "yellow")
+	}
+}
+
+func TestWordListAPIs_FilterBlacklistedEntries(t *testing.T) {
+	db := testDB(t)
+	withTemporaryWordLists(t, []wordList{
+		{
+			Slug: "blacklist-test",
+			Name: "Blacklist Test",
+			Entries: []wordListEntry{
+				{Word: "する", Reading: "する", PartOfSpeech: "verb", Meaning: "to do"},
+				{Word: "猫", Reading: "ねこ", PartOfSpeech: "noun", Meaning: "cat"},
+			},
+		},
+	})
+
+	listRec := httptest.NewRecorder()
+	apiGetWordLists(db).ServeHTTP(listRec, httptest.NewRequest(http.MethodGet, "/api/wordlists", nil))
+	if listRec.Code != http.StatusOK {
+		t.Fatalf("wordlists status: got %d body=%q", listRec.Code, listRec.Body.String())
+	}
+	var lists []struct {
+		Slug    string `json:"slug"`
+		Total   int    `json:"total"`
+		Tracked int    `json:"tracked"`
+	}
+	if err := json.NewDecoder(listRec.Body).Decode(&lists); err != nil {
+		t.Fatal(err)
+	}
+	if len(lists) != 1 {
+		t.Fatalf("wordlist count: got %d, want 1", len(lists))
+	}
+	if lists[0].Total != 1 || lists[0].Tracked != 0 {
+		t.Fatalf("wordlist totals: got %+v, want total=1 tracked=0", lists[0])
+	}
+
+	wordsReq := httptest.NewRequest(http.MethodGet, "/api/wordlists/blacklist-test/words", nil)
+	wordsReq = withURLParam(wordsReq, "slug", "blacklist-test")
+	wordsRec := httptest.NewRecorder()
+	apiGetWordListWords(db).ServeHTTP(wordsRec, wordsReq)
+	if wordsRec.Code != http.StatusOK {
+		t.Fatalf("wordlist words status: got %d body=%q", wordsRec.Code, wordsRec.Body.String())
+	}
+	var body struct {
+		Words []string `json:"words"`
+		Total int      `json:"total"`
+	}
+	if err := json.NewDecoder(wordsRec.Body).Decode(&body); err != nil {
+		t.Fatal(err)
+	}
+	if body.Total != 1 || len(body.Words) != 1 || body.Words[0] != "猫" {
+		t.Fatalf("available words: got %+v, want total=1 words=[猫]", body)
 	}
 }
 
@@ -1138,6 +1251,24 @@ func TestRenderAppPage_RendersHTMLAndSharedNav(t *testing.T) {
 	}
 }
 
+func TestRenderAppPage_StoryPageMarksStoriesNavCurrent(t *testing.T) {
+	rec := httptest.NewRecorder()
+
+	renderAppPage(rec, "static/story.html", appPageData{CurrentPage: "stories"})
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status: got %d, want %d", rec.Code, http.StatusOK)
+	}
+
+	body := rec.Body.String()
+	if !strings.Contains(body, `Stories&thinsp;▾`) {
+		t.Error("expected story page nav button to show Stories")
+	}
+	if !strings.Contains(body, `nav-dropdown-item nav-dropdown-item--current" href="/stories"`) {
+		t.Error("expected current-page nav styling for stories on story detail page")
+	}
+}
+
 func TestAPIGetWordInfo_ReturnsWordInfo(t *testing.T) {
 	db := testDB(t)
 	_, err := insertStory(db, "Word Info Story", []storySentenceInput{
@@ -1169,6 +1300,28 @@ func TestAPIGetWordInfo_ReturnsWordInfo(t *testing.T) {
 	}
 	if info.WordID == 0 {
 		t.Error("expected non-zero wordId")
+	}
+}
+
+func TestAPIGetWordInfo_BlacklistedWordReturnsEmpty(t *testing.T) {
+	db := testDB(t)
+	if _, err := db.Exec(`INSERT INTO words (base_word, meaning, reading, tracked) VALUES ('する', 'to do', 'する', 1)`); err != nil {
+		t.Fatal(err)
+	}
+
+	req := httptest.NewRequest(http.MethodGet, "/api/word-info?base=%E3%81%99%E3%82%8B", nil)
+	rec := httptest.NewRecorder()
+	apiGetWordInfo(db).ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status: got %d, want %d", rec.Code, http.StatusOK)
+	}
+	var info wordInfoResponseJSON
+	if err := json.NewDecoder(rec.Body).Decode(&info); err != nil {
+		t.Fatal(err)
+	}
+	if info.WordID != 0 || info.Tracked {
+		t.Fatalf("expected empty word info for blacklisted word, got %+v", info)
 	}
 }
 
@@ -1233,6 +1386,32 @@ func TestAPIGetWordInfoBatch(t *testing.T) {
 	}
 	if _, ok := result.Words["未知"]; ok {
 		t.Error("expected 未知 to be absent from result (not in DB)")
+	}
+}
+
+func TestAPIGetWordInfoBatch_BlacklistedWordIsAbsent(t *testing.T) {
+	db := testDB(t)
+	if _, err := db.Exec(`INSERT INTO words (base_word, meaning, reading, tracked) VALUES ('する', 'to do', 'する', 1), ('猫', 'cat', 'ねこ', 1)`); err != nil {
+		t.Fatal(err)
+	}
+	body, _ := json.Marshal(map[string]any{"bases": []string{"する", "猫"}})
+	req := httptest.NewRequest(http.MethodPost, "/api/word-info-batch", bytes.NewReader(body))
+	req.Header.Set("Content-Type", "application/json")
+	rec := httptest.NewRecorder()
+	apiGetWordInfoBatch(db).ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status: got %d, want %d", rec.Code, http.StatusOK)
+	}
+	var result wordInfoBatchResponseJSON
+	if err := json.NewDecoder(rec.Body).Decode(&result); err != nil {
+		t.Fatal(err)
+	}
+	if _, ok := result.Words["する"]; ok {
+		t.Fatalf("blacklisted word should be absent from batch word info: %+v", result.Words["する"])
+	}
+	if result.Words["猫"].English != "cat" {
+		t.Fatalf("expected non-blacklisted word info, got %+v", result.Words["猫"])
 	}
 }
 

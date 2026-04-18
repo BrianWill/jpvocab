@@ -86,12 +86,13 @@ func apiGetWordLists(db *sql.DB) http.HandlerFunc {
 		}
 		items := make([]item, len(loadedWordLists))
 		for i, wl := range loadedWordLists {
-			inDB, err := wordsInfoInDB(db, wordListWords(wl.Entries))
+			entries := filterLexiconWordListEntries(wl.Entries)
+			inDB, err := wordsInfoInDB(db, wordListWords(entries))
 			if err != nil {
 				http.Error(w, err.Error(), http.StatusInternalServerError)
 				return
 			}
-			items[i] = item{Slug: wl.Slug, Name: wl.Name, Total: len(wl.Entries), Tracked: len(inDB)}
+			items[i] = item{Slug: wl.Slug, Name: wl.Name, Total: len(entries), Tracked: len(inDB)}
 		}
 		w.Header().Set("Content-Type", "application/json")
 		json.NewEncoder(w).Encode(items)
@@ -116,14 +117,15 @@ func apiGetWordListWords(db *sql.DB) http.HandlerFunc {
 			return
 		}
 
-		inDB, err := wordsInfoInDB(db, wordListWords(wl.Entries))
+		entries := filterLexiconWordListEntries(wl.Entries)
+		inDB, err := wordsInfoInDB(db, wordListWords(entries))
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
-		availableEntries := make([]wordListEntry, 0, len(wl.Entries))
-		availableWords := make([]string, 0, len(wl.Entries))
-		for _, entry := range wl.Entries {
+		availableEntries := make([]wordListEntry, 0, len(entries))
+		availableWords := make([]string, 0, len(entries))
+		for _, entry := range entries {
 			if _, exists := inDB[entry.Word]; !exists {
 				availableEntries = append(availableEntries, entry)
 				availableWords = append(availableWords, entry.Word)
@@ -134,21 +136,38 @@ func apiGetWordListWords(db *sql.DB) http.HandlerFunc {
 		json.NewEncoder(w).Encode(map[string]any{
 			"words":   availableWords,
 			"entries": availableEntries,
-			"total":   len(wl.Entries),
-			"tracked": len(wl.Entries) - len(availableEntries),
+			"total":   len(entries),
+			"tracked": len(entries) - len(availableEntries),
 		})
 	}
+}
+
+func filterLexiconWordListEntries(entries []wordListEntry) []wordListEntry {
+	filtered := make([]wordListEntry, 0, len(entries))
+	for _, entry := range entries {
+		if isLexiconBlacklistedWord(entry.Word) {
+			continue
+		}
+		filtered = append(filtered, entry)
+	}
+	return filtered
 }
 
 func wordListWords(entries []wordListEntry) []string {
 	words := make([]string, 0, len(entries))
 	for _, entry := range entries {
+		if isLexiconBlacklistedWord(entry.Word) {
+			continue
+		}
 		words = append(words, entry.Word)
 	}
 	return words
 }
 
 func wordListLookup(word string) (wordListEntry, bool) {
+	if isLexiconBlacklistedWord(word) {
+		return wordListEntry{}, false
+	}
 	entry, ok := wordListEntryByWord[word]
 	return entry, ok
 }
@@ -177,6 +196,9 @@ func populateLexiconFromWordListsIfTrackedEmpty(db *sql.DB) (int, bool, error) {
 		for _, entry := range wl.Entries {
 			word := strings.TrimSpace(entry.Word)
 			if word == "" {
+				continue
+			}
+			if isLexiconBlacklistedWord(word) {
 				continue
 			}
 			if _, exists := seen[word]; exists {

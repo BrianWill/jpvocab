@@ -2,19 +2,14 @@
 
 This file is random notes of possible features and bug fixes.
 
+- when on a story page, the navbar should have "Stories" selected (even though it is not the same stories list page url)
+
 - timestamp of added words is behind by 25 minutes?
     wrong time zone?
 
-- in matching pairs mode, when last word of round is matched, the user should have to press a button to start the next round
-    - "Next round" button appears above the words and meaning lists to indicate this
-        - hotkey for the button is space
-        - should be true for last round as well: user hits button before they see the "Done" message
-
-- what happened to story media/url?
-    check history: did it somehow get reverted?
-
-- suru is stuck in lexicon and shows up highlighted in stories
+- stories
     - should stories not highlight inactive words of lexicon?
+- lexicon
     - better way to blacklist words from lexicon and story highlighting?
 
 - story noted words sidebar should just stay open? never collapse

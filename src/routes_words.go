@@ -168,6 +168,10 @@ func apiGetWordInfo(db *sql.DB) http.HandlerFunc {
 			http.Error(w, "base is required", http.StatusBadRequest)
 			return
 		}
+		if isLexiconBlacklistedWord(base) {
+			writeJSON(w, wordInfoResponseJSON{})
+			return
+		}
 		var info wordInfoResponseJSON
 		var partOfSpeech string
 		var kanjiDataStr string
@@ -209,11 +213,18 @@ func apiGetWordInfoBatch(db *sql.DB) http.HandlerFunc {
 			writeJSON(w, wordInfoBatchResponseJSON{Words: map[string]wordInfoResponseJSON{}})
 			return
 		}
-		placeholders := make([]string, len(req.Bases))
-		args := make([]any, len(req.Bases))
-		for i, b := range req.Bases {
-			placeholders[i] = "?"
-			args[i] = b
+		placeholders := make([]string, 0, len(req.Bases))
+		args := make([]any, 0, len(req.Bases))
+		for _, b := range req.Bases {
+			if isLexiconBlacklistedWord(b) {
+				continue
+			}
+			placeholders = append(placeholders, "?")
+			args = append(args, b)
+		}
+		if len(args) == 0 {
+			writeJSON(w, wordInfoBatchResponseJSON{Words: map[string]wordInfoResponseJSON{}})
+			return
 		}
 		rows, err := db.Query(
 			`SELECT id, base_word, COALESCE(meaning,''), COALESCE(reading,''), COALESCE(part_of_speech,''), pitch_accent, COALESCE(kanji_data,'[]'), tracked, drill_count, drill_target

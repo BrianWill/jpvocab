@@ -1,6 +1,6 @@
 import { getTtsVoice, getVoicevoxSettings } from './common.js';
 import { getSynthAudio } from './synth-cache.js';
-import { clampPlaybackRate, playbackModeForStory, speechPlaybackLangForStory, splitByClause } from './story-playback-utils.js';
+import { clampPlaybackRate, playbackModeForStory, speechPlaybackLangForStory, splitByClause, storyCanUseVoicevoxPlayback } from './story-playback-utils.js';
 import { storyCanSeekSentenceInMedia } from './story-media-utils.js';
 
 let _els, _state, _storyId;
@@ -345,8 +345,11 @@ async function loadClauseAudio(sentenceIdx, clauseIdx) {
     } catch (_) {
       if (_state.synthGeneration === gen) {
         _state.synthLoadingIdx = -1;
-        clearHighlight();
-        setPlaybackPlaying(false);
+        _state.synthMode = false;
+        _state.playbackMode = 'speech';
+        _state.resumeOffset = _state.sentenceOffsets[sentenceIdx] || 0;
+        _state.lastWordAbsPos = _state.resumeOffset;
+        await startSpeechPlayback();
       }
       return;
     }
@@ -379,6 +382,12 @@ function startAudio(sentenceIdx = _state.audioSentenceIdx, clauseIdx = _state.au
   setPlaybackPlaying(true);
 }
 
+function preferVoicevoxPlaybackIfEligible() {
+  if (!_state.synthMode && storyCanUseVoicevoxPlayback(_state.story)) {
+    initSynthPlayback();
+  }
+}
+
 // ── Exported stop (used by generate modals as stopPlayback callback) ──────────
 export function stopPlayback() {
   if (_state.playbackMode === 'youtube') {
@@ -392,7 +401,8 @@ export function stopPlayback() {
 // ── Synth-mode init ───────────────────────────────────────────────────────────
 // Called when VoiceVox is confirmed available. Enables on-demand synth playback.
 export function initSynthPlayback() {
-  if (_state.playbackMode === 'youtube') return;
+  if (_state.playbackMode === 'youtube' || _state.playbackMode === 'local-media') return;
+  _state.playbackMode = 'voicevox';
   _state.synthMode = true;
   _state.audioMode = false;
   _els.seekbar.hidden = true;
@@ -429,14 +439,19 @@ export function initPlayback(els, state, storyId) {
 
     if (state.playbackMode === 'youtube' && state.sentencePlayBtnCanSeekInMedia) {
       await startYouTubePlayback(idx);
-    } else if (state.synthMode) {
-      // Stop whatever is playing immediately, then synthesize the new sentence.
-      if (state.audioEl && !state.audioEl.paused) stopAudio();
-      state.synthLoadingIdx = idx;
-      updateSentencePlayBtnIcon();
-      setPlaybackPlaying(true);
-      loadClauseAudio(idx, 0);
+    } else if (state.playbackMode === 'local-media') {
+      return;
     } else {
+      preferVoicevoxPlaybackIfEligible();
+      if (state.synthMode) {
+        // Stop whatever is playing immediately, then synthesize the new sentence.
+        if (state.audioEl && !state.audioEl.paused) stopAudio();
+        state.synthLoadingIdx = idx;
+        updateSentencePlayBtnIcon();
+        setPlaybackPlaying(true);
+        loadClauseAudio(idx, 0);
+        return;
+      }
       if (state.currentUtterance) {
         state.currentUtterance.onboundary = null;
         state.currentUtterance.onend = null;
@@ -459,6 +474,8 @@ export function initPlayback(els, state, storyId) {
       }
       return;
     }
+    if (state.playbackMode === 'local-media') return;
+    preferVoicevoxPlaybackIfEligible();
     if (state.synthMode) {
       if (state.audioEl && !state.audioEl.paused) {
         stopAudio();
@@ -491,7 +508,7 @@ export function initPlayback(els, state, storyId) {
   });
 
   const refreshPlaybackMode = async () => {
-    state.playbackMode = playbackModeForStory(state.story);
+    state.playbackMode = playbackModeForStory(state.story, { voicevoxAvailable: state.synthMode });
     state.youtubePlaying = false;
     if (state.playbackMode === 'youtube') {
       state.synthMode = false;
@@ -499,6 +516,8 @@ export function initPlayback(els, state, storyId) {
       _els.currentTime.hidden = true;
       _els.duration.hidden = true;
       await ensureYouTubePlayer();
+    } else if (state.playbackMode === 'voicevox') {
+      initSynthPlayback();
     }
   };
 

@@ -3,7 +3,8 @@ import { pluralize } from './format-utils.js';
 import { esc, renderReading } from './lexicon-utils.js';
 import { initGenerateModals, openTranslationModal, populateTranslationModelSelect } from './story-generate.js';
 import { initStoryAddToLexicon, addWordsToLexicon } from './story-lexicon-add-modal.js';
-import { initPlayback, initSynthPlayback, showSentencePlayBtn, scheduleSentencePlayHide, stopPlayback } from './story-playback.js';
+import { initPlayback, initSynthPlayback, showSentencePlayBtn, scheduleSentencePlayHide, stopPlayback } from './story-playback.js?v=voicevox-precedence-2';
+import { storyCanUseVoicevoxPlayback } from './story-playback-utils.js?v=voicevox-precedence-2';
 import { storyCanSeekSentenceInMedia, storyHasLocalMedia, storyMediaTypeLabel, storyUsesYouTubeMedia } from './story-media-utils.js';
 
 // ── DOM refs ──────────────────────────────────────────────────────────────────
@@ -123,10 +124,6 @@ function sentenceHasTranslation(sentence) {
 
 function sentenceDisplaysTranslatedJapanese(sentence) {
   return sentence.orig_lang === 'en' && !!sentence.jp && !!sentence.en;
-}
-
-function storyCanUseSynthPlayback(story) {
-  return !storyUsesYouTubeMedia(story) && (story?.sentences || []).every(sentence => sentence.orig_lang !== 'en');
 }
 
 function renderStoryMedia(story) {
@@ -594,10 +591,12 @@ function renderStory(story) {
 
   renderNotedWords();
 
-  // Enable synth-mode playback if VoiceVox is available.
-  checkVoicevoxAvailable().then(available => {
-    if (available && storyCanUseSynthPlayback(story)) initSynthPlayback();
-  });
+  // Prefer on-demand VoiceVox for Japanese stories. Actual synthesis failures
+  // fall back to browser TTS in the playback module.
+  if (storyCanUseVoicevoxPlayback(story)) {
+    initSynthPlayback();
+    checkVoicevoxAvailable().catch(() => false);
+  }
 
   // Enable generate translation button if AI providers are available.
   if (state.providers) {

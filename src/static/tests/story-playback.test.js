@@ -1,6 +1,12 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { clampPlaybackRate, playbackModeForStory, speechPlaybackLangForStory, splitByClause } from '../story-playback-utils.js';
+import {
+  clampPlaybackRate,
+  playbackModeForStory,
+  speechPlaybackLangForStory,
+  splitByClause,
+  storyCanUseVoicevoxPlayback,
+} from '../story-playback-utils.js';
 
 test('clampPlaybackRate: clamps to configured min and max', () => {
   assert.equal(clampPlaybackRate(0.2), 0.5);
@@ -40,8 +46,19 @@ test('speechPlaybackLangForStory: selects english only for all-English stories',
   assert.equal(speechPlaybackLangForStory({ sentences: [] }), 'ja-JP');
 });
 
-test('playbackModeForStory: prefers youtube, then local media metadata, then speech', () => {
+test('playbackModeForStory: prefers youtube, then local media, then voicevox, then speech', () => {
   assert.equal(playbackModeForStory({ mediaType: 'youtube', mediaUrl: 'https://www.youtube.com/embed/abc?enablejsapi=1' }), 'youtube');
-  assert.equal(playbackModeForStory({ mediaType: 'local', mediaUrl: 'D:\\clips\\story.mp4' }), 'local-media');
+  assert.equal(
+    playbackModeForStory({ mediaType: 'local', mediaUrl: 'D:\\clips\\story.mp4' }, { voicevoxAvailable: true }),
+    'local-media',
+  );
+  assert.equal(playbackModeForStory({ sentences: [{ orig_lang: 'jp' }] }, { voicevoxAvailable: true }), 'voicevox');
   assert.equal(playbackModeForStory({ sentences: [] }), 'speech');
+});
+
+test('storyCanUseVoicevoxPlayback: requires Japanese speech without attached media', () => {
+  assert.equal(storyCanUseVoicevoxPlayback({ sentences: [{ orig_lang: 'jp' }] }), true);
+  assert.equal(storyCanUseVoicevoxPlayback({ sentences: [{ orig_lang: 'en' }] }), false);
+  assert.equal(storyCanUseVoicevoxPlayback({ mediaType: 'youtube', mediaUrl: 'https://www.youtube.com/embed/abc?enablejsapi=1', sentences: [{ orig_lang: 'jp' }] }), false);
+  assert.equal(storyCanUseVoicevoxPlayback({ mediaType: 'local', mediaUrl: 'D:\\clips\\story.mp4', sentences: [{ orig_lang: 'jp' }] }), false);
 });

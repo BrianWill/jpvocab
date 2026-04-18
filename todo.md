@@ -2,8 +2,6 @@
 
 This file is random notes of possible features and bug fixes.
 
-- when on a story page, the navbar should have "Stories" selected (even though it is not the same stories list page url)
-
 - timestamp of added words is behind by 25 minutes?
     wrong time zone?
 
@@ -11,8 +9,6 @@ This file is random notes of possible features and bug fixes.
     - should stories not highlight inactive words of lexicon?
 - lexicon
     - better way to blacklist words from lexicon and story highlighting?
-
-- story noted words sidebar should just stay open? never collapse
 
 - in drill, should save drill state at end of drill and start of every round (if not already)
 

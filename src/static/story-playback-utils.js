@@ -12,6 +12,11 @@ export function speechPlaybackLangForStory(story) {
   return 'ja-JP';
 }
 
+export function storyCanUseVoicevoxPlayback(story) {
+  if (storyUsesYouTubeMedia(story) || storyHasLocalMedia(story)) return false;
+  return speechPlaybackLangForStory(story) === 'ja-JP';
+}
+
 export function splitByClause(sentence) {
   const clauses = [];
   let current = [];
@@ -26,8 +31,9 @@ export function splitByClause(sentence) {
   return clauses.filter(c => c.length > 0);
 }
 
-export function playbackModeForStory(story) {
+export function playbackModeForStory(story, options = {}) {
   if (storyUsesYouTubeMedia(story)) return 'youtube';
   if (storyHasLocalMedia(story)) return 'local-media';
+  if (options.voicevoxAvailable && storyCanUseVoicevoxPlayback(story)) return 'voicevox';
   return 'speech';
 }

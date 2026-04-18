@@ -186,19 +186,11 @@ function renderWordGroupHTML(w) {
   const imgCell = w.imagePath
     ? '<div class="lex-cell lex-cell--img"><div class="cell-img"><img src="/static/' + w.imagePath + '" alt=""></div></div>'
     : '<div class="lex-cell lex-cell--img"><div class="cell-img"></div></div>';
-  const exampleHtml = (w.exampleJp?.trim() || w.exampleEn?.trim())
-    ? '<span class="cell-meaning-example">' +
-        (w.exampleJp?.trim() ? '<span class="cell-ex-flag">🇯🇵</span> <span class="cell-ex-jp" data-tooltip="Example sentence">' + esc(w.exampleJp) + '</span>' : '') +
-        (w.exampleEn?.trim() ? '<span class="cell-ex-sep"></span><span class="cell-ex-flag cell-ex-flag--en">🇬🇧</span> <span class="cell-ex-en" data-tooltip="Example sentence">' + esc(w.exampleEn) + '</span>' : '') +
-      '</span>'
-    : '';
 
   return (
     imgCell +
       '<div class="lex-cell lex-cell--word"><div class="cell-word">' +
         '<span class="cell-word-label">' + esc(w.word) + '</span>' +
-        '<button class="btn-edit" data-word-id="' + w.id + '" data-tooltip="Edit word">✎</button>' +
-        '<button class="btn-delete" data-tooltip="Delete word">✕</button>' +
       '</div></div>' +
       '<div class="lex-cell lex-cell--reading cell-reading" data-tooltip="Reading (Pronunciation)">' + renderReading(w.reading, w.word, w.kanjiData, w.pitchAccent) + '</div>' +
       '<div class="lex-cell lex-cell--type"><span class="type-badge" data-tooltip="Part of Speech">' + esc(w.type) + '</span></div>' +
@@ -219,8 +211,9 @@ function renderWordGroupHTML(w) {
           ? '<span class="cell-date-drilled" data-tooltip="Last drilled: ' + fullDateTime(w.lastDrilled) + '">drilled ' + timeAgo(w.lastDrilled) + '</span>'
           : '<span class="cell-date-drilled cell-date-never">never drilled</span>') +
       '</div>' +
-      '<div class="lex-cell lex-cell--example cell-ex">' +
-        exampleHtml +
+      '<div class="lex-cell lex-cell--actions lex-actions">' +
+        '<button class="btn-edit" data-word-id="' + w.id + '" data-tooltip="Edit word">✎</button>' +
+        '<button class="btn-delete" data-tooltip="Delete word">✕</button>' +
       '</div>'
   );
 }
@@ -240,7 +233,6 @@ function renderPlaceholderGroup() {
         '<div class="lex-cell lex-cell--incorrect"><span class="row-skeleton"></span></div>' +
         '<div class="lex-cell lex-cell--target"><span class="row-skeleton"></span></div>' +
         '<div class="lex-cell lex-cell--date"><span class="row-skeleton row-skeleton--meta"></span></div>' +
-        '<div class="lex-cell lex-cell--example"><span class="row-skeleton row-skeleton--example"></span></div>' +
       '</div>' +
     '</div>';
   return group;

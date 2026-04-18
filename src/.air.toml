@@ -1,16 +1,21 @@
+# Air configuration for jpvocab Go server
+# Run with: air (from the src/ directory)
+
 root = "."
-tmp_dir = "tmp"
+tmp_dir = "../air-tmp"
 
 [build]
-  cmd = "go build -o ./tmp/main.exe ."
-  bin = "./tmp/main.exe"
-  full_bin = "./tmp/main.exe"
+  cmd = "go build -o ../air-tmp/main.exe ."
+  bin = "../air-tmp/main.exe"
   include_ext = ["go"]
-  exclude_dir = ["tmp"]
+  exclude_dir = ["tmp", "static", "cmd"]
   delay = 500
 
 [log]
   time = false
 
-[misc]
-  clean_on_exit = true
+[color]
+  build = "yellow"
+  runner = "green"
+  watcher = "cyan"
+  main = "magenta"

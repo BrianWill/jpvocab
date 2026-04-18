@@ -38,8 +38,13 @@
           <input id="story-title-input" type="text" maxlength="200" placeholder="Story title">
         </div>
         <div class="modal-field">
+          <label for="story-media-url-input">Optional media URL or path</label>
+          <input id="story-media-url-input" type="text" maxlength="1000" placeholder="https://youtu.be/... or D:\media\clip.mp4">
+        </div>
+        <div class="modal-field">
           <label for="story-content-input">Story content</label>
-          <textarea id="story-content-input" rows="14" placeholder="Paste story text here."></textarea>
+          <p class="story-add-help">Plain text is split into sentences automatically. `SRT` and `VTT` subtitle content is auto-detected, and each subtitle line is imported as a timed sentence.</p>
+          <textarea id="story-content-input" rows="10" placeholder="Paste story text here."></textarea>
         </div>
       </div>
     </div>

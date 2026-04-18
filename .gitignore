@@ -80,6 +80,7 @@ src/jpvocab.db
 src/jdict.db
 src/jdict.db.gz
 src/tmp/
+air-tmp/
 
 *.stackdump
 

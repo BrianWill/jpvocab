@@ -70,6 +70,84 @@ func TestMigrate_Idempotent(t *testing.T) {
 	}
 }
 
+func TestMigrate_AddsStoryMediaColumnsToExistingDB(t *testing.T) {
+	db, err := sql.Open("sqlite", ":memory:")
+	if err != nil {
+		t.Fatal("open:", err)
+	}
+	db.SetMaxOpenConns(1)
+	t.Cleanup(func() { db.Close() })
+
+	statements := []string{
+		`CREATE TABLE stories (
+			id                  INTEGER  PRIMARY KEY AUTOINCREMENT,
+			title               TEXT     NOT NULL,
+			story_words_json    TEXT     NOT NULL DEFAULT '[]',
+			noted_words_json    TEXT     NOT NULL DEFAULT '[]',
+			sentence_count      INTEGER  NOT NULL DEFAULT 0,
+			lexicon_word_count  INTEGER  NOT NULL DEFAULT 0,
+			created_at          DATETIME NOT NULL DEFAULT (datetime('now'))
+		)`,
+		`CREATE TABLE story_sentences (
+			id                 INTEGER PRIMARY KEY AUTOINCREMENT,
+			story_id           INTEGER NOT NULL REFERENCES stories(id) ON DELETE CASCADE,
+			position           INTEGER NOT NULL,
+			words_json         TEXT    NOT NULL,
+			jp_text            TEXT,
+			en_text            TEXT,
+			orig_lang          TEXT    NOT NULL DEFAULT 'jp',
+			is_paragraph_start INTEGER NOT NULL DEFAULT 0 CHECK (is_paragraph_start IN (0, 1)),
+			is_chunk_start     INTEGER NOT NULL DEFAULT 0 CHECK (is_chunk_start IN (0, 1)),
+			UNIQUE(story_id, position)
+		)`,
+		`INSERT INTO stories (title, sentence_count, lexicon_word_count) VALUES ('Old Story', 1, 0)`,
+		`INSERT INTO story_sentences (story_id, position, words_json, jp_text, orig_lang) VALUES (1, 0, '[]', '昔話。', 'jp')`,
+		`PRAGMA user_version = 10`,
+	}
+	for _, stmt := range statements {
+		if _, err := db.Exec(stmt); err != nil {
+			t.Fatalf("setup old schema: %v", err)
+		}
+	}
+
+	migrate(db)
+
+	storyColumns, err := listColumns(db, "stories")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !hasColumn(storyColumns, "media_type") {
+		t.Fatal("stories.media_type was not added")
+	}
+	if !hasColumn(storyColumns, "media_url") {
+		t.Fatal("stories.media_url was not added")
+	}
+	sentenceColumns, err := listColumns(db, "story_sentences")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !hasColumn(sentenceColumns, "start_time_ms") {
+		t.Fatal("story_sentences.start_time_ms was not added")
+	}
+
+	var mediaType string
+	if err := db.QueryRow(`SELECT media_type FROM stories WHERE id = 1`).Scan(&mediaType); err != nil {
+		t.Fatal(err)
+	}
+	if mediaType != "" {
+		t.Fatalf("media_type default: got %q, want empty string", mediaType)
+	}
+}
+
+func hasColumn(columns []columnInfo, name string) bool {
+	for _, column := range columns {
+		if column.Name == name {
+			return true
+		}
+	}
+	return false
+}
+
 func TestInitDB_DoesNotSeedFreshDBWithoutFlag(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "fresh-no-seed.db")
 	db := initDB(path, false)
@@ -603,13 +681,13 @@ func TestUpdateDrillSessionState_PreservesMatchingModeState(t *testing.T) {
 
 	selectedWordID := int64(11)
 	state := drillSessionState{
-		Round:               2,
-		DoneCount:           1,
-		MatchingPairsMode:   true,
-		Remaining:           []wordJSON{{ID: 11, Word: "猫"}, {ID: 12, Word: "犬"}},
-		MatchingRoundWords:  []wordJSON{{ID: 12, Word: "犬"}, {ID: 11, Word: "猫"}},
-		MatchingInfoWords:   []wordJSON{{ID: 11, Word: "猫", Meaning: "cat"}, {ID: 12, Word: "犬", Meaning: "dog"}},
-		MatchingRedoWordIDs: []int64{11},
+		Round:                2,
+		DoneCount:            1,
+		MatchingPairsMode:    true,
+		Remaining:            []wordJSON{{ID: 11, Word: "猫"}, {ID: 12, Word: "犬"}},
+		MatchingRoundWords:   []wordJSON{{ID: 12, Word: "犬"}, {ID: 11, Word: "猫"}},
+		MatchingInfoWords:    []wordJSON{{ID: 11, Word: "猫", Meaning: "cat"}, {ID: 12, Word: "犬", Meaning: "dog"}},
+		MatchingRedoWordIDs:  []int64{11},
 		MatchingSelectedWord: &selectedWordID,
 		MatchingMatchedPairs: map[string]int64{"12": 12},
 		MatchingCarryoverIDs: []int64{11},
@@ -1263,6 +1341,7 @@ func TestInsertStory_AndGetStoryByID(t *testing.T) {
 	jp2 := "今日も頑張ろう。"
 	en1 := "Good morning."
 	en2 := "Let's do our best today too."
+	startTime1 := int64(1250)
 
 	id, err := insertStory(db, title, []storySentenceInput{
 		{
@@ -1272,6 +1351,7 @@ func TestInsertStory_AndGetStoryByID(t *testing.T) {
 			},
 			JPText:           &jp1,
 			ENText:           &en1,
+			StartTimeMS:      &startTime1,
 			OrigLang:         "jp",
 			IsParagraphStart: true,
 		},
@@ -1286,6 +1366,9 @@ func TestInsertStory_AndGetStoryByID(t *testing.T) {
 			ENText:   &en2,
 			OrigLang: "jp",
 		},
+	}, storyMediaInput{
+		MediaType: "youtube",
+		MediaURL:  "https://www.youtube.com/embed/test123?enablejsapi=1",
 	})
 	if err != nil {
 		t.Fatalf("insertStory: %v", err)
@@ -1308,6 +1391,12 @@ func TestInsertStory_AndGetStoryByID(t *testing.T) {
 		t.Fatal("expected created_at timestamp")
 	}
 	parseDBDateTime(t, story.CreatedAt)
+	if story.MediaType != "youtube" {
+		t.Fatalf("media type: got %q, want youtube", story.MediaType)
+	}
+	if story.MediaURL != "https://www.youtube.com/embed/test123?enablejsapi=1" {
+		t.Fatalf("media url: got %q", story.MediaURL)
+	}
 	if story.SentenceCount != 2 {
 		t.Fatalf("sentence count: got %d, want 2", story.SentenceCount)
 	}
@@ -1331,6 +1420,9 @@ func TestInsertStory_AndGetStoryByID(t *testing.T) {
 	}
 	if story.Sentences[0].ENText == nil || *story.Sentences[0].ENText != en1 {
 		t.Errorf("sentence 1 english: got %+v", story.Sentences[0].ENText)
+	}
+	if story.Sentences[0].StartTimeMS == nil || *story.Sentences[0].StartTimeMS != startTime1 {
+		t.Errorf("sentence 1 startTimeMs: got %+v, want %d", story.Sentences[0].StartTimeMS, startTime1)
 	}
 	if story.Sentences[0].JPText == nil || *story.Sentences[0].JPText != jp1 {
 		t.Errorf("sentence 1 japanese: got %+v", story.Sentences[0].JPText)
@@ -1362,7 +1454,7 @@ func TestInsertStory_InsertsStoryWordsAsUntracked(t *testing.T) {
 			OrigLang:         "jp",
 			IsParagraphStart: true,
 		},
-	})
+	}, storyMediaInput{})
 	if err != nil {
 		t.Fatalf("insertStory: %v", err)
 	}
@@ -1398,7 +1490,7 @@ func TestInsertStory_InsertsStoryWordsAsUntracked(t *testing.T) {
 func TestInsertStory_RequiresAtLeastOneSentence(t *testing.T) {
 	db := testDB(t)
 
-	_, err := insertStory(db, "No sentences", nil)
+	_, err := insertStory(db, "No sentences", nil, storyMediaInput{})
 	if err == nil {
 		t.Fatal("expected error for missing sentences")
 	}
@@ -1411,7 +1503,7 @@ func TestInsertStory_RequiresAtLeastOneWordPerSentence(t *testing.T) {
 	db := testDB(t)
 
 	text := "庭園。"
-	_, err := insertStory(db, "Missing words", []storySentenceInput{{JPText: &text, OrigLang: "jp"}})
+	_, err := insertStory(db, "Missing words", []storySentenceInput{{JPText: &text, OrigLang: "jp"}}, storyMediaInput{})
 	if err == nil {
 		t.Fatal("expected error for missing words")
 	}
@@ -1425,7 +1517,7 @@ func TestInsertStory_RequiresTitle(t *testing.T) {
 
 	_, err := insertStory(db, "", []storySentenceInput{
 		{Words: []storyWordInput{{DisplayWord: "庭園", BaseWord: "庭園"}}, OrigLang: "jp"},
-	})
+	}, storyMediaInput{})
 	if err == nil {
 		t.Fatal("expected error for missing title")
 	}
@@ -1452,7 +1544,7 @@ func TestInsertStory_RollsBackActivityEventOnFailure(t *testing.T) {
 			OrigLang:         "jp",
 			IsParagraphStart: true,
 		},
-	})
+	}, storyMediaInput{})
 	if err == nil {
 		t.Fatal("expected insertStory to fail")
 	}
@@ -1481,7 +1573,7 @@ func TestStoryNotedWords_PersistOnStory(t *testing.T) {
 			OrigLang:         "jp",
 			IsParagraphStart: true,
 		},
-	})
+	}, storyMediaInput{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1522,6 +1614,161 @@ func TestStoryNotedWords_PersistOnStory(t *testing.T) {
 	}
 	if len(story.NotedWords) != 1 || story.NotedWords[0].BaseWord != "庭園" {
 		t.Fatalf("unexpected noted words after remove: %+v", story.NotedWords)
+	}
+}
+
+func TestBuildStorySentencesFromSubtitle_SRT(t *testing.T) {
+	content := "1\n00:00:01,250 --> 00:00:03,000\nãŠã¯ã‚ˆã†ã€‚\n\n2\n00:00:04,500 --> 00:00:06,000\nä»Šæ—¥ã‚‚\né ‘å¼µã‚ã†ã€‚\n"
+
+	sentences := buildStorySentencesFromSubtitle(content)
+	if len(sentences) != 3 {
+		t.Fatalf("sentence count: got %d, want 3", len(sentences))
+	}
+	if sentences[0].StartTimeMS == nil || *sentences[0].StartTimeMS != 1250 {
+		t.Fatalf("sentence 1 startTimeMs: got %+v", sentences[0].StartTimeMS)
+	}
+	if !sentences[0].IsParagraphStart {
+		t.Fatal("sentence 1 should be paragraph start")
+	}
+	if sentences[1].StartTimeMS == nil || *sentences[1].StartTimeMS != 4500 {
+		t.Fatalf("sentence 2 startTimeMs: got %+v", sentences[1].StartTimeMS)
+	}
+	if sentences[1].IsParagraphStart || sentences[2].IsParagraphStart {
+		t.Fatal("subtitle continuation lines should not start new paragraphs")
+	}
+}
+
+func TestBuildStorySentencesFromSubtitle_VTT(t *testing.T) {
+	content := "WEBVTT\n\n00:00:00.900 --> 00:00:02.100\nHello there.\n\n00:00:05.000 --> 00:00:06.500\nä»Šæ—¥ã¯åº­åœ’ã«è¡Œãã€‚\n"
+
+	sentences := buildStorySentencesFromSubtitle(content)
+	if len(sentences) != 2 {
+		t.Fatalf("sentence count: got %d, want 2", len(sentences))
+	}
+	if sentences[0].OrigLang != "en" || sentences[0].StartTimeMS == nil || *sentences[0].StartTimeMS != 900 {
+		t.Fatalf("sentence 1: got %+v", sentences[0])
+	}
+	if sentences[1].OrigLang != "jp" || sentences[1].StartTimeMS == nil || *sentences[1].StartTimeMS != 5000 {
+		t.Fatalf("sentence 2: got %+v", sentences[1])
+	}
+}
+
+func TestParseStoryContent_DetectsJapaneseSubtitleFormats(t *testing.T) {
+	cases := []struct {
+		name         string
+		content      string
+		wantCount    int
+		wantFirstMS  int64
+		wantSecondMS int64
+		wantSecondJP string
+	}{
+		{
+			name:         "srt",
+			content:      "1\n00:00:01,250 --> 00:00:03,000\nおはよう。\n\n2\n00:00:04,500 --> 00:00:06,000\n今日は庭園に行く。\n",
+			wantCount:    2,
+			wantFirstMS:  1250,
+			wantSecondMS: 4500,
+			wantSecondJP: "今日は庭園に行く。",
+		},
+		{
+			name:         "vtt",
+			content:      "WEBVTT\n\n00:00:00.900 --> 00:00:02.100\nこんばんは。\n\n00:00:05.000 --> 00:00:06.500\n今日は庭園に行く。\n",
+			wantCount:    2,
+			wantFirstMS:  900,
+			wantSecondMS: 5000,
+			wantSecondJP: "今日は庭園に行く。",
+		},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			sentences := parseStoryContent(tc.content)
+			if len(sentences) != tc.wantCount {
+				t.Fatalf("sentence count: got %d, want %d", len(sentences), tc.wantCount)
+			}
+			if sentences[0].OrigLang != "jp" || sentences[0].StartTimeMS == nil || *sentences[0].StartTimeMS != tc.wantFirstMS {
+				t.Fatalf("sentence 1: got %+v", sentences[0])
+			}
+			if sentences[1].OrigLang != "jp" || sentences[1].JPText == nil || *sentences[1].JPText != tc.wantSecondJP {
+				t.Fatalf("sentence 2 jp text: got %+v", sentences[1])
+			}
+			if sentences[1].StartTimeMS == nil || *sentences[1].StartTimeMS != tc.wantSecondMS {
+				t.Fatalf("sentence 2 startTimeMs: got %+v", sentences[1].StartTimeMS)
+			}
+		})
+	}
+}
+
+func TestNormalizeYouTubeEmbedURL(t *testing.T) {
+	cases := map[string]string{
+		"https://www.youtube.com/watch?v=abc123":          "https://www.youtube.com/embed/abc123?enablejsapi=1",
+		"https://youtu.be/xyz789?t=30":                    "https://www.youtube.com/embed/xyz789?enablejsapi=1",
+		"https://www.youtube.com/embed/embed123?start=10": "https://www.youtube.com/embed/embed123?enablejsapi=1",
+	}
+	for input, want := range cases {
+		got, err := normalizeYouTubeEmbedURL(input)
+		if err != nil {
+			t.Fatalf("normalizeYouTubeEmbedURL(%q): %v", input, err)
+		}
+		if got != want {
+			t.Fatalf("normalizeYouTubeEmbedURL(%q): got %q, want %q", input, got, want)
+		}
+	}
+}
+
+func TestNormalizeStoryMedia_InfersTypeFromURLOrPath(t *testing.T) {
+	cases := []struct {
+		name      string
+		mediaURL  string
+		wantType  string
+		wantURL   string
+		wantError string
+	}{
+		{
+			name:     "youtube url",
+			mediaURL: "https://youtu.be/xyz789?t=30",
+			wantType: "youtube",
+			wantURL:  "https://www.youtube.com/embed/xyz789?enablejsapi=1",
+		},
+		{
+			name:     "local audio path",
+			mediaURL: `D:\audio\story.m4a`,
+			wantType: "local",
+			wantURL:  `D:\audio\story.m4a`,
+		},
+		{
+			name:     "local video path",
+			mediaURL: `/tmp/story.webm`,
+			wantType: "local",
+			wantURL:  `/tmp/story.webm`,
+		},
+		{
+			name:     "arbitrary local path",
+			mediaURL: `/tmp/story.txt`,
+			wantType: "local",
+			wantURL:  `/tmp/story.txt`,
+		},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			got, err := normalizeStoryMedia("", tc.mediaURL)
+			if tc.wantError != "" {
+				if err == nil || err.Error() != tc.wantError {
+					t.Fatalf("normalizeStoryMedia error: got %v, want %q", err, tc.wantError)
+				}
+				return
+			}
+			if err != nil {
+				t.Fatalf("normalizeStoryMedia: %v", err)
+			}
+			if got.MediaType != tc.wantType {
+				t.Fatalf("media type: got %q, want %q", got.MediaType, tc.wantType)
+			}
+			if got.MediaURL != tc.wantURL {
+				t.Fatalf("media url: got %q, want %q", got.MediaURL, tc.wantURL)
+			}
+		})
 	}
 }
 

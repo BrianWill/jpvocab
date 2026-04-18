@@ -147,7 +147,8 @@
 }
 
 .story-add-modal-main .modal-field input,
-.story-add-modal-main .modal-field textarea {
+.story-add-modal-main .modal-field textarea,
+.story-add-modal-main .modal-field select {
   background: #11111b;
   border: 1px solid #313244;
   border-radius: 4px;
@@ -156,8 +157,16 @@
 }
 
 .story-add-modal-main .modal-field input:focus,
-.story-add-modal-main .modal-field textarea:focus {
+.story-add-modal-main .modal-field textarea:focus,
+.story-add-modal-main .modal-field select:focus {
   outline: 1px solid #89b4fa;
+}
+
+.story-add-help {
+  margin: -0.15rem 0 -0.1rem;
+  color: #7b8cb8;
+  font-size: 0.82rem;
+  line-height: 1.5;
 }
 
 #story-title-input {
@@ -166,17 +175,24 @@
   width: 100%;
 }
 
+#story-media-url-input {
+  font-size: 0.9rem;
+  padding: 0.55rem 0.6rem;
+  width: 100%;
+}
+
 #story-content-input {
   font-size: 0.95rem;
   line-height: 1.7;
   padding: 0.5rem 0.6rem;
   width: 100%;
-  min-height: 20rem;
+  min-height: 13rem;
   resize: vertical;
 }
 
 #story-content-input::placeholder,
-#story-title-input::placeholder {
+#story-title-input::placeholder,
+#story-media-url-input::placeholder {
   color: #313244;
 }
 

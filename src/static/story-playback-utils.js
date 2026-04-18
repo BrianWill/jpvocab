@@ -1,3 +1,5 @@
+import { storyHasLocalMedia, storyUsesYouTubeMedia } from './story-media-utils.js';
+
 export function clampPlaybackRate(rate) {
   return Math.min(2.0, Math.max(0.5, parseFloat(rate.toFixed(2))));
 }
@@ -22,4 +24,10 @@ export function splitByClause(sentence) {
   }
   if (current.length > 0) clauses.push(current);
   return clauses.filter(c => c.length > 0);
+}
+
+export function playbackModeForStory(story) {
+  if (storyUsesYouTubeMedia(story)) return 'youtube';
+  if (storyHasLocalMedia(story)) return 'local-media';
+  return 'speech';
 }

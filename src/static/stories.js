@@ -6,6 +6,7 @@ import {
   sortStories,
   wordCountLabel,
 } from './stories-utils.js';
+import { storyMediaTypeLabel } from './story-media-utils.js';
 import { bindBackdropClose, bindEscapeClose, setModalOpen } from './modal-utils.js';
 
 const els = {
@@ -20,6 +21,7 @@ const els = {
   empty: document.getElementById('stories-empty'),
   list: document.getElementById('stories-list'),
   storyContentInput: document.getElementById('story-content-input'),
+  storyMediaUrlInput: document.getElementById('story-media-url-input'),
   storyTitleInput: document.getElementById('story-title-input'),
 };
 els.addModalCloseBtn = els.addModalBackdrop.querySelector('.modal-close');
@@ -60,6 +62,7 @@ function renderStories(stories) {
         <div class="story-card-meta">
           <span>${sentenceCountLabel(story.sentenceCount || 0)}</span>
           <span>${wordCountLabel(story.lexiconWordCount || 0)}</span>
+          ${storyMediaTypeLabel(story.mediaType) ? `<span>${escStoryHtml(storyMediaTypeLabel(story.mediaType))}</span>` : ''}
         </div>
       </article>
     </a>
@@ -78,6 +81,7 @@ function renderError() {
 function openAddModal() {
   els.storyTitleInput.value = '';
   els.storyContentInput.value = '';
+  els.storyMediaUrlInput.value = '';
   els.addError.classList.add('hidden');
   els.addConfirmBtn.disabled = false;
   els.addConfirmBtn.textContent = 'Add';
@@ -101,6 +105,7 @@ async function confirmAdd() {
       body: JSON.stringify({
         title: els.storyTitleInput.value,
         content: els.storyContentInput.value,
+        mediaUrl: els.storyMediaUrlInput.value,
       }),
     });
     if (!res.ok) throw new Error((await res.text()).trim() || res.statusText);

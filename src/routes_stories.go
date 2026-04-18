@@ -209,8 +209,10 @@ func apiDeleteStory(db *sql.DB) http.HandlerFunc {
 func apiCreateStory(db *sql.DB) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		var body struct {
-			Title   string `json:"title"`
-			Content string `json:"content"`
+			Title     string `json:"title"`
+			Content   string `json:"content"`
+			MediaType string `json:"mediaType"`
+			MediaURL  string `json:"mediaUrl"`
 		}
 		if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
 			http.Error(w, "bad request", http.StatusBadRequest)
@@ -228,13 +230,19 @@ func apiCreateStory(db *sql.DB) http.HandlerFunc {
 			return
 		}
 
-		sentences := buildStorySentencesFromText(content)
+		media, err := normalizeStoryMedia(body.MediaType, body.MediaURL)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusBadRequest)
+			return
+		}
+
+		sentences := parseStoryContent(content)
 		if len(sentences) == 0 {
 			http.Error(w, "story must have at least one sentence", http.StatusBadRequest)
 			return
 		}
 
-		id, err := insertStory(db, title, sentences)
+		id, err := insertStory(db, title, sentences, media)
 		if err != nil {
 			if strings.Contains(err.Error(), "required") || strings.Contains(err.Error(), "at least one sentence") {
 				http.Error(w, err.Error(), http.StatusBadRequest)

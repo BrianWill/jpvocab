@@ -4,7 +4,9 @@ import (
 	"database/sql"
 	"encoding/json"
 	"errors"
+	"net/url"
 	"regexp"
+	"strconv"
 	"strings"
 	"time"
 	"unicode/utf8"
@@ -24,6 +26,7 @@ type storySentenceInput struct {
 	Words            []storyWordInput
 	JPText           *string
 	ENText           *string
+	StartTimeMS      *int64
 	OrigLang         string
 	IsParagraphStart bool
 }
@@ -35,6 +38,7 @@ type storySentenceJSON struct {
 	Words            []storyWordJSON `json:"words"`
 	JPText           *string         `json:"jp"`
 	ENText           *string         `json:"en"`
+	StartTimeMS      *int64          `json:"startTimeMs,omitempty"`
 	OrigLang         string          `json:"orig_lang"`
 	IsParagraphStart bool            `json:"isParagraphStart"`
 }
@@ -54,22 +58,29 @@ type storyJSON struct {
 	ID               int64                `json:"id"`
 	Title            string               `json:"title"`
 	CreatedAt        string               `json:"createdAt"`
+	MediaType        string               `json:"mediaType,omitempty"`
+	MediaURL         string               `json:"mediaUrl,omitempty"`
 	SentenceCount    int                  `json:"sentenceCount"`
 	LexiconWordCount int                  `json:"lexiconWordCount"`
 	NotedWords       []storyNotedWordJSON `json:"notedWords"`
 	Sentences        []storySentenceJSON  `json:"sentences"`
 }
 
+type storyMediaInput struct {
+	MediaType string
+	MediaURL  string
+}
+
 const storyChunkMinChars = 200
 
-func insertStory(db *sql.DB, title string, sentences []storySentenceInput) (int64, error) {
+func insertStory(db *sql.DB, title string, sentences []storySentenceInput, media storyMediaInput) (int64, error) {
 	tx, err := db.Begin()
 	if err != nil {
 		return 0, err
 	}
 	defer tx.Rollback()
 
-	storyID, err := insertStoryTx(tx, title, sentences)
+	storyID, err := insertStoryTx(tx, title, sentences, media)
 	if err != nil {
 		return 0, err
 	}
@@ -79,7 +90,7 @@ func insertStory(db *sql.DB, title string, sentences []storySentenceInput) (int6
 	return storyID, nil
 }
 
-func insertStoryTx(tx *sql.Tx, title string, sentences []storySentenceInput) (int64, error) {
+func insertStoryTx(tx *sql.Tx, title string, sentences []storySentenceInput, media storyMediaInput) (int64, error) {
 	if strings.TrimSpace(title) == "" {
 		return 0, errors.New("story title is required")
 	}
@@ -97,6 +108,19 @@ func insertStoryTx(tx *sql.Tx, title string, sentences []storySentenceInput) (in
 			return 0, errors.New("japanese story sentence must have at least one word")
 		}
 	}
+	media.MediaType = strings.TrimSpace(media.MediaType)
+	media.MediaURL = strings.TrimSpace(media.MediaURL)
+	switch media.MediaType {
+	case "", "youtube", "local":
+	default:
+		return 0, errors.New("story media type must be youtube, local, or empty")
+	}
+	if media.MediaType == "" {
+		media.MediaURL = ""
+	} else if media.MediaURL == "" {
+		return 0, errors.New("story media url is required")
+	}
+
 	chunks := buildStoryChunks(sentences)
 	if len(chunks) == 0 {
 		return 0, errors.New("story must have at least one sentence")
@@ -106,9 +130,9 @@ func insertStoryTx(tx *sql.Tx, title string, sentences []storySentenceInput) (in
 	lexiconWordCount := storyLexiconWordCount(sentences)
 
 	res, err := tx.Exec(`
-		INSERT INTO stories (title, sentence_count, lexicon_word_count, created_at)
-		VALUES (?, ?, ?, ?)
-	`, title, sentenceCount, lexiconWordCount, createdAt)
+		INSERT INTO stories (title, media_type, media_url, sentence_count, lexicon_word_count, created_at)
+		VALUES (?, ?, ?, ?, ?, ?)
+	`, title, media.MediaType, nullableStoryMediaURL(media.MediaURL), sentenceCount, lexiconWordCount, createdAt)
 	if err != nil {
 		return 0, err
 	}
@@ -167,9 +191,9 @@ func insertStoryTx(tx *sql.Tx, title string, sentences []storySentenceInput) (in
 			}
 
 			if _, err := tx.Exec(`
-				INSERT INTO story_sentences (story_id, position, words_json, jp_text, en_text, orig_lang, is_paragraph_start, is_chunk_start)
-				VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-			`, storyID, storySentencePos, string(wordsJSON), sentence.JPText, sentence.ENText, sentence.OrigLang, paragraphStart, chunkStart); err != nil {
+				INSERT INTO story_sentences (story_id, position, words_json, jp_text, en_text, start_time_ms, orig_lang, is_paragraph_start, is_chunk_start)
+				VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+			`, storyID, storySentencePos, string(wordsJSON), sentence.JPText, sentence.ENText, sentence.StartTimeMS, sentence.OrigLang, paragraphStart, chunkStart); err != nil {
 				return 0, err
 			}
 			storySentencePos++
@@ -183,13 +207,14 @@ type storyMetaJSON struct {
 	ID               int64  `json:"id"`
 	Title            string `json:"title"`
 	CreatedAt        string `json:"createdAt"`
+	MediaType        string `json:"mediaType,omitempty"`
 	SentenceCount    int    `json:"sentenceCount"`
 	LexiconWordCount int    `json:"lexiconWordCount"`
 }
 
 func listStoriesMeta(db *sql.DB) ([]storyMetaJSON, error) {
 	rows, err := db.Query(`
-		SELECT id, title, created_at, sentence_count, lexicon_word_count
+		SELECT id, title, created_at, media_type, sentence_count, lexicon_word_count
 		FROM stories
 		ORDER BY created_at DESC, id DESC
 	`)
@@ -200,7 +225,7 @@ func listStoriesMeta(db *sql.DB) ([]storyMetaJSON, error) {
 	var stories []storyMetaJSON
 	for rows.Next() {
 		var s storyMetaJSON
-		if err := rows.Scan(&s.ID, &s.Title, &s.CreatedAt, &s.SentenceCount, &s.LexiconWordCount); err != nil {
+		if err := rows.Scan(&s.ID, &s.Title, &s.CreatedAt, &s.MediaType, &s.SentenceCount, &s.LexiconWordCount); err != nil {
 			return nil, err
 		}
 		stories = append(stories, s)
@@ -248,8 +273,8 @@ func deleteStory(db *sql.DB, id int64) error {
 
 func queryStories(db *sql.DB, whereClause string, args ...any) ([]storyJSON, error) {
 	rows, err := db.Query(`
-		SELECT s.id, s.title, s.created_at, s.sentence_count, s.lexicon_word_count, s.noted_words_json,
-		       ss.id, ss.position, ss.words_json, ss.jp_text, ss.en_text, ss.orig_lang, ss.is_paragraph_start, ss.is_chunk_start
+		SELECT s.id, s.title, s.created_at, s.media_type, s.media_url, s.sentence_count, s.lexicon_word_count, s.noted_words_json,
+		       ss.id, ss.position, ss.words_json, ss.jp_text, ss.en_text, ss.start_time_ms, ss.orig_lang, ss.is_paragraph_start, ss.is_chunk_start
 		FROM stories s
 		LEFT JOIN story_sentences ss ON ss.story_id = s.id
 	`+whereClause+`
@@ -269,6 +294,8 @@ func queryStories(db *sql.DB, whereClause string, args ...any) ([]storyJSON, err
 		var storyID int64
 		var title string
 		var createdAt string
+		var mediaType string
+		var mediaURL sql.NullString
 		var sentenceCount int
 		var lexiconWordCount int
 		var notedWordsJSON sql.NullString
@@ -277,13 +304,14 @@ func queryStories(db *sql.DB, whereClause string, args ...any) ([]storyJSON, err
 		var wordsJSON sql.NullString
 		var jpText sql.NullString
 		var enText sql.NullString
+		var startTimeMS sql.NullInt64
 		var origLang sql.NullString
 		var isParagraphStart sql.NullInt64
 		var isChunkStart sql.NullInt64
 
 		if err := rows.Scan(
-			&storyID, &title, &createdAt, &sentenceCount, &lexiconWordCount, &notedWordsJSON,
-			&sentenceID, &position, &wordsJSON, &jpText, &enText, &origLang, &isParagraphStart, &isChunkStart,
+			&storyID, &title, &createdAt, &mediaType, &mediaURL, &sentenceCount, &lexiconWordCount, &notedWordsJSON,
+			&sentenceID, &position, &wordsJSON, &jpText, &enText, &startTimeMS, &origLang, &isParagraphStart, &isChunkStart,
 		); err != nil {
 			return nil, err
 		}
@@ -293,6 +321,8 @@ func queryStories(db *sql.DB, whereClause string, args ...any) ([]storyJSON, err
 				ID:               storyID,
 				Title:            title,
 				CreatedAt:        createdAt,
+				MediaType:        mediaType,
+				MediaURL:         strings.TrimSpace(mediaURL.String),
 				SentenceCount:    sentenceCount,
 				LexiconWordCount: lexiconWordCount,
 				NotedWords:       []storyNotedWordJSON{},
@@ -338,6 +368,10 @@ func queryStories(db *sql.DB, whereClause string, args ...any) ([]storyJSON, err
 			if enText.Valid {
 				text := enText.String
 				sentence.ENText = &text
+			}
+			if startTimeMS.Valid {
+				value := startTimeMS.Int64
+				sentence.StartTimeMS = &value
 			}
 			if origLang.Valid && origLang.String != "" {
 				sentence.OrigLang = origLang.String
@@ -385,20 +419,20 @@ func querySentencesLite(db *sql.DB, storyID int64, chunkPosition int) ([]storySe
 
 		if nextStart.Valid {
 			rows, err = db.Query(
-				`SELECT id, position, words_json, jp_text, en_text, orig_lang, is_paragraph_start FROM story_sentences
+				`SELECT id, position, words_json, jp_text, en_text, start_time_ms, orig_lang, is_paragraph_start FROM story_sentences
 				 WHERE story_id = ? AND position >= ? AND position < ? ORDER BY position`,
 				storyID, startPos, nextStart.Int64,
 			)
 		} else {
 			rows, err = db.Query(
-				`SELECT id, position, words_json, jp_text, en_text, orig_lang, is_paragraph_start FROM story_sentences
+				`SELECT id, position, words_json, jp_text, en_text, start_time_ms, orig_lang, is_paragraph_start FROM story_sentences
 				 WHERE story_id = ? AND position >= ? ORDER BY position`,
 				storyID, startPos,
 			)
 		}
 	} else {
 		rows, err = db.Query(
-			`SELECT id, position, words_json, jp_text, en_text, orig_lang, is_paragraph_start FROM story_sentences
+			`SELECT id, position, words_json, jp_text, en_text, start_time_ms, orig_lang, is_paragraph_start FROM story_sentences
 			 WHERE story_id = ? ORDER BY position`,
 			storyID,
 		)
@@ -414,9 +448,10 @@ func querySentencesLite(db *sql.DB, storyID int64, chunkPosition int) ([]storySe
 		var wordsJSON sql.NullString
 		var jpText sql.NullString
 		var enText sql.NullString
+		var startTimeMS sql.NullInt64
 		var origLang sql.NullString
 		var isParagraphStart sql.NullInt64
-		if err := rows.Scan(&s.ID, &s.Position, &wordsJSON, &jpText, &enText, &origLang, &isParagraphStart); err != nil {
+		if err := rows.Scan(&s.ID, &s.Position, &wordsJSON, &jpText, &enText, &startTimeMS, &origLang, &isParagraphStart); err != nil {
 			return nil, err
 		}
 		if wordsJSON.Valid {
@@ -433,6 +468,10 @@ func querySentencesLite(db *sql.DB, storyID int64, chunkPosition int) ([]storySe
 		if enText.Valid {
 			t := enText.String
 			s.ENText = &t
+		}
+		if startTimeMS.Valid {
+			value := startTimeMS.Int64
+			s.StartTimeMS = &value
 		}
 		if origLang.Valid && origLang.String != "" {
 			s.OrigLang = origLang.String
@@ -609,6 +648,12 @@ func buildStorySentenceInput(text string, isParagraphStart bool) storySentenceIn
 	return sentence
 }
 
+func buildTimedStorySentenceInput(text string, isParagraphStart bool, startTimeMS int64) storySentenceInput {
+	sentence := buildStorySentenceInput(text, isParagraphStart)
+	sentence.StartTimeMS = &startTimeMS
+	return sentence
+}
+
 // fillMissingBaseWords sets BaseWord = DisplayWord for any word where BaseWord
 // was omitted during storage (i.e. they were equal and only "display" was stored).
 func fillMissingBaseWords(words []storyWordJSON) {
@@ -740,4 +785,209 @@ func buildStorySentencesFromText(content string) []storySentenceInput {
 	}
 
 	return sentences
+}
+
+var subtitleTimeRE = regexp.MustCompile(`^\s*(\d{1,2}):(\d{2}):(\d{2})[,.](\d{3})\s*-->\s*(\d{1,2}):(\d{2}):(\d{2})[,.](\d{3})`)
+
+func parseStoryContent(content string) []storySentenceInput {
+	if sentences := buildStorySentencesFromSubtitle(content); len(sentences) > 0 {
+		return sentences
+	}
+	return buildStorySentencesFromText(content)
+}
+
+func buildStorySentencesFromSubtitle(content string) []storySentenceInput {
+	normalized := strings.ReplaceAll(content, "\r\n", "\n")
+	trimmed := strings.TrimSpace(normalized)
+	if trimmed == "" {
+		return nil
+	}
+
+	lines := strings.Split(trimmed, "\n")
+	idx := 0
+	if len(lines) > 0 && strings.EqualFold(strings.TrimSpace(lines[0]), "WEBVTT") {
+		idx = 1
+	}
+
+	sentences := make([]storySentenceInput, 0)
+	firstSentence := true
+	for idx < len(lines) {
+		line := strings.TrimSpace(lines[idx])
+		if line == "" {
+			idx++
+			continue
+		}
+		if strings.HasPrefix(strings.ToUpper(line), "NOTE") {
+			for idx < len(lines) && strings.TrimSpace(lines[idx]) != "" {
+				idx++
+			}
+			continue
+		}
+		if !subtitleTimeRE.MatchString(line) {
+			if idx+1 >= len(lines) || !subtitleTimeRE.MatchString(strings.TrimSpace(lines[idx+1])) {
+				return nil
+			}
+			idx++
+			line = strings.TrimSpace(lines[idx])
+		}
+		startTimeMS, ok := parseSubtitleStartTimeMS(line)
+		if !ok {
+			return nil
+		}
+		idx++
+
+		cueLines := make([]string, 0)
+		for idx < len(lines) {
+			textLine := strings.TrimSpace(lines[idx])
+			if textLine == "" {
+				break
+			}
+			cueLines = append(cueLines, stripSubtitleTags(textLine))
+			idx++
+		}
+		if len(cueLines) == 0 {
+			continue
+		}
+		for _, cueLine := range cueLines {
+			text := strings.TrimSpace(cueLine)
+			if text == "" {
+				continue
+			}
+			sentences = append(sentences, buildTimedStorySentenceInput(text, firstSentence, startTimeMS))
+			firstSentence = false
+		}
+	}
+	return sentences
+}
+
+func parseSubtitleStartTimeMS(line string) (int64, bool) {
+	match := subtitleTimeRE.FindStringSubmatch(line)
+	if len(match) != 9 {
+		return 0, false
+	}
+	hours, err := strconv.ParseInt(match[1], 10, 64)
+	if err != nil {
+		return 0, false
+	}
+	minutes, err := strconv.ParseInt(match[2], 10, 64)
+	if err != nil {
+		return 0, false
+	}
+	seconds, err := strconv.ParseInt(match[3], 10, 64)
+	if err != nil {
+		return 0, false
+	}
+	millis, err := strconv.ParseInt(match[4], 10, 64)
+	if err != nil {
+		return 0, false
+	}
+	return (((hours*60)+minutes)*60+seconds)*1000 + millis, true
+}
+
+var subtitleTagRE = regexp.MustCompile(`<[^>]+>`)
+
+func stripSubtitleTags(text string) string {
+	text = subtitleTagRE.ReplaceAllString(text, "")
+	text = strings.ReplaceAll(text, "&nbsp;", " ")
+	return strings.TrimSpace(text)
+}
+
+func normalizeStoryMedia(mediaType, mediaURL string) (storyMediaInput, error) {
+	media := storyMediaInput{
+		MediaType: strings.TrimSpace(mediaType),
+		MediaURL:  strings.TrimSpace(mediaURL),
+	}
+	if media.MediaURL == "" {
+		return storyMediaInput{}, nil
+	}
+	if media.MediaType == "" {
+		inferredType, err := inferStoryMediaType(media.MediaURL)
+		if err != nil {
+			return storyMediaInput{}, err
+		}
+		media.MediaType = inferredType
+	}
+	switch media.MediaType {
+	case "youtube":
+		normalized, err := normalizeYouTubeEmbedURL(media.MediaURL)
+		if err != nil {
+			return storyMediaInput{}, err
+		}
+		media.MediaURL = normalized
+	case "local":
+	default:
+		return storyMediaInput{}, errors.New("invalid story media type")
+	}
+	return media, nil
+}
+
+func inferStoryMediaType(raw string) (string, error) {
+	trimmed := strings.TrimSpace(raw)
+	if trimmed == "" {
+		return "", nil
+	}
+	if strings.HasPrefix(strings.ToLower(trimmed), "http://") || strings.HasPrefix(strings.ToLower(trimmed), "https://") {
+		if _, err := normalizeYouTubeEmbedURL(trimmed); err != nil {
+			return "", err
+		}
+		return "youtube", nil
+	}
+
+	return "local", nil
+}
+
+func storyMediaPathExt(raw string) string {
+	trimmed := strings.TrimSpace(raw)
+	if trimmed == "" {
+		return ""
+	}
+	if idx := strings.IndexAny(trimmed, "?#"); idx >= 0 {
+		trimmed = trimmed[:idx]
+	}
+	lastSlash := strings.LastIndexAny(trimmed, `/\`)
+	lastDot := strings.LastIndex(trimmed, ".")
+	if lastDot <= lastSlash {
+		return ""
+	}
+	return trimmed[lastDot:]
+}
+
+func normalizeYouTubeEmbedURL(raw string) (string, error) {
+	parsed, err := url.Parse(strings.TrimSpace(raw))
+	if err != nil {
+		return "", errors.New("invalid youtube url")
+	}
+	if parsed.Host == "" {
+		return "", errors.New("invalid youtube url")
+	}
+	host := strings.ToLower(strings.TrimPrefix(parsed.Host, "www."))
+	var videoID string
+	switch host {
+	case "youtube.com", "m.youtube.com":
+		switch {
+		case strings.HasPrefix(parsed.Path, "/watch"):
+			videoID = parsed.Query().Get("v")
+		case strings.HasPrefix(parsed.Path, "/embed/"):
+			videoID = strings.TrimPrefix(parsed.Path, "/embed/")
+		case strings.HasPrefix(parsed.Path, "/shorts/"):
+			videoID = strings.TrimPrefix(parsed.Path, "/shorts/")
+		}
+	case "youtu.be":
+		videoID = strings.TrimPrefix(parsed.Path, "/")
+	default:
+		return "", errors.New("invalid youtube url")
+	}
+	videoID = strings.TrimSpace(strings.Split(videoID, "/")[0])
+	if videoID == "" {
+		return "", errors.New("invalid youtube url")
+	}
+	return "https://www.youtube.com/embed/" + videoID + "?enablejsapi=1", nil
+}
+
+func nullableStoryMediaURL(value string) any {
+	value = strings.TrimSpace(value)
+	if value == "" {
+		return nil
+	}
+	return value
 }

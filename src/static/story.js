@@ -3,7 +3,8 @@ import { pluralize } from './format-utils.js';
 import { esc, renderReading } from './lexicon-utils.js';
 import { initGenerateModals, openTranslationModal, populateTranslationModelSelect } from './story-generate.js';
 import { initStoryAddToLexicon, addWordsToLexicon } from './story-lexicon-add-modal.js';
-import { initPlayback, initSynthPlayback, showSentencePlayBtn, scheduleSentencePlayHide, hideSentencePlayBtn, cancelSentencePlayHide, stopPlayback } from './story-playback.js';
+import { initPlayback, initSynthPlayback, showSentencePlayBtn, scheduleSentencePlayHide, stopPlayback } from './story-playback.js';
+import { storyCanSeekSentenceInMedia, storyHasLocalMedia, storyMediaTypeLabel, storyUsesYouTubeMedia } from './story-media-utils.js';
 
 // ── DOM refs ──────────────────────────────────────────────────────────────────
 const els = {
@@ -29,20 +30,22 @@ const els = {
   speedDec: document.getElementById('story-speed-dec'),
   speedInc: document.getElementById('story-speed-inc'),
   speedVal: document.getElementById('story-speed-val'),
-  storyLayout: document.getElementById('story-layout'),
+  storyLocalMediaNote: document.getElementById('story-local-media-note'),
+  storyLocalMediaPath: document.getElementById('story-local-media-path'),
+  storyLocalMediaType: document.getElementById('story-local-media-type'),
+  storyMediaPanel: document.getElementById('story-media-panel'),
   storyMeta: document.getElementById('story-meta'),
   storyContent: document.getElementById('story-content'),
   storyError: document.getElementById('story-error'),
   storyScrollArea: document.getElementById('story-scroll-area'),
   storyNotedAddAll: document.getElementById('story-noted-add-all'),
-  storyNotedClose: document.getElementById('story-noted-close'),
   storyNotedCount: document.getElementById('story-noted-count'),
-  storyNotedEmpty: document.getElementById('story-noted-empty'),
   storyNotedList: document.getElementById('story-noted-list'),
-  storyNotedTab: document.getElementById('story-noted-tab'),
   storyTitle: document.getElementById('story-title'),
   playbackBtn: document.getElementById('story-playback-btn'),
   playbackIcon: document.getElementById('story-playback-icon'),
+  youtubePlayer: document.getElementById('story-youtube-player'),
+  youtubeWrap: document.getElementById('story-youtube-wrap'),
 };
 els.genTranslationModalClose = els.genTranslationModalBackdrop.querySelector('.modal-close');
 
@@ -73,7 +76,6 @@ const state = {
   chunkObserver: null,      // IntersectionObserver for batch-fetching chunk word info
   chunkFetchTimer: null,    // debounce timer for chunk word-info fetches
   notedWords: [],
-  notedWordsOpen: false,
   providers: null,
   translating: false,
   translationChunkPosition: null,
@@ -95,10 +97,13 @@ const state = {
 };
 
 function storyMetaLabel(story) {
-  return [
+  const parts = [
     pluralize(story.sentenceCount || 0, 'sentence'),
     pluralize(story.lexiconWordCount || 0, 'lexicon word'),
-  ].join(' | ');
+  ];
+  const mediaLabel = storyMediaTypeLabel(story.mediaType);
+  if (mediaLabel) parts.push(mediaLabel);
+  return parts.join(' | ');
 }
 
 function sentenceDisplayText(sentence) {
@@ -121,7 +126,31 @@ function sentenceDisplaysTranslatedJapanese(sentence) {
 }
 
 function storyCanUseSynthPlayback(story) {
-  return (story?.sentences || []).every(sentence => sentence.orig_lang !== 'en');
+  return !storyUsesYouTubeMedia(story) && (story?.sentences || []).every(sentence => sentence.orig_lang !== 'en');
+}
+
+function renderStoryMedia(story) {
+  const hasYouTubeMedia = storyUsesYouTubeMedia(story);
+  const hasLocalMedia = storyHasLocalMedia(story);
+
+  els.storyMediaPanel.hidden = !hasYouTubeMedia && !hasLocalMedia;
+  els.youtubeWrap.hidden = !hasYouTubeMedia;
+  els.storyLocalMediaNote.hidden = !hasLocalMedia;
+
+  if (hasYouTubeMedia) {
+    els.youtubePlayer.dataset.mediaUrl = story.mediaUrl || '';
+  } else {
+    els.youtubePlayer.dataset.mediaUrl = '';
+    els.youtubePlayer.innerHTML = '';
+  }
+
+  if (hasLocalMedia) {
+    els.storyLocalMediaType.textContent = storyMediaTypeLabel(story.mediaType);
+    els.storyLocalMediaPath.textContent = story.mediaUrl || '';
+  } else {
+    els.storyLocalMediaType.textContent = '';
+    els.storyLocalMediaPath.textContent = '';
+  }
 }
 
 // ── Story ID ──────────────────────────────────────────────────────────────────
@@ -265,15 +294,7 @@ async function fetchWordInfoBatch(bases) {
   }
 }
 
-function setNotedWordsOpen(open) {
-  state.notedWordsOpen = !!open;
-  els.storyLayout.classList.toggle('story-layout--noted-open', state.notedWordsOpen);
-  els.storyNotedTab.textContent = `Noted Words (${state.notedWords.length})`;
-  cancelSentencePlayHide();
-  hideSentencePlayBtn();
-}
-
-function renderNotedWords(autoOpen = false) {
+function renderNotedWords() {
   els.storyNotedCount.textContent = pluralize(state.notedWords.length, 'word');
   els.storyNotedAddAll.disabled = state.notedWords.length === 0 || state.updatingNotedWords;
   els.storyNotedList.innerHTML = state.notedWords.map(word => `
@@ -287,8 +308,6 @@ function renderNotedWords(autoOpen = false) {
     </div>
   `).join('');
   els.storyNotedEmpty.hidden = state.notedWords.length > 0;
-  if (autoOpen) setNotedWordsOpen(true);
-  else setNotedWordsOpen(state.notedWordsOpen);
   updateWordTokenUI();
 }
 
@@ -309,7 +328,7 @@ async function addHoveredWordToNotedWords() {
     state.notedWords = Array.isArray(data.notedWords) ? data.notedWords : [];
   } finally {
     state.updatingNotedWords = false;
-    renderNotedWords(true);
+    renderNotedWords();
   }
 }
 
@@ -354,14 +373,6 @@ document.addEventListener('keydown', e => {
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ target: newTarget }),
   }).catch(() => {});
-});
-
-els.storyNotedTab.addEventListener('click', () => {
-  setNotedWordsOpen(true);
-});
-
-els.storyNotedClose.addEventListener('click', () => {
-  setNotedWordsOpen(false);
 });
 
 els.storyNotedList.addEventListener('click', event => {
@@ -416,10 +427,10 @@ function renderStory(story) {
   state.story = story;
   state.hoveredWord = null;
   state.notedWords = Array.isArray(story.notedWords) ? story.notedWords : [];
-  state.notedWordsOpen = false;
   document.title = `${story.title} | Story`;
   els.storyTitle.textContent = story.title;
   els.storyMeta.textContent = storyMetaLabel(story);
+  renderStoryMedia(story);
 
   const SEPARATOR = '　';
   state.sentenceSpans = [];
@@ -522,7 +533,8 @@ function renderStory(story) {
       } else {
         sentenceSpan.textContent = sentenceDisplayText(sentence);
       }
-      sentenceSpan.addEventListener('mouseenter', () => showSentencePlayBtn(sentenceIdx));
+      const canSeekInMedia = storyCanSeekSentenceInMedia(story, sentence);
+      sentenceSpan.addEventListener('mouseenter', () => showSentencePlayBtn(sentenceIdx, { canSeekInMedia }));
       sentenceSpan.addEventListener('mouseleave', scheduleSentencePlayHide);
       currentParagraph.appendChild(sentenceSpan);
       currentParagraph.appendChild(document.createTextNode(' '));

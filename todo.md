@@ -2,11 +2,23 @@
 
 This file is random notes of possible features and bug fixes.
 
-- providers is broken? in story chunk translation
+- explicit tracked pool
+    - setting to determine active tracked pool max size, e.g. 300
+    - when tracked pool is full, can still mark card to be tracked, but they go in a backlog queue
+        - when a word reaches its target and thus the active tracked pool size becomes one less than its max size,
+            - automatically tracks oldest word from backlog queue
+    - instead of active concept, maybe just auto untrack words that reach their target?
+        - retain flag to indicate a word was tracked in the past? or has reached its target before?
+
+- remove edit word generation for word info and images?
+    - get rid of example sentences?
+    - keep images but only make it manual
 
 - story page
-    when adding noted words to lexicon, if the word is not added, it is still in the noted words list
-    - maybe this is OK? user just has to remove them manually
+    - why can't click to add 無責任? because 責任 is already in lexicon, so 無責任 won't get highlighted?
+    - remove sentence hover highlight
+    - when word goes from untracked to tracked, maybe should update its date added value? weird if they aren't seen at top of list
+    - clicking word to add it should not show words that won't show up in lexicon...already case?
 
 - story page
     instead of noted words, just have list of lexion words from the story

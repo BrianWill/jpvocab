@@ -47,23 +47,15 @@ type storyChunkInput struct {
 	Sentences []storySentenceInput
 }
 
-type storyNotedWordJSON struct {
-	DisplayWord string `json:"displayWord"`
-	BaseWord    string `json:"baseWord"`
-	English     string `json:"english,omitempty"`
-	CreatedAt   string `json:"createdAt"`
-}
-
 type storyJSON struct {
-	ID               int64                `json:"id"`
-	Title            string               `json:"title"`
-	CreatedAt        string               `json:"createdAt"`
-	MediaType        string               `json:"mediaType,omitempty"`
-	MediaURL         string               `json:"mediaUrl,omitempty"`
-	SentenceCount    int                  `json:"sentenceCount"`
-	LexiconWordCount int                  `json:"lexiconWordCount"`
-	NotedWords       []storyNotedWordJSON `json:"notedWords"`
-	Sentences        []storySentenceJSON  `json:"sentences"`
+	ID               int64               `json:"id"`
+	Title            string              `json:"title"`
+	CreatedAt        string              `json:"createdAt"`
+	MediaType        string              `json:"mediaType,omitempty"`
+	MediaURL         string              `json:"mediaUrl,omitempty"`
+	SentenceCount    int                 `json:"sentenceCount"`
+	LexiconWordCount int                 `json:"lexiconWordCount"`
+	Sentences        []storySentenceJSON `json:"sentences"`
 }
 
 type storyMediaInput struct {
@@ -273,7 +265,7 @@ func deleteStory(db *sql.DB, id int64) error {
 
 func queryStories(db *sql.DB, whereClause string, args ...any) ([]storyJSON, error) {
 	rows, err := db.Query(`
-		SELECT s.id, s.title, s.created_at, s.media_type, s.media_url, s.sentence_count, s.lexicon_word_count, s.noted_words_json,
+		SELECT s.id, s.title, s.created_at, s.media_type, s.media_url, s.sentence_count, s.lexicon_word_count,
 		       ss.id, ss.position, ss.words_json, ss.jp_text, ss.en_text, ss.start_time_ms, ss.orig_lang, ss.is_paragraph_start, ss.is_chunk_start
 		FROM stories s
 		LEFT JOIN story_sentences ss ON ss.story_id = s.id
@@ -298,7 +290,6 @@ func queryStories(db *sql.DB, whereClause string, args ...any) ([]storyJSON, err
 		var mediaURL sql.NullString
 		var sentenceCount int
 		var lexiconWordCount int
-		var notedWordsJSON sql.NullString
 		var sentenceID sql.NullInt64
 		var position sql.NullInt64
 		var wordsJSON sql.NullString
@@ -310,7 +301,7 @@ func queryStories(db *sql.DB, whereClause string, args ...any) ([]storyJSON, err
 		var isChunkStart sql.NullInt64
 
 		if err := rows.Scan(
-			&storyID, &title, &createdAt, &mediaType, &mediaURL, &sentenceCount, &lexiconWordCount, &notedWordsJSON,
+			&storyID, &title, &createdAt, &mediaType, &mediaURL, &sentenceCount, &lexiconWordCount,
 			&sentenceID, &position, &wordsJSON, &jpText, &enText, &startTimeMS, &origLang, &isParagraphStart, &isChunkStart,
 		); err != nil {
 			return nil, err
@@ -325,14 +316,7 @@ func queryStories(db *sql.DB, whereClause string, args ...any) ([]storyJSON, err
 				MediaURL:         strings.TrimSpace(mediaURL.String),
 				SentenceCount:    sentenceCount,
 				LexiconWordCount: lexiconWordCount,
-				NotedWords:       []storyNotedWordJSON{},
 				Sentences:        []storySentenceJSON{},
-			}
-			if notedWordsJSON.Valid && notedWordsJSON.String != "" {
-				json.Unmarshal([]byte(notedWordsJSON.String), &story.NotedWords) //nolint:errcheck
-				if story.NotedWords == nil {
-					story.NotedWords = []storyNotedWordJSON{}
-				}
 			}
 			stories = append(stories, story)
 			current = &stories[len(stories)-1]
@@ -495,78 +479,6 @@ func setSentenceTranslationText(db *sql.DB, sentenceID int64, targetLang, text s
 	default:
 		return errors.New("target language must be jp or en")
 	}
-}
-
-func setStoryNotedWords(db *sql.DB, storyID int64, words []storyNotedWordJSON) error {
-	b, err := json.Marshal(words)
-	if err != nil {
-		return err
-	}
-	_, err = db.Exec(`UPDATE stories SET noted_words_json = ? WHERE id = ?`, string(b), storyID)
-	return err
-}
-
-func addStoryNotedWord(db *sql.DB, storyID int64, word storyNotedWordJSON) error {
-	story, err := getStoryByID(db, storyID)
-	if err != nil {
-		return err
-	}
-	if story == nil {
-		return errors.New("story not found")
-	}
-
-	word.BaseWord = strings.TrimSpace(word.BaseWord)
-	word.DisplayWord = strings.TrimSpace(word.DisplayWord)
-	if word.BaseWord == "" {
-		return errors.New("base word is required")
-	}
-	if word.DisplayWord == "" {
-		return errors.New("display word is required")
-	}
-
-	for _, existing := range story.NotedWords {
-		if existing.BaseWord == word.BaseWord {
-			return nil
-		}
-	}
-	if word.CreatedAt == "" {
-		var createdAt string
-		if err := db.QueryRow(`SELECT datetime('now')`).Scan(&createdAt); err != nil {
-			return err
-		}
-		word.CreatedAt = createdAt
-	}
-	if word.English == "" {
-		var meaning string
-		db.QueryRow(`SELECT COALESCE(meaning,'') FROM words WHERE base_word = ?`, word.BaseWord).Scan(&meaning) //nolint:errcheck
-		word.English = meaning
-	}
-
-	story.NotedWords = append(story.NotedWords, word)
-	return setStoryNotedWords(db, storyID, story.NotedWords)
-}
-
-func removeStoryNotedWord(db *sql.DB, storyID int64, baseWord string) error {
-	story, err := getStoryByID(db, storyID)
-	if err != nil {
-		return err
-	}
-	if story == nil {
-		return errors.New("story not found")
-	}
-
-	baseWord = strings.TrimSpace(baseWord)
-	if baseWord == "" {
-		return errors.New("base word is required")
-	}
-
-	filtered := make([]storyNotedWordJSON, 0, len(story.NotedWords))
-	for _, word := range story.NotedWords {
-		if word.BaseWord != baseWord {
-			filtered = append(filtered, word)
-		}
-	}
-	return setStoryNotedWords(db, storyID, filtered)
 }
 
 func storySentenceTextFromInput(sentence storySentenceInput) string {

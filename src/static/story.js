@@ -1,8 +1,8 @@
 import { checkVoicevoxAvailable, PROVIDER_MODELS, refreshTooltip } from './common.js';
 import { pluralize } from './format-utils.js';
 import { esc, renderReading } from './lexicon-utils.js';
+import { streamBatchAdd } from './lexicon-add-modal-utils.js';
 import { initGenerateModals, openTranslationModal, populateTranslationModelSelect } from './story-generate.js';
-import { initStoryAddToLexicon, addWordsToLexicon } from './story-lexicon-add-modal.js';
 import { initPlayback, initSynthPlayback, showSentencePlayBtn, scheduleSentencePlayHide, stopPlayback } from './story-playback.js?v=voicevox-precedence-2';
 import { storyCanUseVoicevoxPlayback } from './story-playback-utils.js?v=voicevox-precedence-2';
 import { storyCanSeekSentenceInMedia, storyHasLocalMedia, storyMediaTypeLabel, storyUsesYouTubeMedia } from './story-media-utils.js';
@@ -25,6 +25,12 @@ const els = {
   genTranslationSummary: document.getElementById('gen-translation-summary'),
   genTranslationSpinner: document.getElementById('gen-translation-spinner'),
   genTranslationStatusText: document.getElementById('gen-translation-status-text'),
+  lexiconRemoveCancel: document.getElementById('story-lexicon-remove-cancel'),
+  lexiconRemoveClose: document.getElementById('story-lexicon-remove-modal-close'),
+  lexiconRemoveConfirm: document.getElementById('story-lexicon-remove-confirm'),
+  lexiconRemoveError: document.getElementById('story-lexicon-remove-error'),
+  lexiconRemoveModalBackdrop: document.getElementById('story-lexicon-remove-modal-backdrop'),
+  lexiconRemoveText: document.getElementById('story-lexicon-remove-text'),
   currentTime: document.getElementById('story-current-time'),
   duration: document.getElementById('story-duration'),
   seekbar: document.getElementById('story-seekbar'),
@@ -39,10 +45,6 @@ const els = {
   storyContent: document.getElementById('story-content'),
   storyError: document.getElementById('story-error'),
   storyScrollArea: document.getElementById('story-scroll-area'),
-  storyNotedAddAll: document.getElementById('story-noted-add-all'),
-  storyNotedCount: document.getElementById('story-noted-count'),
-  storyNotedEmpty: document.getElementById('story-noted-empty'),
-  storyNotedList: document.getElementById('story-noted-list'),
   storyTitle: document.getElementById('story-title'),
   playbackBtn: document.getElementById('story-playback-btn'),
   playbackIcon: document.getElementById('story-playback-icon'),
@@ -77,7 +79,6 @@ const state = {
   fetchingWords: new Set(), // bases currently in-flight
   chunkObserver: null,      // IntersectionObserver for batch-fetching chunk word info
   chunkFetchTimer: null,    // debounce timer for chunk word-info fetches
-  notedWords: [],
   providers: null,
   translating: false,
   translationChunkPosition: null,
@@ -85,7 +86,8 @@ const state = {
   translationController: null,
   translationElapsedTimer: null,
   translationStartedAt: 0,
-  updatingNotedWords: false,
+  updatingLexiconWord: false,
+  pendingLexiconRemoval: null,
   lastWordAbsPos: 0,
   resumeOffset: 0,
   sentenceOffsets: [],
@@ -158,18 +160,21 @@ function storyIdFromPath() {
 }
 const STORY_ID = storyIdFromPath();
 
-// ── Noted words ───────────────────────────────────────────────────────────────
+// ── Word tooltips and lexicon toggles ─────────────────────────────────────────
 function escapeTooltipText(s) {
   return esc(String(s ?? '')).replace(/\n/g, '<br>');
 }
 
-function isWordNoted(baseWord) {
-  return state.notedWords.some(word => word.baseWord === baseWord);
+function wordDisplayLabel(word) {
+  return word?.base || word?.display || 'this word';
 }
 
 // wordInfo is the object returned by GET /api/word-info?base=... (or null if not in lexicon).
-function buildWordTooltipHtml(word, sentenceEnglish, wordInfo, isNoted = isWordNoted(word.base)) {
-  if (!wordInfo) return sentenceEnglish ? escapeTooltipText(sentenceEnglish) : '';
+function buildWordTooltipHtml(word, sentenceEnglish, wordInfo) {
+  if (!wordInfo) {
+    return (sentenceEnglish ? '<div class="story-tip-sentence">' + escapeTooltipText(sentenceEnglish) + '</div>' : '') +
+      '<div class="tooltip-word-note">Click to add this word to the lexicon</div>';
+  }
 
   const wordDisplay = word.base || word.display;
   const wordReading = wordInfo.reading
@@ -196,10 +201,10 @@ function buildWordTooltipHtml(word, sentenceEnglish, wordInfo, isNoted = isWordN
     const remaining = Math.max(0, (wordInfo.drillTarget || 0) - (wordInfo.drillCount || 0));
     footerHtml = '<div class="tooltip-word-note"><span>Word in lexicon: <span class="tooltip-drill-remaining">' +
       esc(String(remaining)) + '</span> drill' + (remaining === 1 ? '' : 's') + ' remaining</span>' +
-      '<span class="tooltip-hotkey-hint">(- / + to adjust)</span></div>';
+      '<span class="tooltip-hotkey-hint">Click to remove | - / + to adjust</span></div>';
   } else {
     footerHtml = '<div class="tooltip-word-note">' +
-      esc(isNoted ? 'Click to remove from noted words' : 'Click to add this word to noted words') +
+      esc('Click to add this word to the lexicon') +
       '</div>';
   }
 
@@ -252,18 +257,6 @@ function updateWordTokensForBase(base) {
     meta.el.dataset.tooltipClass = isStoryWord ? 'story-word-tooltip' : (meta.sentenceEnglishText ? 'tooltip-translation' : '');
     meta.el.classList.toggle('story-word--translated', isStoryWord && !!wordInfo.english);
     meta.el.classList.toggle('story-word--in-lexicon', isStoryWord && !!wordInfo.tracked);
-    meta.el.classList.toggle('story-word--noted', isStoryWord && isWordNoted(base) && !wordInfo.tracked);
-  }
-}
-
-function updateWordTokenUI() {
-  for (const meta of state.wordTokenMetas) {
-    const wordInfo = state.wordInfoMap.get(meta.word.base) || null;
-    const isStoryWord = !!wordInfo;
-    meta.el.dataset.tooltipHtml = buildWordTooltipHtml(meta.word, meta.sentenceEnglishText, wordInfo);
-    meta.el.dataset.tooltipClass = isStoryWord ? 'story-word-tooltip' : (meta.sentenceEnglishText ? 'tooltip-translation' : '');
-    meta.el.classList.toggle('story-word--noted', isStoryWord && isWordNoted(meta.word.base) && !wordInfo.tracked);
-    meta.el.classList.toggle('story-word--in-lexicon', isStoryWord && !!wordInfo.tracked);
   }
 }
 
@@ -292,61 +285,64 @@ async function fetchWordInfoBatch(bases) {
   }
 }
 
-function renderNotedWords() {
-  els.storyNotedCount.textContent = pluralize(state.notedWords.length, 'word');
-  els.storyNotedAddAll.disabled = state.notedWords.length === 0 || state.updatingNotedWords;
-  els.storyNotedList.innerHTML = state.notedWords.map(word => `
-    <div class="story-noted-item">
-      <div class="story-noted-item-main">
-        <p class="story-noted-item-word">${esc(word.baseWord || word.displayWord)}</p>
-        ${word.displayWord && word.baseWord && word.displayWord !== word.baseWord ? `<p class="story-noted-item-base">Seen in story as: ${esc(word.displayWord)}</p>` : ''}
-        ${word.english ? `<p class="story-noted-item-meaning">${esc(word.english)}</p>` : ''}
-      </div>
-      <button class="story-noted-item-remove" type="button" data-base-word="${esc(word.baseWord)}" aria-label="Remove ${esc(word.baseWord || word.displayWord)}">✕</button>
-    </div>
-  `).join('');
-  if (els.storyNotedEmpty) {
-    els.storyNotedEmpty.hidden = state.notedWords.length > 0;
-  }
-  updateWordTokenUI();
+async function refreshWordInfoForBase(base) {
+  if (!base) return null;
+  state.wordInfoMap.delete(base);
+  await fetchWordInfoBatch([base]);
+  return state.wordInfoMap.get(base) || null;
 }
 
-async function addHoveredWordToNotedWords() {
-  if (!state.hoveredWord || state.updatingNotedWords || isWordNoted(state.hoveredWord.base)) return;
-  state.updatingNotedWords = true;
+function openLexiconRemoveModal(word, wordInfo) {
+  if (!word?.base || !wordInfo?.wordId || state.updatingLexiconWord) return;
+  state.pendingLexiconRemoval = { word, wordInfo };
+  els.lexiconRemoveText.textContent = `Remove "${wordDisplayLabel(word)}" from the lexicon?`;
+  els.lexiconRemoveError.hidden = true;
+  els.lexiconRemoveError.textContent = '';
+  els.lexiconRemoveConfirm.disabled = false;
+  els.lexiconRemoveConfirm.textContent = 'Remove';
+  els.lexiconRemoveModalBackdrop.classList.remove('hidden');
+}
+
+function closeLexiconRemoveModal() {
+  if (state.updatingLexiconWord) return;
+  state.pendingLexiconRemoval = null;
+  els.lexiconRemoveModalBackdrop.classList.add('hidden');
+}
+
+async function addWordToLexiconFromStory(word, wordSpan, translationText) {
+  if (!word?.base || state.updatingLexiconWord) return;
+  state.updatingLexiconWord = true;
   try {
-    const res = await fetch(`/api/stories/${STORY_ID}/noted-words`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        baseWord: state.hoveredWord.base,
-        displayWord: state.hoveredWord.display,
-      }),
-    });
-    if (!res.ok) throw new Error('failed to add noted word');
-    const data = await res.json();
-    state.notedWords = Array.isArray(data.notedWords) ? data.notedWords : [];
+    await streamBatchAdd({ rawWords: word.base });
+    const wordInfo = await refreshWordInfoForBase(word.base);
+    wordSpan.dataset.tooltipHtml = buildWordTooltipHtml(word, translationText, wordInfo);
+    refreshTooltip(wordSpan);
   } finally {
-    state.updatingNotedWords = false;
-    renderNotedWords();
+    state.updatingLexiconWord = false;
   }
 }
 
-async function removeNotedWord(baseWord) {
-  if (!baseWord || state.updatingNotedWords) return;
-  state.updatingNotedWords = true;
+async function confirmLexiconRemoval() {
+  const pending = state.pendingLexiconRemoval;
+  if (!pending?.word?.base || !pending.wordInfo?.wordId || state.updatingLexiconWord) return;
+  state.updatingLexiconWord = true;
+  els.lexiconRemoveConfirm.disabled = true;
+  els.lexiconRemoveConfirm.innerHTML = '<span class="spinner"></span>';
+  els.lexiconRemoveError.hidden = true;
   try {
-    const res = await fetch(`/api/stories/${STORY_ID}/noted-words`, {
-      method: 'DELETE',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ baseWord }),
-    });
-    if (!res.ok) throw new Error('failed to remove noted word');
-    const data = await res.json();
-    state.notedWords = Array.isArray(data.notedWords) ? data.notedWords : [];
+    const res = await fetch('/api/words/' + pending.wordInfo.wordId, { method: 'DELETE' });
+    if (!res.ok) throw new Error((await res.text()).trim() || res.statusText);
+    const base = pending.word.base;
+    state.pendingLexiconRemoval = null;
+    els.lexiconRemoveModalBackdrop.classList.add('hidden');
+    await refreshWordInfoForBase(base);
+  } catch (err) {
+    els.lexiconRemoveError.textContent = err.message || 'Could not remove word.';
+    els.lexiconRemoveError.hidden = false;
   } finally {
-    state.updatingNotedWords = false;
-    renderNotedWords();
+    state.updatingLexiconWord = false;
+    els.lexiconRemoveConfirm.disabled = false;
+    els.lexiconRemoveConfirm.textContent = 'Remove';
   }
 }
 
@@ -375,31 +371,11 @@ document.addEventListener('keydown', e => {
   }).catch(() => {});
 });
 
-els.storyNotedList.addEventListener('click', event => {
-  const btn = event.target.closest('[data-base-word]');
-  if (!btn) return;
-  removeNotedWord(btn.dataset.baseWord).catch(() => {});
-});
-
-els.storyNotedAddAll.addEventListener('click', async () => {
-  if (state.notedWords.length === 0 || state.updatingNotedWords) return;
-  els.storyNotedAddAll.disabled = true;
-  try {
-    await addWordsToLexicon(state.notedWords.map(word => word.baseWord || word.displayWord));
-  } catch (_) {
-    els.storyNotedAddAll.disabled = false;
-    return;
-  }
-  // Re-fetch story to get updated inLexicon flags and remove newly-lexiconed noted words.
-  try {
-    // Evict cached info for the noted words before fetching — their tracked status just changed.
-    const notedBases = state.notedWords.map(w => w.baseWord).filter(Boolean);
-    for (const base of notedBases) state.wordInfoMap.delete(base);
-    const updated = await loadStory(STORY_ID);
-    state.notedWords = Array.isArray(updated.notedWords) ? updated.notedWords : [];
-    fetchWordInfoBatch(notedBases).catch(() => {});
-  } catch (_) {}
-  renderNotedWords();
+els.lexiconRemoveClose.addEventListener('click', closeLexiconRemoveModal);
+els.lexiconRemoveCancel.addEventListener('click', closeLexiconRemoveModal);
+els.lexiconRemoveConfirm.addEventListener('click', confirmLexiconRemoval);
+els.lexiconRemoveModalBackdrop.addEventListener('click', event => {
+  if (event.target === event.currentTarget) closeLexiconRemoveModal();
 });
 
 els.storyContent.addEventListener('click', event => {
@@ -426,7 +402,6 @@ function renderStory(story) {
   state.chunkFetchTimer = null;
   state.story = story;
   state.hoveredWord = null;
-  state.notedWords = Array.isArray(story.notedWords) ? story.notedWords : [];
   document.title = `${story.title} | Story`;
   els.storyTitle.textContent = story.title;
   els.storyMeta.textContent = storyMetaLabel(story);
@@ -512,14 +487,12 @@ function renderStory(story) {
             wordSpan.addEventListener('click', () => {
               state.hoveredWord = word;
               const wi = state.wordInfoMap.get(word.base) || null;
-              if (wi?.tracked) return;
-              const currentlyNoted = isWordNoted(word.base);
-              wordSpan.dataset.tooltipHtml = buildWordTooltipHtml(word, translationText, wi, !currentlyNoted);
-              refreshTooltip(wordSpan);
-              if (currentlyNoted) {
-                removeNotedWord(word.base).catch(() => {});
+              if (wi?.tracked) {
+                openLexiconRemoveModal(word, wi);
               } else {
-                addHoveredWordToNotedWords().catch(() => {});
+                wordSpan.dataset.tooltipHtml = buildWordTooltipHtml(word, translationText, wi);
+                refreshTooltip(wordSpan);
+                addWordToLexiconFromStory(word, wordSpan, translationText).catch(() => {});
               }
             });
           }
@@ -592,8 +565,6 @@ function renderStory(story) {
   )];
   fetchWordInfoBatch(eagerBases).catch(() => {});
 
-  renderNotedWords();
-
   // Prefer on-demand VoiceVox for Japanese stories. Actual synthesis failures
   // fall back to browser TTS in the playback module.
   if (storyCanUseVoicevoxPlayback(story)) {
@@ -615,7 +586,6 @@ function renderError() {
 
 // ── Init ──────────────────────────────────────────────────────────────────────
 initPlayback(els, state, STORY_ID);
-initStoryAddToLexicon().catch(() => {});
 
 initGenerateModals(els, state, {
   storyId: STORY_ID,

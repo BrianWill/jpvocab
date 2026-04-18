@@ -85,7 +85,6 @@ func migrate(db *sql.DB) {
 			id                  INTEGER  PRIMARY KEY AUTOINCREMENT,
 			title               TEXT     NOT NULL,
 			story_words_json    TEXT     NOT NULL DEFAULT '[]',
-			noted_words_json    TEXT     NOT NULL DEFAULT '[]',
 			media_type          TEXT     NOT NULL DEFAULT '',
 			media_url           TEXT,
 			sentence_count      INTEGER  NOT NULL DEFAULT 0,
@@ -131,6 +130,7 @@ func migrate(db *sql.DB) {
 			meta_json  TEXT     NOT NULL DEFAULT '{}',
 			created_at DATETIME NOT NULL DEFAULT (datetime('now'))
 		)`,
+		migrateStoriesCurrentShape,
 	}
 
 	var version int
@@ -151,6 +151,9 @@ func migrate(db *sql.DB) {
 			log.Fatalf("migrate %d: %v", i+1, err)
 		}
 		db.Exec(fmt.Sprintf("PRAGMA user_version = %d", i+1))
+	}
+	if err := markBlacklistedWordsUntracked(db); err != nil {
+		log.Fatalf("migrate blacklist cleanup: %v", err)
 	}
 	log.Printf("DB migration OK (version %d)", len(migrations))
 }
@@ -192,6 +195,33 @@ func addColumnIfMissing(db *sql.DB, tableName, columnName, alterSQL string) erro
 	}
 	_, err = db.Exec(alterSQL)
 	return err
+}
+
+func migrateStoriesCurrentShape(db *sql.DB) error {
+	if err := addColumnIfMissing(db, "stories", "media_type", `ALTER TABLE stories ADD COLUMN media_type TEXT NOT NULL DEFAULT ''`); err != nil {
+		return err
+	}
+	if err := addColumnIfMissing(db, "stories", "media_url", `ALTER TABLE stories ADD COLUMN media_url TEXT`); err != nil {
+		return err
+	}
+	if err := addColumnIfMissing(db, "story_sentences", "start_time_ms", `ALTER TABLE story_sentences ADD COLUMN start_time_ms INTEGER`); err != nil {
+		return err
+	}
+	return dropColumnIfPresent(db, "stories", "noted_words_json")
+}
+
+func dropColumnIfPresent(db *sql.DB, tableName, columnName string) error {
+	columns, err := listColumns(db, tableName)
+	if err != nil {
+		return err
+	}
+	for _, column := range columns {
+		if column.Name == columnName {
+			_, err := db.Exec(fmt.Sprintf(`ALTER TABLE %q DROP COLUMN %q`, tableName, columnName))
+			return err
+		}
+	}
+	return nil
 }
 
 // columnInfo holds metadata for a single table column.

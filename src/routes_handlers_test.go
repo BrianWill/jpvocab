@@ -1157,60 +1157,6 @@ func TestAPITutorChat_DoesNotLogOpeningTurn(t *testing.T) {
 	}
 }
 
-func TestAPIStoryNotedWords_AddAndRemove(t *testing.T) {
-	db := testDB(t)
-	id, err := insertStory(db, "Garden Story", []storySentenceInput{
-		{
-			Words: []storyWordInput{
-				{DisplayWord: "庭園", BaseWord: "庭園"},
-				{DisplayWord: "を", BaseWord: "を"},
-				{DisplayWord: "歩く", BaseWord: "歩く"},
-			},
-			OrigLang:         "jp",
-			IsParagraphStart: true,
-		},
-	}, storyMediaInput{})
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	addReq := httptest.NewRequest(http.MethodPost, "/api/stories/1/noted-words", bytes.NewBufferString(`{"baseWord":"歩く","displayWord":"歩く"}`))
-	addReq = withURLParam(addReq, "id", int64ToString(id))
-	addRec := httptest.NewRecorder()
-	apiAddStoryNotedWord(db).ServeHTTP(addRec, addReq)
-
-	if addRec.Code != http.StatusOK {
-		t.Fatalf("add status: got %d, want %d", addRec.Code, http.StatusOK)
-	}
-	var addBody struct {
-		NotedWords []storyNotedWordJSON `json:"notedWords"`
-	}
-	if err := json.NewDecoder(addRec.Body).Decode(&addBody); err != nil {
-		t.Fatal(err)
-	}
-	if len(addBody.NotedWords) != 1 || addBody.NotedWords[0].BaseWord != "歩く" {
-		t.Fatalf("unexpected add response: %+v", addBody.NotedWords)
-	}
-
-	delReq := httptest.NewRequest(http.MethodDelete, "/api/stories/1/noted-words", bytes.NewBufferString(`{"baseWord":"歩く"}`))
-	delReq = withURLParam(delReq, "id", int64ToString(id))
-	delRec := httptest.NewRecorder()
-	apiDeleteStoryNotedWord(db).ServeHTTP(delRec, delReq)
-
-	if delRec.Code != http.StatusOK {
-		t.Fatalf("delete status: got %d, want %d", delRec.Code, http.StatusOK)
-	}
-	var delBody struct {
-		NotedWords []storyNotedWordJSON `json:"notedWords"`
-	}
-	if err := json.NewDecoder(delRec.Body).Decode(&delBody); err != nil {
-		t.Fatal(err)
-	}
-	if len(delBody.NotedWords) != 0 {
-		t.Fatalf("expected no noted words after delete, got %+v", delBody.NotedWords)
-	}
-}
-
 func TestAPIGetStory_InvalidID(t *testing.T) {
 	db := testDB(t)
 	req := httptest.NewRequest(http.MethodGet, "/api/stories/nope", nil)

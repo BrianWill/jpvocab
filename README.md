@@ -9,8 +9,8 @@ The five main pages:
 - `Lexicon`: your word list with readings, meanings, examples, images, and drill stats
 - `Drill`: efficient, round-based vocab drills
 - `Activity`: stats and calender tracking your activity
-- `Stories`: import any Japanese text with translation (remote AI generated) and text-to-speech audio narration (locally generated) 
-- `Tutor`: AI chat bots for conversation and other forms of language practice
+- `Stories`: import any Japanese text with translation (requires AI API key) and text-to-speech audio narration (locally generated) 
+- `Tutor`: AI chat bots (requires AI API key) for conversation and other forms of language practice
 
 ## Setup
 
@@ -45,13 +45,11 @@ To use a key, set the appropriate environment variable with your key as value be
 
 ## Text-to-speech
 
-The app can use the browser's built-in text-to-speech to read Japanese.
-
-For higher quality output, install and run [VoiceVox](https://voicevox.hiroshiba.jp/). For the app to use VoiceVox, it must be running and listening at `http://localhost:50021` (the default).
+The app can use the browser's built-in text-to-speech to read Japanese, but for higher quality output, install and run [VoiceVox](https://voicevox.hiroshiba.jp/). For the app to use VoiceVox, VoiceVox must be running and listening at `http://localhost:50021` (the default).
 
 You can customize voice options in the app's settings menu (the gear icon in the header).
 
-## Speech-to-test
+## Speech-to-text
 
 The tutor text input supports the browser's builtin speech-to-text. (This feature is currently supported in Chrome but not Firefox.)
 

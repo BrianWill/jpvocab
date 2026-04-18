@@ -23,21 +23,6 @@ func newNDJSONStreamer(w http.ResponseWriter) func(v any) {
 	}
 }
 
-func findStoryWord(story *storyJSON, baseWord, displayWord string) *storyWordJSON {
-	for _, sentence := range story.Sentences {
-		for _, word := range sentence.Words {
-			if word.BaseWord != baseWord {
-				continue
-			}
-			if strings.TrimSpace(displayWord) == "" || word.DisplayWord == displayWord {
-				w := word
-				return &w
-			}
-		}
-	}
-	return nil
-}
-
 func apiGetStories(db *sql.DB) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		stories, err := listStoriesMeta(db)
@@ -68,121 +53,7 @@ func apiGetStory(db *sql.DB) http.HandlerFunc {
 			return
 		}
 
-		// Remove any noted words whose base word is now tracked in the lexicon.
-		var cleanedNoted []storyNotedWordJSON
-		changed := false
-		for _, nw := range story.NotedWords {
-			var tracked int
-			db.QueryRow(`SELECT tracked FROM words WHERE base_word = ?`, nw.BaseWord).Scan(&tracked) //nolint:errcheck
-			if tracked == 1 {
-				changed = true
-			} else {
-				cleanedNoted = append(cleanedNoted, nw)
-			}
-		}
-		if changed {
-			if cleanedNoted == nil {
-				cleanedNoted = []storyNotedWordJSON{}
-			}
-			story.NotedWords = cleanedNoted
-			setStoryNotedWords(db, id, cleanedNoted) //nolint:errcheck
-		}
-
 		writeJSON(w, story)
-	}
-}
-
-func apiAddStoryNotedWord(db *sql.DB) http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		id, ok := parseRouteInt64(w, r, "id", "invalid story id")
-		if !ok {
-			return
-		}
-
-		var body struct {
-			BaseWord    string `json:"baseWord"`
-			DisplayWord string `json:"displayWord"`
-		}
-		if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
-			http.Error(w, "bad request", http.StatusBadRequest)
-			return
-		}
-
-		story, err := getStoryByID(db, id)
-		if err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
-			return
-		}
-		if story == nil {
-			http.Error(w, "story not found", http.StatusNotFound)
-			return
-		}
-
-		word := findStoryWord(story, strings.TrimSpace(body.BaseWord), strings.TrimSpace(body.DisplayWord))
-		if word == nil {
-			http.Error(w, "word not found in story", http.StatusBadRequest)
-			return
-		}
-
-		if err := addStoryNotedWord(db, id, storyNotedWordJSON{
-			DisplayWord: word.DisplayWord,
-			BaseWord:    word.BaseWord,
-		}); err != nil {
-			if err.Error() == "story not found" {
-				http.Error(w, err.Error(), http.StatusNotFound)
-				return
-			}
-			if strings.Contains(err.Error(), "required") {
-				http.Error(w, err.Error(), http.StatusBadRequest)
-				return
-			}
-			http.Error(w, err.Error(), http.StatusInternalServerError)
-			return
-		}
-
-		updated, err := getStoryByID(db, id)
-		if err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
-			return
-		}
-		writeJSON(w, map[string]any{"notedWords": updated.NotedWords})
-	}
-}
-
-func apiDeleteStoryNotedWord(db *sql.DB) http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		id, ok := parseRouteInt64(w, r, "id", "invalid story id")
-		if !ok {
-			return
-		}
-
-		var body struct {
-			BaseWord string `json:"baseWord"`
-		}
-		if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
-			http.Error(w, "bad request", http.StatusBadRequest)
-			return
-		}
-
-		if err := removeStoryNotedWord(db, id, body.BaseWord); err != nil {
-			if err.Error() == "story not found" {
-				http.Error(w, err.Error(), http.StatusNotFound)
-				return
-			}
-			if strings.Contains(err.Error(), "required") {
-				http.Error(w, err.Error(), http.StatusBadRequest)
-				return
-			}
-			http.Error(w, err.Error(), http.StatusInternalServerError)
-			return
-		}
-
-		updated, err := getStoryByID(db, id)
-		if err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
-			return
-		}
-		writeJSON(w, map[string]any{"notedWords": updated.NotedWords})
 	}
 }
 

@@ -5,12 +5,10 @@ This file is random notes of possible features and bug fixes.
 - timestamp of added words is behind by 25 minutes?
     wrong time zone?
 
-- in matching pairs mode, when last word of round is matched, the user should have to press a button to move to next round
+- in matching pairs mode, when last word of round is matched, the user should have to press a button to start the next round
     - "Next round" button appears above the words and meaning lists to indicate this
         - hotkey for the button is space
         - should be true for last round as well: user hits button before they see the "Done" message
-
-- on loading the drill page, the new drill modal "words per round" value should match the saved setting
 
 - what happened to story media/url?
     check history: did it somehow get reverted?

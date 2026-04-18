@@ -41,6 +41,7 @@ const els = {
   storyScrollArea: document.getElementById('story-scroll-area'),
   storyNotedAddAll: document.getElementById('story-noted-add-all'),
   storyNotedCount: document.getElementById('story-noted-count'),
+  storyNotedEmpty: document.getElementById('story-noted-empty'),
   storyNotedList: document.getElementById('story-noted-list'),
   storyTitle: document.getElementById('story-title'),
   playbackBtn: document.getElementById('story-playback-btn'),
@@ -304,7 +305,9 @@ function renderNotedWords() {
       <button class="story-noted-item-remove" type="button" data-base-word="${esc(word.baseWord)}" aria-label="Remove ${esc(word.baseWord || word.displayWord)}">✕</button>
     </div>
   `).join('');
-  els.storyNotedEmpty.hidden = state.notedWords.length > 0;
+  if (els.storyNotedEmpty) {
+    els.storyNotedEmpty.hidden = state.notedWords.length > 0;
+  }
   updateWordTokenUI();
 }
 

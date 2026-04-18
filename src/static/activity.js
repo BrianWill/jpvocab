@@ -1,4 +1,4 @@
-import { populateWordTooltip, playJapaneseText, WORD_TTS_RATE } from './common.js';
+import { populateWordTooltip, positionCursorTooltip, playJapaneseText, WORD_TTS_RATE } from './common.js';
 import { escapeHtml } from './html-utils.js';
 import { pluralize } from './format-utils.js';
 import { renderReading } from './lexicon-utils.js';
@@ -325,18 +325,7 @@ function showWordTooltip(item, event) {
 }
 
 function positionWordTooltip(event) {
-  if (!event) return;
-  const pad = 8;
-  const w = els.wordTooltip.offsetWidth;
-  const h = els.wordTooltip.offsetHeight;
-  const vw = window.innerWidth;
-  const vh = window.innerHeight;
-  let left = event.clientX + 14;
-  if (left + w > vw - pad) left = vw - w - pad;
-  let top = event.clientY + 18;
-  top = Math.max(pad, Math.min(top, vh - h - pad));
-  els.wordTooltip.style.left = left + 'px';
-  els.wordTooltip.style.top = top + 'px';
+  positionCursorTooltip(els.wordTooltip, event);
 }
 
 document.addEventListener('mouseover', e => {

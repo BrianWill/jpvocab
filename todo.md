@@ -2,6 +2,19 @@
 
 This file is random notes of possible features and bug fixes.
 
+- providers is broken? in story chunk translation
+
+- story page
+    when adding noted words to lexicon, if the word is not added, it is still in the noted words list
+    - maybe this is OK? user just has to remove them manually
+
+- story page
+    instead of noted words, just have list of lexion words from the story
+    clicking the word adds it to lexicon if not already in
+    newly added words sorted to top of sidebar list
+    words in list have remove button that removes it from lexicon? with modal confirm?
+    what if user clicks word in sentence that is already highlighted? modal confirm to remove?
+
 - timestamp of added words is behind by 25 minutes?
     wrong time zone?
 
@@ -14,10 +27,6 @@ This file is random notes of possible features and bug fixes.
     - each word should only appear once in each category
 - activity page word info tooltip: kanji meaning should be shown left of the kanji, not above
     - refer to word info hover overlay in drill as reference
-
-- in lexicon, do example sentences interfere with fixed height per word? how to display overflow?
-    - maybe japanese sentence above english sentence, and just cut off part of sentence that doesn't fit with elipses
-        - hovering the sentence shows the full sentence
 
 - remove example sentences?
     - separate generation of example sentences from generation of word info

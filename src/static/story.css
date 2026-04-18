@@ -128,6 +128,13 @@
   padding-right: 0.15rem;
 }
 
+.story-noted-empty {
+  margin: 0;
+  color: #7f849c;
+  font-size: 0.82rem;
+  line-height: 1.4;
+}
+
 .story-noted-item {
   display: flex;
   align-items: flex-start;

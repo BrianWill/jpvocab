@@ -869,6 +869,19 @@ document.body.appendChild(_hoverTooltip);
 let _activeTooltipEl = null;
 let _tooltipExtraClass = null;
 
+export function positionCursorTooltip(tooltipEl, event, options = {}) {
+  if (!tooltipEl || !event) return;
+  const pad = options.pad ?? 8;
+  const offsetX = options.offsetX ?? 14;
+  const offsetY = options.offsetY ?? 18;
+  const w = tooltipEl.offsetWidth;
+  const vw = window.innerWidth;
+  let left = event.clientX + offsetX;
+  if (left + w > vw - pad) left = vw - w - pad;
+  tooltipEl.style.left = left + 'px';
+  tooltipEl.style.top = (event.clientY + offsetY) + 'px';
+}
+
 document.addEventListener('mouseover', e => {
   const el = e.target.closest('[data-tooltip], [data-tooltip-html]');
   if (_tooltipExtraClass) {
@@ -886,36 +899,16 @@ document.addEventListener('mouseover', e => {
     _tooltipExtraClass = el.dataset.tooltipClass;
     _hoverTooltip.classList.add(_tooltipExtraClass);
   }
-  // Render off-screen first so offsetWidth/Height reflect natural size before
-  // viewport-edge clamping is applied, preventing the "growing" reflow on mousemove.
+  // Render off-screen first so offsetWidth reflects natural size before
+  // horizontal edge handling is applied, preventing "growing" reflow on mousemove.
   _hoverTooltip.style.left = '-9999px';
   _hoverTooltip.style.top = '-9999px';
   _hoverTooltip.classList.add('visible');
-  const pad = 8;
-  const w = _hoverTooltip.offsetWidth;
-  const h = _hoverTooltip.offsetHeight;
-  const vw = window.innerWidth;
-  const vh = window.innerHeight;
-  let left = e.clientX + 14;
-  if (left + w > vw - pad) left = vw - w - pad;
-  let top = e.clientY + 18;
-  top = Math.max(pad, Math.min(top, vh - h - pad));
-  _hoverTooltip.style.left = left + 'px';
-  _hoverTooltip.style.top = top + 'px';
+  positionCursorTooltip(_hoverTooltip, e);
 });
 document.addEventListener('mousemove', e => {
   if (!_hoverTooltip.classList.contains('visible')) return;
-  const pad = 8;
-  const w = _hoverTooltip.offsetWidth;
-  const h = _hoverTooltip.offsetHeight;
-  const vw = window.innerWidth;
-  const vh = window.innerHeight;
-  let left = e.clientX + 14;
-  if (left + w > vw - pad) left = vw - w - pad;
-  let top = e.clientY + 18;
-  top = Math.max(pad, Math.min(top, vh - h - pad));
-  _hoverTooltip.style.left = left + 'px';
-  _hoverTooltip.style.top = top + 'px';
+  positionCursorTooltip(_hoverTooltip, e);
 });
 
 export function refreshTooltip(el) {

@@ -2,6 +2,14 @@
 
 This file is random notes of possible features and bug fixes.
 
+- copy md from old repo
+
+- lexicon search / filter box
+
+- matching pairs mode
+    - the answered words and their meanings should be moved to the bottom area (or top area?) where they are combined into one item
+        - this answered area list is centered on the page
+
 - explicit tracked pool
     - setting to determine active tracked pool max size, e.g. 300
     - when tracked pool is full, can still mark card to be tracked, but they go in a backlog queue

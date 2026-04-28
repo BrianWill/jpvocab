@@ -2,6 +2,16 @@
 
 This file is random notes of possible features and bug fixes.
 
+- for drill activity, the time is either being displayed wrong or recorded wrong
+    - what is the source of timestamp?
+
+- in activity bar graph, probably doesn't make sense to display the completed words
+    (eventually completed words will overwhelm the active words)
+
+- lexicon page captures paste (shortcut for adding a words from pasted text)
+    - user should see the edit words modal pop up (if the clipboard had any japanese words text)
+    - if no words, play error sound
+
 - copy md from old repo
 
 - lexicon search / filter box

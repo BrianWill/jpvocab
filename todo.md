@@ -2,6 +2,8 @@
 
 This file is random notes of possible features and bug fixes.
 
+- add story modal: auto fill title with date / time
+
 - for drill activity, the time is either being displayed wrong or recorded wrong
     - what is the source of timestamp?
 

@@ -2,6 +2,9 @@
 
 This file is random notes of possible features and bug fixes.
 
+- story sentences should be displayed as own line (with play button floating left margin)
+    - paragraph breaks indicated by paragraph mark
+
 - add story modal: auto fill title with date / time
 
 - for drill activity, the time is either being displayed wrong or recorded wrong

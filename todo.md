@@ -2,6 +2,15 @@
 
 This file is random notes of possible features and bug fixes.
 
+- button at top of story that will translate whole story at once
+    (should probably make a separate request for groups of 3 or 4 chunks at a time)
+        or maybe the chunk size just needs to be twice as large?
+            doubling size probably wouldn't double translation time...would it?
+    display confirmation with warning about size of the story
+        option to redo whole story or only do chunks that don't yet have a translation
+    progress display lets user cancel out
+        preserves translation for chunks that were finished
+
 - story sentences should be displayed as own line (with play button floating left margin)
     - paragraph breaks indicated by paragraph mark
 
@@ -18,6 +27,7 @@ This file is random notes of possible features and bug fixes.
     - if no words, play error sound
 
 - copy md from old repo
+    preserve notes about kanji and 
 
 - lexicon search / filter box
 

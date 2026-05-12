@@ -1,0 +1,683 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Japanese Tutor Web</title>
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            background-color: #f4f4f9;
+            margin: 0;
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+        }
+        #header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 10px 20px;
+            background: white;
+            border-bottom: 1px solid #ddd;
+        }
+        #header h1 {
+            font-size: 16px;
+            margin: 0;
+            color: #333;
+            font-weight: 600;
+        }
+        #header-buttons {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        #new-session-button {
+            padding: 6px 12px;
+            background: #fff;
+            color: #d33;
+            border: 1px solid #d33;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 13px;
+        }
+        #new-session-button:hover { background: #fff5f5; }
+        #new-session-button:disabled { color: #ccc; border-color: #ccc; cursor: default; }
+        #settings-button {
+            width: 30px;
+            height: 30px;
+            padding: 0;
+            background: #fff;
+            color: #555;
+            border: 1px solid #ccc;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 16px;
+            line-height: 1;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+        }
+        #settings-button:hover { background: #f4f4f9; }
+        #settings-backdrop {
+            position: fixed;
+            inset: 0;
+            background: rgba(0,0,0,0.4);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 100;
+        }
+        #settings-backdrop.open { display: flex; }
+        #settings-modal {
+            background: #fff;
+            border-radius: 10px;
+            padding: 20px 24px;
+            width: 420px;
+            max-width: 92vw;
+            max-height: 90vh;
+            overflow-y: auto;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+        }
+        #settings-modal h2 {
+            margin: 0 0 16px;
+            font-size: 18px;
+            color: #333;
+        }
+        .settings-row {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+            margin-bottom: 14px;
+        }
+        .settings-row label {
+            font-size: 13px;
+            color: #555;
+            display: flex;
+            justify-content: space-between;
+        }
+        .settings-row label .value {
+            color: #888;
+            font-variant-numeric: tabular-nums;
+        }
+        .settings-row select,
+        .settings-row input[type="range"] {
+            width: 100%;
+        }
+        .settings-row select {
+            padding: 6px 8px;
+            border: 1px solid #ccc;
+            border-radius: 6px;
+            font-size: 14px;
+            background: #fff;
+        }
+        #settings-status {
+            font-size: 12px;
+            color: #b00;
+            min-height: 16px;
+            margin-bottom: 8px;
+        }
+        #settings-actions {
+            display: flex;
+            justify-content: space-between;
+            gap: 8px;
+            margin-top: 8px;
+        }
+        #settings-actions .left,
+        #settings-actions .right {
+            display: flex;
+            gap: 8px;
+        }
+        #settings-actions button {
+            padding: 6px 14px;
+            border-radius: 6px;
+            border: 1px solid #ccc;
+            background: #fff;
+            cursor: pointer;
+            font-size: 13px;
+        }
+        #settings-actions button:hover { background: #f4f4f9; }
+        #settings-test-btn { color: #007aff; border-color: #007aff; }
+        #settings-test-btn:hover { background: #eef5ff; }
+        #settings-reset-btn { color: #555; }
+        #settings-close-btn { color: #333; }
+        #chat-container {
+            flex: 1;
+            overflow-y: auto;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+        .message {
+            max-width: 80%;
+            padding: 10px 15px;
+            border-radius: 15px;
+            line-height: 1.5;
+            word-wrap: break-word;
+        }
+        .user {
+            align-self: flex-end;
+            background-color: #007aff;
+            color: white;
+            border-bottom-right-radius: 2px;
+        }
+        .bot {
+            align-self: flex-start;
+            background-color: white;
+            color: #333;
+            border-bottom-left-radius: 2px;
+            box-shadow: 0 1px 2px rgba(0,0,0,0.1);
+            cursor: pointer;
+        }
+        .bot:hover { background-color: #fafbff; }
+        .error {
+            align-self: flex-start;
+            background-color: #fff5f5;
+            color: #b00;
+            border: 1px solid #f5c2c2;
+            border-bottom-left-radius: 2px;
+        }
+        #input-container {
+            padding: 20px;
+            background-color: white;
+            border-top: 1px solid #ddd;
+            display: flex;
+            gap: 10px;
+        }
+        #message-input {
+            flex: 1;
+            padding: 12px;
+            border: 1px solid #ccc;
+            border-radius: 8px;
+            outline: none;
+            font-size: 16px;
+        }
+        #send-button {
+            padding: 10px 20px;
+            background-color: #007aff;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 16px;
+        }
+        #send-button:disabled {
+            background-color: #ccc;
+        }
+        .status {
+            font-size: 13px;
+            color: #888;
+            margin-top: 5px;
+            font-style: italic;
+        }
+        .status.thinking::after {
+            content: '';
+            display: inline-block;
+            width: 1em;
+            text-align: left;
+            animation: dots 1.2s steps(4, end) infinite;
+        }
+        @keyframes dots {
+            0%   { content: ''; }
+            25%  { content: '.'; }
+            50%  { content: '..'; }
+            75%  { content: '...'; }
+            100% { content: ''; }
+        }
+    </style>
+</head>
+<body>
+    <div id="header">
+        <h1>Japanese Tutor</h1>
+        <div id="header-buttons">
+            <button id="settings-button" title="Voice settings" aria-label="Voice settings">⚙</button>
+            <button id="new-session-button" title="Close the current Gemini session and start a fresh one">New Session</button>
+        </div>
+    </div>
+
+    <div id="settings-backdrop">
+        <div id="settings-modal" role="dialog" aria-labelledby="settings-title">
+            <h2 id="settings-title">Voice Settings</h2>
+            <div id="settings-status"></div>
+            <div class="settings-row">
+                <label for="settings-voice">Voice</label>
+                <select id="settings-voice"></select>
+            </div>
+            <div class="settings-row">
+                <label for="settings-speed">Speed <span class="value" id="settings-speed-value">1.00</span></label>
+                <input type="range" id="settings-speed" min="0.5" max="2" step="0.05" value="1">
+            </div>
+            <div class="settings-row">
+                <label for="settings-pitch">Pitch <span class="value" id="settings-pitch-value">0.00</span></label>
+                <input type="range" id="settings-pitch" min="-0.15" max="0.15" step="0.01" value="0">
+            </div>
+            <div class="settings-row">
+                <label for="settings-intonation">Intonation <span class="value" id="settings-intonation-value">1.00</span></label>
+                <input type="range" id="settings-intonation" min="0" max="2" step="0.05" value="1">
+            </div>
+            <div class="settings-row">
+                <label for="settings-volume">Volume <span class="value" id="settings-volume-value">1.00</span></label>
+                <input type="range" id="settings-volume" min="0" max="2" step="0.05" value="1">
+            </div>
+            <div class="settings-row">
+                <label for="settings-pause">Pause length <span class="value" id="settings-pause-value">1.00</span></label>
+                <input type="range" id="settings-pause" min="0" max="1.5" step="0.05" value="1">
+            </div>
+            <div class="settings-row">
+                <label for="settings-edge">Edge silence (s) <span class="value" id="settings-edge-value">0.10</span></label>
+                <input type="range" id="settings-edge" min="0" max="0.2" step="0.01" value="0.1">
+            </div>
+            <div id="settings-actions">
+                <div class="left">
+                    <button id="settings-test-btn" type="button">Test voice</button>
+                    <button id="settings-reset-btn" type="button">Reset</button>
+                </div>
+                <div class="right">
+                    <button id="settings-close-btn" type="button">Close</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="chat-container"></div>
+    <div id="status-indicator" class="status" style="padding: 0 20px; height: 20px;"></div>
+    <div id="input-container">
+        <input type="text" id="message-input" placeholder="Type your message..." autocomplete="off">
+        <button id="send-button">Send</button>
+    </div>
+
+    <script>
+        const chatContainer = document.getElementById('chat-container');
+        const messageInput = document.getElementById('message-input');
+        const sendButton = document.getElementById('send-button');
+        const newSessionButton = document.getElementById('new-session-button');
+        const statusEl = document.getElementById('status-indicator');
+
+        const GREETING = [
+            'こんにちは！日本語のチューターです。',
+            '*(Hello! I am your Japanese tutor.)*',
+            '',
+            'To get started, tell me your **JLPT level** (N5–N1) so I can match the difficulty. Then pick a mode:',
+            '',
+            '- **20 Questions** — I think of something; you ask up to 20 yes/no questions in Japanese to guess it (or vice versa).',
+            '- **Name That Movie** — I describe a movie or character in Japanese; you guess what it is.',
+            '- **Translate Sentences** — Practice translating between Japanese and English.',
+            '',
+            'You can also just chat in Japanese, ask grammar/vocab questions, or request a custom exercise.'
+        ].join('\n');
+
+        let ws;
+        let currentBotMessage = null;
+        let restarting = false;
+
+        const VOICEVOX_URL = 'http://localhost:50021';
+        const VOICEVOX_SETTINGS_KEY = 'voicevox-settings-v1';
+        const VOICEVOX_DEFAULTS = {
+            speaker: 1,
+            speedScale: 1.0,
+            pitchScale: 0.0,
+            intonationScale: 1.0,
+            volumeScale: 1.0,
+            pauseLengthScale: 1.0,
+            edgeSilence: 0.1,
+        };
+        let voicevoxSettings = loadVoicevoxSettings();
+        let currentVoicevoxAudio = null;
+
+        function loadVoicevoxSettings() {
+            try {
+                const raw = localStorage.getItem(VOICEVOX_SETTINGS_KEY);
+                if (!raw) return { ...VOICEVOX_DEFAULTS };
+                const parsed = JSON.parse(raw);
+                return { ...VOICEVOX_DEFAULTS, ...parsed };
+            } catch (e) {
+                return { ...VOICEVOX_DEFAULTS };
+            }
+        }
+
+        function saveVoicevoxSettings() {
+            try {
+                localStorage.setItem(VOICEVOX_SETTINGS_KEY, JSON.stringify(voicevoxSettings));
+            } catch (e) { /* ignore */ }
+        }
+
+        const JAPANESE_CHAR_RE = /[぀-ヿ㐀-鿿ｦ-ﾝ]/;
+
+        function extractJapaneseForNarration(plain) {
+            if (!plain) return '';
+            // Drop parenthesized segments that contain no Japanese (English glosses).
+            const stripParen = (s) =>
+                s.replace(/[\(（]([^\)）]*)[\)）]/g, (m, inner) => JAPANESE_CHAR_RE.test(inner) ? m : '');
+            return plain
+                .split('\n')
+                .map(stripParen)
+                .filter(line => JAPANESE_CHAR_RE.test(line))
+                .join('\n')
+                .trim();
+        }
+
+        async function speakJapanese(text) {
+            const filtered = extractJapaneseForNarration(text);
+            if (!filtered) return;
+            try {
+                const speaker = voicevoxSettings.speaker;
+                const queryRes = await fetch(
+                    `${VOICEVOX_URL}/audio_query?speaker=${speaker}&text=${encodeURIComponent(filtered)}`,
+                    { method: 'POST' }
+                );
+                if (!queryRes.ok) return;
+                const query = await queryRes.json();
+                query.speedScale = voicevoxSettings.speedScale;
+                query.pitchScale = voicevoxSettings.pitchScale;
+                query.intonationScale = voicevoxSettings.intonationScale;
+                query.volumeScale = voicevoxSettings.volumeScale;
+                query.pauseLengthScale = voicevoxSettings.pauseLengthScale;
+                query.prePhonemeLength = voicevoxSettings.edgeSilence;
+                query.postPhonemeLength = voicevoxSettings.edgeSilence;
+                const synthRes = await fetch(`${VOICEVOX_URL}/synthesis?speaker=${speaker}`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(query),
+                });
+                if (!synthRes.ok) return;
+                const blob = await synthRes.blob();
+                const url = URL.createObjectURL(blob);
+                if (currentVoicevoxAudio) {
+                    currentVoicevoxAudio.pause();
+                    currentVoicevoxAudio = null;
+                }
+                const audio = new Audio(url);
+                currentVoicevoxAudio = audio;
+                audio.addEventListener('ended', () => URL.revokeObjectURL(url));
+                audio.play().catch(() => {});
+            } catch (e) {
+                // VoiceVox unavailable — fail silently.
+            }
+        }
+
+        function markdownToPlainText(md) {
+            const tmp = document.createElement('div');
+            tmp.innerHTML = marked.parse(md);
+            return tmp.textContent || '';
+        }
+
+        function setThinking(on, label) {
+            if (on) {
+                statusEl.textContent = label || 'Thinking';
+                statusEl.classList.add('thinking');
+            } else {
+                statusEl.textContent = '';
+                statusEl.classList.remove('thinking');
+            }
+        }
+
+        function setInputsDisabled(disabled) {
+            sendButton.disabled = disabled;
+            messageInput.disabled = disabled;
+            newSessionButton.disabled = disabled;
+        }
+
+        function clearChat() {
+            chatContainer.innerHTML = '';
+            currentBotMessage = null;
+        }
+
+        function renderHistory(entries) {
+            clearChat();
+            if (!entries || entries.length === 0) {
+                addMessage('bot', GREETING);
+                return;
+            }
+            for (const e of entries) {
+                if (e.role === 'user') addMessage('user', e.text);
+                else if (e.role === 'error') addMessage('error', `Error: ${e.text}`);
+                else addMessage('bot', e.text);
+            }
+        }
+
+        function connect() {
+            ws = new WebSocket(`ws://${window.location.host}/ws`);
+
+            ws.onopen = () => {
+                console.log('Connected to server');
+                // Wait for the server's history snapshot before rendering anything.
+            };
+
+            ws.onmessage = (event) => {
+                const data = JSON.parse(event.data);
+
+                if (data.type === 'history') {
+                    restarting = false;
+                    setThinking(false);
+                    renderHistory(data.history);
+                    setInputsDisabled(false);
+                    messageInput.focus();
+                } else if (data.type === 'chunk') {
+                    setThinking(false);
+                    if (!currentBotMessage) {
+                        currentBotMessage = createMessageElement('bot');
+                        chatContainer.appendChild(currentBotMessage);
+                    }
+                    const contentDiv = currentBotMessage.querySelector('.content');
+                    contentDiv.dataset.raw = (contentDiv.dataset.raw || '') + data.content;
+                    contentDiv.innerHTML = marked.parse(contentDiv.dataset.raw);
+                    chatContainer.scrollTop = chatContainer.scrollHeight;
+                } else if (data.type === 'status') {
+                    statusEl.classList.remove('thinking');
+                    statusEl.textContent = data.content;
+                } else if (data.type === 'echo-user') {
+                    addMessage('user', `[Terminal User]: ${data.content}`);
+                    setThinking(true);
+                } else if (data.type === 'done') {
+                    setThinking(false);
+                    if (currentBotMessage) {
+                        const raw = currentBotMessage.querySelector('.content').dataset.raw || '';
+                        speakJapanese(markdownToPlainText(raw));
+                    }
+                    currentBotMessage = null;
+                    setInputsDisabled(false);
+                    messageInput.focus();
+                } else if (data.type === 'error') {
+                    setThinking(false);
+                    addMessage('error', `Error: ${data.content}`);
+                    setInputsDisabled(false);
+                }
+            };
+
+            ws.onclose = () => {
+                console.log('Disconnected. Retrying in 3 seconds...');
+                setInputsDisabled(true);
+                setTimeout(connect, 3000);
+            };
+        }
+
+        function createMessageElement(type) {
+            const div = document.createElement('div');
+            div.className = `message ${type}`;
+            const content = document.createElement('div');
+            content.className = 'content';
+            div.appendChild(content);
+            if (type === 'bot') {
+                div.title = 'Click to replay narration';
+                div.addEventListener('click', () => {
+                    const raw = content.dataset.raw || '';
+                    if (!raw) return;
+                    if (currentVoicevoxAudio) {
+                        currentVoicevoxAudio.pause();
+                        currentVoicevoxAudio = null;
+                    }
+                    speakJapanese(markdownToPlainText(raw));
+                });
+            }
+            return div;
+        }
+
+        function addMessage(type, text) {
+            const div = createMessageElement(type);
+            const content = div.querySelector('.content');
+            content.dataset.raw = text;
+            content.innerHTML = marked.parse(text);
+            chatContainer.appendChild(div);
+            chatContainer.scrollTop = chatContainer.scrollHeight;
+        }
+
+        function sendMessage() {
+            const text = messageInput.value.trim();
+            if (text && ws.readyState === WebSocket.OPEN) {
+                addMessage('user', text);
+                ws.send(JSON.stringify({ type: 'chat', content: text }));
+                messageInput.value = '';
+                setInputsDisabled(true);
+                setThinking(true);
+            }
+        }
+
+        function requestNewSession() {
+            if (restarting) return;
+            if (!confirm('Start a new session? This will close the current Gemini process and discard the chat history.')) return;
+            restarting = true;
+            setInputsDisabled(true);
+            setThinking(true, 'Starting new session');
+            ws.send(JSON.stringify({ type: 'restart' }));
+        }
+
+        sendButton.onclick = sendMessage;
+        newSessionButton.onclick = requestNewSession;
+        messageInput.onkeypress = (e) => {
+            if (e.key === 'Enter') sendMessage();
+        };
+
+        // ---- Settings modal ----
+        const settingsButton = document.getElementById('settings-button');
+        const settingsBackdrop = document.getElementById('settings-backdrop');
+        const settingsStatus = document.getElementById('settings-status');
+        const voiceSelect = document.getElementById('settings-voice');
+        const speedInput = document.getElementById('settings-speed');
+        const pitchInput = document.getElementById('settings-pitch');
+        const intonationInput = document.getElementById('settings-intonation');
+        const volumeInput = document.getElementById('settings-volume');
+        const pauseInput = document.getElementById('settings-pause');
+        const edgeInput = document.getElementById('settings-edge');
+        const speedValue = document.getElementById('settings-speed-value');
+        const pitchValue = document.getElementById('settings-pitch-value');
+        const intonationValue = document.getElementById('settings-intonation-value');
+        const volumeValue = document.getElementById('settings-volume-value');
+        const pauseValue = document.getElementById('settings-pause-value');
+        const edgeValue = document.getElementById('settings-edge-value');
+        const testBtn = document.getElementById('settings-test-btn');
+        const resetBtn = document.getElementById('settings-reset-btn');
+        const closeBtn = document.getElementById('settings-close-btn');
+
+        let speakersLoaded = false;
+
+        function fmt(n, digits) { return Number(n).toFixed(digits); }
+
+        function syncSliderLabels() {
+            speedValue.textContent = fmt(speedInput.value, 2);
+            pitchValue.textContent = fmt(pitchInput.value, 2);
+            intonationValue.textContent = fmt(intonationInput.value, 2);
+            volumeValue.textContent = fmt(volumeInput.value, 2);
+            pauseValue.textContent = fmt(pauseInput.value, 2);
+            edgeValue.textContent = fmt(edgeInput.value, 2);
+        }
+
+        function syncControlsFromSettings() {
+            voiceSelect.value = String(voicevoxSettings.speaker);
+            speedInput.value = voicevoxSettings.speedScale;
+            pitchInput.value = voicevoxSettings.pitchScale;
+            intonationInput.value = voicevoxSettings.intonationScale;
+            volumeInput.value = voicevoxSettings.volumeScale;
+            pauseInput.value = voicevoxSettings.pauseLengthScale;
+            edgeInput.value = voicevoxSettings.edgeSilence;
+            syncSliderLabels();
+        }
+
+        async function loadSpeakers() {
+            try {
+                const res = await fetch(`${VOICEVOX_URL}/speakers`);
+                if (!res.ok) throw new Error('speakers fetch failed');
+                const speakers = await res.json();
+                voiceSelect.innerHTML = '';
+                for (const sp of speakers) {
+                    const group = document.createElement('optgroup');
+                    group.label = sp.name;
+                    for (const st of (sp.styles || [])) {
+                        const opt = document.createElement('option');
+                        opt.value = String(st.id);
+                        opt.textContent = st.name;
+                        group.appendChild(opt);
+                    }
+                    voiceSelect.appendChild(group);
+                }
+                const hasOption = Array.from(voiceSelect.options)
+                    .some(o => o.value === String(voicevoxSettings.speaker));
+                if (!hasOption && voiceSelect.options.length > 0) {
+                    voicevoxSettings.speaker = Number(voiceSelect.options[0].value);
+                    saveVoicevoxSettings();
+                }
+                voiceSelect.value = String(voicevoxSettings.speaker);
+                speakersLoaded = true;
+                settingsStatus.textContent = '';
+            } catch (e) {
+                settingsStatus.textContent =
+                    'VoiceVox is not reachable at ' + VOICEVOX_URL + '. Start VoiceVox to change voices.';
+            }
+        }
+
+        function openSettings() {
+            settingsBackdrop.classList.add('open');
+            syncControlsFromSettings();
+            if (!speakersLoaded) loadSpeakers();
+        }
+
+        function closeSettings() {
+            settingsBackdrop.classList.remove('open');
+        }
+
+        settingsButton.addEventListener('click', openSettings);
+        closeBtn.addEventListener('click', closeSettings);
+        settingsBackdrop.addEventListener('click', (e) => {
+            if (e.target === settingsBackdrop) closeSettings();
+        });
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape' && settingsBackdrop.classList.contains('open')) closeSettings();
+        });
+
+        voiceSelect.addEventListener('change', () => {
+            voicevoxSettings.speaker = Number(voiceSelect.value);
+            saveVoicevoxSettings();
+        });
+        function bindSlider(input, valueEl, key) {
+            input.addEventListener('input', () => {
+                valueEl.textContent = fmt(input.value, 2);
+            });
+            input.addEventListener('change', () => {
+                voicevoxSettings[key] = Number(input.value);
+                saveVoicevoxSettings();
+            });
+        }
+        bindSlider(speedInput, speedValue, 'speedScale');
+        bindSlider(pitchInput, pitchValue, 'pitchScale');
+        bindSlider(intonationInput, intonationValue, 'intonationScale');
+        bindSlider(volumeInput, volumeValue, 'volumeScale');
+        bindSlider(pauseInput, pauseValue, 'pauseLengthScale');
+        bindSlider(edgeInput, edgeValue, 'edgeSilence');
+
+        testBtn.addEventListener('click', () => {
+            speakJapanese('こんにちは、田中です。今日は、天気がいいですね。');
+        });
+
+        resetBtn.addEventListener('click', () => {
+            voicevoxSettings = { ...VOICEVOX_DEFAULTS };
+            saveVoicevoxSettings();
+            syncControlsFromSettings();
+        });
+
+        // Start disabled until the server sends the initial history snapshot.
+        setInputsDisabled(true);
+        connect();
+    </script>
+</body>
+</html>

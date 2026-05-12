@@ -11,6 +11,7 @@ import (
 	"os/exec"
 	"strings"
 	"sync"
+	"syscall"
 	"time"
 
 	"github.com/gorilla/websocket"
@@ -87,6 +88,9 @@ func main() {
 	}
 	projectRoot = strings.TrimSuffix(cwd, "/web")
 
+	port := "8090"
+	killPriorInstance(port)
+
 	fmt.Println("Starting Gemini ACP session...")
 	if err := startGemini(); err != nil {
 		log.Fatal("start gemini:", err)
@@ -98,9 +102,39 @@ func main() {
 	http.Handle("/", http.FileServer(http.Dir("./static")))
 	http.HandleFunc("/ws", handleWs)
 
-	port := "8090"
 	fmt.Printf("Web interface: http://localhost:%s\n", port)
 	log.Fatal(http.ListenAndServe(":"+port, nil))
+}
+
+// killPriorInstance terminates any process currently bound to the given TCP
+// port so a fresh launch can take it over.
+func killPriorInstance(port string) {
+	out, err := exec.Command("lsof", "-t", "-iTCP:"+port, "-sTCP:LISTEN").Output()
+	if err != nil {
+		return
+	}
+	self := os.Getpid()
+	for _, line := range strings.Fields(string(out)) {
+		var pid int
+		if _, err := fmt.Sscanf(line, "%d", &pid); err != nil || pid == 0 || pid == self {
+			continue
+		}
+		proc, err := os.FindProcess(pid)
+		if err != nil {
+			continue
+		}
+		fmt.Printf("Killing prior instance on port %s (pid=%d)\n", port, pid)
+		_ = proc.Signal(os.Interrupt)
+		deadline := time.Now().Add(2 * time.Second)
+		for time.Now().Before(deadline) {
+			if err := proc.Signal(syscall.Signal(0)); err != nil {
+				return
+			}
+			time.Sleep(100 * time.Millisecond)
+		}
+		_ = proc.Kill()
+		time.Sleep(200 * time.Millisecond)
+	}
 }
 
 // startGemini launches the gemini --acp child process and runs initACP.
@@ -139,8 +173,24 @@ func stopGemini() {
 	if geminiCmd == nil || geminiCmd.Process == nil {
 		return
 	}
-	_ = geminiCmd.Process.Kill()
-	_ = geminiCmd.Wait() // pipes close, output goroutine exits
+
+	// Ask gemini-cli to exit cleanly by closing its stdin; kill only if it
+	// doesn't notice in a reasonable window. Killing first races with any
+	// async stdout writes still in flight and produces EPIPE noise on stderr.
+	stdinMutex.Lock()
+	if geminiStdin != nil {
+		_ = geminiStdin.Close()
+	}
+	stdinMutex.Unlock()
+
+	done := make(chan error, 1)
+	go func() { done <- geminiCmd.Wait() }()
+	select {
+	case <-done:
+	case <-time.After(2 * time.Second):
+		_ = geminiCmd.Process.Kill()
+		<-done
+	}
 
 	rpcMutex.Lock()
 	for id, ch := range pendingRPC {

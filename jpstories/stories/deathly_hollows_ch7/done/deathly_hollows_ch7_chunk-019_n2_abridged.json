@@ -1,0 +1,56 @@
+{
+    "story_id":  "deathly_hollows_ch7",
+    "story_title":  "Deathly_hollows_ch7",
+    "chunk_id":  "chunk-019",
+    "level":  "n2_abridged",
+    "instructions":  [
+                         "Translate only this work item\u0027s sentences for the requested level.",
+                         "Preserve every ID exactly.",
+                         "Fill the translations object with sentence ID keys and translated Japanese values.",
+                         "Return valid JSON only when saving completed work item output."
+                     ],
+    "paragraphs":  [
+                       {
+                           "id":  "p-055",
+                           "sentences":  [
+                                             {
+                                                 "id":  "s-134",
+                                                 "english":  "“I’ve no idea,” said Hermione."
+                                             },
+                                             {
+                                                 "id":  "s-135",
+                                                 "english":  "“When Scrimgeour made you take it, Harry, I was so sure that something was going to happen!”"
+                                             }
+                                         ]
+                       },
+                       {
+                           "id":  "p-056",
+                           "sentences":  [
+                                             {
+                                                 "id":  "s-136",
+                                                 "english":  "“Yeah, well,” said Harry, his pulse quickening as he raised the Snitch in his fingers."
+                                             },
+                                             {
+                                                 "id":  "s-137",
+                                                 "english":  "“I wasn’t going to try too hard in front of Scrimgeour, was I?”"
+                                             }
+                                         ]
+                       },
+                       {
+                           "id":  "p-057",
+                           "sentences":  [
+                                             {
+                                                 "id":  "s-138",
+                                                 "english":  "“What do you mean?” asked Hermione."
+                                             }
+                                         ]
+                       }
+                   ],
+    "translations":  {
+                         "s-134":  "「私にも分からない」とハーマイオニーは言った。",
+                         "s-135":  "「スクリムジョールがあなたに受け取らせた時、何か起こるとばかり思ったのに！」",
+                         "s-136":  "「まあな」とハリーは言い、スニッチを指で持ち上げると脈が速くなった。",
+                         "s-137":  "「スクリムジョールの前で、本気で試すわけないだろ？」",
+                         "s-138":  "「どういう意味？」とハーマイオニーが尋ねた。"
+                     }
+}

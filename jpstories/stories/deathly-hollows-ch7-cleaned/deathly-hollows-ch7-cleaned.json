@@ -1,0 +1,2147 @@
+{
+    "id":  "deathly-hollows-ch7-cleaned",
+    "title":  "Deathly Hollows Ch7 Cleaned",
+    "source_language":  "en",
+    "target_language":  "ja",
+    "source_file":  "stories/deathly-hollows-ch7-cleaned/deathly-hollows-ch7-cleaned.cleaned.txt",
+    "levels":  [
+                   "native",
+                   "n3",
+                   "n2_abridged"
+               ],
+    "chunks":  [
+                   {
+                       "id":  "chunk-001",
+                       "paragraphs":  [
+                                          {
+                                              "id":  "p-001",
+                                              "sentences":  [
+                                                                {
+                                                                    "id":  "s-001",
+                                                                    "english":  "“Because Snitches have flesh memories,” she said.",
+                                                                    "translations":  {
+
+                                                                                     }
+                                                                }
+                                                            ]
+                                          },
+                                          {
+                                              "id":  "p-002",
+                                              "sentences":  [
+                                                                {
+                                                                    "id":  "s-002",
+                                                                    "english":  "“What?” said Harry and Ron together; both considered Hermione’s Quidditch knowledge negligible.",
+                                                                    "translations":  {
+
+                                                                                     }
+                                                                }
+                                                            ]
+                                          },
+                                          {
+                                              "id":  "p-003",
+                                              "sentences":  [
+                                                                {
+                                                                    "id":  "s-003",
+                                                                    "english":  "“Correct,” said Scrimgeour.",
+                                                                    "translations":  {
+
+                                                                                     }
+                                                                },
+                                                                {
+                                                                    "id":  "s-004",
+                                                                    "english":  "“A Snitch is not touched by bare skin before it is released, not even by the maker, who wears gloves.",
+                                                                    "translations":  {
+
+                                                                                     }
+                                                                }
+                                                            ]
+                                          }
+                                      ]
+                   },
+                   {
+                       "id":  "chunk-002",
+                       "paragraphs":  [
+                                          {
+                                              "id":  "p-004",
+                                              "sentences":  [
+                                                                {
+                                                                    "id":  "s-005",
+                                                                    "english":  "It carries an enchantment by which it can identify the first human to lay hands upon it, in the case of disputed capture.",
+                                                                    "translations":  {
+
+                                                                                     }
+                                                                },
+                                                                {
+                                                                    "id":  "s-006",
+                                                                    "english":  "This Snitch”—he held up the tiny golden ball—“will remember your touch, Potter.",
+                                                                    "translations":  {
+
+                                                                                     }
+                                                                },
+                                                                {
+                                                                    "id":  "s-007",
+                                                                    "english":  "It occurs to me that Dumbledore, who had prodigious magical skill, whatever his other faults, might have enchanted this Snitch so that it will open only for you.”",
+                                                                    "translations":  {
+
+                                                                                     }
+                                                                }
+                                                            ]
+                                          },
+                                          {
+                                              "id":  "p-005",
+                                              "sentences":  [
+                                                                {
+                                                                    "id":  "s-008",
+                                                                    "english":  "Harry’s heart was beating rather fast.",
+                                                                    "translations":  {
+
+                                                                                     }
+                                                                },
+                                                                {
+                                                                    "id":  "s-009",
+                                                                    "english":  "He was sure that Scrimgeour was right.",
+                                                                    "translations":  {
+
+                                                                                     }
+                                                                },
+                                                                {
+                                                                    "id":  "s-010",
+                                                                    "english":  "How could he avoid taking the Snitch with his bare hand in front of the Minister?",
+                                                                    "translations":  {
+
+                                                                                     }
+                                                                }
+                                                            ]
+                                          },
+                                          {
+                                              "id":  "p-006",
+                                              "sentences":  [
+                                                                {
+                                                                    "id":  "s-011",
+                                                                    "english":  "“You don’t say anything,” said Scrimgeour.",
+                                                                    "translations":  {
+
+                                                                                     }
+                                                                },
+                                                                {
+                                                                    "id":  "s-012",
+                                                                    "english":  "“Perhaps you already know what the Snitch contains?”",
+                                                                    "translations":  {
+
+                                                                                     }
+                                                                }
+                                                            ]
+                                          }
+                                      ]
+                   },
+                   {
+                       "id":  "chunk-003",
+                       "paragraphs":  [
+                                          {
+                                              "id":  "p-007",
+                                              "sentences":  [
+                                                                {
+                                                                    "id":  "s-013",
+                                                                    "english":  "“No,” said Harry, still wondering how he could appear to touch the Snitch without really doing so.",
+                                                                    "translations":  {
+
+                                                                                     }
+                                                                },
+                                                                {
+                                                                    "id":  "s-014",
+                                                                    "english":  "If only he knew Legilimency, really knew it, and could read Hermione’s mind; he could practically hear her brain whirring beside him.",
+                                                                    "translations":  {
+
+                                                                                     }
+                                                                }
+                                                            ]
+                                          },
+                                          {
+                                              "id":  "p-008",
+                                              "sentences":  [
+                                                                {
+                                                                    "id":  "s-015",
+                                                                    "english":  "“Take it,” said Scrimgeour quietly.",
+                                                                    "translations":  {
+
+                                                                                     }
+                                                                }
+                                                            ]
+                                          },
+                                          {
+                                              "id":  "p-009",
+                                              "sentences":  [
+                                                                {
+                                                                    "id":  "s-016",
+                                                                    "english":  "Harry met the minister’s yellow eyes and knew he had no option but to obey.",
+                                                                    "translations":  {
+
+                                                                                     }
+                                                                },
+                                                                {
+                                                                    "id":  "s-017",
+                                                                    "english":  "He held out his hand, and Scrimgeour leaned forward again and placed the Snitch, slowly and deliberately, into Harry’s palm.",
+                                                                    "translations":  {
+
+                                                                                     }
+                                                                },
+                                                                {
+                                                                    "id":  "s-018",
+                                                                    "english":  "Nothing happened.",
+                                                                    "translations":  {
+
+                                                                                     }
+                                                                },
+                                                                {
+                                                                    "id":  "s-019",
+                                                                    "english":  "As Harry’s fingers closed around the Snitch, its tired wings fluttered and were still.",
+                                                                    "translations":  {
+
+                                                                                     }
+                                                                },
+                                                                {
+                                                                    "id":  "s-020",
+                                                                    "english":  "Scrimgeour, Ron, and Hermione continued to gaze avidly at the now partially concealed ball, as if still hoping it might transform in some way.",
+                                                                    "translations":  {
+
+                                                                                     }
+                                                                }
+                                                            ]
+                                          }
+                                      ]
+                   },
+                   {
+                       "id":  "chunk-004",
+                       "paragraphs":  [
+                                          {
+                                              "id":  "p-010",
+                                              "sentences":  [
+                                                                {
+                                                                    "id":  "s-021",
+                                                                    "english":  "“That was dramatic,” said Harry coolly.",
+                                                                    "translations":  {
+
+                                                                                     }
+                                                                },
+                                                                {
+                                                                    "id":  "s-022",
+                                                                    "english":  "Both Ron and Hermione laughed.",
+                                                                    "translations":  {
+
+                                                                                     }
+                                                                }
+                                                            ]
+                                          },
+                                          {
+                                              "id":  "p-011",
+                                              "sentences":  [
+                                                                {
+                                                                    "id":  "s-023",
+                                                                    "english":  "“That’s all, then, is it?” asked Hermione, making to prise herself off the sofa.",
+                                                                    "translations":  {
+
+                                                                                     }
+                                                                }
+                                                            ]
+                                          },
+                                          {
+                                              "id":  "p-012",
+                                              "sentences":  [
+                                                                {
+                                                                    "id":  "s-024",
+                                                                    "english":  "“Not quite,” said Scrimgeour, who looked bad tempered now, “Dumbledore left you a second bequest, Potter.”",
+                                                                    "translations":  {
+
+                                                                                     }
+                                                                }
+                                                            ]
+                                          }
+                                      ]
+                   },
+                   {
+                       "id":  "chunk-005",
+                       "paragraphs":  [
+                                          {
+                                              "id":  "p-013",
+                                              "sentences":  [
+                                                                {
+                                                                    "id":  "s-025",
+                                                                    "english":  "“What is it?” asked Harry, excitement rekindling.",
+                                                                    "translations":  {
+
+                                                                                     }
+                                                                }
+                                                            ]
+                                          },
+                                          {
+                                              "id":  "p-014",
+                                              "sentences":  [
+                                                                {
+                                                                    "id":  "s-026",
+                                                                    "english":  "Scrimgeour did not bother to read from the will this time.",
+                                                                    "translations":  {
+
+                                                                                     }
+                                                                }
+                                                            ]
+                                          },
+                                          {
+                                              "id":  "p-015",
+                                              "sentences":  [
+                                                                {
+                                                                    "id":  "s-027",
+                                                                    "english":  "“The sword of Godric Gryffindor,” he said.",
+                                                                    "translations":  {
+
+                                                                                     }
+                                                                }
+                                                            ]
+                                          }
+                                      ]
+                   },
+                   {
+                       "id":  "chunk-006",
+                       "paragraphs":  [
+                                          {
+                                              "id":  "p-016",
+                                              "sentences":  [
+                                                                {
+                                                                    "id":  "s-028",
+                                                                    "english":  "Hermione and Ron both stiffened.",
+                                                                    "translations":  {
+
+                                                                                     }
+                                                                },
+                                                                {
+                                                                    "id":  "s-029",
+                                                                    "english":  "Harry looked around for a sign of the ruby-encrusted hilt, but Scrimgeour did not pull the sword from the leather pouch, which in any case looked much too small to contain it.",
+                                                                    "translations":  {
+
+                                                                                     }
+                                                                }
+                                                            ]
+                                          },
+                                          {
+                                              "id":  "p-017",
+                                              "sentences":  [
+                                                                {
+                                                                    "id":  "s-030",
+                                                                    "english":  "“So where is it?” Harry asked suspiciously.",
+                                                                    "translations":  {
+
+                                                                                     }
+                                                                }
+                                                            ]
+                                          },
+                                          {
+                                              "id":  "p-018",
+                                              "sentences":  [
+                                                                {
+                                                                    "id":  "s-031",
+                                                                    "english":  "“Unfortunately,” said Scrimgeour, “that sword was not Dumbledore’s to give away.",
+                                                                    "translations":  {
+
+                                                                                     }
+                                                                },
+                                                                {
+                                                                    "id":  "s-032",
+                                                                    "english":  "The sword of Godric Gryffindor is an important historical artifact, and as such, belongs—” “It belongs to Harry!” said Hermione hotly.",
+                                                                    "translations":  {
+
+                                                                                     }
+                                                                },
+                                                                {
+                                                                    "id":  "s-033",
+                                                                    "english":  "“It chose him, he was the one who found it, it came to him out of the Sorting Hat—” “According to reliable historical sources, the sword may present itself to any worthy Gryffindor,” said Scrimgeour.",
+                                                                    "translations":  {
+
+                                                                                     }
+                                                                },
+                                                                {
+                                                                    "id":  "s-034",
+                                                                    "english":  "“That does not make it the exclusive property of Mr.",
+                                                                    "translations":  {
+
+                                                                                     }
+                                                                },
+                                                                {
+                                                                    "id":  "s-035",
+                                                                    "english":  "Potter, whatever Dumbledore may have decided.” Scrimgeour scratched his badly shaven cheek, scrutinizing Harry.",
+                                                                    "translations":  {
+
+                                                                                     }
+                                                                },
+                                                                {
+                                                                    "id":  "s-036",
+                                                                    "english":  "“Why do you think—?”",
+                                                                    "translations":  {
+
+                                                                                     }
+                                                                }
+                                                            ]
+                                          }
+                                      ]
+                   },
+                   {
+                       "id":  "chunk-007",
+                       "paragraphs":  [
+                                          {
+                                              "id":  "p-019",
+                                              "sentences":  [
+                                                                {
+                                                                    "id":  "s-037",
+                                                                    "english":  "“—Dumbledore wanted to give me the sword?” said Harry, struggling to keep his temper.",
+                                                                    "translations":  {
+
+                                                                                     }
+                                                                },
+                                                                {
+                                                                    "id":  "s-038",
+                                                                    "english":  "“Maybe he thought it would look nice on my wall.”",
+                                                                    "translations":  {
+
+                                                                                     }
+                                                                }
+                                                            ]
+                                          },
+                                          {
+                                              "id":  "p-020",
+                                              "sentences":  [
+                                                                {
+                                                                    "id":  "s-039",
+                                                                    "english":  "“This is not a joke, Potter!” growled Scrimgeour.",
+                                                                    "translations":  {
+
+                                                                                     }
+                                                                },
+                                                                {
+                                                                    "id":  "s-040",
+                                                                    "english":  "“Was it because Dumbledore believed that only the sword of Godric Gryffindor could defeat the Heir of Slytherin?",
+                                                                    "translations":  {
+
+                                                                                     }
+                                                                },
+                                                                {
+                                                                    "id":  "s-041",
+                                                                    "english":  "Did he wish to give you that sword, Potter, because he believed, as do many, that you are the one destined to destroy He-Who-Must-Not-Be-Named?”",
+                                                                    "translations":  {
+
+                                                                                     }
+                                                                }
+                                                            ]
+                                          },
+                                          {
+                                              "id":  "p-021",
+                                              "sentences":  [
+                                                                {
+                                                                    "id":  "s-042",
+                                                                    "english":  "“Interesting theory,” said Harry.",
+                                                                    "translations":  {
+
+                                                                                     }
+                                                                },
+                                                                {
+                                                                    "id":  "s-043",
+                                                                    "english":  "“Has anyone ever tried sticking a sword in Voldemort?",
+                                                                    "translations":  {
+
+                                                                                     }
+                                                                },
+                                                                {
+                                                                    "id":  "s-044",
+                                                                    "english":  "Maybe the Ministry should put some people onto that, instead of wasting their time stripping down Deluminators or covering up breakouts from Azkaban.",
+                                                                    "translations":  {
+
+                                                                                     }
+                                                                },
+                                                                {
+                                                                    "id":  "s-045",
+                                                                    "english":  "So this is what you’ve been doing, Minister, shut up in your office, trying to break open a Snitch?",
+                                                                    "translations":  {
+
+                                                                                     }
+                                                                },
+                                                                {
+                                                                    "id":  "s-046",
+                                                                    "english":  "People are dying—I was nearly one of them— Voldemort chased me across three countries, he killed Mad-Eye Moody, but there’s been no word about any of that from the Ministry, has there?",
+                                                                    "translations":  {
+
+                                                                                     }
+                                                                },
+                                                                {
+                                                                    "id":  "s-047",
+                                                                    "english":  "And you still expect us to cooperate with you!”",
+                                                                    "translations":  {
+
+                                                                                     }
+                                                                }
+                                                            ]
+                                          }
+                                      ]
+                   },
+                   {
+                       "id":  "chunk-008",
+                       "paragraphs":  [
+                                          {
+                                              "id":  "p-022",
+                                              "sentences":  [
+                                                                {
+                                                                    "id":  "s-048",
+                                                                    "english":  "“You go too far!” shouted Scrimgeour, standing up; Harry jumped to his feet too.",
+                                                                    "translations":  {
+
+                                                                                     }
+                                                                },
+                                                                {
+                                                                    "id":  "s-049",
+                                                                    "english":  "Scrimgeour limped toward Harry and jabbed him hard in the chest with the point of his wand: It singed a hole in Harry’s T-shirt like a lit cigarette.",
+                                                                    "translations":  {
+
+                                                                                     }
+                                                                }
+                                                            ]
+                                          },
+                                          {
+                                              "id":  "p-023",
+                                              "sentences":  [
+                                                                {
+                                                                    "id":  "s-050",
+                                                                    "english":  "“Oi!” said Ron, jumping up and raising his own wand, but Harry said, “No!",
+                                                                    "translations":  {
+
+                                                                                     }
+                                                                },
+                                                                {
+                                                                    "id":  "s-051",
+                                                                    "english":  "D’you want to give him an excuse to arrest us?”",
+                                                                    "translations":  {
+
+                                                                                     }
+                                                                }
+                                                            ]
+                                          },
+                                          {
+                                              "id":  "p-024",
+                                              "sentences":  [
+                                                                {
+                                                                    "id":  "s-052",
+                                                                    "english":  "“Remembered you’re not at school, have you?” said Scrimgeour, breathing hard into Harry’s face.",
+                                                                    "translations":  {
+
+                                                                                     }
+                                                                },
+                                                                {
+                                                                    "id":  "s-053",
+                                                                    "english":  "“Remembered that I am not Dumbledore, who forgave your insolence and insubordination?",
+                                                                    "translations":  {
+
+                                                                                     }
+                                                                }
+                                                            ]
+                                          }
+                                      ]
+                   },
+                   {
+                       "id":  "chunk-009",
+                       "paragraphs":  [
+                                          {
+                                              "id":  "p-025",
+                                              "sentences":  [
+                                                                {
+                                                                    "id":  "s-054",
+                                                                    "english":  "You may wear that scar like a crown, Potter, but it is not up to a seventeen-year-old boy to tell me how to do my job!",
+                                                                    "translations":  {
+
+                                                                                     }
+                                                                },
+                                                                {
+                                                                    "id":  "s-055",
+                                                                    "english":  "It’s time you learned some respect!”",
+                                                                    "translations":  {
+
+                                                                                     }
+                                                                }
+                                                            ]
+                                          },
+                                          {
+                                              "id":  "p-026",
+                                              "sentences":  [
+                                                                {
+                                                                    "id":  "s-056",
+                                                                    "english":  "“It’s time you earned it.” said Harry.",
+                                                                    "translations":  {
+
+                                                                                     }
+                                                                }
+                                                            ]
+                                          },
+                                          {
+                                              "id":  "p-027",
+                                              "sentences":  [
+                                                                {
+                                                                    "id":  "s-057",
+                                                                    "english":  "The floor trembled; there was a sound of running footsteps, then the door to the sitting room burst open and Mr.",
+                                                                    "translations":  {
+
+                                                                                     }
+                                                                },
+                                                                {
+                                                                    "id":  "s-058",
+                                                                    "english":  "and Mrs.",
+                                                                    "translations":  {
+
+                                                                                     }
+                                                                },
+                                                                {
+                                                                    "id":  "s-059",
+                                                                    "english":  "Weasley ran in.",
+                                                                    "translations":  {
+
+                                                                                     }
+                                                                }
+                                                            ]
+                                          }
+                                      ]
+                   },
+                   {
+                       "id":  "chunk-010",
+                       "paragraphs":  [
+                                          {
+                                              "id":  "p-028",
+                                              "sentences":  [
+                                                                {
+                                                                    "id":  "s-060",
+                                                                    "english":  "“We—we thought we heard—” began Mr.",
+                                                                    "translations":  {
+
+                                                                                     }
+                                                                },
+                                                                {
+                                                                    "id":  "s-061",
+                                                                    "english":  "Weasley, looking thoroughly alarmed at the sight of Harry and the Minister virtually nose to nose.",
+                                                                    "translations":  {
+
+                                                                                     }
+                                                                }
+                                                            ]
+                                          },
+                                          {
+                                              "id":  "p-029",
+                                              "sentences":  [
+                                                                {
+                                                                    "id":  "s-062",
+                                                                    "english":  "“—raised voices,” panted Mrs.",
+                                                                    "translations":  {
+
+                                                                                     }
+                                                                },
+                                                                {
+                                                                    "id":  "s-063",
+                                                                    "english":  "Weasley.",
+                                                                    "translations":  {
+
+                                                                                     }
+                                                                }
+                                                            ]
+                                          },
+                                          {
+                                              "id":  "p-030",
+                                              "sentences":  [
+                                                                {
+                                                                    "id":  "s-064",
+                                                                    "english":  "Scrimgeour took a couple of steps back from Harry, glancing at the hole he had made in Harry’s T-shirt.",
+                                                                    "translations":  {
+
+                                                                                     }
+                                                                },
+                                                                {
+                                                                    "id":  "s-065",
+                                                                    "english":  "He seemed to regret his loss of temper.",
+                                                                    "translations":  {
+
+                                                                                     }
+                                                                }
+                                                            ]
+                                          }
+                                      ]
+                   },
+                   {
+                       "id":  "chunk-011",
+                       "paragraphs":  [
+                                          {
+                                              "id":  "p-031",
+                                              "sentences":  [
+                                                                {
+                                                                    "id":  "s-066",
+                                                                    "english":  "“It—it was nothing,” he growled.",
+                                                                    "translations":  {
+
+                                                                                     }
+                                                                },
+                                                                {
+                                                                    "id":  "s-067",
+                                                                    "english":  "“I .",
+                                                                    "translations":  {
+
+                                                                                     }
+                                                                },
+                                                                {
+                                                                    "id":  "s-068",
+                                                                    "english":  ".",
+                                                                    "translations":  {
+
+                                                                                     }
+                                                                },
+                                                                {
+                                                                    "id":  "s-069",
+                                                                    "english":  ".",
+                                                                    "translations":  {
+
+                                                                                     }
+                                                                },
+                                                                {
+                                                                    "id":  "s-070",
+                                                                    "english":  "regret your attitude,” he said, looking Harry full in the face once more.",
+                                                                    "translations":  {
+
+                                                                                     }
+                                                                },
+                                                                {
+                                                                    "id":  "s-071",
+                                                                    "english":  "“You seem to think that the Ministry does not desire what you—what Dumbledore—desired.",
+                                                                    "translations":  {
+
+                                                                                     }
+                                                                },
+                                                                {
+                                                                    "id":  "s-072",
+                                                                    "english":  "We ought to be working together.”",
+                                                                    "translations":  {
+
+                                                                                     }
+                                                                }
+                                                            ]
+                                          },
+                                          {
+                                              "id":  "p-032",
+                                              "sentences":  [
+                                                                {
+                                                                    "id":  "s-073",
+                                                                    "english":  "“I don’t like your methods, Minister,” said Harry.",
+                                                                    "translations":  {
+
+                                                                                     }
+                                                                },
+                                                                {
+                                                                    "id":  "s-074",
+                                                                    "english":  "“Remember?”",
+                                                                    "translations":  {
+
+                                                                                     }
+                                                                }
+                                                            ]
+                                          },
+                                          {
+                                              "id":  "p-033",
+                                              "sentences":  [
+                                                                {
+                                                                    "id":  "s-075",
+                                                                    "english":  "For the second time, he raised his right fist and displayed to Scrimgeour the scars that still showed white on the back of it, spelling I must not tell lies.",
+                                                                    "translations":  {
+
+                                                                                     }
+                                                                },
+                                                                {
+                                                                    "id":  "s-076",
+                                                                    "english":  "Scrimgeour’s expression hardened.",
+                                                                    "translations":  {
+
+                                                                                     }
+                                                                }
+                                                            ]
+                                          }
+                                      ]
+                   },
+                   {
+                       "id":  "chunk-012",
+                       "paragraphs":  [
+                                          {
+                                              "id":  "p-034",
+                                              "sentences":  [
+                                                                {
+                                                                    "id":  "s-077",
+                                                                    "english":  "He turned away without another word and limped from the room.",
+                                                                    "translations":  {
+
+                                                                                     }
+                                                                },
+                                                                {
+                                                                    "id":  "s-078",
+                                                                    "english":  "Mrs.",
+                                                                    "translations":  {
+
+                                                                                     }
+                                                                },
+                                                                {
+                                                                    "id":  "s-079",
+                                                                    "english":  "Weasley hurried after him; Harry heard her stop at the back door.",
+                                                                    "translations":  {
+
+                                                                                     }
+                                                                },
+                                                                {
+                                                                    "id":  "s-080",
+                                                                    "english":  "After a minute or so she called, “He’s gone!”",
+                                                                    "translations":  {
+
+                                                                                     }
+                                                                }
+                                                            ]
+                                          },
+                                          {
+                                              "id":  "p-035",
+                                              "sentences":  [
+                                                                {
+                                                                    "id":  "s-081",
+                                                                    "english":  "“What did he want?” Mr.",
+                                                                    "translations":  {
+
+                                                                                     }
+                                                                },
+                                                                {
+                                                                    "id":  "s-082",
+                                                                    "english":  "Weasley asked, looking around at Harry, Ron, and Hermione as Mrs.",
+                                                                    "translations":  {
+
+                                                                                     }
+                                                                },
+                                                                {
+                                                                    "id":  "s-083",
+                                                                    "english":  "Weasley came hurrying back to them.",
+                                                                    "translations":  {
+
+                                                                                     }
+                                                                }
+                                                            ]
+                                          },
+                                          {
+                                              "id":  "p-036",
+                                              "sentences":  [
+                                                                {
+                                                                    "id":  "s-084",
+                                                                    "english":  "“To give us what Dumbledore left us,” said Harry.",
+                                                                    "translations":  {
+
+                                                                                     }
+                                                                },
+                                                                {
+                                                                    "id":  "s-085",
+                                                                    "english":  "“They’ve only just released the contents of his will.”",
+                                                                    "translations":  {
+
+                                                                                     }
+                                                                }
+                                                            ]
+                                          }
+                                      ]
+                   },
+                   {
+                       "id":  "chunk-013",
+                       "paragraphs":  [
+                                          {
+                                              "id":  "p-037",
+                                              "sentences":  [
+                                                                {
+                                                                    "id":  "s-086",
+                                                                    "english":  "Outside in the garden, over the dinner tables, the three objects Scrimgeour had given them were passed from hand to hand.",
+                                                                    "translations":  {
+
+                                                                                     }
+                                                                },
+                                                                {
+                                                                    "id":  "s-087",
+                                                                    "english":  "Everyone exclaimed over the Deluminator and The Tales of Beedle the Bard and lamented the fact that Scrimgeour had refused to pass on the sword, but none of them could offer any suggestion as to why Dumbledore would have left Harry an old Snitch.",
+                                                                    "translations":  {
+
+                                                                                     }
+                                                                },
+                                                                {
+                                                                    "id":  "s-088",
+                                                                    "english":  "As Mr.",
+                                                                    "translations":  {
+
+                                                                                     }
+                                                                },
+                                                                {
+                                                                    "id":  "s-089",
+                                                                    "english":  "Weasley examined the Deluminator for the third or fourth time, Mrs.",
+                                                                    "translations":  {
+
+                                                                                     }
+                                                                },
+                                                                {
+                                                                    "id":  "s-090",
+                                                                    "english":  "Weasley said tentatively, “Harry, dear, everyone’s awfully hungry, we didn’t like to start without you.",
+                                                                    "translations":  {
+
+                                                                                     }
+                                                                },
+                                                                {
+                                                                    "id":  "s-091",
+                                                                    "english":  ".",
+                                                                    "translations":  {
+
+                                                                                     }
+                                                                },
+                                                                {
+                                                                    "id":  "s-092",
+                                                                    "english":  ".",
+                                                                    "translations":  {
+
+                                                                                     }
+                                                                },
+                                                                {
+                                                                    "id":  "s-093",
+                                                                    "english":  ".",
+                                                                    "translations":  {
+
+                                                                                     }
+                                                                },
+                                                                {
+                                                                    "id":  "s-094",
+                                                                    "english":  "Shall I serve dinner now?”",
+                                                                    "translations":  {
+
+                                                                                     }
+                                                                }
+                                                            ]
+                                          },
+                                          {
+                                              "id":  "p-038",
+                                              "sentences":  [
+                                                                {
+                                                                    "id":  "s-095",
+                                                                    "english":  "They all ate rather hurriedly and then, after a hasty chorus of “Happy Birthday” and much gulping of cake, the party broke up.",
+                                                                    "translations":  {
+
+                                                                                     }
+                                                                }
+                                                            ]
+                                          },
+                                          {
+                                              "id":  "p-039",
+                                              "sentences":  [
+                                                                {
+                                                                    "id":  "s-096",
+                                                                    "english":  "Hagrid, who was invited to the wedding the following day, but was far too bulky to sleep in the overstretched Burrow, left to set up a tent for himself in a neighboring field.",
+                                                                    "translations":  {
+
+                                                                                     }
+                                                                }
+                                                            ]
+                                          }
+                                      ]
+                   },
+                   {
+                       "id":  "chunk-014",
+                       "paragraphs":  [
+                                          {
+                                              "id":  "p-040",
+                                              "sentences":  [
+                                                                {
+                                                                    "id":  "s-097",
+                                                                    "english":  "“Meet us upstairs,” Harry whispered to Hermione, while they helped Mrs.",
+                                                                    "translations":  {
+
+                                                                                     }
+                                                                },
+                                                                {
+                                                                    "id":  "s-098",
+                                                                    "english":  "Weasley restore the garden to its normal state.",
+                                                                    "translations":  {
+
+                                                                                     }
+                                                                },
+                                                                {
+                                                                    "id":  "s-099",
+                                                                    "english":  "“After everyone’s gone to bed.”",
+                                                                    "translations":  {
+
+                                                                                     }
+                                                                }
+                                                            ]
+                                          },
+                                          {
+                                              "id":  "p-041",
+                                              "sentences":  [
+                                                                {
+                                                                    "id":  "s-100",
+                                                                    "english":  "Up in the attic room, Ron examined his Deluminator, and Harry filled Hagrid’s mokeskin purse, not with gold, but with those items he most prized, apparently worthless though some of them were: the Marauder’s Map, the shard of Sirius’s enchanted mirror, and R.A.B.’s locket.",
+                                                                    "translations":  {
+
+                                                                                     }
+                                                                },
+                                                                {
+                                                                    "id":  "s-101",
+                                                                    "english":  "He pulled the strings tight and slipped the purse around his neck, then sat holding the old Snitch and watching its wings flutter feebly.",
+                                                                    "translations":  {
+
+                                                                                     }
+                                                                },
+                                                                {
+                                                                    "id":  "s-102",
+                                                                    "english":  "At last, Hermione tapped on the door and tiptoed inside.",
+                                                                    "translations":  {
+
+                                                                                     }
+                                                                }
+                                                            ]
+                                          },
+                                          {
+                                              "id":  "p-042",
+                                              "sentences":  [
+                                                                {
+                                                                    "id":  "s-103",
+                                                                    "english":  "“Muffliato,” she whispered, waving her hand in the direction of the stairs.",
+                                                                    "translations":  {
+
+                                                                                     }
+                                                                }
+                                                            ]
+                                          }
+                                      ]
+                   },
+                   {
+                       "id":  "chunk-015",
+                       "paragraphs":  [
+                                          {
+                                              "id":  "p-043",
+                                              "sentences":  [
+                                                                {
+                                                                    "id":  "s-104",
+                                                                    "english":  "“Thought you didn’t approve of that spell?” said Ron.",
+                                                                    "translations":  {
+
+                                                                                     }
+                                                                }
+                                                            ]
+                                          },
+                                          {
+                                              "id":  "p-044",
+                                              "sentences":  [
+                                                                {
+                                                                    "id":  "s-105",
+                                                                    "english":  "“Times change,” said Hermione.",
+                                                                    "translations":  {
+
+                                                                                     }
+                                                                },
+                                                                {
+                                                                    "id":  "s-106",
+                                                                    "english":  "“Now, show us that Deluminator.”",
+                                                                    "translations":  {
+
+                                                                                     }
+                                                                }
+                                                            ]
+                                          },
+                                          {
+                                              "id":  "p-045",
+                                              "sentences":  [
+                                                                {
+                                                                    "id":  "s-107",
+                                                                    "english":  "Ron obliged at once.",
+                                                                    "translations":  {
+
+                                                                                     }
+                                                                },
+                                                                {
+                                                                    "id":  "s-108",
+                                                                    "english":  "Holding it up in front of him, he clicked it.",
+                                                                    "translations":  {
+
+                                                                                     }
+                                                                },
+                                                                {
+                                                                    "id":  "s-109",
+                                                                    "english":  "The solitary lamp they had lit went out at once.",
+                                                                    "translations":  {
+
+                                                                                     }
+                                                                }
+                                                            ]
+                                          }
+                                      ]
+                   },
+                   {
+                       "id":  "chunk-016",
+                       "paragraphs":  [
+                                          {
+                                              "id":  "p-046",
+                                              "sentences":  [
+                                                                {
+                                                                    "id":  "s-110",
+                                                                    "english":  "“The thing is,” whispered Hermione through the dark, “we could have achieved that with Peruvian Instant Darkness Powder.”",
+                                                                    "translations":  {
+
+                                                                                     }
+                                                                }
+                                                            ]
+                                          },
+                                          {
+                                              "id":  "p-047",
+                                              "sentences":  [
+                                                                {
+                                                                    "id":  "s-111",
+                                                                    "english":  "There was a small click, and the ball of light from the lamp flew back to the ceiling and illuminated them all once more.",
+                                                                    "translations":  {
+
+                                                                                     }
+                                                                }
+                                                            ]
+                                          },
+                                          {
+                                              "id":  "p-048",
+                                              "sentences":  [
+                                                                {
+                                                                    "id":  "s-112",
+                                                                    "english":  "“Still, it’s cool,” said Ron, a little defensively.",
+                                                                    "translations":  {
+
+                                                                                     }
+                                                                },
+                                                                {
+                                                                    "id":  "s-113",
+                                                                    "english":  "“And from what they said, Dumbledore invented it himself!”",
+                                                                    "translations":  {
+
+                                                                                     }
+                                                                }
+                                                            ]
+                                          }
+                                      ]
+                   },
+                   {
+                       "id":  "chunk-017",
+                       "paragraphs":  [
+                                          {
+                                              "id":  "p-049",
+                                              "sentences":  [
+                                                                {
+                                                                    "id":  "s-114",
+                                                                    "english":  "“I know, but surely he wouldn’t have singled you out in his will just to help us turn out the lights!”",
+                                                                    "translations":  {
+
+                                                                                     }
+                                                                }
+                                                            ]
+                                          },
+                                          {
+                                              "id":  "p-050",
+                                              "sentences":  [
+                                                                {
+                                                                    "id":  "s-115",
+                                                                    "english":  "“D’you think he knew the Ministry would confiscate his will and examine everything he’d left us?” asked Harry.",
+                                                                    "translations":  {
+
+                                                                                     }
+                                                                }
+                                                            ]
+                                          },
+                                          {
+                                              "id":  "p-051",
+                                              "sentences":  [
+                                                                {
+                                                                    "id":  "s-116",
+                                                                    "english":  "“Definitely,” said Hermione.",
+                                                                    "translations":  {
+
+                                                                                     }
+                                                                },
+                                                                {
+                                                                    "id":  "s-117",
+                                                                    "english":  "“He couldn’t tell us in the will why he was leaving us these things, but that still doesn’t explain .",
+                                                                    "translations":  {
+
+                                                                                     }
+                                                                },
+                                                                {
+                                                                    "id":  "s-118",
+                                                                    "english":  ".",
+                                                                    "translations":  {
+
+                                                                                     }
+                                                                },
+                                                                {
+                                                                    "id":  "s-119",
+                                                                    "english":  ".",
+                                                                    "translations":  {
+
+                                                                                     }
+                                                                },
+                                                                {
+                                                                    "id":  "s-120",
+                                                                    "english":  "”",
+                                                                    "translations":  {
+
+                                                                                     }
+                                                                }
+                                                            ]
+                                          }
+                                      ]
+                   },
+                   {
+                       "id":  "chunk-018",
+                       "paragraphs":  [
+                                          {
+                                              "id":  "p-052",
+                                              "sentences":  [
+                                                                {
+                                                                    "id":  "s-121",
+                                                                    "english":  "“ .",
+                                                                    "translations":  {
+
+                                                                                     }
+                                                                },
+                                                                {
+                                                                    "id":  "s-122",
+                                                                    "english":  ".",
+                                                                    "translations":  {
+
+                                                                                     }
+                                                                },
+                                                                {
+                                                                    "id":  "s-123",
+                                                                    "english":  ".",
+                                                                    "translations":  {
+
+                                                                                     }
+                                                                },
+                                                                {
+                                                                    "id":  "s-124",
+                                                                    "english":  "why he couldn’t have given us a hint when he was alive?” asked Ron.",
+                                                                    "translations":  {
+
+                                                                                     }
+                                                                }
+                                                            ]
+                                          },
+                                          {
+                                              "id":  "p-053",
+                                              "sentences":  [
+                                                                {
+                                                                    "id":  "s-125",
+                                                                    "english":  "“Well, exactly,” said Hermione, now flicking through the The Tales of Beedle the Bard.",
+                                                                    "translations":  {
+
+                                                                                     }
+                                                                },
+                                                                {
+                                                                    "id":  "s-126",
+                                                                    "english":  "“If these things are important enough to pass on right under the nose of the Ministry, you’d think he’d have let us know why .",
+                                                                    "translations":  {
+
+                                                                                     }
+                                                                },
+                                                                {
+                                                                    "id":  "s-127",
+                                                                    "english":  ".",
+                                                                    "translations":  {
+
+                                                                                     }
+                                                                },
+                                                                {
+                                                                    "id":  "s-128",
+                                                                    "english":  ".",
+                                                                    "translations":  {
+
+                                                                                     }
+                                                                },
+                                                                {
+                                                                    "id":  "s-129",
+                                                                    "english":  "unless he thought it was obvious?”",
+                                                                    "translations":  {
+
+                                                                                     }
+                                                                }
+                                                            ]
+                                          },
+                                          {
+                                              "id":  "p-054",
+                                              "sentences":  [
+                                                                {
+                                                                    "id":  "s-130",
+                                                                    "english":  "“Thought wrong, then, didn’t he?” said Ron.",
+                                                                    "translations":  {
+
+                                                                                     }
+                                                                },
+                                                                {
+                                                                    "id":  "s-131",
+                                                                    "english":  "“I always said he was mental.",
+                                                                    "translations":  {
+
+                                                                                     }
+                                                                },
+                                                                {
+                                                                    "id":  "s-132",
+                                                                    "english":  "Brilliant and everything, but cracked.",
+                                                                    "translations":  {
+
+                                                                                     }
+                                                                },
+                                                                {
+                                                                    "id":  "s-133",
+                                                                    "english":  "Leaving Harry an old Snitch—what the hell was that about?”",
+                                                                    "translations":  {
+
+                                                                                     }
+                                                                }
+                                                            ]
+                                          }
+                                      ]
+                   },
+                   {
+                       "id":  "chunk-019",
+                       "paragraphs":  [
+                                          {
+                                              "id":  "p-055",
+                                              "sentences":  [
+                                                                {
+                                                                    "id":  "s-134",
+                                                                    "english":  "“I’ve no idea,” said Hermione.",
+                                                                    "translations":  {
+
+                                                                                     }
+                                                                },
+                                                                {
+                                                                    "id":  "s-135",
+                                                                    "english":  "“When Scrimgeour made you take it, Harry, I was so sure that something was going to happen!”",
+                                                                    "translations":  {
+
+                                                                                     }
+                                                                }
+                                                            ]
+                                          },
+                                          {
+                                              "id":  "p-056",
+                                              "sentences":  [
+                                                                {
+                                                                    "id":  "s-136",
+                                                                    "english":  "“Yeah, well,” said Harry, his pulse quickening as he raised the Snitch in his fingers.",
+                                                                    "translations":  {
+
+                                                                                     }
+                                                                },
+                                                                {
+                                                                    "id":  "s-137",
+                                                                    "english":  "“I wasn’t going to try too hard in front of Scrimgeour, was I?”",
+                                                                    "translations":  {
+
+                                                                                     }
+                                                                }
+                                                            ]
+                                          },
+                                          {
+                                              "id":  "p-057",
+                                              "sentences":  [
+                                                                {
+                                                                    "id":  "s-138",
+                                                                    "english":  "“What do you mean?” asked Hermione.",
+                                                                    "translations":  {
+
+                                                                                     }
+                                                                }
+                                                            ]
+                                          }
+                                      ]
+                   },
+                   {
+                       "id":  "chunk-020",
+                       "paragraphs":  [
+                                          {
+                                              "id":  "p-058",
+                                              "sentences":  [
+                                                                {
+                                                                    "id":  "s-139",
+                                                                    "english":  "“The Snitch I caught in my first ever Quidditch match?” said Harry.",
+                                                                    "translations":  {
+
+                                                                                     }
+                                                                },
+                                                                {
+                                                                    "id":  "s-140",
+                                                                    "english":  "“Don’t you remember?”",
+                                                                    "translations":  {
+
+                                                                                     }
+                                                                }
+                                                            ]
+                                          },
+                                          {
+                                              "id":  "p-059",
+                                              "sentences":  [
+                                                                {
+                                                                    "id":  "s-141",
+                                                                    "english":  "Hermione looked simply bemused.",
+                                                                    "translations":  {
+
+                                                                                     }
+                                                                },
+                                                                {
+                                                                    "id":  "s-142",
+                                                                    "english":  "Ron, however, gasped, pointing frantically from Harry to the Snitch and back again until he found his voice.",
+                                                                    "translations":  {
+
+                                                                                     }
+                                                                }
+                                                            ]
+                                          },
+                                          {
+                                              "id":  "p-060",
+                                              "sentences":  [
+                                                                {
+                                                                    "id":  "s-143",
+                                                                    "english":  "“That was the one you nearly swallowed!”",
+                                                                    "translations":  {
+
+                                                                                     }
+                                                                }
+                                                            ]
+                                          }
+                                      ]
+                   },
+                   {
+                       "id":  "chunk-021",
+                       "paragraphs":  [
+                                          {
+                                              "id":  "p-061",
+                                              "sentences":  [
+                                                                {
+                                                                    "id":  "s-144",
+                                                                    "english":  "“Exactly,” said Harry, and with his heart beating fast, he pressed his mouth to the Snitch.",
+                                                                    "translations":  {
+
+                                                                                     }
+                                                                }
+                                                            ]
+                                          },
+                                          {
+                                              "id":  "p-062",
+                                              "sentences":  [
+                                                                {
+                                                                    "id":  "s-145",
+                                                                    "english":  "It did not open.",
+                                                                    "translations":  {
+
+                                                                                     }
+                                                                },
+                                                                {
+                                                                    "id":  "s-146",
+                                                                    "english":  "Frustration and bitter disappointment welled up inside him: He lowered the golden sphere, but then Hermione cried out.",
+                                                                    "translations":  {
+
+                                                                                     }
+                                                                }
+                                                            ]
+                                          },
+                                          {
+                                              "id":  "p-063",
+                                              "sentences":  [
+                                                                {
+                                                                    "id":  "s-147",
+                                                                    "english":  "“Writing!",
+                                                                    "translations":  {
+
+                                                                                     }
+                                                                },
+                                                                {
+                                                                    "id":  "s-148",
+                                                                    "english":  "There’s writing on it, quick, look!”",
+                                                                    "translations":  {
+
+                                                                                     }
+                                                                }
+                                                            ]
+                                          }
+                                      ]
+                   },
+                   {
+                       "id":  "chunk-022",
+                       "paragraphs":  [
+                                          {
+                                              "id":  "p-064",
+                                              "sentences":  [
+                                                                {
+                                                                    "id":  "s-149",
+                                                                    "english":  "He nearly dropped the Snitch in surprise and excitement.",
+                                                                    "translations":  {
+
+                                                                                     }
+                                                                },
+                                                                {
+                                                                    "id":  "s-150",
+                                                                    "english":  "Hermione was quite right.",
+                                                                    "translations":  {
+
+                                                                                     }
+                                                                },
+                                                                {
+                                                                    "id":  "s-151",
+                                                                    "english":  "Engraved upon the smooth golden surface, where seconds before there had been nothing, were five words written in the thin, slanting handwriting that Harry recognized as Dumbledore’s: I open at the close.",
+                                                                    "translations":  {
+
+                                                                                     }
+                                                                }
+                                                            ]
+                                          },
+                                          {
+                                              "id":  "p-065",
+                                              "sentences":  [
+                                                                {
+                                                                    "id":  "s-152",
+                                                                    "english":  "He had barely read them when the words vanished again.",
+                                                                    "translations":  {
+
+                                                                                     }
+                                                                }
+                                                            ]
+                                          },
+                                          {
+                                              "id":  "p-066",
+                                              "sentences":  [
+                                                                {
+                                                                    "id":  "s-153",
+                                                                    "english":  "“‘I open at the close .",
+                                                                    "translations":  {
+
+                                                                                     }
+                                                                },
+                                                                {
+                                                                    "id":  "s-154",
+                                                                    "english":  ".",
+                                                                    "translations":  {
+
+                                                                                     }
+                                                                },
+                                                                {
+                                                                    "id":  "s-155",
+                                                                    "english":  ".",
+                                                                    "translations":  {
+
+                                                                                     }
+                                                                },
+                                                                {
+                                                                    "id":  "s-156",
+                                                                    "english":  "’ What’s that supposed to mean?”",
+                                                                    "translations":  {
+
+                                                                                     }
+                                                                }
+                                                            ]
+                                          }
+                                      ]
+                   },
+                   {
+                       "id":  "chunk-023",
+                       "paragraphs":  [
+                                          {
+                                              "id":  "p-067",
+                                              "sentences":  [
+                                                                {
+                                                                    "id":  "s-157",
+                                                                    "english":  "Hermione and Ron shook their heads, looking back.",
+                                                                    "translations":  {
+
+                                                                                     }
+                                                                }
+                                                            ]
+                                          },
+                                          {
+                                              "id":  "p-068",
+                                              "sentences":  [
+                                                                {
+                                                                    "id":  "s-158",
+                                                                    "english":  "“I open at the close .",
+                                                                    "translations":  {
+
+                                                                                     }
+                                                                },
+                                                                {
+                                                                    "id":  "s-159",
+                                                                    "english":  ".",
+                                                                    "translations":  {
+
+                                                                                     }
+                                                                },
+                                                                {
+                                                                    "id":  "s-160",
+                                                                    "english":  ".",
+                                                                    "translations":  {
+
+                                                                                     }
+                                                                },
+                                                                {
+                                                                    "id":  "s-161",
+                                                                    "english":  "at the close .",
+                                                                    "translations":  {
+
+                                                                                     }
+                                                                },
+                                                                {
+                                                                    "id":  "s-162",
+                                                                    "english":  ".",
+                                                                    "translations":  {
+
+                                                                                     }
+                                                                },
+                                                                {
+                                                                    "id":  "s-163",
+                                                                    "english":  ".",
+                                                                    "translations":  {
+
+                                                                                     }
+                                                                },
+                                                                {
+                                                                    "id":  "s-164",
+                                                                    "english":  "I open at the close .",
+                                                                    "translations":  {
+
+                                                                                     }
+                                                                },
+                                                                {
+                                                                    "id":  "s-165",
+                                                                    "english":  ".",
+                                                                    "translations":  {
+
+                                                                                     }
+                                                                },
+                                                                {
+                                                                    "id":  "s-166",
+                                                                    "english":  ".",
+                                                                    "translations":  {
+
+                                                                                     }
+                                                                },
+                                                                {
+                                                                    "id":  "s-167",
+                                                                    "english":  "”",
+                                                                    "translations":  {
+
+                                                                                     }
+                                                                }
+                                                            ]
+                                          },
+                                          {
+                                              "id":  "p-069",
+                                              "sentences":  [
+                                                                {
+                                                                    "id":  "s-168",
+                                                                    "english":  "But no matter how often they repeated the words, with many different inflections, they were unable to wring any more meaning from them.",
+                                                                    "translations":  {
+
+                                                                                     }
+                                                                }
+                                                            ]
+                                          }
+                                      ]
+                   },
+                   {
+                       "id":  "chunk-024",
+                       "paragraphs":  [
+                                          {
+                                              "id":  "p-070",
+                                              "sentences":  [
+                                                                {
+                                                                    "id":  "s-169",
+                                                                    "english":  "“And the sword,” said Ron finally, when they had at last abandoned their attempts to divine meaning in the Snitch’s inscription.",
+                                                                    "translations":  {
+
+                                                                                     }
+                                                                }
+                                                            ]
+                                          },
+                                          {
+                                              "id":  "p-071",
+                                              "sentences":  [
+                                                                {
+                                                                    "id":  "s-170",
+                                                                    "english":  "“Why did he want Harry to have the sword?”",
+                                                                    "translations":  {
+
+                                                                                     }
+                                                                }
+                                                            ]
+                                          },
+                                          {
+                                              "id":  "p-072",
+                                              "sentences":  [
+                                                                {
+                                                                    "id":  "s-171",
+                                                                    "english":  "“And why couldn’t he just have told me?” Harry said quietly.",
+                                                                    "translations":  {
+
+                                                                                     }
+                                                                }
+                                                            ]
+                                          }
+                                      ]
+                   },
+                   {
+                       "id":  "chunk-025",
+                       "paragraphs":  [
+                                          {
+                                              "id":  "p-073",
+                                              "sentences":  [
+                                                                {
+                                                                    "id":  "s-172",
+                                                                    "english":  "“I was there it was right there on the wall of his office during all our talks last year!",
+                                                                    "translations":  {
+
+                                                                                     }
+                                                                },
+                                                                {
+                                                                    "id":  "s-173",
+                                                                    "english":  "If he wanted me to have it, why didn’t he just give it to me then?",
+                                                                    "translations":  {
+
+                                                                                     }
+                                                                }
+                                                            ]
+                                          },
+                                          {
+                                              "id":  "p-074",
+                                              "sentences":  [
+                                                                {
+                                                                    "id":  "s-174",
+                                                                    "english":  "He felt as though he were sitting in an examination with a question he ought to have been able to answer in front of him, his brain slow and unresponsive.",
+                                                                    "translations":  {
+
+                                                                                     }
+                                                                },
+                                                                {
+                                                                    "id":  "s-175",
+                                                                    "english":  "Was there something he had missed in the long talks with Dumbledore last year?",
+                                                                    "translations":  {
+
+                                                                                     }
+                                                                },
+                                                                {
+                                                                    "id":  "s-176",
+                                                                    "english":  "Ought he to know what it all meant?",
+                                                                    "translations":  {
+
+                                                                                     }
+                                                                },
+                                                                {
+                                                                    "id":  "s-177",
+                                                                    "english":  "Had Dumbledore expected him to understand?",
+                                                                    "translations":  {
+
+                                                                                     }
+                                                                }
+                                                            ]
+                                          },
+                                          {
+                                              "id":  "p-075",
+                                              "sentences":  [
+                                                                {
+                                                                    "id":  "s-178",
+                                                                    "english":  "“And as for this book” said Hermione, “The Tales of Beedle the Bard .",
+                                                                    "translations":  {
+
+                                                                                     }
+                                                                },
+                                                                {
+                                                                    "id":  "s-179",
+                                                                    "english":  ".",
+                                                                    "translations":  {
+
+                                                                                     }
+                                                                },
+                                                                {
+                                                                    "id":  "s-180",
+                                                                    "english":  ".",
+                                                                    "translations":  {
+
+                                                                                     }
+                                                                },
+                                                                {
+                                                                    "id":  "s-181",
+                                                                    "english":  "I’ve never even heard of them.”",
+                                                                    "translations":  {
+
+                                                                                     }
+                                                                }
+                                                            ]
+                                          }
+                                      ]
+                   },
+                   {
+                       "id":  "chunk-026",
+                       "paragraphs":  [
+                                          {
+                                              "id":  "p-076",
+                                              "sentences":  [
+                                                                {
+                                                                    "id":  "s-182",
+                                                                    "english":  "“You’ve never heard of The Tales of Beedle the Bard?",
+                                                                    "translations":  {
+
+                                                                                     }
+                                                                },
+                                                                {
+                                                                    "id":  "s-183",
+                                                                    "english":  "” said Ron incredulously.",
+                                                                    "translations":  {
+
+                                                                                     }
+                                                                },
+                                                                {
+                                                                    "id":  "s-184",
+                                                                    "english":  "“You’re kidding, right?”",
+                                                                    "translations":  {
+
+                                                                                     }
+                                                                }
+                                                            ]
+                                          },
+                                          {
+                                              "id":  "p-077",
+                                              "sentences":  [
+                                                                {
+                                                                    "id":  "s-185",
+                                                                    "english":  "“No, I’m not.” said Hermione in surprise.",
+                                                                    "translations":  {
+
+                                                                                     }
+                                                                },
+                                                                {
+                                                                    "id":  "s-186",
+                                                                    "english":  "“Do you know them, then?”",
+                                                                    "translations":  {
+
+                                                                                     }
+                                                                }
+                                                            ]
+                                          },
+                                          {
+                                              "id":  "p-078",
+                                              "sentences":  [
+                                                                {
+                                                                    "id":  "s-187",
+                                                                    "english":  "“Well, of course I do!”",
+                                                                    "translations":  {
+
+                                                                                     }
+                                                                }
+                                                            ]
+                                          }
+                                      ]
+                   },
+                   {
+                       "id":  "chunk-027",
+                       "paragraphs":  [
+                                          {
+                                              "id":  "p-079",
+                                              "sentences":  [
+                                                                {
+                                                                    "id":  "s-188",
+                                                                    "english":  "Harry looked up, diverted.",
+                                                                    "translations":  {
+
+                                                                                     }
+                                                                },
+                                                                {
+                                                                    "id":  "s-189",
+                                                                    "english":  "The circumstance of Ron having read a book that Hermione had not was unprecedented.",
+                                                                    "translations":  {
+
+                                                                                     }
+                                                                },
+                                                                {
+                                                                    "id":  "s-190",
+                                                                    "english":  "Ron, however, looked bemused by their surprise.",
+                                                                    "translations":  {
+
+                                                                                     }
+                                                                }
+                                                            ]
+                                          },
+                                          {
+                                              "id":  "p-080",
+                                              "sentences":  [
+                                                                {
+                                                                    "id":  "s-191",
+                                                                    "english":  "“Oh come on!",
+                                                                    "translations":  {
+
+                                                                                     }
+                                                                },
+                                                                {
+                                                                    "id":  "s-192",
+                                                                    "english":  "All the old kids’ stories are supposed to be Beedle’s, aren’t they?",
+                                                                    "translations":  {
+
+                                                                                     }
+                                                                },
+                                                                {
+                                                                    "id":  "s-193",
+                                                                    "english":  "‘The Fountain of Fair Fortune’ .",
+                                                                    "translations":  {
+
+                                                                                     }
+                                                                },
+                                                                {
+                                                                    "id":  "s-194",
+                                                                    "english":  ".",
+                                                                    "translations":  {
+
+                                                                                     }
+                                                                },
+                                                                {
+                                                                    "id":  "s-195",
+                                                                    "english":  ".",
+                                                                    "translations":  {
+
+                                                                                     }
+                                                                },
+                                                                {
+                                                                    "id":  "s-196",
+                                                                    "english":  "‘The Wizard and the Hopping Pot’ .",
+                                                                    "translations":  {
+
+                                                                                     }
+                                                                },
+                                                                {
+                                                                    "id":  "s-197",
+                                                                    "english":  ".",
+                                                                    "translations":  {
+
+                                                                                     }
+                                                                },
+                                                                {
+                                                                    "id":  "s-198",
+                                                                    "english":  ".",
+                                                                    "translations":  {
+
+                                                                                     }
+                                                                },
+                                                                {
+                                                                    "id":  "s-199",
+                                                                    "english":  "‘Babbitty Rabbitty and her Cackling Stump’ .",
+                                                                    "translations":  {
+
+                                                                                     }
+                                                                },
+                                                                {
+                                                                    "id":  "s-200",
+                                                                    "english":  ".",
+                                                                    "translations":  {
+
+                                                                                     }
+                                                                },
+                                                                {
+                                                                    "id":  "s-201",
+                                                                    "english":  ".",
+                                                                    "translations":  {
+
+                                                                                     }
+                                                                },
+                                                                {
+                                                                    "id":  "s-202",
+                                                                    "english":  "”",
+                                                                    "translations":  {
+
+                                                                                     }
+                                                                }
+                                                            ]
+                                          },
+                                          {
+                                              "id":  "p-081",
+                                              "sentences":  [
+                                                                {
+                                                                    "id":  "s-203",
+                                                                    "english":  "“Excuse me?” said Hermione, giggling.",
+                                                                    "translations":  {
+
+                                                                                     }
+                                                                },
+                                                                {
+                                                                    "id":  "s-204",
+                                                                    "english":  "“What was that last one?”",
+                                                                    "translations":  {
+
+                                                                                     }
+                                                                }
+                                                            ]
+                                          }
+                                      ]
+                   },
+                   {
+                       "id":  "chunk-028",
+                       "paragraphs":  [
+                                          {
+                                              "id":  "p-082",
+                                              "sentences":  [
+                                                                {
+                                                                    "id":  "s-205",
+                                                                    "english":  "“Come off it!” said Ron, looking in disbelief from Harry to Hermione.",
+                                                                    "translations":  {
+
+                                                                                     }
+                                                                },
+                                                                {
+                                                                    "id":  "s-206",
+                                                                    "english":  "“You must’ve heard of Bubbitty Rabbitty—” “Ron, you know full well Harry and I were brought up by Muggles!” said Hermione.",
+                                                                    "translations":  {
+
+                                                                                     }
+                                                                },
+                                                                {
+                                                                    "id":  "s-207",
+                                                                    "english":  "“We didn’t hear stories like that when we were little, we heard ‘Snow White and the Seven Dwarfs’ and ‘Cinderella’—” “What’s that, an illness?” asked Ron.",
+                                                                    "translations":  {
+
+                                                                                     }
+                                                                }
+                                                            ]
+                                          },
+                                          {
+                                              "id":  "p-083",
+                                              "sentences":  [
+                                                                {
+                                                                    "id":  "s-208",
+                                                                    "english":  "“So these are children’s stories?” asked Hermione, bending again over the runes.",
+                                                                    "translations":  {
+
+                                                                                     }
+                                                                }
+                                                            ]
+                                          },
+                                          {
+                                              "id":  "p-084",
+                                              "sentences":  [
+                                                                {
+                                                                    "id":  "s-209",
+                                                                    "english":  "“Yeah,” said Ron uncertainly, “I mean, that’s just what you hear, you know, that all these old stories came from Beedle.",
+                                                                    "translations":  {
+
+                                                                                     }
+                                                                },
+                                                                {
+                                                                    "id":  "s-210",
+                                                                    "english":  "I dunno what they’re like in the original versions.",
+                                                                    "translations":  {
+
+                                                                                     }
+                                                                }
+                                                            ]
+                                          }
+                                      ]
+                   },
+                   {
+                       "id":  "chunk-029",
+                       "paragraphs":  [
+                                          {
+                                              "id":  "p-085",
+                                              "sentences":  [
+                                                                {
+                                                                    "id":  "s-211",
+                                                                    "english":  "“But I wonder why Dumbledore thought I should read them?”",
+                                                                    "translations":  {
+
+                                                                                     }
+                                                                }
+                                                            ]
+                                          },
+                                          {
+                                              "id":  "p-086",
+                                              "sentences":  [
+                                                                {
+                                                                    "id":  "s-212",
+                                                                    "english":  "Something creaked downstairs.",
+                                                                    "translations":  {
+
+                                                                                     }
+                                                                }
+                                                            ]
+                                          },
+                                          {
+                                              "id":  "p-087",
+                                              "sentences":  [
+                                                                {
+                                                                    "id":  "s-213",
+                                                                    "english":  "“Probably just Charlie, now Mum’s asleep, sneaking off to regrow his hair,” said Ron nervously.",
+                                                                    "translations":  {
+
+                                                                                     }
+                                                                }
+                                                            ]
+                                          }
+                                      ]
+                   },
+                   {
+                       "id":  "chunk-030",
+                       "paragraphs":  [
+                                          {
+                                              "id":  "p-088",
+                                              "sentences":  [
+                                                                {
+                                                                    "id":  "s-214",
+                                                                    "english":  "“All the same, we should get to bed,” whispered Hermione.",
+                                                                    "translations":  {
+
+                                                                                     }
+                                                                },
+                                                                {
+                                                                    "id":  "s-215",
+                                                                    "english":  "“It wouldn’t do to oversleep tomorrow.’",
+                                                                    "translations":  {
+
+                                                                                     }
+                                                                }
+                                                            ]
+                                          },
+                                          {
+                                              "id":  "p-089",
+                                              "sentences":  [
+                                                                {
+                                                                    "id":  "s-216",
+                                                                    "english":  "“No,” agreed Ron.",
+                                                                    "translations":  {
+
+                                                                                     }
+                                                                },
+                                                                {
+                                                                    "id":  "s-217",
+                                                                    "english":  "“A brutal triple murder by the bridegroom’s mother might put a bit of a damper of the wedding.",
+                                                                    "translations":  {
+
+                                                                                     }
+                                                                },
+                                                                {
+                                                                    "id":  "s-218",
+                                                                    "english":  "I’ll get the lights.”",
+                                                                    "translations":  {
+
+                                                                                     }
+                                                                }
+                                                            ]
+                                          },
+                                          {
+                                              "id":  "p-090",
+                                              "sentences":  [
+                                                                {
+                                                                    "id":  "s-219",
+                                                                    "english":  "And he clicked the Deluminator once more as Hermione left the room.",
+                                                                    "translations":  {
+
+                                                                                     }
+                                                                }
+                                                            ]
+                                          }
+                                      ]
+                   }
+               ]
+}

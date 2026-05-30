@@ -1,0 +1,66 @@
+{
+    "story_id":  "deathly_hollows_ch7",
+    "story_title":  "Deathly_hollows_ch7",
+    "chunk_id":  "chunk-017",
+    "level":  "n3",
+    "instructions":  [
+                         "Translate only this work item\u0027s sentences for the requested level.",
+                         "Preserve every ID exactly.",
+                         "Fill the translations object with sentence ID keys and translated Japanese values.",
+                         "Return valid JSON only when saving completed work item output."
+                     ],
+    "paragraphs":  [
+                       {
+                           "id":  "p-049",
+                           "sentences":  [
+                                             {
+                                                 "id":  "s-114",
+                                                 "english":  "“I know, but surely he wouldn’t have singled you out in his will just to help us turn out the lights!”"
+                                             }
+                                         ]
+                       },
+                       {
+                           "id":  "p-050",
+                           "sentences":  [
+                                             {
+                                                 "id":  "s-115",
+                                                 "english":  "“D’you think he knew the Ministry would confiscate his will and examine everything he’d left us?” asked Harry."
+                                             }
+                                         ]
+                       },
+                       {
+                           "id":  "p-051",
+                           "sentences":  [
+                                             {
+                                                 "id":  "s-116",
+                                                 "english":  "“Definitely,” said Hermione."
+                                             },
+                                             {
+                                                 "id":  "s-117",
+                                                 "english":  "“He couldn’t tell us in the will why he was leaving us these things, but that still doesn’t explain ."
+                                             },
+                                             {
+                                                 "id":  "s-118",
+                                                 "english":  "."
+                                             },
+                                             {
+                                                 "id":  "s-119",
+                                                 "english":  "."
+                                             },
+                                             {
+                                                 "id":  "s-120",
+                                                 "english":  "”"
+                                             }
+                                         ]
+                       }
+                   ],
+    "translations":  {
+                         "s-114":  "",
+                         "s-115":  "",
+                         "s-116":  "",
+                         "s-117":  "",
+                         "s-118":  "",
+                         "s-119":  "",
+                         "s-120":  ""
+                     }
+}

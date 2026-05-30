@@ -1,0 +1,86 @@
+{
+    "story_id":  "deathly_hollows_ch7",
+    "story_title":  "Deathly_hollows_ch7",
+    "chunk_id":  "chunk-007",
+    "level":  "native",
+    "instructions":  [
+                         "Translate only this work item\u0027s sentences for the requested level.",
+                         "Preserve every ID exactly.",
+                         "Fill the translations object with sentence ID keys and translated Japanese values.",
+                         "Return valid JSON only when saving completed work item output."
+                     ],
+    "paragraphs":  [
+                       {
+                           "id":  "p-019",
+                           "sentences":  [
+                                             {
+                                                 "id":  "s-037",
+                                                 "english":  "“—Dumbledore wanted to give me the sword?” said Harry, struggling to keep his temper."
+                                             },
+                                             {
+                                                 "id":  "s-038",
+                                                 "english":  "“Maybe he thought it would look nice on my wall.”"
+                                             }
+                                         ]
+                       },
+                       {
+                           "id":  "p-020",
+                           "sentences":  [
+                                             {
+                                                 "id":  "s-039",
+                                                 "english":  "“This is not a joke, Potter!” growled Scrimgeour."
+                                             },
+                                             {
+                                                 "id":  "s-040",
+                                                 "english":  "“Was it because Dumbledore believed that only the sword of Godric Gryffindor could defeat the Heir of Slytherin?"
+                                             },
+                                             {
+                                                 "id":  "s-041",
+                                                 "english":  "Did he wish to give you that sword, Potter, because he believed, as do many, that you are the one destined to destroy He-Who-Must-Not-Be-Named?”"
+                                             }
+                                         ]
+                       },
+                       {
+                           "id":  "p-021",
+                           "sentences":  [
+                                             {
+                                                 "id":  "s-042",
+                                                 "english":  "“Interesting theory,” said Harry."
+                                             },
+                                             {
+                                                 "id":  "s-043",
+                                                 "english":  "“Has anyone ever tried sticking a sword in Voldemort?"
+                                             },
+                                             {
+                                                 "id":  "s-044",
+                                                 "english":  "Maybe the Ministry should put some people onto that, instead of wasting their time stripping down Deluminators or covering up breakouts from Azkaban."
+                                             },
+                                             {
+                                                 "id":  "s-045",
+                                                 "english":  "So this is what you’ve been doing, Minister, shut up in your office, trying to break open a Snitch?"
+                                             },
+                                             {
+                                                 "id":  "s-046",
+                                                 "english":  "People are dying—I was nearly one of them— Voldemort chased me across three countries, he killed Mad-Eye Moody, but there’s been no word about any of that from the Ministry, has there?"
+                                             },
+                                             {
+                                                 "id":  "s-047",
+                                                 "english":  "And you still expect us to cooperate with you!”"
+                                             }
+                                         ]
+                       }
+                   ],
+    "translations":  {
+                         "s-037":  "「……ダンブルドアが僕に剣を渡したがった理由ですか？」ハリーは怒りを抑えようとしながら言った。",
+                         "s-038":  "「僕の壁に飾ったら見栄えがいいと思ったのかもしれませんね」",
+                         "s-039":  "「これは冗談ではないぞ、ポッター！」スクリムジョールが唸った。",
+                         "s-040":  "「ゴドリック・グリフィンドールの剣だけがスリザリンの後継者を倒せると、ダンブルドアが信じていたからか？",
+                         "s-041":  "多くの者が信じているように、例のあの人を滅ぼす運命にあるのが君だと彼も信じていたから、その剣を君に渡したかったのか、ポッター？」",
+                         "s-042":  "「面白い説ですね」とハリーは言った。",
+                         "s-043":  "「誰か、ヴォルデモートに剣を突き刺してみたことはあるんですか？",
+                         "s-044":  "灯消しライターを分解したり、アズカバンからの脱獄をもみ消したりして時間を無駄にする代わりに、魔法省は誰かをその仕事に当てたほうがいいんじゃないですか。",
+                         "s-045":  "つまり、これが大臣がやっていたことなんですね。執務室にこもって、スニッチをこじ開けようとしていたんですか？",
+                         "s-046":  "人が死んでいるんです。僕も危うくその一人になるところだった。ヴォルデモートは三つの国を越えて僕を追い、マッドアイ・ムーディを殺した。それなのに魔法省からは、そのどれについても発表がありませんよね？",
+                         "s-047":  "それでまだ、僕たちに協力しろと言うんですか！」"
+                     }
+}

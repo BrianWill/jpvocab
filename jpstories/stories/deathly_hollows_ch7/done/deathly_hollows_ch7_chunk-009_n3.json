@@ -1,0 +1,61 @@
+{
+    "story_id":  "deathly_hollows_ch7",
+    "story_title":  "Deathly_hollows_ch7",
+    "chunk_id":  "chunk-009",
+    "level":  "n3",
+    "instructions":  [
+                         "Translate only this work item\u0027s sentences for the requested level.",
+                         "Preserve every ID exactly.",
+                         "Fill the translations object with sentence ID keys and translated Japanese values.",
+                         "Return valid JSON only when saving completed work item output."
+                     ],
+    "paragraphs":  [
+                       {
+                           "id":  "p-025",
+                           "sentences":  [
+                                             {
+                                                 "id":  "s-054",
+                                                 "english":  "You may wear that scar like a crown, Potter, but it is not up to a seventeen-year-old boy to tell me how to do my job!"
+                                             },
+                                             {
+                                                 "id":  "s-055",
+                                                 "english":  "It’s time you learned some respect!”"
+                                             }
+                                         ]
+                       },
+                       {
+                           "id":  "p-026",
+                           "sentences":  [
+                                             {
+                                                 "id":  "s-056",
+                                                 "english":  "“It’s time you earned it.” said Harry."
+                                             }
+                                         ]
+                       },
+                       {
+                           "id":  "p-027",
+                           "sentences":  [
+                                             {
+                                                 "id":  "s-057",
+                                                 "english":  "The floor trembled; there was a sound of running footsteps, then the door to the sitting room burst open and Mr."
+                                             },
+                                             {
+                                                 "id":  "s-058",
+                                                 "english":  "and Mrs."
+                                             },
+                                             {
+                                                 "id":  "s-059",
+                                                 "english":  "Weasley ran in."
+                                             }
+                                         ]
+                       }
+                   ],
+    "translations":  {
+                         "s-054":  "ポッター、君はその傷を王冠のように見せているかもしれないが、十七歳の少年が私に仕事のやり方を教える立場ではない！",
+                         "s-055":  "そろそろ敬意というものを学ぶ時だ！」",
+                         "s-056":  "「そろそろ、あなたがそれを受けるにふさわしくなる時です」とハリーは言った。",
+                         "s-057":  "床が震え、走る足音が聞こえ、それから居間のドアが勢いよく開いて、ミスター",
+                         "s-058":  "とミセス",
+                         "s-059":  "ウィーズリーが駆け込んできた。"
+                     }
+}

@@ -1,0 +1,56 @@
+{
+    "story_id":  "deathly_hollows_ch7",
+    "story_title":  "Deathly_hollows_ch7",
+    "chunk_id":  "chunk-020",
+    "level":  "n2_abridged",
+    "instructions":  [
+                         "Translate only this work item\u0027s sentences for the requested level.",
+                         "Preserve every ID exactly.",
+                         "Fill the translations object with sentence ID keys and translated Japanese values.",
+                         "Return valid JSON only when saving completed work item output."
+                     ],
+    "paragraphs":  [
+                       {
+                           "id":  "p-058",
+                           "sentences":  [
+                                             {
+                                                 "id":  "s-139",
+                                                 "english":  "“The Snitch I caught in my first ever Quidditch match?” said Harry."
+                                             },
+                                             {
+                                                 "id":  "s-140",
+                                                 "english":  "“Don’t you remember?”"
+                                             }
+                                         ]
+                       },
+                       {
+                           "id":  "p-059",
+                           "sentences":  [
+                                             {
+                                                 "id":  "s-141",
+                                                 "english":  "Hermione looked simply bemused."
+                                             },
+                                             {
+                                                 "id":  "s-142",
+                                                 "english":  "Ron, however, gasped, pointing frantically from Harry to the Snitch and back again until he found his voice."
+                                             }
+                                         ]
+                       },
+                       {
+                           "id":  "p-060",
+                           "sentences":  [
+                                             {
+                                                 "id":  "s-143",
+                                                 "english":  "“That was the one you nearly swallowed!”"
+                                             }
+                                         ]
+                       }
+                   ],
+    "translations":  {
+                         "s-139":  "「僕が初めてのクィディッチの試合で捕まえたスニッチだよ」とハリーは言った。",
+                         "s-140":  "「覚えてない？」",
+                         "s-141":  "ハーマイオニーはただ困惑していた。",
+                         "s-142":  "一方ロンは息をのみ、声が出るまでハリーとスニッチを必死に交互に指さした。",
+                         "s-143":  "「お前が飲み込みかけたやつだ！」"
+                     }
+}

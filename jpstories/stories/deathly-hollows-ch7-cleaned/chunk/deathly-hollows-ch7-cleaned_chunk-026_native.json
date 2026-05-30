@@ -1,0 +1,61 @@
+{
+    "story_id":  "deathly-hollows-ch7-cleaned",
+    "story_title":  "Deathly Hollows Ch7 Cleaned",
+    "chunk_id":  "chunk-026",
+    "level":  "native",
+    "instructions":  [
+                         "Translate only this work item\u0027s sentences for the requested level.",
+                         "Preserve every ID exactly.",
+                         "Fill the translations object with sentence ID keys and translated Japanese values.",
+                         "Return valid JSON only when saving completed work item output."
+                     ],
+    "paragraphs":  [
+                       {
+                           "id":  "p-076",
+                           "sentences":  [
+                                             {
+                                                 "id":  "s-182",
+                                                 "english":  "“You’ve never heard of The Tales of Beedle the Bard?"
+                                             },
+                                             {
+                                                 "id":  "s-183",
+                                                 "english":  "” said Ron incredulously."
+                                             },
+                                             {
+                                                 "id":  "s-184",
+                                                 "english":  "“You’re kidding, right?”"
+                                             }
+                                         ]
+                       },
+                       {
+                           "id":  "p-077",
+                           "sentences":  [
+                                             {
+                                                 "id":  "s-185",
+                                                 "english":  "“No, I’m not.” said Hermione in surprise."
+                                             },
+                                             {
+                                                 "id":  "s-186",
+                                                 "english":  "“Do you know them, then?”"
+                                             }
+                                         ]
+                       },
+                       {
+                           "id":  "p-078",
+                           "sentences":  [
+                                             {
+                                                 "id":  "s-187",
+                                                 "english":  "“Well, of course I do!”"
+                                             }
+                                         ]
+                       }
+                   ],
+    "translations":  {
+                         "s-182":  "",
+                         "s-183":  "",
+                         "s-184":  "",
+                         "s-185":  "",
+                         "s-186":  "",
+                         "s-187":  ""
+                     }
+}

@@ -1,0 +1,86 @@
+{
+    "story_id":  "deathly_hollows_ch7",
+    "story_title":  "Deathly_hollows_ch7",
+    "chunk_id":  "chunk-011",
+    "level":  "n3",
+    "instructions":  [
+                         "Translate only this work item\u0027s sentences for the requested level.",
+                         "Preserve every ID exactly.",
+                         "Fill the translations object with sentence ID keys and translated Japanese values.",
+                         "Return valid JSON only when saving completed work item output."
+                     ],
+    "paragraphs":  [
+                       {
+                           "id":  "p-031",
+                           "sentences":  [
+                                             {
+                                                 "id":  "s-066",
+                                                 "english":  "“It—it was nothing,” he growled."
+                                             },
+                                             {
+                                                 "id":  "s-067",
+                                                 "english":  "“I ."
+                                             },
+                                             {
+                                                 "id":  "s-068",
+                                                 "english":  "."
+                                             },
+                                             {
+                                                 "id":  "s-069",
+                                                 "english":  "."
+                                             },
+                                             {
+                                                 "id":  "s-070",
+                                                 "english":  "regret your attitude,” he said, looking Harry full in the face once more."
+                                             },
+                                             {
+                                                 "id":  "s-071",
+                                                 "english":  "“You seem to think that the Ministry does not desire what you—what Dumbledore—desired."
+                                             },
+                                             {
+                                                 "id":  "s-072",
+                                                 "english":  "We ought to be working together.”"
+                                             }
+                                         ]
+                       },
+                       {
+                           "id":  "p-032",
+                           "sentences":  [
+                                             {
+                                                 "id":  "s-073",
+                                                 "english":  "“I don’t like your methods, Minister,” said Harry."
+                                             },
+                                             {
+                                                 "id":  "s-074",
+                                                 "english":  "“Remember?”"
+                                             }
+                                         ]
+                       },
+                       {
+                           "id":  "p-033",
+                           "sentences":  [
+                                             {
+                                                 "id":  "s-075",
+                                                 "english":  "For the second time, he raised his right fist and displayed to Scrimgeour the scars that still showed white on the back of it, spelling I must not tell lies."
+                                             },
+                                             {
+                                                 "id":  "s-076",
+                                                 "english":  "Scrimgeour’s expression hardened."
+                                             }
+                                         ]
+                       }
+                   ],
+    "translations":  {
+                         "s-066":  "「そ、それは何でもない」と彼はうなった。",
+                         "s-067":  "「私は",
+                         "s-068":  "……",
+                         "s-069":  "……",
+                         "s-070":  "君の態度を残念に思う」と彼はもう一度ハリーをまっすぐ見て言った。",
+                         "s-071":  "「君は、魔法省が君の望むこと、つまりダンブルドアが望んだことを望んでいないと思っているようだ。",
+                         "s-072":  "私たちは協力するべきだ」",
+                         "s-073":  "「あなたのやり方が好きじゃないんです、大臣」とハリーは言った。",
+                         "s-074":  "「覚えていますか？」",
+                         "s-075":  "彼は二度目に右のこぶしを上げ、その手の甲にまだ白く残っている「私はうそをついてはいけません」という傷あとをスクリムジョールに見せた。",
+                         "s-076":  "スクリムジョールの顔つきが固くなった。"
+                     }
+}

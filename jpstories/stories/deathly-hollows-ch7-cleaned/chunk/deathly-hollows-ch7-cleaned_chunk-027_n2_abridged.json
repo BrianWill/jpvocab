@@ -1,0 +1,116 @@
+{
+    "story_id":  "deathly-hollows-ch7-cleaned",
+    "story_title":  "Deathly Hollows Ch7 Cleaned",
+    "chunk_id":  "chunk-027",
+    "level":  "n2_abridged",
+    "instructions":  [
+                         "Translate only this work item\u0027s sentences for the requested level.",
+                         "Preserve every ID exactly.",
+                         "Fill the translations object with sentence ID keys and translated Japanese values.",
+                         "Return valid JSON only when saving completed work item output."
+                     ],
+    "paragraphs":  [
+                       {
+                           "id":  "p-079",
+                           "sentences":  [
+                                             {
+                                                 "id":  "s-188",
+                                                 "english":  "Harry looked up, diverted."
+                                             },
+                                             {
+                                                 "id":  "s-189",
+                                                 "english":  "The circumstance of Ron having read a book that Hermione had not was unprecedented."
+                                             },
+                                             {
+                                                 "id":  "s-190",
+                                                 "english":  "Ron, however, looked bemused by their surprise."
+                                             }
+                                         ]
+                       },
+                       {
+                           "id":  "p-080",
+                           "sentences":  [
+                                             {
+                                                 "id":  "s-191",
+                                                 "english":  "“Oh come on!"
+                                             },
+                                             {
+                                                 "id":  "s-192",
+                                                 "english":  "All the old kids’ stories are supposed to be Beedle’s, aren’t they?"
+                                             },
+                                             {
+                                                 "id":  "s-193",
+                                                 "english":  "‘The Fountain of Fair Fortune’ ."
+                                             },
+                                             {
+                                                 "id":  "s-194",
+                                                 "english":  "."
+                                             },
+                                             {
+                                                 "id":  "s-195",
+                                                 "english":  "."
+                                             },
+                                             {
+                                                 "id":  "s-196",
+                                                 "english":  "‘The Wizard and the Hopping Pot’ ."
+                                             },
+                                             {
+                                                 "id":  "s-197",
+                                                 "english":  "."
+                                             },
+                                             {
+                                                 "id":  "s-198",
+                                                 "english":  "."
+                                             },
+                                             {
+                                                 "id":  "s-199",
+                                                 "english":  "‘Babbitty Rabbitty and her Cackling Stump’ ."
+                                             },
+                                             {
+                                                 "id":  "s-200",
+                                                 "english":  "."
+                                             },
+                                             {
+                                                 "id":  "s-201",
+                                                 "english":  "."
+                                             },
+                                             {
+                                                 "id":  "s-202",
+                                                 "english":  "”"
+                                             }
+                                         ]
+                       },
+                       {
+                           "id":  "p-081",
+                           "sentences":  [
+                                             {
+                                                 "id":  "s-203",
+                                                 "english":  "“Excuse me?” said Hermione, giggling."
+                                             },
+                                             {
+                                                 "id":  "s-204",
+                                                 "english":  "“What was that last one?”"
+                                             }
+                                         ]
+                       }
+                   ],
+    "translations":  {
+                         "s-188":  "",
+                         "s-189":  "",
+                         "s-190":  "",
+                         "s-191":  "",
+                         "s-192":  "",
+                         "s-193":  "",
+                         "s-194":  "",
+                         "s-195":  "",
+                         "s-196":  "",
+                         "s-197":  "",
+                         "s-198":  "",
+                         "s-199":  "",
+                         "s-200":  "",
+                         "s-201":  "",
+                         "s-202":  "",
+                         "s-203":  "",
+                         "s-204":  ""
+                     }
+}

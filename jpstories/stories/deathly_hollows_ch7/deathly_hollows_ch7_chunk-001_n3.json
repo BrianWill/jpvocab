@@ -1,0 +1,51 @@
+{
+    "story_id":  "deathly_hollows_ch7",
+    "story_title":  "Deathly_hollows_ch7",
+    "chunk_id":  "chunk-001",
+    "level":  "n3",
+    "instructions":  [
+                         "Translate only this work item\u0027s sentences for the requested level.",
+                         "Preserve every ID exactly.",
+                         "Fill the translations object with sentence ID keys and translated Japanese values.",
+                         "Return valid JSON only when saving completed work item output."
+                     ],
+    "paragraphs":  [
+                       {
+                           "id":  "p-001",
+                           "sentences":  [
+                                             {
+                                                 "id":  "s-001",
+                                                 "english":  "“Because Snitches have flesh memories,” she said."
+                                             }
+                                         ]
+                       },
+                       {
+                           "id":  "p-002",
+                           "sentences":  [
+                                             {
+                                                 "id":  "s-002",
+                                                 "english":  "“What?” said Harry and Ron together; both considered Hermione’s Quidditch knowledge negligible."
+                                             }
+                                         ]
+                       },
+                       {
+                           "id":  "p-003",
+                           "sentences":  [
+                                             {
+                                                 "id":  "s-003",
+                                                 "english":  "“Correct,” said Scrimgeour."
+                                             },
+                                             {
+                                                 "id":  "s-004",
+                                                 "english":  "“A Snitch is not touched by bare skin before it is released, not even by the maker, who wears gloves."
+                                             }
+                                         ]
+                       }
+                   ],
+    "translations":  {
+                         "s-001":  "",
+                         "s-002":  "",
+                         "s-003":  "",
+                         "s-004":  ""
+                     }
+}

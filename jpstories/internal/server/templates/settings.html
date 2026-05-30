@@ -1,0 +1,92 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Settings - jpstories</title>
+  <link rel="stylesheet" href="/static/app.css">
+  <script src="/static/settings.js" defer></script>
+</head>
+<body>
+  <main class="shell">
+    <header class="topbar">
+      <div>
+        <h1>Settings</h1>
+        <div class="muted">VoiceVox playback</div>
+      </div>
+      <a href="/">All stories</a>
+    </header>
+
+    {{if .Message}}<p class="playback-status">{{.Message}}</p>{{end}}
+    {{if .Error}}<p class="playback-status error">VoiceVox speakers unavailable: {{.Error}}</p>{{end}}
+
+    <form class="settings-form" method="post" action="/settings" data-settings-form>
+      <label class="field">
+        <span>VoiceVox URL</span>
+        <input name="voicevox_base_url" value="{{.Config.VoiceVox.BaseURL}}" autocomplete="off">
+      </label>
+
+      <label class="field">
+        <span>Voice</span>
+        <select name="voicevox_speaker_id" data-speaker-select>
+          {{if .Options}}
+            {{range .Options}}
+              <option value="{{.ID}}" data-label="{{.Label}}" {{if .Selected}}selected{{end}}>{{.Label}} ({{.ID}})</option>
+            {{end}}
+          {{else}}
+            <option value="{{.Config.VoiceVox.SpeakerID}}" selected>{{if .Config.VoiceVox.SpeakerName}}{{.Config.VoiceVox.SpeakerName}}{{else}}Saved speaker{{end}} ({{.Config.VoiceVox.SpeakerID}})</option>
+          {{end}}
+        </select>
+      </label>
+
+      <input type="hidden" name="voicevox_speaker_name" value="{{.Config.VoiceVox.SpeakerName}}" data-speaker-name>
+
+      <label class="field">
+        <span>Speed</span>
+        <input name="voicevox_speed_scale" type="number" min="0.1" max="4" step="0.05" value="{{printf "%.2f" .Config.VoiceVox.SpeedScale}}">
+      </label>
+
+      <label class="field">
+        <span>Pause length</span>
+        <input name="voicevox_pause_length_scale" type="number" min="0" max="4" step="0.05" value="{{printf "%.2f" .Config.VoiceVox.PauseLengthScale}}">
+      </label>
+
+      <label class="field">
+        <span>Volume</span>
+        <input name="voicevox_volume_scale" type="number" min="0" max="4" step="0.05" value="{{printf "%.2f" .Config.VoiceVox.VolumeScale}}">
+      </label>
+
+      <label class="field">
+        <span>Pitch</span>
+        <input name="voicevox_pitch_scale" type="number" min="-1" max="1" step="0.01" value="{{printf "%.2f" .Config.VoiceVox.PitchScale}}">
+      </label>
+
+      <label class="field">
+        <span>Intonation</span>
+        <input name="voicevox_intonation_scale" type="number" min="0" max="4" step="0.05" value="{{printf "%.2f" .Config.VoiceVox.IntonationScale}}">
+      </label>
+
+      <label class="field">
+        <span>Start silence</span>
+        <input name="voicevox_pre_phoneme_length" type="number" min="0" max="5" step="0.01" value="{{printf "%.2f" .Config.VoiceVox.PrePhonemeLength}}">
+      </label>
+
+      <label class="field">
+        <span>End silence</span>
+        <input name="voicevox_post_phoneme_length" type="number" min="0" max="5" step="0.01" value="{{printf "%.2f" .Config.VoiceVox.PostPhonemeLength}}">
+      </label>
+
+      <label class="field">
+        <span>Preview text</span>
+        <input name="preview_text" value="今日は日本語を勉強します。" autocomplete="off">
+      </label>
+
+      <div class="actions">
+        <button type="button" data-preview>Preview</button>
+        <button type="submit">Save</button>
+      </div>
+      <p class="playback-status" data-playback-status role="status" aria-live="polite"></p>
+    </form>
+  </main>
+</body>
+</html>

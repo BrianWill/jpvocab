@@ -1,0 +1,18 @@
+{
+  "addr": "127.0.0.1:8080",
+  "stories": {
+    "dir": "stories"
+  },
+  "voicevox": {
+    "base_url": "http://127.0.0.1:50021",
+    "speaker_id": 1,
+    "speaker_name": "",
+    "speed_scale": 1,
+    "pause_length_scale": 1,
+    "volume_scale": 1,
+    "pitch_scale": 0,
+    "intonation_scale": 1,
+    "pre_phoneme_length": 0.1,
+    "post_phoneme_length": 0.1
+  }
+}

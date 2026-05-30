@@ -1,0 +1,51 @@
+{
+    "story_id":  "deathly-hollows-ch7-cleaned",
+    "story_title":  "Deathly Hollows Ch7 Cleaned",
+    "chunk_id":  "chunk-016",
+    "level":  "native",
+    "instructions":  [
+                         "Translate only this work item\u0027s sentences for the requested level.",
+                         "Preserve every ID exactly.",
+                         "Fill the translations object with sentence ID keys and translated Japanese values.",
+                         "Return valid JSON only when saving completed work item output."
+                     ],
+    "paragraphs":  [
+                       {
+                           "id":  "p-046",
+                           "sentences":  [
+                                             {
+                                                 "id":  "s-110",
+                                                 "english":  "“The thing is,” whispered Hermione through the dark, “we could have achieved that with Peruvian Instant Darkness Powder.”"
+                                             }
+                                         ]
+                       },
+                       {
+                           "id":  "p-047",
+                           "sentences":  [
+                                             {
+                                                 "id":  "s-111",
+                                                 "english":  "There was a small click, and the ball of light from the lamp flew back to the ceiling and illuminated them all once more."
+                                             }
+                                         ]
+                       },
+                       {
+                           "id":  "p-048",
+                           "sentences":  [
+                                             {
+                                                 "id":  "s-112",
+                                                 "english":  "“Still, it’s cool,” said Ron, a little defensively."
+                                             },
+                                             {
+                                                 "id":  "s-113",
+                                                 "english":  "“And from what they said, Dumbledore invented it himself!”"
+                                             }
+                                         ]
+                       }
+                   ],
+    "translations":  {
+                         "s-110":  "",
+                         "s-111":  "",
+                         "s-112":  "",
+                         "s-113":  ""
+                     }
+}

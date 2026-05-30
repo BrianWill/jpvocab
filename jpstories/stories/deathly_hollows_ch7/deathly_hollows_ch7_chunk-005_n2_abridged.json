@@ -1,0 +1,46 @@
+{
+    "story_id":  "deathly_hollows_ch7",
+    "story_title":  "Deathly_hollows_ch7",
+    "chunk_id":  "chunk-005",
+    "level":  "n2_abridged",
+    "instructions":  [
+                         "Translate only this work item\u0027s sentences for the requested level.",
+                         "Preserve every ID exactly.",
+                         "Fill the translations object with sentence ID keys and translated Japanese values.",
+                         "Return valid JSON only when saving completed work item output."
+                     ],
+    "paragraphs":  [
+                       {
+                           "id":  "p-013",
+                           "sentences":  [
+                                             {
+                                                 "id":  "s-025",
+                                                 "english":  "“What is it?” asked Harry, excitement rekindling."
+                                             }
+                                         ]
+                       },
+                       {
+                           "id":  "p-014",
+                           "sentences":  [
+                                             {
+                                                 "id":  "s-026",
+                                                 "english":  "Scrimgeour did not bother to read from the will this time."
+                                             }
+                                         ]
+                       },
+                       {
+                           "id":  "p-015",
+                           "sentences":  [
+                                             {
+                                                 "id":  "s-027",
+                                                 "english":  "“The sword of Godric Gryffindor,” he said."
+                                             }
+                                         ]
+                       }
+                   ],
+    "translations":  {
+                         "s-025":  "",
+                         "s-026":  "",
+                         "s-027":  ""
+                     }
+}

@@ -1,0 +1,55 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{{.Story.Title}} - jpstories</title>
+  <link rel="stylesheet" href="/static/app.css">
+  <script src="/static/story.js" defer></script>
+</head>
+<body>
+  <main class="shell" data-story-reader data-story-id="{{.Story.ID}}" data-level="{{.SelectedLevel}}">
+    <header class="topbar">
+      <div>
+        <h1>{{.Story.Title}}</h1>
+        <div class="muted">{{.Story.ID}}</div>
+      </div>
+      <a href="/">All stories</a>
+      <a href="/settings">Settings</a>
+    </header>
+
+    <nav class="level-tabs" aria-label="Translation levels">
+      {{range .Story.Levels}}
+        <a class="level-tab" href="/stories/{{$.Story.ID}}?level={{.}}" {{if eq . $.SelectedLevel}}aria-current="page"{{end}}>{{.}}</a>
+      {{end}}
+    </nav>
+
+    <div class="playback-controls" aria-label="Story playback controls">
+      <button class="playback-toggle" type="button" data-playback-toggle>Play</button>
+      <label class="speed-control">
+        <span>Speed</span>
+        <input data-playback-speed name="voice_speed" type="number" min="0.1" max="4" step="0.05" value="{{printf "%.2f" .VoiceSpeed}}">
+      </label>
+    </div>
+
+    <p class="playback-status" data-playback-status role="status" aria-live="polite"></p>
+
+    <section class="reader" aria-label="Story text">
+      <h2 class="column-heading">Japanese</h2>
+      <h2 class="column-heading">English</h2>
+      {{range .Rows}}
+        <div class="paragraph" data-chunk-id="{{.ChunkID}}" data-paragraph-id="{{.Paragraph.ID}}">
+          {{range .Sentences}}
+            <div class="sentence-row">
+              <p class="jp">
+                <button class="sentence {{if .Missing}}missing{{end}}" type="button" data-sentence-id="{{.ID}}" data-sentence-part="{{.Part}}" {{if .Missing}}disabled{{end}}>{{.Japanese}}</button>
+              </p>
+              <p class="en">{{.English}}</p>
+            </div>
+          {{end}}
+        </div>
+      {{end}}
+    </section>
+  </main>
+</body>
+</html>

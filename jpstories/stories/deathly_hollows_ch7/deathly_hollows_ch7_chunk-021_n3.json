@@ -1,0 +1,56 @@
+{
+    "story_id":  "deathly_hollows_ch7",
+    "story_title":  "Deathly_hollows_ch7",
+    "chunk_id":  "chunk-021",
+    "level":  "n3",
+    "instructions":  [
+                         "Translate only this work item\u0027s sentences for the requested level.",
+                         "Preserve every ID exactly.",
+                         "Fill the translations object with sentence ID keys and translated Japanese values.",
+                         "Return valid JSON only when saving completed work item output."
+                     ],
+    "paragraphs":  [
+                       {
+                           "id":  "p-061",
+                           "sentences":  [
+                                             {
+                                                 "id":  "s-144",
+                                                 "english":  "“Exactly,” said Harry, and with his heart beating fast, he pressed his mouth to the Snitch."
+                                             }
+                                         ]
+                       },
+                       {
+                           "id":  "p-062",
+                           "sentences":  [
+                                             {
+                                                 "id":  "s-145",
+                                                 "english":  "It did not open."
+                                             },
+                                             {
+                                                 "id":  "s-146",
+                                                 "english":  "Frustration and bitter disappointment welled up inside him: He lowered the golden sphere, but then Hermione cried out."
+                                             }
+                                         ]
+                       },
+                       {
+                           "id":  "p-063",
+                           "sentences":  [
+                                             {
+                                                 "id":  "s-147",
+                                                 "english":  "“Writing!"
+                                             },
+                                             {
+                                                 "id":  "s-148",
+                                                 "english":  "There’s writing on it, quick, look!”"
+                                             }
+                                         ]
+                       }
+                   ],
+    "translations":  {
+                         "s-144":  "",
+                         "s-145":  "",
+                         "s-146":  "",
+                         "s-147":  "",
+                         "s-148":  ""
+                     }
+}

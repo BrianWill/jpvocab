@@ -1,0 +1,46 @@
+{
+    "story_id":  "deathly_hollows_ch7",
+    "story_title":  "Deathly_hollows_ch7",
+    "chunk_id":  "chunk-029",
+    "level":  "n2_abridged",
+    "instructions":  [
+                         "Translate only this work item\u0027s sentences for the requested level.",
+                         "Preserve every ID exactly.",
+                         "Fill the translations object with sentence ID keys and translated Japanese values.",
+                         "Return valid JSON only when saving completed work item output."
+                     ],
+    "paragraphs":  [
+                       {
+                           "id":  "p-085",
+                           "sentences":  [
+                                             {
+                                                 "id":  "s-211",
+                                                 "english":  "“But I wonder why Dumbledore thought I should read them?”"
+                                             }
+                                         ]
+                       },
+                       {
+                           "id":  "p-086",
+                           "sentences":  [
+                                             {
+                                                 "id":  "s-212",
+                                                 "english":  "Something creaked downstairs."
+                                             }
+                                         ]
+                       },
+                       {
+                           "id":  "p-087",
+                           "sentences":  [
+                                             {
+                                                 "id":  "s-213",
+                                                 "english":  "“Probably just Charlie, now Mum’s asleep, sneaking off to regrow his hair,” said Ron nervously."
+                                             }
+                                         ]
+                       }
+                   ],
+    "translations":  {
+                         "s-211":  "「でも、なぜダンブルドアは私にこれを読ませたいと思ったのかしら？」",
+                         "s-212":  "階下で何かがきしんだ。",
+                         "s-213":  "「たぶんチャーリーだよ。母さんが寝たから、髪を生やし直しにこっそり行くんだ」とロンは緊張して言った。"
+                     }
+}

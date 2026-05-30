@@ -1,0 +1,46 @@
+{
+    "story_id":  "deathly_hollows_ch7",
+    "story_title":  "Deathly_hollows_ch7",
+    "chunk_id":  "chunk-024",
+    "level":  "n2_abridged",
+    "instructions":  [
+                         "Translate only this work item\u0027s sentences for the requested level.",
+                         "Preserve every ID exactly.",
+                         "Fill the translations object with sentence ID keys and translated Japanese values.",
+                         "Return valid JSON only when saving completed work item output."
+                     ],
+    "paragraphs":  [
+                       {
+                           "id":  "p-070",
+                           "sentences":  [
+                                             {
+                                                 "id":  "s-169",
+                                                 "english":  "“And the sword,” said Ron finally, when they had at last abandoned their attempts to divine meaning in the Snitch’s inscription."
+                                             }
+                                         ]
+                       },
+                       {
+                           "id":  "p-071",
+                           "sentences":  [
+                                             {
+                                                 "id":  "s-170",
+                                                 "english":  "“Why did he want Harry to have the sword?”"
+                                             }
+                                         ]
+                       },
+                       {
+                           "id":  "p-072",
+                           "sentences":  [
+                                             {
+                                                 "id":  "s-171",
+                                                 "english":  "“And why couldn’t he just have told me?” Harry said quietly."
+                                             }
+                                         ]
+                       }
+                   ],
+    "translations":  {
+                         "s-169":  "スニッチの言葉を考えるのをあきらめた頃、ロンがようやく「それに剣だ」と言った。",
+                         "s-170":  "「なぜダンブルドアは、ハリーに剣を渡したかったんだ？」",
+                         "s-171":  "「なぜ僕に直接言ってくれなかったんだろう」とハリーは静かに言った。"
+                     }
+}

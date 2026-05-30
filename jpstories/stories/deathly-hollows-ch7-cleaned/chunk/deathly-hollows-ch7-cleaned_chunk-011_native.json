@@ -1,0 +1,86 @@
+{
+    "story_id":  "deathly-hollows-ch7-cleaned",
+    "story_title":  "Deathly Hollows Ch7 Cleaned",
+    "chunk_id":  "chunk-011",
+    "level":  "native",
+    "instructions":  [
+                         "Translate only this work item\u0027s sentences for the requested level.",
+                         "Preserve every ID exactly.",
+                         "Fill the translations object with sentence ID keys and translated Japanese values.",
+                         "Return valid JSON only when saving completed work item output."
+                     ],
+    "paragraphs":  [
+                       {
+                           "id":  "p-031",
+                           "sentences":  [
+                                             {
+                                                 "id":  "s-066",
+                                                 "english":  "“It—it was nothing,” he growled."
+                                             },
+                                             {
+                                                 "id":  "s-067",
+                                                 "english":  "“I ."
+                                             },
+                                             {
+                                                 "id":  "s-068",
+                                                 "english":  "."
+                                             },
+                                             {
+                                                 "id":  "s-069",
+                                                 "english":  "."
+                                             },
+                                             {
+                                                 "id":  "s-070",
+                                                 "english":  "regret your attitude,” he said, looking Harry full in the face once more."
+                                             },
+                                             {
+                                                 "id":  "s-071",
+                                                 "english":  "“You seem to think that the Ministry does not desire what you—what Dumbledore—desired."
+                                             },
+                                             {
+                                                 "id":  "s-072",
+                                                 "english":  "We ought to be working together.”"
+                                             }
+                                         ]
+                       },
+                       {
+                           "id":  "p-032",
+                           "sentences":  [
+                                             {
+                                                 "id":  "s-073",
+                                                 "english":  "“I don’t like your methods, Minister,” said Harry."
+                                             },
+                                             {
+                                                 "id":  "s-074",
+                                                 "english":  "“Remember?”"
+                                             }
+                                         ]
+                       },
+                       {
+                           "id":  "p-033",
+                           "sentences":  [
+                                             {
+                                                 "id":  "s-075",
+                                                 "english":  "For the second time, he raised his right fist and displayed to Scrimgeour the scars that still showed white on the back of it, spelling I must not tell lies."
+                                             },
+                                             {
+                                                 "id":  "s-076",
+                                                 "english":  "Scrimgeour’s expression hardened."
+                                             }
+                                         ]
+                       }
+                   ],
+    "translations":  {
+                         "s-066":  "",
+                         "s-067":  "",
+                         "s-068":  "",
+                         "s-069":  "",
+                         "s-070":  "",
+                         "s-071":  "",
+                         "s-072":  "",
+                         "s-073":  "",
+                         "s-074":  "",
+                         "s-075":  "",
+                         "s-076":  ""
+                     }
+}

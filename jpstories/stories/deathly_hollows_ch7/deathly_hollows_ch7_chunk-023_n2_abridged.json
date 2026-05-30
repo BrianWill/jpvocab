@@ -1,0 +1,91 @@
+{
+    "story_id":  "deathly_hollows_ch7",
+    "story_title":  "Deathly_hollows_ch7",
+    "chunk_id":  "chunk-023",
+    "level":  "n2_abridged",
+    "instructions":  [
+                         "Translate only this work item\u0027s sentences for the requested level.",
+                         "Preserve every ID exactly.",
+                         "Fill the translations object with sentence ID keys and translated Japanese values.",
+                         "Return valid JSON only when saving completed work item output."
+                     ],
+    "paragraphs":  [
+                       {
+                           "id":  "p-067",
+                           "sentences":  [
+                                             {
+                                                 "id":  "s-157",
+                                                 "english":  "Hermione and Ron shook their heads, looking back."
+                                             }
+                                         ]
+                       },
+                       {
+                           "id":  "p-068",
+                           "sentences":  [
+                                             {
+                                                 "id":  "s-158",
+                                                 "english":  "“I open at the close ."
+                                             },
+                                             {
+                                                 "id":  "s-159",
+                                                 "english":  "."
+                                             },
+                                             {
+                                                 "id":  "s-160",
+                                                 "english":  "."
+                                             },
+                                             {
+                                                 "id":  "s-161",
+                                                 "english":  "at the close ."
+                                             },
+                                             {
+                                                 "id":  "s-162",
+                                                 "english":  "."
+                                             },
+                                             {
+                                                 "id":  "s-163",
+                                                 "english":  "."
+                                             },
+                                             {
+                                                 "id":  "s-164",
+                                                 "english":  "I open at the close ."
+                                             },
+                                             {
+                                                 "id":  "s-165",
+                                                 "english":  "."
+                                             },
+                                             {
+                                                 "id":  "s-166",
+                                                 "english":  "."
+                                             },
+                                             {
+                                                 "id":  "s-167",
+                                                 "english":  "”"
+                                             }
+                                         ]
+                       },
+                       {
+                           "id":  "p-069",
+                           "sentences":  [
+                                             {
+                                                 "id":  "s-168",
+                                                 "english":  "But no matter how often they repeated the words, with many different inflections, they were unable to wring any more meaning from them."
+                                             }
+                                         ]
+                       }
+                   ],
+    "translations":  {
+                         "s-157":  "",
+                         "s-158":  "",
+                         "s-159":  "",
+                         "s-160":  "",
+                         "s-161":  "",
+                         "s-162":  "",
+                         "s-163":  "",
+                         "s-164":  "",
+                         "s-165":  "",
+                         "s-166":  "",
+                         "s-167":  "",
+                         "s-168":  ""
+                     }
+}

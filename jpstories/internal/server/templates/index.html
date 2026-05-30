@@ -1,0 +1,34 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>jpstories</title>
+  <link rel="stylesheet" href="/static/app.css">
+</head>
+<body>
+  <main class="shell">
+    <header class="topbar">
+      <div>
+        <h1>jpstories</h1>
+        <div class="muted">Stories from {{.StoriesDir}}</div>
+      </div>
+      <a href="/settings">Settings</a>
+    </header>
+    {{if .Stories}}
+      <ul class="story-list" aria-label="Stories">
+        {{range .Stories}}
+          <li>
+            <a class="story-link" href="/stories/{{.ID}}">
+              <span>{{.Title}}</span>
+              <span class="muted">{{.ID}}</span>
+            </a>
+          </li>
+        {{end}}
+      </ul>
+    {{else}}
+      <p class="muted">No stories found yet.</p>
+    {{end}}
+  </main>
+</body>
+</html>

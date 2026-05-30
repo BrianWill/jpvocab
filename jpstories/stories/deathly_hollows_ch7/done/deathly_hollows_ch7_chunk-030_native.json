@@ -1,0 +1,61 @@
+{
+    "story_id":  "deathly_hollows_ch7",
+    "story_title":  "Deathly_hollows_ch7",
+    "chunk_id":  "chunk-030",
+    "level":  "native",
+    "instructions":  [
+                         "Translate only this work item\u0027s sentences for the requested level.",
+                         "Preserve every ID exactly.",
+                         "Fill the translations object with sentence ID keys and translated Japanese values.",
+                         "Return valid JSON only when saving completed work item output."
+                     ],
+    "paragraphs":  [
+                       {
+                           "id":  "p-088",
+                           "sentences":  [
+                                             {
+                                                 "id":  "s-214",
+                                                 "english":  "“All the same, we should get to bed,” whispered Hermione."
+                                             },
+                                             {
+                                                 "id":  "s-215",
+                                                 "english":  "“It wouldn’t do to oversleep tomorrow.’"
+                                             }
+                                         ]
+                       },
+                       {
+                           "id":  "p-089",
+                           "sentences":  [
+                                             {
+                                                 "id":  "s-216",
+                                                 "english":  "“No,” agreed Ron."
+                                             },
+                                             {
+                                                 "id":  "s-217",
+                                                 "english":  "“A brutal triple murder by the bridegroom’s mother might put a bit of a damper of the wedding."
+                                             },
+                                             {
+                                                 "id":  "s-218",
+                                                 "english":  "I’ll get the lights.”"
+                                             }
+                                         ]
+                       },
+                       {
+                           "id":  "p-090",
+                           "sentences":  [
+                                             {
+                                                 "id":  "s-219",
+                                                 "english":  "And he clicked the Deluminator once more as Hermione left the room."
+                                             }
+                                         ]
+                       }
+                   ],
+    "translations":  {
+                         "s-214":  "「それでも、もう寝たほうがいいわ」とハーマイオニーがささやいた。",
+                         "s-215":  "「明日、寝坊するわけにはいかないもの」",
+                         "s-216":  "「そうだな」とロンも同意した。",
+                         "s-217":  "「花婿の母親による残忍な三人殺しなんてことになったら、結婚式の雰囲気がちょっと台無しになるかもしれないし。",
+                         "s-218":  "明かりは僕が消すよ」",
+                         "s-219":  "そしてハーマイオニーが部屋を出ていくと、ロンは灯消しライターをもう一度カチリと鳴らした。"
+                     }
+}

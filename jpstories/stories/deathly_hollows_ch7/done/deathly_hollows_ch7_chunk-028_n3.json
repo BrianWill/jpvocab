@@ -1,0 +1,61 @@
+{
+    "story_id":  "deathly_hollows_ch7",
+    "story_title":  "Deathly_hollows_ch7",
+    "chunk_id":  "chunk-028",
+    "level":  "n3",
+    "instructions":  [
+                         "Translate only this work item\u0027s sentences for the requested level.",
+                         "Preserve every ID exactly.",
+                         "Fill the translations object with sentence ID keys and translated Japanese values.",
+                         "Return valid JSON only when saving completed work item output."
+                     ],
+    "paragraphs":  [
+                       {
+                           "id":  "p-082",
+                           "sentences":  [
+                                             {
+                                                 "id":  "s-205",
+                                                 "english":  "“Come off it!” said Ron, looking in disbelief from Harry to Hermione."
+                                             },
+                                             {
+                                                 "id":  "s-206",
+                                                 "english":  "“You must’ve heard of Bubbitty Rabbitty—” “Ron, you know full well Harry and I were brought up by Muggles!” said Hermione."
+                                             },
+                                             {
+                                                 "id":  "s-207",
+                                                 "english":  "“We didn’t hear stories like that when we were little, we heard ‘Snow White and the Seven Dwarfs’ and ‘Cinderella’—” “What’s that, an illness?” asked Ron."
+                                             }
+                                         ]
+                       },
+                       {
+                           "id":  "p-083",
+                           "sentences":  [
+                                             {
+                                                 "id":  "s-208",
+                                                 "english":  "“So these are children’s stories?” asked Hermione, bending again over the runes."
+                                             }
+                                         ]
+                       },
+                       {
+                           "id":  "p-084",
+                           "sentences":  [
+                                             {
+                                                 "id":  "s-209",
+                                                 "english":  "“Yeah,” said Ron uncertainly, “I mean, that’s just what you hear, you know, that all these old stories came from Beedle."
+                                             },
+                                             {
+                                                 "id":  "s-210",
+                                                 "english":  "I dunno what they’re like in the original versions."
+                                             }
+                                         ]
+                       }
+                   ],
+    "translations":  {
+                         "s-205":  "「やめてくれよ！」とロンは、信じられないという顔でハリーとハーマイオニーを見比べながら言った。",
+                         "s-206":  "「バビティ・ラビティくらい聞いたことあるだろう――」「ロン、ハリーと私はマグルに育てられたって、あなたはよく知っているでしょう！」とハーマイオニーが言った。",
+                         "s-207":  "「小さいころ、私たちはそういう話は聞かなかったの。聞いたのは『白雪姫と七人の小人』とか『シンデレラ』で――」「それは何だ、病気か？」とロンがたずねた。",
+                         "s-208":  "「じゃあ、これは子どもの物語なの？」とハーマイオニーは、またルーン文字に身をかがめながらたずねた。",
+                         "s-209":  "「ああ」とロンは少し自信なさそうに言った。「つまり、そう聞いているだけだけどな。こういう昔話はみんなビードルから来たってさ。",
+                         "s-210":  "元の話がどんなものかは知らないよ。"
+                     }
+}

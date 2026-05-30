@@ -1,0 +1,71 @@
+{
+    "story_id":  "deathly-hollows-ch7-cleaned",
+    "story_title":  "Deathly Hollows Ch7 Cleaned",
+    "chunk_id":  "chunk-022",
+    "level":  "n2_abridged",
+    "instructions":  [
+                         "Translate only this work item\u0027s sentences for the requested level.",
+                         "Preserve every ID exactly.",
+                         "Fill the translations object with sentence ID keys and translated Japanese values.",
+                         "Return valid JSON only when saving completed work item output."
+                     ],
+    "paragraphs":  [
+                       {
+                           "id":  "p-064",
+                           "sentences":  [
+                                             {
+                                                 "id":  "s-149",
+                                                 "english":  "He nearly dropped the Snitch in surprise and excitement."
+                                             },
+                                             {
+                                                 "id":  "s-150",
+                                                 "english":  "Hermione was quite right."
+                                             },
+                                             {
+                                                 "id":  "s-151",
+                                                 "english":  "Engraved upon the smooth golden surface, where seconds before there had been nothing, were five words written in the thin, slanting handwriting that Harry recognized as Dumbledore’s: I open at the close."
+                                             }
+                                         ]
+                       },
+                       {
+                           "id":  "p-065",
+                           "sentences":  [
+                                             {
+                                                 "id":  "s-152",
+                                                 "english":  "He had barely read them when the words vanished again."
+                                             }
+                                         ]
+                       },
+                       {
+                           "id":  "p-066",
+                           "sentences":  [
+                                             {
+                                                 "id":  "s-153",
+                                                 "english":  "“‘I open at the close ."
+                                             },
+                                             {
+                                                 "id":  "s-154",
+                                                 "english":  "."
+                                             },
+                                             {
+                                                 "id":  "s-155",
+                                                 "english":  "."
+                                             },
+                                             {
+                                                 "id":  "s-156",
+                                                 "english":  "’ What’s that supposed to mean?”"
+                                             }
+                                         ]
+                       }
+                   ],
+    "translations":  {
+                         "s-149":  "",
+                         "s-150":  "",
+                         "s-151":  "",
+                         "s-152":  "",
+                         "s-153":  "",
+                         "s-154":  "",
+                         "s-155":  "",
+                         "s-156":  ""
+                     }
+}

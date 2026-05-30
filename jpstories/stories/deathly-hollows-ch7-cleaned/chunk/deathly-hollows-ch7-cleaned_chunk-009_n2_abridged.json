@@ -1,0 +1,61 @@
+{
+    "story_id":  "deathly-hollows-ch7-cleaned",
+    "story_title":  "Deathly Hollows Ch7 Cleaned",
+    "chunk_id":  "chunk-009",
+    "level":  "n2_abridged",
+    "instructions":  [
+                         "Translate only this work item\u0027s sentences for the requested level.",
+                         "Preserve every ID exactly.",
+                         "Fill the translations object with sentence ID keys and translated Japanese values.",
+                         "Return valid JSON only when saving completed work item output."
+                     ],
+    "paragraphs":  [
+                       {
+                           "id":  "p-025",
+                           "sentences":  [
+                                             {
+                                                 "id":  "s-054",
+                                                 "english":  "You may wear that scar like a crown, Potter, but it is not up to a seventeen-year-old boy to tell me how to do my job!"
+                                             },
+                                             {
+                                                 "id":  "s-055",
+                                                 "english":  "It’s time you learned some respect!”"
+                                             }
+                                         ]
+                       },
+                       {
+                           "id":  "p-026",
+                           "sentences":  [
+                                             {
+                                                 "id":  "s-056",
+                                                 "english":  "“It’s time you earned it.” said Harry."
+                                             }
+                                         ]
+                       },
+                       {
+                           "id":  "p-027",
+                           "sentences":  [
+                                             {
+                                                 "id":  "s-057",
+                                                 "english":  "The floor trembled; there was a sound of running footsteps, then the door to the sitting room burst open and Mr."
+                                             },
+                                             {
+                                                 "id":  "s-058",
+                                                 "english":  "and Mrs."
+                                             },
+                                             {
+                                                 "id":  "s-059",
+                                                 "english":  "Weasley ran in."
+                                             }
+                                         ]
+                       }
+                   ],
+    "translations":  {
+                         "s-054":  "",
+                         "s-055":  "",
+                         "s-056":  "",
+                         "s-057":  "",
+                         "s-058":  "",
+                         "s-059":  ""
+                     }
+}

@@ -1,0 +1,96 @@
+{
+    "story_id":  "deathly-hollows-ch7-cleaned",
+    "story_title":  "Deathly Hollows Ch7 Cleaned",
+    "chunk_id":  "chunk-018",
+    "level":  "native",
+    "instructions":  [
+                         "Translate only this work item\u0027s sentences for the requested level.",
+                         "Preserve every ID exactly.",
+                         "Fill the translations object with sentence ID keys and translated Japanese values.",
+                         "Return valid JSON only when saving completed work item output."
+                     ],
+    "paragraphs":  [
+                       {
+                           "id":  "p-052",
+                           "sentences":  [
+                                             {
+                                                 "id":  "s-121",
+                                                 "english":  "“ ."
+                                             },
+                                             {
+                                                 "id":  "s-122",
+                                                 "english":  "."
+                                             },
+                                             {
+                                                 "id":  "s-123",
+                                                 "english":  "."
+                                             },
+                                             {
+                                                 "id":  "s-124",
+                                                 "english":  "why he couldn’t have given us a hint when he was alive?” asked Ron."
+                                             }
+                                         ]
+                       },
+                       {
+                           "id":  "p-053",
+                           "sentences":  [
+                                             {
+                                                 "id":  "s-125",
+                                                 "english":  "“Well, exactly,” said Hermione, now flicking through the The Tales of Beedle the Bard."
+                                             },
+                                             {
+                                                 "id":  "s-126",
+                                                 "english":  "“If these things are important enough to pass on right under the nose of the Ministry, you’d think he’d have let us know why ."
+                                             },
+                                             {
+                                                 "id":  "s-127",
+                                                 "english":  "."
+                                             },
+                                             {
+                                                 "id":  "s-128",
+                                                 "english":  "."
+                                             },
+                                             {
+                                                 "id":  "s-129",
+                                                 "english":  "unless he thought it was obvious?”"
+                                             }
+                                         ]
+                       },
+                       {
+                           "id":  "p-054",
+                           "sentences":  [
+                                             {
+                                                 "id":  "s-130",
+                                                 "english":  "“Thought wrong, then, didn’t he?” said Ron."
+                                             },
+                                             {
+                                                 "id":  "s-131",
+                                                 "english":  "“I always said he was mental."
+                                             },
+                                             {
+                                                 "id":  "s-132",
+                                                 "english":  "Brilliant and everything, but cracked."
+                                             },
+                                             {
+                                                 "id":  "s-133",
+                                                 "english":  "Leaving Harry an old Snitch—what the hell was that about?”"
+                                             }
+                                         ]
+                       }
+                   ],
+    "translations":  {
+                         "s-121":  "",
+                         "s-122":  "",
+                         "s-123":  "",
+                         "s-124":  "",
+                         "s-125":  "",
+                         "s-126":  "",
+                         "s-127":  "",
+                         "s-128":  "",
+                         "s-129":  "",
+                         "s-130":  "",
+                         "s-131":  "",
+                         "s-132":  "",
+                         "s-133":  ""
+                     }
+}

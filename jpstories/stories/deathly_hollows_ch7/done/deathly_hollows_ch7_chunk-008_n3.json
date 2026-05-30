@@ -1,0 +1,61 @@
+{
+    "story_id":  "deathly_hollows_ch7",
+    "story_title":  "Deathly_hollows_ch7",
+    "chunk_id":  "chunk-008",
+    "level":  "n3",
+    "instructions":  [
+                         "Translate only this work item\u0027s sentences for the requested level.",
+                         "Preserve every ID exactly.",
+                         "Fill the translations object with sentence ID keys and translated Japanese values.",
+                         "Return valid JSON only when saving completed work item output."
+                     ],
+    "paragraphs":  [
+                       {
+                           "id":  "p-022",
+                           "sentences":  [
+                                             {
+                                                 "id":  "s-048",
+                                                 "english":  "“You go too far!” shouted Scrimgeour, standing up; Harry jumped to his feet too."
+                                             },
+                                             {
+                                                 "id":  "s-049",
+                                                 "english":  "Scrimgeour limped toward Harry and jabbed him hard in the chest with the point of his wand: It singed a hole in Harry’s T-shirt like a lit cigarette."
+                                             }
+                                         ]
+                       },
+                       {
+                           "id":  "p-023",
+                           "sentences":  [
+                                             {
+                                                 "id":  "s-050",
+                                                 "english":  "“Oi!” said Ron, jumping up and raising his own wand, but Harry said, “No!"
+                                             },
+                                             {
+                                                 "id":  "s-051",
+                                                 "english":  "D’you want to give him an excuse to arrest us?”"
+                                             }
+                                         ]
+                       },
+                       {
+                           "id":  "p-024",
+                           "sentences":  [
+                                             {
+                                                 "id":  "s-052",
+                                                 "english":  "“Remembered you’re not at school, have you?” said Scrimgeour, breathing hard into Harry’s face."
+                                             },
+                                             {
+                                                 "id":  "s-053",
+                                                 "english":  "“Remembered that I am not Dumbledore, who forgave your insolence and insubordination?"
+                                             }
+                                         ]
+                       }
+                   ],
+    "translations":  {
+                         "s-048":  "「言い過ぎだ！」とスクリムジョールは叫んで立ち上がった。ハリーも跳ねるように立った。",
+                         "s-049":  "スクリムジョールは足を引きずってハリーに近づき、杖の先でハリーの胸を強く突いた。それは火のついたタバコのように、ハリーのTシャツに穴を焦がした。",
+                         "s-050":  "「おい！」とロンは言って跳び上がり、自分の杖を上げたが、ハリーは「だめだ！」と言った。",
+                         "s-051":  "「僕たちを逮捕する理由を、彼に与えたいのか？」",
+                         "s-052":  "「自分が学校にいないことを思い出したか？」とスクリムジョールは、ハリーの顔に荒い息をかけながら言った。",
+                         "s-053":  "「私がダンブルドアではないことも思い出したか？彼は君の失礼と反抗を許したがな。」"
+                     }
+}

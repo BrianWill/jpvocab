@@ -1,0 +1,79 @@
+{
+    "id":  "sample-station",
+    "title":  "Sample Station",
+    "source_language":  "en",
+    "target_language":  "ja",
+    "source_file":  "stories/sample-station/sample-station.txt",
+    "levels":  [
+                   "native",
+                   "n3",
+                   "n2_abridged"
+               ],
+    "chunks":  [
+                   {
+                       "id":  "chunk-001",
+                       "paragraphs":  [
+                                          {
+                                              "id":  "p-001",
+                                              "sentences":  [
+                                                                {
+                                                                    "id":  "s-001",
+                                                                    "english":  "The last train had already left the little station.",
+                                                                    "translations":  {
+                                                                                         "native":  "小さな駅からは、もう最終列車が出てしまっていた。",
+                                                                                         "n3":  "小さな駅では、最後の電車がもう出ていました。",
+                                                                                         "n2_abridged":  "小さな駅で、最終電車はもう出ていた。"
+                                                                                     }
+                                                                }
+                                                            ]
+                                          },
+                                          {
+                                              "id":  "p-002",
+                                              "sentences":  [
+                                                                {
+                                                                    "id":  "s-002",
+                                                                    "english":  "Mina sat on the wooden bench and listened to the rain.",
+                                                                    "translations":  {
+                                                                                         "native":  "ミナは木のベンチに腰かけ、雨の音に耳を澄ませていた。",
+                                                                                         "n3":  "ミナは木のベンチに座って、雨の音を聞いていました。",
+                                                                                         "n2_abridged":  "ミナはベンチで雨音を聞いていた。"
+                                                                                     }
+                                                                },
+                                                                {
+                                                                    "id":  "s-003",
+                                                                    "english":  "She found a folded note under her umbrella.",
+                                                                    "translations":  {
+                                                                                         "native":  "傘の下には、折りたたまれたメモが落ちていた。",
+                                                                                         "n3":  "かさの下に、折ったメモがありました。",
+                                                                                         "n2_abridged":  "傘の下にメモがあった。"
+                                                                                     }
+                                                                }
+                                                            ]
+                                          },
+                                          {
+                                              "id":  "p-003",
+                                              "sentences":  [
+                                                                {
+                                                                    "id":  "s-004",
+                                                                    "english":  "The note said, \"Wait until the clock rings twice.\"",
+                                                                    "translations":  {
+                                                                                         "native":  "メモには「時計が二度鳴るまで待って」と書かれていた。",
+                                                                                         "n3":  "メモには「時計が二回鳴るまで待って」と書いてありました。",
+                                                                                         "n2_abridged":  "メモは、時計が二回鳴るまで待てと言っていた。"
+                                                                                     }
+                                                                },
+                                                                {
+                                                                    "id":  "s-005",
+                                                                    "english":  "When the old clock rang, a warm light appeared at the end of the platform.",
+                                                                    "translations":  {
+                                                                                         "native":  "古い時計が鳴ると、ホームの端にあたたかな光が浮かび上がった。",
+                                                                                         "n3":  "古い時計が鳴ると、ホームのはしにあたたかい光が見えました。",
+                                                                                         "n2_abridged":  "古い時計が鳴り、ホームの端に光が現れた。"
+                                                                                     }
+                                                                }
+                                                            ]
+                                          }
+                                      ]
+                   }
+               ]
+}

@@ -1,0 +1,16 @@
+# compiled binary
+# build artifacts
+*.exe
+*.dll
+*.so
+*.dylib
+
+# Go test/build cache
+*.test
+*.out
+
+.gocache/
+
+config.json
+
+*.stackdump

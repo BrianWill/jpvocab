@@ -1,0 +1,76 @@
+{
+    "story_id":  "deathly_hollows_ch7",
+    "story_title":  "Deathly_hollows_ch7",
+    "chunk_id":  "chunk-006",
+    "level":  "n2_abridged",
+    "instructions":  [
+                         "Translate only this work item\u0027s sentences for the requested level.",
+                         "Preserve every ID exactly.",
+                         "Fill the translations object with sentence ID keys and translated Japanese values.",
+                         "Return valid JSON only when saving completed work item output."
+                     ],
+    "paragraphs":  [
+                       {
+                           "id":  "p-016",
+                           "sentences":  [
+                                             {
+                                                 "id":  "s-028",
+                                                 "english":  "Hermione and Ron both stiffened."
+                                             },
+                                             {
+                                                 "id":  "s-029",
+                                                 "english":  "Harry looked around for a sign of the ruby-encrusted hilt, but Scrimgeour did not pull the sword from the leather pouch, which in any case looked much too small to contain it."
+                                             }
+                                         ]
+                       },
+                       {
+                           "id":  "p-017",
+                           "sentences":  [
+                                             {
+                                                 "id":  "s-030",
+                                                 "english":  "“So where is it?” Harry asked suspiciously."
+                                             }
+                                         ]
+                       },
+                       {
+                           "id":  "p-018",
+                           "sentences":  [
+                                             {
+                                                 "id":  "s-031",
+                                                 "english":  "“Unfortunately,” said Scrimgeour, “that sword was not Dumbledore’s to give away."
+                                             },
+                                             {
+                                                 "id":  "s-032",
+                                                 "english":  "The sword of Godric Gryffindor is an important historical artifact, and as such, belongs—” “It belongs to Harry!” said Hermione hotly."
+                                             },
+                                             {
+                                                 "id":  "s-033",
+                                                 "english":  "“It chose him, he was the one who found it, it came to him out of the Sorting Hat—” “According to reliable historical sources, the sword may present itself to any worthy Gryffindor,” said Scrimgeour."
+                                             },
+                                             {
+                                                 "id":  "s-034",
+                                                 "english":  "“That does not make it the exclusive property of Mr."
+                                             },
+                                             {
+                                                 "id":  "s-035",
+                                                 "english":  "Potter, whatever Dumbledore may have decided.” Scrimgeour scratched his badly shaven cheek, scrutinizing Harry."
+                                             },
+                                             {
+                                                 "id":  "s-036",
+                                                 "english":  "“Why do you think—?”"
+                                             }
+                                         ]
+                       }
+                   ],
+    "translations":  {
+                         "s-028":  "ハーマイオニーとロンは同時に身をこわばらせた。",
+                         "s-029":  "ハリーはルビーの柄を探したが、スクリムジョールは革袋から剣を出さなかった。そもそも袋は小さすぎた。",
+                         "s-030":  "「それで、どこにあるんです？」ハリーは疑わしげに聞いた。",
+                         "s-031":  "「残念ながら」とスクリムジョールは言った。「あの剣はダンブルドアが譲れる物ではなかった。」",
+                         "s-032":  "「ゴドリック・グリフィンドールの剣は重要な歴史的品であり、従って所属は、」「ハリーのものです！」ハーマイオニーが激しく言った。",
+                         "s-033":  "「剣が彼を選び、彼が見つけ、組分け帽子から彼のもとへ来たんです、」「信頼できる史料によれば、剣はふさわしいグリフィンドール生なら誰の前にも現れ得る」とスクリムジョールは言った。",
+                         "s-034":  "「だからといって、ミスター",
+                         "s-035":  "ポッターだけの所有物にはならない。ダンブルドアが何を考えていたとしてもだ。」スクリムジョールは無精ひげの頬をかき、ハリーを見た。",
+                         "s-036":  "「なぜだと思う？」"
+                     }
+}

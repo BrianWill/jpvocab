@@ -1,0 +1,86 @@
+{
+    "story_id":  "deathly_hollows_ch7",
+    "story_title":  "Deathly_hollows_ch7",
+    "chunk_id":  "chunk-013",
+    "level":  "native",
+    "instructions":  [
+                         "Translate only this work item\u0027s sentences for the requested level.",
+                         "Preserve every ID exactly.",
+                         "Fill the translations object with sentence ID keys and translated Japanese values.",
+                         "Return valid JSON only when saving completed work item output."
+                     ],
+    "paragraphs":  [
+                       {
+                           "id":  "p-037",
+                           "sentences":  [
+                                             {
+                                                 "id":  "s-086",
+                                                 "english":  "Outside in the garden, over the dinner tables, the three objects Scrimgeour had given them were passed from hand to hand."
+                                             },
+                                             {
+                                                 "id":  "s-087",
+                                                 "english":  "Everyone exclaimed over the Deluminator and The Tales of Beedle the Bard and lamented the fact that Scrimgeour had refused to pass on the sword, but none of them could offer any suggestion as to why Dumbledore would have left Harry an old Snitch."
+                                             },
+                                             {
+                                                 "id":  "s-088",
+                                                 "english":  "As Mr."
+                                             },
+                                             {
+                                                 "id":  "s-089",
+                                                 "english":  "Weasley examined the Deluminator for the third or fourth time, Mrs."
+                                             },
+                                             {
+                                                 "id":  "s-090",
+                                                 "english":  "Weasley said tentatively, “Harry, dear, everyone’s awfully hungry, we didn’t like to start without you."
+                                             },
+                                             {
+                                                 "id":  "s-091",
+                                                 "english":  "."
+                                             },
+                                             {
+                                                 "id":  "s-092",
+                                                 "english":  "."
+                                             },
+                                             {
+                                                 "id":  "s-093",
+                                                 "english":  "."
+                                             },
+                                             {
+                                                 "id":  "s-094",
+                                                 "english":  "Shall I serve dinner now?”"
+                                             }
+                                         ]
+                       },
+                       {
+                           "id":  "p-038",
+                           "sentences":  [
+                                             {
+                                                 "id":  "s-095",
+                                                 "english":  "They all ate rather hurriedly and then, after a hasty chorus of “Happy Birthday” and much gulping of cake, the party broke up."
+                                             }
+                                         ]
+                       },
+                       {
+                           "id":  "p-039",
+                           "sentences":  [
+                                             {
+                                                 "id":  "s-096",
+                                                 "english":  "Hagrid, who was invited to the wedding the following day, but was far too bulky to sleep in the overstretched Burrow, left to set up a tent for himself in a neighboring field."
+                                             }
+                                         ]
+                       }
+                   ],
+    "translations":  {
+                         "s-086":  "外の庭では、夕食のテーブル越しに、スクリムジョールが三人へ渡した三つの品が次々と手渡されていった。",
+                         "s-087":  "皆は灯消しライターと『吟遊詩人ビードルの物語』に感嘆し、スクリムジョールが剣を渡すのを拒んだことを嘆いたが、ダンブルドアがなぜ古いスニッチをハリーに残したのかについては、誰ひとり見当もつかなかった。",
+                         "s-088":  "ウィーズリー氏が",
+                         "s-089":  "三度目か四度目に灯消しライターを調べていると、ウィーズリー夫人が",
+                         "s-090":  "ためらいがちに言った。「ハリー、ねえ、みんなとてもお腹をすかせているの。あなた抜きで始めるのは気が引けて……",
+                         "s-091":  "……",
+                         "s-092":  "……",
+                         "s-093":  "……",
+                         "s-094":  "もう夕食を出してもいいかしら？」",
+                         "s-095":  "皆はかなり急いで食事をすませ、それから慌ただしく「ハッピー・バースデー」を合唱し、ケーキを大急ぎで飲み込むように食べると、パーティーはお開きになった。",
+                         "s-096":  "翌日の結婚式に招かれていたハグリッドは、手狭になりすぎた隠れ穴に泊まるにはあまりにも大きかったので、近くの野原に自分のテントを張りに出ていった。"
+                     }
+}

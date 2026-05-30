@@ -1,0 +1,76 @@
+{
+    "story_id":  "deathly_hollows_ch7",
+    "story_title":  "Deathly_hollows_ch7",
+    "chunk_id":  "chunk-012",
+    "level":  "native",
+    "instructions":  [
+                         "Translate only this work item\u0027s sentences for the requested level.",
+                         "Preserve every ID exactly.",
+                         "Fill the translations object with sentence ID keys and translated Japanese values.",
+                         "Return valid JSON only when saving completed work item output."
+                     ],
+    "paragraphs":  [
+                       {
+                           "id":  "p-034",
+                           "sentences":  [
+                                             {
+                                                 "id":  "s-077",
+                                                 "english":  "He turned away without another word and limped from the room."
+                                             },
+                                             {
+                                                 "id":  "s-078",
+                                                 "english":  "Mrs."
+                                             },
+                                             {
+                                                 "id":  "s-079",
+                                                 "english":  "Weasley hurried after him; Harry heard her stop at the back door."
+                                             },
+                                             {
+                                                 "id":  "s-080",
+                                                 "english":  "After a minute or so she called, “He’s gone!”"
+                                             }
+                                         ]
+                       },
+                       {
+                           "id":  "p-035",
+                           "sentences":  [
+                                             {
+                                                 "id":  "s-081",
+                                                 "english":  "“What did he want?” Mr."
+                                             },
+                                             {
+                                                 "id":  "s-082",
+                                                 "english":  "Weasley asked, looking around at Harry, Ron, and Hermione as Mrs."
+                                             },
+                                             {
+                                                 "id":  "s-083",
+                                                 "english":  "Weasley came hurrying back to them."
+                                             }
+                                         ]
+                       },
+                       {
+                           "id":  "p-036",
+                           "sentences":  [
+                                             {
+                                                 "id":  "s-084",
+                                                 "english":  "“To give us what Dumbledore left us,” said Harry."
+                                             },
+                                             {
+                                                 "id":  "s-085",
+                                                 "english":  "“They’ve only just released the contents of his will.”"
+                                             }
+                                         ]
+                       }
+                   ],
+    "translations":  {
+                         "s-077":  "",
+                         "s-078":  "",
+                         "s-079":  "",
+                         "s-080":  "",
+                         "s-081":  "",
+                         "s-082":  "",
+                         "s-083":  "",
+                         "s-084":  "",
+                         "s-085":  ""
+                     }
+}

@@ -2,6 +2,13 @@
 
 This file is random notes of possible features and bug fixes.
 
+- drill match mode: when answered, word and definition should align
+    moved from incorrect / unanswered list into separate list below that aligns?
+
+- inject English text as story
+    uses AI to translate into Japanese by sentence.
+    Option to simplify the language / vocabulary.
+
 - button at top of story that will translate whole story at once
     (should probably make a separate request for groups of 3 or 4 chunks at a time)
         or maybe the chunk size just needs to be twice as large?

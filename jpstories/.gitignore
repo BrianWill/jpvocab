@@ -9,6 +9,8 @@
 *.test
 *.out
 
+stories/
+
 .gocache/
 
 config.json

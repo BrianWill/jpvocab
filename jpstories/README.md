@@ -2,15 +2,15 @@
 
 `jpstories` turns English stories into Japanese learner reading material. It is a local-first Go app: each story lives in its own local directory, deterministic code splits source text into stable chunks, Codex/Claude agents translate exported work items, and the web reader displays Japanese beside the original English.
 
-The Go server does not call language model APIs. Translation agents are triggered outside the app through Codex or Claude and operate on local JSON files.
+The Go server does not call language model APIs. Translation agents are triggered outside the app through Codex or Claude and normally operate on local plain-text translation sheets imported back into JSON by the coordinator.
 
 ## What Works Now
 
 - Deterministic chunking from English `.txt` files into story JSON.
 - Source text cleanup for OCR/PDF copy-paste artifacts before chunking.
 - Story validation for draft and complete stories.
-- Export of missing translations into focused Codex/Claude work item files.
-- Merge of completed work item JSON back into story JSON.
+- Export of missing translations into focused Codex/Claude work item files and plain-text translation sheets.
+- Import of completed sheets into work item JSON, then merge back into story JSON.
 - Local web reader with story list, translation-level tabs, and side-by-side Japanese/English text.
 - Clickable Japanese sentence playback through local VoiceVox.
 - Settings page for VoiceVox URL, voice/style selection, preview, and persisted config.
@@ -28,6 +28,10 @@ stories/
     my_story.json
     chunk/
       my_story_chunk-001.json
+    agent/
+      my_story_chunk-001.txt
+    agent-done/
+      my_story_chunk-001.txt
     done/
       my_story_chunk-001.json
 ```
@@ -38,7 +42,9 @@ Conventions:
 - `stories/my_story/my_story.cleaned.txt`: cleaned source text written by `clean-source` and `prepare-story`.
 - `stories/my_story/my_story.json`: story JSON source of truth for the reader.
 - `stories/my_story/chunk/*.json`: untranslated work items exported for agents.
-- `stories/my_story/done/*.json`: completed work items to merge.
+- `stories/my_story/agent/*.txt`: translator-friendly plain-text sheets generated from JSON work items.
+- `stories/my_story/agent-done/*.txt`: completed plain-text sheets returned by translation agents.
+- `stories/my_story/done/*.json`: completed work item JSON imported from sheets and ready to merge.
 
 ## Requirements
 
@@ -67,7 +73,7 @@ Open:
 http://127.0.0.1:8080
 ```
 
-Open the included sample story, switch between `native`, `n3`, and `n2_abridged`, and click Japanese sentence text to request VoiceVox playback.
+Open the included sample story, switch between `native`, `n3`, and `n3_abridged`, and click Japanese sentence text to request VoiceVox playback.
 
 Run tests:
 
@@ -126,11 +132,84 @@ go run ./cmd/jpstories export-work -story my_story -level n3
 go run ./cmd/jpstories export-work -story my_story -chunk chunk-001
 ```
 
+Convert exported JSON work items into translator-friendly text sheets:
+
+```powershell
+go run ./cmd/jpstories export-agent-work -story my_story
+```
+
+After agents complete sheets in `stories/my_story/agent-done/`, validate them against the original sheets:
+
+```powershell
+go run ./cmd/jpstories validate-agent-work -story my_story
+```
+
+The validator reports missing or extra sheets, changed metadata or English text, malformed fences, duplicate labels, missing blocks, unknown content, and empty requested translations.
+
+To gate a just-finished worker batch, pass only the assigned sheet names. This ignores unrelated pending sheets and exits non-zero if the batch is not ready:
+
+```powershell
+go run ./cmd/jpstories validate-agent-work -story my_story my_story_chunk-001.txt my_story_chunk-002.txt
+```
+
+Then import them back into completed JSON:
+
+```powershell
+go run ./cmd/jpstories import-agent-work -story my_story -check
+```
+
+Check mode validates every completed sheet against its source JSON work item and reports all import failures without writing `done/*.json`.
+
+Before importing, the repair helper can fix BOMs, restore smart quotes in English blocks, repair missing closing fences where the next sheet label/header is clear, and report missing, invalid, or extra completed sheets:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File skills\jpstories-workitem-translator\scripts\repair_agent_sheets.ps1 -Story my_story
+```
+
+Check or repair only a just-failed sheet:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File skills\jpstories-workitem-translator\scripts\repair_agent_sheets.ps1 -Story my_story -File my_story_chunk-001.txt -Check
+```
+
+For badly malformed output, rebuild the completed sheet from the original `agent/` sheet shape and salvage only translation text:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File skills\jpstories-workitem-translator\scripts\repair_agent_sheets.ps1 -Story my_story -File my_story_chunk-001.txt -RewriteFromSource
+```
+
+The shared Python utility is also callable directly:
+
+```powershell
+python skills\jpstories-workitem-translator\scripts\agent_sheet_tools.py --story my_story --file my_story_chunk-001.txt --check
+python skills\jpstories-workitem-translator\scripts\agent_sheet_tools.py --source-sheet stories\my_story\agent\my_story_chunk-001.txt --done-sheet stories\my_story\agent-done\my_story_chunk-001.txt --rewrite-from-source
+```
+
+If a worker disconnects, is content-filtered, or leaves a partial completed sheet, treat that output as incomplete. Quarantine the invalid completed file before retrying the sheet with a fresh worker:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File skills\jpstories-workitem-translator\scripts\repair_agent_sheets.ps1 -Story my_story -File my_story_chunk-001.txt -QuarantineInvalid
+```
+
+The helper writes a JSONL repair log at `stories/my_story/agent-repair-log.jsonl` for fixed, invalid, missing, and extra sheet events. Use that log to spot files that repeatedly need repair or escalation.
+
+```powershell
+go run ./cmd/jpstories import-agent-work -story my_story
+```
+
 Merge completed work item output back into a story:
 
 ```powershell
 go run ./cmd/jpstories merge-work -story my_story
 ```
+
+Run the full end-to-end acceptance gate after all agent sheets are complete:
+
+```powershell
+go run ./cmd/jpstories accept-story -story my_story
+```
+
+This validates exact `agent/` to `agent-done/` sheet coverage, checks and imports completed sheets into `done/`, validates completed work item JSON, merges the expected number of translations, and requires both draft and complete story validation to pass.
 
 Validate completed work item output before merging:
 
@@ -184,7 +263,7 @@ This command reads `stories/my_story/my_story.txt` and writes:
 - `stories/my_story/my_story.json`
 - missing work item JSON files in `stories/my_story/chunk/`
 
-Use `-force` to overwrite the cleaned source and story JSON outputs. Use `-words-per-chunk` to tune grouped work item size. Use `-level native`, `-level n3`, or `-level n2_abridged` to export only one translation level.
+Use `-force` to overwrite the cleaned source and story JSON outputs. Use `-words-per-chunk` to tune grouped work item size. Use `-level native`, `-level n3`, or `-level n3_abridged` to export only one translation level.
 
 ### 3. Clean Raw Source Text Manually When Needed
 
@@ -240,31 +319,51 @@ Run:
 go run ./cmd/jpstories export-work -story my_story
 ```
 
-The exporter writes small JSON files in `stories/my_story/chunk/`, one per chunk with missing translations. Each work item includes:
+The exporter writes small canonical JSON files in `stories/my_story/chunk/`, one per chunk with missing translations. Each work item includes:
 
 - story ID and title
 - chunk ID
 - requested missing translation levels
 - paragraph and sentence IDs
 - English source text
-- empty sentence-level translation fields such as `native`, `n3`, or `n2_abridged`
+- empty sentence-level translation fields such as `native`, `n3`, or `n3_abridged`
 
 Instruction text is kept in `AGENTS.md` and the local translator skills, not repeated inside each work item JSON file.
 
+For normal agent translation, convert those JSON work items into plain-text sheets:
+
+```powershell
+go run ./cmd/jpstories export-agent-work -story my_story
+```
+
+The sheet files in `stories/my_story/agent/` contain metadata, sentence IDs, English source text, and empty translation blocks. They are easier for subagents to edit than JSON. The original JSON files remain the source of truth for validation and import.
+
 ### 6. Translate With Codex Or Claude
 
-Give one work item file to Codex or Claude and ask it to fill only the empty sentence-level translation fields.
+Give one text sheet from `stories/my_story/agent/` to Codex or Claude and ask it to fill only the empty translation blocks.
 
 Important translation-agent rules:
 
 - preserve every ID exactly
 - translate only the requested `levels`
 - do not change English source text
-- do not add or remove sentence-level translation fields
-- write valid JSON only
+- do not add or remove translation block labels
+- write the completed plain-text sheet, not JSON
 - do not call translation APIs from inside this project
 
-Move completed work item JSON files into:
+Move completed sheet files into:
+
+```text
+stories/my_story/agent-done/
+```
+
+Then import them back into completed JSON:
+
+```powershell
+go run ./cmd/jpstories import-agent-work -story my_story
+```
+
+The importer compares each completed sheet with its matching source JSON work item and writes completed JSON into:
 
 ```text
 stories/my_story/done/
@@ -310,6 +409,12 @@ For completed stories:
 go run ./cmd/jpstories validate -complete -story my_story
 ```
 
+Or run the whole final gate in one command:
+
+```powershell
+go run ./cmd/jpstories accept-story -story my_story
+```
+
 ### 9. Read In The Browser
 
 Start the server:
@@ -329,7 +434,7 @@ The reader shows:
 - a story directory
 - Japanese on the left
 - English on the right
-- translation tabs for `native`, `n3`, and `n2_abridged`
+- translation tabs for `native`, `n3`, and `n3_abridged`
 - clickable Japanese sentences for VoiceVox playback
 
 ## VoiceVox Settings
@@ -354,7 +459,7 @@ Supported translation levels are exactly:
 
 - `native`
 - `n3`
-- `n2_abridged`
+- `n3_abridged`
 
 Example shape:
 
@@ -365,7 +470,7 @@ Example shape:
   "source_language": "en",
   "target_language": "ja",
   "source_file": "stories/my_story/my_story.cleaned.txt",
-  "levels": ["native", "n3", "n2_abridged"],
+  "levels": ["native", "n3", "n3_abridged"],
   "chunks": [
     {
       "id": "chunk-001",
@@ -379,7 +484,7 @@ Example shape:
               "translations": {
                 "native": "<natural Japanese translation>",
                 "n3": "<JLPT N3-level Japanese translation>",
-                "n2_abridged": "<shorter JLPT N2-level Japanese translation>"
+                "n3_abridged": "<shorter JLPT N3-level Japanese translation>"
               }
             }
           ]
@@ -398,7 +503,7 @@ IDs must remain stable. The web UI, work item export, merge tooling, validation,
 
 `n3`: learner-friendly JLPT N3-level translation.
 
-`n2_abridged`: shorter JLPT N2-level version that preserves the story.
+`n3_abridged`: shorter JLPT N3-level version that preserves the story.
 
 See `AGENTS.md` for detailed translation-agent guidance.
 
@@ -418,6 +523,12 @@ go run ./cmd/jpstories export-work -story sample-station
 ```
 
 The sample story is already complete, so exporting it should report no missing translations.
+
+Validate completed agent sheets before importing:
+
+```powershell
+go run ./cmd/jpstories validate-agent-work -story my_story
+```
 
 ## Notes
 

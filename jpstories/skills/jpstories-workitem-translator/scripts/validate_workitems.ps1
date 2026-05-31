@@ -12,7 +12,7 @@ param(
 
 $ErrorActionPreference = "Stop"
 
-$supportedLevels = @("native", "n3", "n2_abridged")
+$supportedLevels = @("native", "n3", "n3_abridged")
 
 function Remove-Utf8Bom {
   param([Parameter(Mandatory = $true)][string]$Path)

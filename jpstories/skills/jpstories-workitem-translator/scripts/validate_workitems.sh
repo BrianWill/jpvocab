@@ -19,7 +19,7 @@ import json
 import os
 import sys
 
-SUPPORTED_LEVELS = {"native", "n3", "n2_abridged"}
+SUPPORTED_LEVELS = {"native", "n3", "n3_abridged"}
 
 
 def remove_utf8_bom(path):

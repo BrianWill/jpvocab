@@ -2,7 +2,7 @@
 
 This repository is a working local-first Japanese learner story app. It has a Go command, a filesystem-backed story format, deterministic chunking, Codex/Claude work item export and merge, a browser reader, VoiceVox playback, and a settings page.
 
-Translation agents are invoked manually or semi-manually through Codex or Claude. They are not invoked by the Go server and should not call model or translation APIs. They read local files, translate assigned work items, and write local JSON output.
+Translation agents are invoked manually or semi-manually through Codex or Claude. They are not invoked by the Go server and should not call model or translation APIs. They read local files, translate assigned work items, and normally write completed plain-text translation sheets that are imported back into JSON by the coordinator.
 
 ## Current Project Shape
 
@@ -26,6 +26,12 @@ go run ./cmd/jpstories clean-source -story my_story
 go run ./cmd/jpstories prepare-story -story my_story
 go run ./cmd/jpstories chunk -story my_story
 go run ./cmd/jpstories export-work -story my_story
+go run ./cmd/jpstories export-agent-work -story my_story
+go run ./cmd/jpstories validate-agent-work -story my_story
+go run ./cmd/jpstories validate-agent-work -story my_story my_story_chunk-001.txt
+go run ./cmd/jpstories import-agent-work -story my_story -check
+go run ./cmd/jpstories import-agent-work -story my_story
+go run ./cmd/jpstories accept-story -story my_story
 go run ./cmd/jpstories merge-work -story my_story
 go run ./cmd/jpstories validate -story my_story
 go run ./cmd/jpstories validate -complete -story my_story
@@ -37,7 +43,7 @@ go test ./...
 ## Coding Agents
 
 - Keep v1 local-first and filesystem-backed. Do not add a database or hosted service boundary without updating the plan and docs.
-- Treat story JSON, work item JSON, and config JSON as structured data. Use JSON parsers/encoders.
+- Treat story JSON, work item JSON, imported completed JSON, and config JSON as structured data. Use JSON parsers/encoders. Translation sheets are a human/agent authoring format; import them through `import-agent-work` instead of hand-editing completed JSON.
 - Preserve stable IDs. Story, chunk, paragraph, and sentence IDs are used by validation, merge, rendering, and VoiceVox playback.
 - Keep VoiceVox optional. The reader, chunker, validator, exporter, merger, and settings page must remain usable when VoiceVox is unavailable.
 - Keep README command examples aligned with implemented commands.
@@ -46,17 +52,50 @@ go test ./...
 
 ## Translation Agents
 
-Translate prepared work item JSON files from local disk. Work items live in `stories/<story>/chunk/`; completed files should be written or moved to `stories/<story>/done/`. Do not split full stories yourself unless explicitly asked to repair source chunking. Do not change story structure, IDs, English source text, unrelated translation levels, or unrelated sentences.
+Translate prepared plain-text sheet files from local disk when available. JSON work items live in `stories/<story>/chunk/`, translator sheets live in `stories/<story>/agent/`, completed sheets should be written or moved to `stories/<story>/agent-done/`, and `import-agent-work` converts them into completed JSON under `stories/<story>/done/`. Do not split full stories yourself unless explicitly asked to repair source chunking. Do not change story structure, IDs, English source text, unrelated translation levels, or unrelated sentences.
 
-When given a work item:
+When given a translation sheet:
 
-1. Read the assigned local JSON file.
-2. Translate only the requested `levels`.
-3. Fill only existing empty sentence-level translation fields such as `native`, `n3`, and `n2_abridged`.
-4. Preserve `story_id`, `chunk_id`, `levels`, `paragraphs`, sentence IDs, English text, and JSON shape exactly.
-5. Write valid JSON only. Do not include Markdown fences or commentary in generated JSON files.
+1. Read the assigned local `.txt` sheet.
+2. Build a quick expected-ID and expected-label checklist from the source sheet.
+3. Translate only the requested `levels`.
+4. Fill only existing empty translation blocks such as `native`, `n3`, and `n3_abridged`.
+5. Preserve metadata, sentence IDs, English text, block labels, fences, and sheet order exactly.
+6. Re-read the output and verify every requested block is present exactly once and non-empty before reporting success.
+7. Write the completed plain-text sheet only. Do not include extra Markdown fences or commentary.
 
 The merge command rejects unknown sentence IDs, unsupported levels, mismatched story IDs, extra fields, and empty translations.
+
+After each translation worker finishes, gate only the assigned completed sheets before marking that worker complete:
+
+```powershell
+go run ./cmd/jpstories validate-agent-work -story my_story my_story_chunk-001.txt
+```
+
+For failed batches, retry the failed sheet files one at a time while the validation output is fresh.
+Include the exact failure lines in the retry prompt and do not reassign neighboring files that already passed.
+Treat interrupted worker streams, content-filter stops, missing final reports, or partially written files as incomplete output, not success. Before retrying a known-bad completed sheet, quarantine it so the next worker starts from the clean source sheet instead of editing corrupted output:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File skills\jpstories-workitem-translator\scripts\repair_agent_sheets.ps1 -Story my_story -File my_story_chunk-001.txt -QuarantineInvalid
+```
+
+The repair helper records fixed, invalid, missing, and extra sheet events in `stories/my_story/agent-repair-log.jsonl`. Repeated failures on the same file should be retried one at a time and escalated to the coordinator or a stronger model.
+
+Before writing imported completed JSON, dry-run the import diagnostics:
+
+```powershell
+go run ./cmd/jpstories import-agent-work -story my_story -check
+```
+
+When a completed sheet needs mechanical repair before import, use the reusable helper under `skills/jpstories-workitem-translator/scripts/` rather than creating one-off scripts in the repo root:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File skills\jpstories-workitem-translator\scripts\repair_agent_sheets.ps1 -Story my_story -File my_story_chunk-001.txt -Check
+powershell -ExecutionPolicy Bypass -File skills\jpstories-workitem-translator\scripts\repair_agent_sheets.ps1 -Story my_story -File my_story_chunk-001.txt -RewriteFromSource
+```
+
+`-RewriteFromSource` rebuilds the completed sheet from the original `agent/` sheet, preserving metadata, sentence IDs, English text, labels, fences, and order while filling only salvaged translations.
 
 Before merging completed work items, validate all `done/` files against their matching `chunk/` source files:
 
@@ -71,6 +110,14 @@ sh skills/jpstories-workitem-translator/scripts/validate_workitems.sh --story my
 ```
 
 The batch validator reports valid, missing, invalid, and extra files. Reassign or repair missing/invalid outputs before running `merge-work`.
+
+For the final completion gate, prefer the executable acceptance command:
+
+```powershell
+go run ./cmd/jpstories accept-story -story my_story
+```
+
+It requires exact `agent-done/` coverage, strict sheet validation, successful import, completed JSON validation, expected merge counts, `validate -story`, and `validate -complete`. Do not report a translation run complete until this command passes.
 
 ## Translation Levels
 
@@ -89,12 +136,12 @@ The batch validator reports valid, missing, invalid, and extra files. Reassign o
 - Preserve important meaning even when simplifying grammar.
 - Keep the result natural, not a word-by-word gloss.
 
-### `n2_abridged`
+### `n3_abridged`
 
-- Write a shorter JLPT N2-level version.
+- Write a shorter JLPT N3-level version.
 - Preserve essential events, relationships, and emotional meaning.
 - Compress details when useful, but do not change the plot.
-- Use natural Japanese suitable for upper-intermediate learners.
+- Use natural Japanese suitable for intermediate learners.
 
 ## Story JSON Rules
 
@@ -102,7 +149,7 @@ The batch validator reports valid, missing, invalid, and extra files. Reassign o
 - Required levels are exactly:
   - `native`
   - `n3`
-  - `n2_abridged`
+  - `n3_abridged`
 - Draft stories may have empty translation maps.
 - Complete stories should pass:
 

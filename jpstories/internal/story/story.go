@@ -9,15 +9,15 @@ import (
 const (
 	LevelNative     = "native"
 	LevelN3         = "n3"
-	LevelN2Abridged = "n2_abridged"
+	LevelN3Abridged = "n3_abridged"
 )
 
-var SupportedLevels = []string{LevelNative, LevelN3, LevelN2Abridged}
+var SupportedLevels = []string{LevelNative, LevelN3, LevelN3Abridged}
 
 var supportedLevelSet = map[string]struct{}{
 	LevelNative:     {},
 	LevelN3:         {},
-	LevelN2Abridged: {},
+	LevelN3Abridged: {},
 }
 
 type Story struct {

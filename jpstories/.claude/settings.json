@@ -1,0 +1,9 @@
+{
+  "permissions": {
+    "allow": [
+      "Write(stories/deathly_hollows_ch8/done/*)",
+      "PowerShell",
+      "Bash"
+    ]
+  }
+}

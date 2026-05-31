@@ -42,6 +42,14 @@ func run(args []string) error {
 		return runPrepareStory(args[1:])
 	case "export-work":
 		return runExportWork(args[1:])
+	case "export-agent-work":
+		return runExportAgentWork(args[1:])
+	case "validate-agent-work":
+		return runValidateAgentWork(args[1:])
+	case "import-agent-work":
+		return runImportAgentWork(args[1:])
+	case "accept-story":
+		return runAcceptStory(args[1:])
 	case "merge-work":
 		return runMergeWork(args[1:])
 	case "validate":
@@ -263,6 +271,300 @@ func runExportWork(args []string) error {
 		fmt.Fprintln(os.Stderr, "no missing translations found")
 	}
 	return nil
+}
+
+func runExportAgentWork(args []string) error {
+	fs := flag.NewFlagSet("export-agent-work", flag.ContinueOnError)
+	storyName := fs.String("story", "", "story name under stories/")
+	storiesRoot := fs.String("stories", "stories", "stories root directory")
+	in := fs.String("in", "", "directory containing source work item JSON files")
+	out := fs.String("out", "", "directory for translator-friendly text sheets")
+	fs.SetOutput(os.Stderr)
+
+	if err := fs.Parse(args); err != nil {
+		return err
+	}
+	if *storyName == "" && *in == "" {
+		return fmt.Errorf("export-agent-work requires -story or -in")
+	}
+	if *storyName != "" {
+		layout, err := resolveStoryLayout(*storiesRoot, *storyName)
+		if err != nil {
+			return err
+		}
+		if *in == "" {
+			*in = layout.ChunkDir
+		}
+		if *out == "" {
+			*out = layout.AgentDir
+		}
+	}
+	if *out == "" {
+		return fmt.Errorf("export-agent-work requires -story or -out")
+	}
+
+	result, err := workitem.ExportSheets(workitem.ExportSheetsOptions{
+		SourceDir: *in,
+		OutputDir: *out,
+	})
+	if err != nil {
+		return err
+	}
+	for _, file := range result.Files {
+		fmt.Fprintf(os.Stderr, "wrote agent work sheet %s\n", file)
+	}
+	return nil
+}
+
+func runImportAgentWork(args []string) error {
+	fs := flag.NewFlagSet("import-agent-work", flag.ContinueOnError)
+	storyName := fs.String("story", "", "story name under stories/")
+	storiesRoot := fs.String("stories", "stories", "stories root directory")
+	source := fs.String("source", "", "directory containing original work item JSON files")
+	in := fs.String("in", "", "directory containing completed translator-friendly text sheets")
+	out := fs.String("out", "", "directory for completed work item JSON files")
+	check := fs.Bool("check", false, "validate completed sheets without writing completed work item JSON")
+	fs.SetOutput(os.Stderr)
+
+	if err := fs.Parse(args); err != nil {
+		return err
+	}
+	if *storyName == "" && (*source == "" || *in == "") {
+		return fmt.Errorf("import-agent-work requires -story or both -source and -in")
+	}
+	if *storyName != "" {
+		layout, err := resolveStoryLayout(*storiesRoot, *storyName)
+		if err != nil {
+			return err
+		}
+		if *source == "" {
+			*source = layout.ChunkDir
+		}
+		if *in == "" {
+			*in = layout.AgentDoneDir
+		}
+		if *out == "" {
+			*out = layout.DoneDir
+		}
+	}
+	if *out == "" && !*check {
+		return fmt.Errorf("import-agent-work requires -story or -out")
+	}
+
+	result, err := workitem.ImportSheets(workitem.ImportSheetsOptions{
+		SourceDir: *source,
+		InputDir:  *in,
+		OutputDir: *out,
+		Check:     *check,
+	})
+	if len(result.Failures) > 0 {
+		for _, failure := range result.Failures {
+			fmt.Fprintln(os.Stderr, failure.String())
+		}
+	}
+	if err != nil {
+		return err
+	}
+	if *check {
+		fmt.Fprintf(os.Stderr, "checked %d completed agent sheet(s); %d ready to import\n", result.FilesValidated, len(result.Files))
+		return nil
+	}
+	for _, file := range result.Files {
+		fmt.Fprintf(os.Stderr, "wrote completed work item %s\n", file)
+	}
+	return nil
+}
+
+func runAcceptStory(args []string) error {
+	fs := flag.NewFlagSet("accept-story", flag.ContinueOnError)
+	storyName := fs.String("story", "", "story name under stories/")
+	storiesRoot := fs.String("stories", "stories", "stories root directory")
+	fixBOM := fs.Bool("fix-bom", true, "strip UTF-8 BOM bytes from completed work item JSON files during validation")
+	fs.SetOutput(os.Stderr)
+
+	if err := fs.Parse(args); err != nil {
+		return err
+	}
+	if *storyName == "" {
+		return fmt.Errorf("accept-story requires -story")
+	}
+	layout, err := resolveStoryLayout(*storiesRoot, *storyName)
+	if err != nil {
+		return err
+	}
+
+	fmt.Fprintf(os.Stderr, "acceptance: validating completed agent sheets for %s\n", *storyName)
+	sheetResult, err := workitem.ValidateSheets(workitem.ValidateSheetsOptions{
+		SourceDir: layout.AgentDir,
+		InputDir:  layout.AgentDoneDir,
+	})
+	if err != nil {
+		return err
+	}
+	printAgentValidationProgress(sheetResult)
+	if len(sheetResult.Failures) > 0 {
+		for _, failure := range sheetResult.Failures {
+			fmt.Fprintln(os.Stderr, failure.String())
+		}
+		return fmt.Errorf("acceptance failed: agent sheet validation failed")
+	}
+	fmt.Fprintf(os.Stderr, "acceptance: %d completed agent sheet(s) ready\n", sheetResult.FilesValidated)
+
+	fmt.Fprintln(os.Stderr, "acceptance: checking agent sheet import")
+	checkResult, err := workitem.ImportSheets(workitem.ImportSheetsOptions{
+		SourceDir: layout.ChunkDir,
+		InputDir:  layout.AgentDoneDir,
+		Check:     true,
+	})
+	if len(checkResult.Failures) > 0 {
+		for _, failure := range checkResult.Failures {
+			fmt.Fprintln(os.Stderr, failure.String())
+		}
+	}
+	if err != nil {
+		return err
+	}
+	if checkResult.FilesValidated != sheetResult.FilesValidated {
+		return fmt.Errorf("acceptance failed: checked %d sheet(s), want %d", checkResult.FilesValidated, sheetResult.FilesValidated)
+	}
+
+	fmt.Fprintln(os.Stderr, "acceptance: importing completed agent sheets")
+	importResult, err := workitem.ImportSheets(workitem.ImportSheetsOptions{
+		SourceDir: layout.ChunkDir,
+		InputDir:  layout.AgentDoneDir,
+		OutputDir: layout.DoneDir,
+	})
+	if len(importResult.Failures) > 0 {
+		for _, failure := range importResult.Failures {
+			fmt.Fprintln(os.Stderr, failure.String())
+		}
+	}
+	if err != nil {
+		return err
+	}
+	if len(importResult.Files) != sheetResult.FilesValidated {
+		return fmt.Errorf("acceptance failed: imported %d completed work item(s), want %d", len(importResult.Files), sheetResult.FilesValidated)
+	}
+	fmt.Fprintf(os.Stderr, "acceptance: imported %d completed work item(s)\n", len(importResult.Files))
+
+	fmt.Fprintln(os.Stderr, "acceptance: validating completed work item JSON")
+	workResult, err := workitem.ValidateWorkItems(workitem.ValidateWorkItemsOptions{
+		SourceDir: layout.ChunkDir,
+		InputDir:  layout.DoneDir,
+		FixBOM:    *fixBOM,
+	})
+	if err != nil {
+		return err
+	}
+	printWorkItemValidationProgress(workResult)
+	if len(workResult.Failures) > 0 {
+		for _, failure := range workResult.Failures {
+			fmt.Fprintln(os.Stderr, failure.String())
+		}
+		return fmt.Errorf("acceptance failed: completed work item validation failed")
+	}
+
+	fmt.Fprintln(os.Stderr, "acceptance: merging completed work items")
+	mergeResult, err := workitem.Merge(workitem.MergeOptions{
+		StoryPath: layout.StoryPath,
+		InputDir:  layout.DoneDir,
+	})
+	if err != nil {
+		return err
+	}
+	if mergeResult.FilesMerged != workResult.FilesValidated {
+		return fmt.Errorf("acceptance failed: merged %d file(s), want %d", mergeResult.FilesMerged, workResult.FilesValidated)
+	}
+	if mergeResult.TranslationsMerged != workResult.Translations {
+		return fmt.Errorf("acceptance failed: merged %d translation(s), want %d", mergeResult.TranslationsMerged, workResult.Translations)
+	}
+	fmt.Fprintf(os.Stderr, "acceptance: merged %d translations from %d work item file(s)\n", mergeResult.TranslationsMerged, mergeResult.FilesMerged)
+
+	s, err := story.LoadFile(layout.StoryPath)
+	if err != nil {
+		return err
+	}
+	fmt.Fprintf(os.Stderr, "acceptance: %s is valid\n", layout.StoryPath)
+	if err := story.ValidateComplete(s); err != nil {
+		return err
+	}
+	fmt.Fprintf(os.Stderr, "acceptance: %s is complete\n", layout.StoryPath)
+	fmt.Fprintf(os.Stderr, "acceptance passed for %s\n", *storyName)
+	return nil
+}
+
+func runValidateAgentWork(args []string) error {
+	fs := flag.NewFlagSet("validate-agent-work", flag.ContinueOnError)
+	storyName := fs.String("story", "", "story name under stories/")
+	storiesRoot := fs.String("stories", "stories", "stories root directory")
+	source := fs.String("source", "", "directory containing original translator-friendly text sheets")
+	in := fs.String("in", "", "directory containing completed translator-friendly text sheets")
+	fs.SetOutput(os.Stderr)
+
+	if err := fs.Parse(args); err != nil {
+		return err
+	}
+	if *storyName == "" && (*source == "" || *in == "") {
+		return fmt.Errorf("validate-agent-work requires -story or both -source and -in")
+	}
+	if *storyName != "" {
+		layout, err := resolveStoryLayout(*storiesRoot, *storyName)
+		if err != nil {
+			return err
+		}
+		if *source == "" {
+			*source = layout.AgentDir
+		}
+		if *in == "" {
+			*in = layout.AgentDoneDir
+		}
+	}
+
+	result, err := workitem.ValidateSheets(workitem.ValidateSheetsOptions{
+		SourceDir: *source,
+		InputDir:  *in,
+		Files:     fs.Args(),
+	})
+	if err != nil {
+		return err
+	}
+	printAgentValidationProgress(result)
+	if len(result.Failures) > 0 {
+		for _, failure := range result.Failures {
+			fmt.Fprintln(os.Stderr, failure.String())
+		}
+		return fmt.Errorf("agent sheet validation failed: %d failure(s) across %d completed file(s)", len(result.Failures), result.FilesValidated)
+	}
+	fmt.Fprintf(os.Stderr, "validated %d completed agent sheet(s)\n", result.FilesValidated)
+	return nil
+}
+
+func printAgentValidationProgress(result workitem.SheetValidationResult) {
+	if len(result.Files) == 0 {
+		return
+	}
+	fmt.Fprintln(os.Stderr, "agent sheet validation:")
+	for _, file := range result.Files {
+		if file.FailureCount == 0 {
+			fmt.Fprintf(os.Stderr, "  %-14s %s\n", file.Status, file.File)
+			continue
+		}
+		fmt.Fprintf(os.Stderr, "  %-14s %s (%d failure(s))\n", file.Status, file.File, file.FailureCount)
+	}
+}
+
+func printWorkItemValidationProgress(result workitem.WorkItemValidationResult) {
+	if len(result.Files) == 0 {
+		return
+	}
+	fmt.Fprintln(os.Stderr, "completed work item validation:")
+	for _, file := range result.Files {
+		if file.FailureCount == 0 {
+			fmt.Fprintf(os.Stderr, "  %-14s %s\n", file.Status, file.File)
+			continue
+		}
+		fmt.Fprintf(os.Stderr, "  %-14s %s (%d failure(s))\n", file.Status, file.File, file.FailureCount)
+	}
 }
 
 func runMergeWork(args []string) error {
@@ -536,13 +838,15 @@ func defaultCleanedPath(path string) string {
 }
 
 type storyLayout struct {
-	Name        string
-	Dir         string
-	SourcePath  string
-	CleanedPath string
-	StoryPath   string
-	ChunkDir    string
-	DoneDir     string
+	Name         string
+	Dir          string
+	SourcePath   string
+	CleanedPath  string
+	StoryPath    string
+	ChunkDir     string
+	AgentDir     string
+	AgentDoneDir string
+	DoneDir      string
 }
 
 func resolveStoryLayout(storiesRoot, name string) (storyLayout, error) {
@@ -558,13 +862,15 @@ func resolveStoryLayout(storiesRoot, name string) (storyLayout, error) {
 	}
 	dir := filepath.Join(storiesRoot, name)
 	return storyLayout{
-		Name:        name,
-		Dir:         dir,
-		SourcePath:  filepath.Join(dir, name+".txt"),
-		CleanedPath: filepath.Join(dir, name+".cleaned.txt"),
-		StoryPath:   filepath.Join(dir, name+".json"),
-		ChunkDir:    filepath.Join(dir, "chunk"),
-		DoneDir:     filepath.Join(dir, "done"),
+		Name:         name,
+		Dir:          dir,
+		SourcePath:   filepath.Join(dir, name+".txt"),
+		CleanedPath:  filepath.Join(dir, name+".cleaned.txt"),
+		StoryPath:    filepath.Join(dir, name+".json"),
+		ChunkDir:     filepath.Join(dir, "chunk"),
+		AgentDir:     filepath.Join(dir, "agent"),
+		AgentDoneDir: filepath.Join(dir, "agent-done"),
+		DoneDir:      filepath.Join(dir, "done"),
 	}, nil
 }
 
@@ -575,6 +881,10 @@ func printUsage() {
   jpstories prepare-story -story my_story [-words-per-chunk 220]
   jpstories chunk -story my_story [-words-per-chunk 220]
   jpstories export-work -story my_story
+  jpstories export-agent-work -story my_story
+  jpstories validate-agent-work -story my_story
+  jpstories import-agent-work -story my_story [-check]
+  jpstories accept-story -story my_story
   jpstories merge-work -story my_story
   jpstories validate [-complete] -story my_story`)
 }

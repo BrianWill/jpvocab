@@ -12,6 +12,7 @@
 stories/
 
 .gocache/
+.tmp_jpstories_repair/
 
 config.json
 

@@ -113,18 +113,18 @@ func TestStoryDetailFallsBackForUnknownLevel(t *testing.T) {
 func TestStoryDetailShowsMissingTranslationPlaceholder(t *testing.T) {
 	dir := t.TempDir()
 	s := fixtureStory()
-	delete(s.Chunks[0].Paragraphs[0].Sentences[1].Translations, story.LevelN2Abridged)
+	delete(s.Chunks[0].Paragraphs[0].Sentences[1].Translations, story.LevelN3Abridged)
 	writeStory(t, dir, s)
 	srv := New(Config{StoriesDir: dir})
 
 	rr := httptest.NewRecorder()
-	srv.Handler().ServeHTTP(rr, httptest.NewRequest(http.MethodGet, "/stories/sample?level=n2_abridged", nil))
+	srv.Handler().ServeHTTP(rr, httptest.NewRequest(http.MethodGet, "/stories/sample?level=n3_abridged", nil))
 
 	if rr.Code != http.StatusOK {
 		t.Fatalf("status = %d, want %d", rr.Code, http.StatusOK)
 	}
 	body := rr.Body.String()
-	if !strings.Contains(body, "[missing n2_abridged translation]") {
+	if !strings.Contains(body, "[missing n3_abridged translation]") {
 		t.Fatalf("body missing placeholder:\n%s", body)
 	}
 	if !strings.Contains(body, "disabled") {
@@ -509,7 +509,7 @@ func fixtureStory() story.Story {
 		SourceLanguage: "en",
 		TargetLanguage: "ja",
 		SourceFile:     "stories/sample/sample.txt",
-		Levels:         []string{story.LevelNative, story.LevelN3, story.LevelN2Abridged},
+		Levels:         []string{story.LevelNative, story.LevelN3, story.LevelN3Abridged},
 		Chunks: []story.Chunk{
 			{
 				ID: "chunk-001",
@@ -523,7 +523,7 @@ func fixtureStory() story.Story {
 								Translations: map[string]string{
 									story.LevelNative:     "native first",
 									story.LevelN3:         "n3 first",
-									story.LevelN2Abridged: "n2 first",
+									story.LevelN3Abridged: "n3 abridged first",
 								},
 							},
 							{
@@ -532,7 +532,7 @@ func fixtureStory() story.Story {
 								Translations: map[string]string{
 									story.LevelNative:     "native second",
 									story.LevelN3:         "n3 second",
-									story.LevelN2Abridged: "n2 second",
+									story.LevelN3Abridged: "n3 abridged second",
 								},
 							},
 						},

@@ -173,8 +173,35 @@ func TestDraftSentenceSplittingHandlesAbbreviationsEllipsesAndSemicolons(t *test
 	}
 	want := []string{
 		"Mr. Smith waited... then Mrs. Green arrived.",
-		"she waved.",
+		"She waved.",
 		"Dr. Brown left at 3.5 and returned.",
+	}
+	for i, sentence := range sentences {
+		if sentence.English != want[i] {
+			t.Fatalf("sentence[%d] = %q, want %q", i, sentence.English, want[i])
+		}
+	}
+}
+
+func TestDraftSentenceSplittingKeepsSpacedEllipsesTogether(t *testing.T) {
+	text := `“My dear boy! Arthur told me you were here, disguised. . . . I am so glad, so honored!”`
+
+	got, err := Draft(text, Options{
+		StoryID:    "spaced-ellipses",
+		Title:      "Spaced Ellipses",
+		SourceFile: "stories/spaced-ellipses/spaced-ellipses.txt",
+	})
+	if err != nil {
+		t.Fatalf("Draft() error = %v", err)
+	}
+
+	sentences := got.Chunks[0].Paragraphs[0].Sentences
+	if len(sentences) != 2 {
+		t.Fatalf("sentence count = %d, want 2: %#v", len(sentences), sentences)
+	}
+	want := []string{
+		"“My dear boy!",
+		"Arthur told me you were here, disguised. . . . I am so glad, so honored!”",
 	}
 	for i, sentence := range sentences {
 		if sentence.English != want[i] {

@@ -186,6 +186,9 @@ func splitSentences(paragraph string) []string {
 				end++
 			}
 			start = end
+			if runes[i] == ';' && start < len(runes) {
+				runes[start] = unicode.ToUpper(runes[start])
+			}
 			i = end - 1
 		}
 	}
@@ -223,7 +226,19 @@ func isPeriodSentenceBoundary(runes []rune, index int) bool {
 }
 
 func isPartOfEllipsis(runes []rune, index int) bool {
-	return (index > 0 && runes[index-1] == '.') || (index+1 < len(runes) && runes[index+1] == '.')
+	return hasNeighboringPeriod(runes, index, -1) || hasNeighboringPeriod(runes, index, 1)
+}
+
+func hasNeighboringPeriod(runes []rune, index int, direction int) bool {
+	for i := index + direction; i >= 0 && i < len(runes); i += direction {
+		if runes[i] == '.' {
+			return true
+		}
+		if !unicode.IsSpace(runes[i]) {
+			return false
+		}
+	}
+	return false
 }
 
 func isDecimalPoint(runes []rune, index int) bool {

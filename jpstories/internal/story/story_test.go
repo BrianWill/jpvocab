@@ -230,7 +230,7 @@ func validStory() Story {
 		SourceLanguage: "en",
 		TargetLanguage: "ja",
 		SourceFile:     "stories/sample/sample.txt",
-		Levels:         []string{LevelNative, LevelN3, LevelN2Abridged},
+		Levels:         []string{LevelNative, LevelN3, LevelN3Abridged},
 		Chunks: []Chunk{
 			{
 				ID: "chunk-001",
@@ -244,7 +244,7 @@ func validStory() Story {
 								Translations: map[string]string{
 									LevelNative:     "native translation",
 									LevelN3:         "n3 translation",
-									LevelN2Abridged: "n2 abridged translation",
+									LevelN3Abridged: "n3 abridged translation",
 								},
 							},
 						},

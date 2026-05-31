@@ -42,7 +42,7 @@ func TestExportWritesOneGroupedWorkItemPerMissingChunk(t *testing.T) {
 	if item.ChunkID != "chunk-001" {
 		t.Fatalf("ChunkID = %q, want chunk-001", item.ChunkID)
 	}
-	if got, want := strings.Join(item.Levels, ","), "native,n3,n2_abridged"; got != want {
+	if got, want := strings.Join(item.Levels, ","), "native,n3,n3_abridged"; got != want {
 		t.Fatalf("Levels = %q, want %q", got, want)
 	}
 	if len(item.Paragraphs) != 1 || len(item.Paragraphs[0].Sentences) != 2 {
@@ -136,7 +136,7 @@ func TestExportAllLevelsSkipsCompleteLevels(t *testing.T) {
 		t.Fatalf("len(Files) = %d, want 1", len(result.Files))
 	}
 	item := readTestWorkItem(t, result.Files[0])
-	if got, want := strings.Join(item.Levels, ","), "n3,n2_abridged"; got != want {
+	if got, want := strings.Join(item.Levels, ","), "n3,n3_abridged"; got != want {
 		t.Fatalf("Levels = %q, want %q", got, want)
 	}
 	for _, sentence := range item.Paragraphs[0].Sentences {
@@ -163,7 +163,7 @@ func TestMergeUpdatesReferencedLevelsAndPreservesOthers(t *testing.T) {
 		StoryID:    "sample",
 		StoryTitle: "Sample",
 		ChunkID:    "chunk-001",
-		Levels:     []string{story.LevelNative, story.LevelN2Abridged},
+		Levels:     []string{story.LevelNative, story.LevelN3Abridged},
 		Paragraphs: []WorkParagraph{
 			{
 				ID: "p-001",
@@ -180,7 +180,7 @@ func TestMergeUpdatesReferencedLevelsAndPreservesOthers(t *testing.T) {
 						English: "Second sentence.",
 						Translations: map[string]string{
 							story.LevelNative:     "second native",
-							story.LevelN2Abridged: "second n2",
+							story.LevelN3Abridged: "second n3 abridged",
 						},
 					},
 				},
@@ -213,8 +213,8 @@ func TestMergeUpdatesReferencedLevelsAndPreservesOthers(t *testing.T) {
 	if sentences[1].Translations[story.LevelNative] != "second native" {
 		t.Fatalf("s-002 native = %q", sentences[1].Translations[story.LevelNative])
 	}
-	if sentences[1].Translations[story.LevelN2Abridged] != "second n2" {
-		t.Fatalf("s-002 n2_abridged = %q", sentences[1].Translations[story.LevelN2Abridged])
+	if sentences[1].Translations[story.LevelN3Abridged] != "second n3 abridged" {
+		t.Fatalf("s-002 n3_abridged = %q", sentences[1].Translations[story.LevelN3Abridged])
 	}
 }
 
@@ -340,6 +340,418 @@ func TestMergeRejectsUnknownWorkItemFields(t *testing.T) {
 	}
 }
 
+func TestExportSheetsWritesTranslatorFriendlyText(t *testing.T) {
+	dir := t.TempDir()
+	sourceDir := filepath.Join(dir, "chunk")
+	outDir := filepath.Join(dir, "agent")
+	if err := os.MkdirAll(sourceDir, 0755); err != nil {
+		t.Fatalf("MkdirAll() error = %v", err)
+	}
+	writeTestWorkItem(t, filepath.Join(sourceDir, "sample_chunk-001.json"), WorkItem{
+		StoryID:    "sample",
+		StoryTitle: "Sample",
+		ChunkID:    "chunk-001",
+		Levels:     []string{story.LevelNative, story.LevelN3},
+		Paragraphs: []WorkParagraph{{
+			ID: "p-001",
+			Sentences: []WorkSentence{{
+				ID:      "s-001",
+				English: "“Hello,” she said.",
+				Translations: map[string]string{
+					story.LevelNative: "",
+					story.LevelN3:     "",
+				},
+			}},
+		}},
+	})
+
+	result, err := ExportSheets(ExportSheetsOptions{
+		SourceDir: sourceDir,
+		OutputDir: outDir,
+	})
+	if err != nil {
+		t.Fatalf("ExportSheets() error = %v", err)
+	}
+	if len(result.Files) != 1 || filepath.Base(result.Files[0]) != "sample_chunk-001.txt" {
+		t.Fatalf("ExportSheets() files = %#v, want one matching txt file", result.Files)
+	}
+	data, err := os.ReadFile(result.Files[0])
+	if err != nil {
+		t.Fatalf("ReadFile() error = %v", err)
+	}
+	text := string(data)
+	for _, want := range []string{
+		"# jpstories translation sheet v1",
+		"source_file: sample_chunk-001.json",
+		"## p-001 / s-001",
+		"“Hello,” she said.",
+		"native:",
+		"n3:",
+	} {
+		if !strings.Contains(text, want) {
+			t.Fatalf("sheet missing %q:\n%s", want, text)
+		}
+	}
+	if strings.Contains(text, "{") || strings.Contains(text, `"story_id"`) {
+		t.Fatalf("sheet looks like JSON:\n%s", text)
+	}
+}
+
+func TestImportSheetsWritesCompletedJSONFromFilledSheet(t *testing.T) {
+	dir := t.TempDir()
+	sourceDir := filepath.Join(dir, "chunk")
+	inputDir := filepath.Join(dir, "agent-done")
+	outputDir := filepath.Join(dir, "done")
+	if err := os.MkdirAll(sourceDir, 0755); err != nil {
+		t.Fatalf("MkdirAll(source) error = %v", err)
+	}
+	if err := os.MkdirAll(inputDir, 0755); err != nil {
+		t.Fatalf("MkdirAll(input) error = %v", err)
+	}
+	writeTestWorkItem(t, filepath.Join(sourceDir, "sample_chunk-001.json"), WorkItem{
+		StoryID:    "sample",
+		StoryTitle: "Sample",
+		ChunkID:    "chunk-001",
+		Levels:     []string{story.LevelNative, story.LevelN3},
+		Paragraphs: []WorkParagraph{{
+			ID: "p-001",
+			Sentences: []WorkSentence{{
+				ID:      "s-001",
+				English: "First sentence.",
+				Translations: map[string]string{
+					story.LevelNative: "",
+					story.LevelN3:     "",
+				},
+			}},
+		}},
+	})
+	sheet := `# jpstories translation sheet v1
+story_id: sample
+story_title: Sample
+chunk_id: chunk-001
+levels: native,n3
+source_file: sample_chunk-001.json
+
+Fill only the empty translation blocks. Do not edit IDs, metadata, English text, or block labels.
+
+## p-001 / s-001
+english:
+<<<JPSTORIES
+First sentence.
+JPSTORIES>>>
+native:
+<<<JPSTORIES
+最初の文です。
+JPSTORIES>>>
+n3:
+<<<JPSTORIES
+はじめの文です。
+JPSTORIES>>>
+`
+	if err := os.WriteFile(filepath.Join(inputDir, "sample_chunk-001.txt"), []byte(sheet), 0644); err != nil {
+		t.Fatalf("WriteFile() error = %v", err)
+	}
+
+	result, err := ImportSheets(ImportSheetsOptions{
+		SourceDir: sourceDir,
+		InputDir:  inputDir,
+		OutputDir: outputDir,
+	})
+	if err != nil {
+		t.Fatalf("ImportSheets() error = %v", err)
+	}
+	if len(result.Files) != 1 || filepath.Base(result.Files[0]) != "sample_chunk-001.json" {
+		t.Fatalf("ImportSheets() files = %#v, want one matching JSON file", result.Files)
+	}
+	item := readTestWorkItem(t, result.Files[0])
+	translations := item.Paragraphs[0].Sentences[0].Translations
+	if translations[story.LevelNative] != "最初の文です。" {
+		t.Fatalf("native = %q", translations[story.LevelNative])
+	}
+	if translations[story.LevelN3] != "はじめの文です。" {
+		t.Fatalf("n3 = %q", translations[story.LevelN3])
+	}
+}
+
+func TestImportSheetsCheckAggregatesDiagnosticsWithoutWriting(t *testing.T) {
+	dir := t.TempDir()
+	sourceDir := filepath.Join(dir, "chunk")
+	inputDir := filepath.Join(dir, "agent-done")
+	outputDir := filepath.Join(dir, "done")
+	if err := os.MkdirAll(sourceDir, 0755); err != nil {
+		t.Fatalf("MkdirAll(source) error = %v", err)
+	}
+	if err := os.MkdirAll(inputDir, 0755); err != nil {
+		t.Fatalf("MkdirAll(input) error = %v", err)
+	}
+	writeTestWorkItem(t, filepath.Join(sourceDir, "sample_chunk-001.json"), WorkItem{
+		StoryID:    "sample",
+		StoryTitle: "Sample",
+		ChunkID:    "chunk-001",
+		Levels:     []string{story.LevelNative, story.LevelN3},
+		Paragraphs: []WorkParagraph{{
+			ID: "p-001",
+			Sentences: []WorkSentence{{
+				ID:      "s-001",
+				English: "First sentence.",
+				Translations: map[string]string{
+					story.LevelNative: "",
+					story.LevelN3:     "",
+				},
+			}},
+		}},
+	})
+	writeTestWorkItem(t, filepath.Join(sourceDir, "sample_chunk-002.json"), WorkItem{
+		StoryID:    "sample",
+		StoryTitle: "Sample",
+		ChunkID:    "chunk-002",
+		Levels:     []string{story.LevelNative},
+		Paragraphs: []WorkParagraph{{
+			ID: "p-001",
+			Sentences: []WorkSentence{{
+				ID:      "s-002",
+				English: "Second sentence.",
+				Translations: map[string]string{
+					story.LevelNative: "",
+				},
+			}},
+		}},
+	})
+	badOne := strings.Replace(testTwoLevelSheet("", "ã¯ã˜ã‚ã®æ–‡ã§ã™ã€‚"), "First sentence.", "Changed sentence.", 1)
+	badOne = strings.Replace(badOne, "n3:\n<<<JPSTORIES", "unexpected:\n<<<JPSTORIES\nextra\nJPSTORIES>>>\nn3:\n<<<JPSTORIES", 1)
+	badTwo := strings.Replace(testSheet("äºŒç•ªç›®ã®æ–‡ã§ã™ã€‚"), "chunk-001", "chunk-002", -1)
+	badTwo = strings.Replace(badTwo, "s-001", "s-002", -1)
+	badTwo = strings.Replace(badTwo, "First sentence.", "Second sentence.", 1)
+	badTwo = strings.Replace(badTwo, "JPSTORIES>>>\n", "", 1)
+	if err := os.WriteFile(filepath.Join(inputDir, "sample_chunk-001.txt"), []byte(badOne), 0644); err != nil {
+		t.Fatalf("WriteFile(bad one) error = %v", err)
+	}
+	if err := os.WriteFile(filepath.Join(inputDir, "sample_chunk-002.txt"), []byte(badTwo), 0644); err != nil {
+		t.Fatalf("WriteFile(bad two) error = %v", err)
+	}
+
+	result, err := ImportSheets(ImportSheetsOptions{
+		SourceDir: sourceDir,
+		InputDir:  inputDir,
+		OutputDir: outputDir,
+		Check:     true,
+	})
+	if err == nil {
+		t.Fatal("ImportSheets() error = nil, want aggregate diagnostics")
+	}
+	got := validationMessages(result.Failures)
+	for _, want := range []string{
+		"sentence s-001: changed English text",
+		"sentence s-001 level native: empty translation",
+		"sentence s-001 level unexpected: extra unknown block",
+		"missing closing fence",
+	} {
+		if !strings.Contains(got, want) {
+			t.Fatalf("failures missing %q:\n%s", want, got)
+		}
+	}
+	if result.FilesValidated != 2 {
+		t.Fatalf("FilesValidated = %d, want 2", result.FilesValidated)
+	}
+	if _, statErr := os.Stat(filepath.Join(outputDir, "sample_chunk-001.json")); !os.IsNotExist(statErr) {
+		t.Fatalf("check mode wrote output or stat failed: %v", statErr)
+	}
+}
+
+func TestImportSheetsCheckSucceedsWithoutOutputDir(t *testing.T) {
+	dir := t.TempDir()
+	sourceDir := filepath.Join(dir, "chunk")
+	inputDir := filepath.Join(dir, "agent-done")
+	if err := os.MkdirAll(sourceDir, 0755); err != nil {
+		t.Fatalf("MkdirAll(source) error = %v", err)
+	}
+	if err := os.MkdirAll(inputDir, 0755); err != nil {
+		t.Fatalf("MkdirAll(input) error = %v", err)
+	}
+	writeTestWorkItem(t, filepath.Join(sourceDir, "sample_chunk-001.json"), WorkItem{
+		StoryID:    "sample",
+		StoryTitle: "Sample",
+		ChunkID:    "chunk-001",
+		Levels:     []string{story.LevelNative},
+		Paragraphs: []WorkParagraph{{
+			ID: "p-001",
+			Sentences: []WorkSentence{{
+				ID:      "s-001",
+				English: "First sentence.",
+				Translations: map[string]string{
+					story.LevelNative: "",
+				},
+			}},
+		}},
+	})
+	if err := os.WriteFile(filepath.Join(inputDir, "sample_chunk-001.txt"), []byte(testSheet("æœ€åˆã®æ–‡ã§ã™ã€‚")), 0644); err != nil {
+		t.Fatalf("WriteFile(sheet) error = %v", err)
+	}
+
+	result, err := ImportSheets(ImportSheetsOptions{
+		SourceDir: sourceDir,
+		InputDir:  inputDir,
+		Check:     true,
+	})
+	if err != nil {
+		t.Fatalf("ImportSheets() error = %v", err)
+	}
+	if result.FilesValidated != 1 || len(result.Files) != 1 {
+		t.Fatalf("ImportSheets() result = %#v, want one ready file", result)
+	}
+}
+
+func TestValidateSheetsAcceptsCompletedSheets(t *testing.T) {
+	dir := t.TempDir()
+	sourceDir := filepath.Join(dir, "agent")
+	inputDir := filepath.Join(dir, "agent-done")
+	if err := os.MkdirAll(sourceDir, 0755); err != nil {
+		t.Fatalf("MkdirAll(source) error = %v", err)
+	}
+	if err := os.MkdirAll(inputDir, 0755); err != nil {
+		t.Fatalf("MkdirAll(input) error = %v", err)
+	}
+
+	source := testSheet("")
+	completed := testSheet("æœ€åˆã®æ–‡ã§ã™ã€‚")
+	if err := os.WriteFile(filepath.Join(sourceDir, "sample_chunk-001.txt"), []byte(source), 0644); err != nil {
+		t.Fatalf("WriteFile(source) error = %v", err)
+	}
+	if err := os.WriteFile(filepath.Join(inputDir, "sample_chunk-001.txt"), []byte(completed), 0644); err != nil {
+		t.Fatalf("WriteFile(completed) error = %v", err)
+	}
+
+	result, err := ValidateSheets(ValidateSheetsOptions{
+		SourceDir: sourceDir,
+		InputDir:  inputDir,
+	})
+	if err != nil {
+		t.Fatalf("ValidateSheets() error = %v", err)
+	}
+	if result.FilesValidated != 1 {
+		t.Fatalf("FilesValidated = %d, want 1", result.FilesValidated)
+	}
+	if len(result.Failures) != 0 {
+		t.Fatalf("Failures = %#v, want none", result.Failures)
+	}
+}
+
+func TestValidateSheetsReportsAllFilesAndStrictFailures(t *testing.T) {
+	dir := t.TempDir()
+	sourceDir := filepath.Join(dir, "agent")
+	inputDir := filepath.Join(dir, "agent-done")
+	if err := os.MkdirAll(sourceDir, 0755); err != nil {
+		t.Fatalf("MkdirAll(source) error = %v", err)
+	}
+	if err := os.MkdirAll(inputDir, 0755); err != nil {
+		t.Fatalf("MkdirAll(input) error = %v", err)
+	}
+
+	if err := os.WriteFile(filepath.Join(sourceDir, "sample_chunk-001.txt"), []byte(testSheet("")), 0644); err != nil {
+		t.Fatalf("WriteFile(source 1) error = %v", err)
+	}
+	if err := os.WriteFile(filepath.Join(sourceDir, "sample_chunk-002.txt"), []byte(strings.Replace(testSheet(""), "chunk-001", "chunk-002", -1)), 0644); err != nil {
+		t.Fatalf("WriteFile(source 2) error = %v", err)
+	}
+	bad := strings.Replace(testSheet("æœ€åˆã®æ–‡ã§ã™ã€‚"), "First sentence.", "Changed sentence.", 1)
+	bad = strings.Replace(bad, "native:\n<<<JPSTORIES", "native:\n<<<JPSTORIES\nextra\nJPSTORIES>>>\nnative:\n<<<JPSTORIES", 1)
+	if err := os.WriteFile(filepath.Join(inputDir, "sample_chunk-001.txt"), []byte(bad), 0644); err != nil {
+		t.Fatalf("WriteFile(bad) error = %v", err)
+	}
+	if err := os.WriteFile(filepath.Join(inputDir, "extra.txt"), []byte(testSheet("translation")), 0644); err != nil {
+		t.Fatalf("WriteFile(extra) error = %v", err)
+	}
+
+	result, err := ValidateSheets(ValidateSheetsOptions{
+		SourceDir: sourceDir,
+		InputDir:  inputDir,
+	})
+	if err != nil {
+		t.Fatalf("ValidateSheets() error = %v", err)
+	}
+	got := validationMessages(result.Failures)
+	for _, want := range []string{
+		"duplicate native block",
+		"english text changed",
+		"missing completed sheet",
+		"extra completed sheet",
+	} {
+		if !strings.Contains(got, want) {
+			t.Fatalf("failures missing %q:\n%s", want, got)
+		}
+	}
+}
+
+func TestValidateSheetsCanGateAssignedFilesOnly(t *testing.T) {
+	dir := t.TempDir()
+	sourceDir := filepath.Join(dir, "agent")
+	inputDir := filepath.Join(dir, "agent-done")
+	if err := os.MkdirAll(sourceDir, 0755); err != nil {
+		t.Fatalf("MkdirAll(source) error = %v", err)
+	}
+	if err := os.MkdirAll(inputDir, 0755); err != nil {
+		t.Fatalf("MkdirAll(input) error = %v", err)
+	}
+	if err := os.WriteFile(filepath.Join(sourceDir, "sample_chunk-001.txt"), []byte(testSheet("")), 0644); err != nil {
+		t.Fatalf("WriteFile(source 1) error = %v", err)
+	}
+	if err := os.WriteFile(filepath.Join(sourceDir, "sample_chunk-002.txt"), []byte(strings.Replace(testSheet(""), "chunk-001", "chunk-002", -1)), 0644); err != nil {
+		t.Fatalf("WriteFile(source 2) error = %v", err)
+	}
+	if err := os.WriteFile(filepath.Join(inputDir, "sample_chunk-001.txt"), []byte(testSheet("æœ€åˆã®æ–‡ã§ã™ã€‚")), 0644); err != nil {
+		t.Fatalf("WriteFile(done 1) error = %v", err)
+	}
+
+	result, err := ValidateSheets(ValidateSheetsOptions{
+		SourceDir: sourceDir,
+		InputDir:  inputDir,
+		Files:     []string{"sample_chunk-001"},
+	})
+	if err != nil {
+		t.Fatalf("ValidateSheets() error = %v", err)
+	}
+	if result.FilesValidated != 1 {
+		t.Fatalf("FilesValidated = %d, want 1", result.FilesValidated)
+	}
+	if len(result.Failures) != 0 {
+		t.Fatalf("Failures = %#v, want none", result.Failures)
+	}
+	if len(result.Files) != 1 || result.Files[0].Status != "ok" {
+		t.Fatalf("Files = %#v, want one ok file", result.Files)
+	}
+}
+
+func TestValidateSheetsAssignedFileReportsMissingSource(t *testing.T) {
+	dir := t.TempDir()
+	sourceDir := filepath.Join(dir, "agent")
+	inputDir := filepath.Join(dir, "agent-done")
+	if err := os.MkdirAll(sourceDir, 0755); err != nil {
+		t.Fatalf("MkdirAll(source) error = %v", err)
+	}
+	if err := os.MkdirAll(inputDir, 0755); err != nil {
+		t.Fatalf("MkdirAll(input) error = %v", err)
+	}
+	if err := os.WriteFile(filepath.Join(sourceDir, "sample_chunk-001.txt"), []byte(testSheet("")), 0644); err != nil {
+		t.Fatalf("WriteFile(source) error = %v", err)
+	}
+
+	result, err := ValidateSheets(ValidateSheetsOptions{
+		SourceDir: sourceDir,
+		InputDir:  inputDir,
+		Files:     []string{"sample_chunk-999.txt"},
+	})
+	if err != nil {
+		t.Fatalf("ValidateSheets() error = %v", err)
+	}
+	got := validationMessages(result.Failures)
+	if !strings.Contains(got, "assigned source sheet not found") {
+		t.Fatalf("failures = %s, want missing source", got)
+	}
+	if len(result.Files) != 1 || result.Files[0].Status != "missing-source" {
+		t.Fatalf("Files = %#v, want missing-source", result.Files)
+	}
+}
+
 func readTestWorkItem(t *testing.T, path string) WorkItem {
 	t.Helper()
 	data, err := os.ReadFile(path)
@@ -364,6 +776,63 @@ func writeTestWorkItem(t *testing.T, path string, item WorkItem) {
 	}
 }
 
+func validationMessages(failures []SheetValidationFailure) string {
+	var b strings.Builder
+	for _, failure := range failures {
+		b.WriteString(failure.String())
+		b.WriteByte('\n')
+	}
+	return b.String()
+}
+
+func testSheet(native string) string {
+	return `# jpstories translation sheet v1
+story_id: sample
+story_title: Sample
+chunk_id: chunk-001
+levels: native
+source_file: sample_chunk-001.json
+
+Fill only the empty translation blocks. Do not edit IDs, metadata, English text, or block labels.
+
+## p-001 / s-001
+english:
+<<<JPSTORIES
+First sentence.
+JPSTORIES>>>
+native:
+<<<JPSTORIES
+` + native + `
+JPSTORIES>>>
+`
+}
+
+func testTwoLevelSheet(native string, n3 string) string {
+	return `# jpstories translation sheet v1
+story_id: sample
+story_title: Sample
+chunk_id: chunk-001
+levels: native,n3
+source_file: sample_chunk-001.json
+
+Fill only the empty translation blocks. Do not edit IDs, metadata, English text, or block labels.
+
+## p-001 / s-001
+english:
+<<<JPSTORIES
+First sentence.
+JPSTORIES>>>
+native:
+<<<JPSTORIES
+` + native + `
+JPSTORIES>>>
+n3:
+<<<JPSTORIES
+` + n3 + `
+JPSTORIES>>>
+`
+}
+
 func fixtureStory() story.Story {
 	return story.Story{
 		ID:             "sample",
@@ -371,7 +840,7 @@ func fixtureStory() story.Story {
 		SourceLanguage: "en",
 		TargetLanguage: "ja",
 		SourceFile:     "stories/sample/sample.txt",
-		Levels:         []string{story.LevelNative, story.LevelN3, story.LevelN2Abridged},
+		Levels:         []string{story.LevelNative, story.LevelN3, story.LevelN3Abridged},
 		Chunks: []story.Chunk{
 			{
 				ID: "chunk-001",

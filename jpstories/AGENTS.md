@@ -77,7 +77,7 @@ Include the exact failure lines in the retry prompt and do not reassign neighbor
 Treat interrupted worker streams, content-filter stops, missing final reports, or partially written files as incomplete output, not success. Before retrying a known-bad completed sheet, quarantine it so the next worker starts from the clean source sheet instead of editing corrupted output:
 
 ```powershell
-powershell -ExecutionPolicy Bypass -File skills\jpstories-workitem-translator\scripts\repair_agent_sheets.ps1 -Story my_story -File my_story_chunk-001.txt -QuarantineInvalid
+go run ./cmd/jpstories repair-agent-sheets -story my_story -file my_story_chunk-001.txt -quarantine-invalid
 ```
 
 The repair helper records fixed, invalid, missing, and extra sheet events in `stories/my_story/agent-repair-log.jsonl`. Repeated failures on the same file should be retried one at a time and escalated to the coordinator or a stronger model.
@@ -88,11 +88,11 @@ Before writing imported completed JSON, dry-run the import diagnostics:
 go run ./cmd/jpstories import-agent-work -story my_story -check
 ```
 
-When a completed sheet needs mechanical repair before import, use the reusable helper under `skills/jpstories-workitem-translator/scripts/` rather than creating one-off scripts in the repo root:
+When a completed sheet needs mechanical repair before import, use the Go repair command rather than creating one-off scripts in the repo root:
 
 ```powershell
-powershell -ExecutionPolicy Bypass -File skills\jpstories-workitem-translator\scripts\repair_agent_sheets.ps1 -Story my_story -File my_story_chunk-001.txt -Check
-powershell -ExecutionPolicy Bypass -File skills\jpstories-workitem-translator\scripts\repair_agent_sheets.ps1 -Story my_story -File my_story_chunk-001.txt -RewriteFromSource
+go run ./cmd/jpstories repair-agent-sheets -story my_story -file my_story_chunk-001.txt -check
+go run ./cmd/jpstories repair-agent-sheets -story my_story -file my_story_chunk-001.txt -rewrite-from-source
 ```
 
 `-RewriteFromSource` rebuilds the completed sheet from the original `agent/` sheet, preserving metadata, sentence IDs, English text, labels, fences, and order while filling only salvaged translations.
@@ -100,13 +100,7 @@ powershell -ExecutionPolicy Bypass -File skills\jpstories-workitem-translator\sc
 Before merging completed work items, validate all `done/` files against their matching `chunk/` source files:
 
 ```powershell
-powershell -ExecutionPolicy Bypass -File skills\jpstories-workitem-translator\scripts\validate_workitems.ps1 -Story my_story -FixBom
-```
-
-On Unix-like shells:
-
-```sh
-sh skills/jpstories-workitem-translator/scripts/validate_workitems.sh --story my_story --fix-bom
+go run ./cmd/jpstories validate-workitems -story my_story -fix-bom
 ```
 
 The batch validator reports valid, missing, invalid, and extra files. Reassign or repair missing/invalid outputs before running `merge-work`.
@@ -118,6 +112,7 @@ go run ./cmd/jpstories accept-story -story my_story
 ```
 
 It requires exact `agent-done/` coverage, strict sheet validation, successful import, completed JSON validation, expected merge counts, `validate -story`, and `validate -complete`. Do not report a translation run complete until this command passes.
+If the only known issues are mechanical sheet defects, `go run ./cmd/jpstories accept-story -story my_story -repair-agent-sheets` may be used to run the Go repair pass before the strict gate.
 
 ## Translation Levels
 

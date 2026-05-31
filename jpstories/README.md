@@ -163,32 +163,31 @@ Check mode validates every completed sheet against its source JSON work item and
 Before importing, the repair helper can fix BOMs, restore smart quotes in English blocks, repair missing closing fences where the next sheet label/header is clear, and report missing, invalid, or extra completed sheets:
 
 ```powershell
-powershell -ExecutionPolicy Bypass -File skills\jpstories-workitem-translator\scripts\repair_agent_sheets.ps1 -Story my_story
+go run ./cmd/jpstories repair-agent-sheets -story my_story
 ```
 
 Check or repair only a just-failed sheet:
 
 ```powershell
-powershell -ExecutionPolicy Bypass -File skills\jpstories-workitem-translator\scripts\repair_agent_sheets.ps1 -Story my_story -File my_story_chunk-001.txt -Check
+go run ./cmd/jpstories repair-agent-sheets -story my_story -file my_story_chunk-001.txt -check
 ```
 
 For badly malformed output, rebuild the completed sheet from the original `agent/` sheet shape and salvage only translation text:
 
 ```powershell
-powershell -ExecutionPolicy Bypass -File skills\jpstories-workitem-translator\scripts\repair_agent_sheets.ps1 -Story my_story -File my_story_chunk-001.txt -RewriteFromSource
+go run ./cmd/jpstories repair-agent-sheets -story my_story -file my_story_chunk-001.txt -rewrite-from-source
 ```
 
-The shared Python utility is also callable directly:
+Explicit source/done sheet paths are also supported:
 
 ```powershell
-python skills\jpstories-workitem-translator\scripts\agent_sheet_tools.py --story my_story --file my_story_chunk-001.txt --check
-python skills\jpstories-workitem-translator\scripts\agent_sheet_tools.py --source-sheet stories\my_story\agent\my_story_chunk-001.txt --done-sheet stories\my_story\agent-done\my_story_chunk-001.txt --rewrite-from-source
+go run ./cmd/jpstories repair-agent-sheets -source-sheet stories\my_story\agent\my_story_chunk-001.txt -done-sheet stories\my_story\agent-done\my_story_chunk-001.txt -rewrite-from-source
 ```
 
 If a worker disconnects, is content-filtered, or leaves a partial completed sheet, treat that output as incomplete. Quarantine the invalid completed file before retrying the sheet with a fresh worker:
 
 ```powershell
-powershell -ExecutionPolicy Bypass -File skills\jpstories-workitem-translator\scripts\repair_agent_sheets.ps1 -Story my_story -File my_story_chunk-001.txt -QuarantineInvalid
+go run ./cmd/jpstories repair-agent-sheets -story my_story -file my_story_chunk-001.txt -quarantine-invalid
 ```
 
 The helper writes a JSONL repair log at `stories/my_story/agent-repair-log.jsonl` for fixed, invalid, missing, and extra sheet events. Use that log to spot files that repeatedly need repair or escalation.
@@ -211,19 +210,19 @@ go run ./cmd/jpstories accept-story -story my_story
 
 This validates exact `agent/` to `agent-done/` sheet coverage, checks and imports completed sheets into `done/`, validates completed work item JSON, merges the expected number of translations, and requires both draft and complete story validation to pass.
 
+If the completed sheets only need mechanical repair before the strict gate, run:
+
+```powershell
+go run ./cmd/jpstories accept-story -story my_story -repair-agent-sheets
+```
+
 Validate completed work item output before merging:
 
 ```powershell
-powershell -ExecutionPolicy Bypass -File skills\jpstories-workitem-translator\scripts\validate_workitems.ps1 -Story my_story -FixBom
+go run ./cmd/jpstories validate-workitems -story my_story -fix-bom
 ```
 
-On Unix-like shells:
-
-```sh
-sh skills/jpstories-workitem-translator/scripts/validate_workitems.sh --story my_story --fix-bom
-```
-
-The shell validator uses `python3` or `python` from `PATH`.
+The Go validator compares every file in `stories/my_story/done/` with its matching source work item in `stories/my_story/chunk/`.
 
 Validate story JSON:
 
@@ -374,18 +373,10 @@ stories/my_story/done/
 Before merging, validate the completed work item files:
 
 ```powershell
-powershell -ExecutionPolicy Bypass -File skills\jpstories-workitem-translator\scripts\validate_workitems.ps1 -Story my_story -FixBom
+go run ./cmd/jpstories validate-workitems -story my_story -fix-bom
 ```
 
-On Unix-like shells:
-
-```sh
-sh skills/jpstories-workitem-translator/scripts/validate_workitems.sh --story my_story --fix-bom
-```
-
-The shell validator uses `python3` or `python` from `PATH`.
-
-The batch validator compares every file in `stories/my_story/done/` with its matching source work item in `stories/my_story/chunk/`. It reports valid, missing, invalid, and extra files, and `-FixBom` strips UTF-8 BOM bytes when present.
+The batch validator compares every file in `stories/my_story/done/` with its matching source work item in `stories/my_story/chunk/`. It reports valid, missing, invalid, and extra files, and `-fix-bom` strips UTF-8 BOM bytes when present.
 
 Run:
 
@@ -413,6 +404,12 @@ Or run the whole final gate in one command:
 
 ```powershell
 go run ./cmd/jpstories accept-story -story my_story
+```
+
+To allow the final gate to repair mechanical completed-sheet issues first:
+
+```powershell
+go run ./cmd/jpstories accept-story -story my_story -repair-agent-sheets
 ```
 
 ### 9. Read In The Browser

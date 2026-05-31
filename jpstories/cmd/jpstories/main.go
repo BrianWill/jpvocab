@@ -46,6 +46,10 @@ func run(args []string) error {
 		return runExportAgentWork(args[1:])
 	case "validate-agent-work":
 		return runValidateAgentWork(args[1:])
+	case "validate-workitems":
+		return runValidateWorkItems(args[1:])
+	case "repair-agent-sheets":
+		return runRepairAgentSheets(args[1:])
 	case "import-agent-work":
 		return runImportAgentWork(args[1:])
 	case "accept-story":
@@ -380,6 +384,7 @@ func runAcceptStory(args []string) error {
 	storyName := fs.String("story", "", "story name under stories/")
 	storiesRoot := fs.String("stories", "stories", "stories root directory")
 	fixBOM := fs.Bool("fix-bom", true, "strip UTF-8 BOM bytes from completed work item JSON files during validation")
+	repairAgentSheets := fs.Bool("repair-agent-sheets", false, "repair mechanical completed-sheet issues before validation")
 	fs.SetOutput(os.Stderr)
 
 	if err := fs.Parse(args); err != nil {
@@ -391,6 +396,24 @@ func runAcceptStory(args []string) error {
 	layout, err := resolveStoryLayout(*storiesRoot, *storyName)
 	if err != nil {
 		return err
+	}
+
+	if *repairAgentSheets {
+		fmt.Fprintf(os.Stderr, "acceptance: repairing completed agent sheets for %s\n", *storyName)
+		repairResult, err := workitem.RepairSheets(workitem.RepairSheetsOptions{
+			StoryName:     *storyName,
+			SourceDir:     layout.AgentDir,
+			InputDir:      layout.AgentDoneDir,
+			QuarantineDir: filepath.Join(layout.Dir, "agent-done-quarantine"),
+			RepairLog:     filepath.Join(layout.Dir, "agent-repair-log.jsonl"),
+		})
+		if err != nil {
+			return err
+		}
+		printRepairSheetsResult(repairResult)
+		if repairResult.HasBlockingResults() {
+			return fmt.Errorf("acceptance failed: agent sheet repair found blocking result(s)")
+		}
 	}
 
 	fmt.Fprintf(os.Stderr, "acceptance: validating completed agent sheets for %s\n", *storyName)
@@ -537,6 +560,204 @@ func runValidateAgentWork(args []string) error {
 	}
 	fmt.Fprintf(os.Stderr, "validated %d completed agent sheet(s)\n", result.FilesValidated)
 	return nil
+}
+
+func runValidateWorkItems(args []string) error {
+	fs := flag.NewFlagSet("validate-workitems", flag.ContinueOnError)
+	storyName := fs.String("story", "", "story name under stories/")
+	storiesRoot := fs.String("stories", "stories", "stories root directory")
+	source := fs.String("source", "", "directory containing source work item JSON files")
+	in := fs.String("in", "", "directory containing completed work item JSON files")
+	inputPath := fs.String("input-path", "", "source work item JSON file for single-file validation")
+	outputPath := fs.String("output-path", "", "completed work item JSON file for single-file validation")
+	fixBOM := fs.Bool("fix-bom", false, "strip UTF-8 BOM bytes from work item JSON files before validation")
+	fs.SetOutput(os.Stderr)
+
+	if err := fs.Parse(args); err != nil {
+		return err
+	}
+	singleMode := *inputPath != "" || *outputPath != ""
+	if singleMode {
+		if *storyName != "" || *source != "" || *in != "" {
+			return fmt.Errorf("validate-workitems uses either -story/-source/-in or -input-path/-output-path, not both")
+		}
+		if *inputPath == "" || *outputPath == "" {
+			return fmt.Errorf("validate-workitems requires both -input-path and -output-path in single-file mode")
+		}
+		result, err := workitem.ValidateWorkItemPair(workitem.ValidateWorkItemPairOptions{
+			SourcePath: *inputPath,
+			InputPath:  *outputPath,
+			FixBOM:     *fixBOM,
+		})
+		if err != nil {
+			return err
+		}
+		printWorkItemValidationProgress(result)
+		if len(result.Failures) > 0 {
+			for _, failure := range result.Failures {
+				fmt.Fprintln(os.Stderr, failure.String())
+			}
+			return fmt.Errorf("completed work item validation failed: %d failure(s)", len(result.Failures))
+		}
+		fmt.Fprintf(os.Stderr, "validated %d completed work item(s); %d translation(s)\n", result.FilesValidated, result.Translations)
+		return nil
+	}
+
+	if *storyName == "" && (*source == "" || *in == "") {
+		return fmt.Errorf("validate-workitems requires -story or both -source and -in")
+	}
+	if *storyName != "" {
+		layout, err := resolveStoryLayout(*storiesRoot, *storyName)
+		if err != nil {
+			return err
+		}
+		if *source == "" {
+			*source = layout.ChunkDir
+		}
+		if *in == "" {
+			*in = layout.DoneDir
+		}
+	}
+
+	result, err := workitem.ValidateWorkItems(workitem.ValidateWorkItemsOptions{
+		SourceDir: *source,
+		InputDir:  *in,
+		FixBOM:    *fixBOM,
+	})
+	if err != nil {
+		return err
+	}
+	printWorkItemValidationProgress(result)
+	if len(result.Failures) > 0 {
+		for _, failure := range result.Failures {
+			fmt.Fprintln(os.Stderr, failure.String())
+		}
+		return fmt.Errorf("completed work item validation failed: %d failure(s) across %d completed file(s)", len(result.Failures), result.FilesValidated)
+	}
+	fmt.Fprintf(os.Stderr, "validated %d completed work item(s); %d translation(s)\n", result.FilesValidated, result.Translations)
+	return nil
+}
+
+func runRepairAgentSheets(args []string) error {
+	fs := flag.NewFlagSet("repair-agent-sheets", flag.ContinueOnError)
+	storyName := fs.String("story", "", "story name under stories/")
+	storiesRoot := fs.String("stories", "stories", "stories root directory")
+	source := fs.String("source", "", "directory containing original translator-friendly text sheets")
+	in := fs.String("in", "", "directory containing completed translator-friendly text sheets")
+	sourceSheet := fs.String("source-sheet", "", "source sheet path for single-file repair")
+	doneSheet := fs.String("done-sheet", "", "completed sheet path for single-file repair")
+	check := fs.Bool("check", false, "report repairs without writing files")
+	rewriteFromSource := fs.Bool("rewrite-from-source", false, "rebuild completed sheet shape from the source sheet and salvage translations")
+	quarantineInvalid := fs.Bool("quarantine-invalid", false, "move invalid completed sheets out of agent-done after diagnostics")
+	quarantineDir := fs.String("quarantine-dir", "", "directory for quarantined invalid completed sheets")
+	repairLog := fs.String("repair-log", "", "JSONL repair log path")
+	var files multiFlag
+	fs.Var(&files, "file", "sheet name to process in story or directory mode; can be repeated")
+	fs.SetOutput(os.Stderr)
+
+	if err := fs.Parse(args); err != nil {
+		return err
+	}
+	files = append(files, fs.Args()...)
+	singleMode := *sourceSheet != "" || *doneSheet != ""
+	if singleMode {
+		if *storyName != "" || *source != "" || *in != "" || len(files) > 0 {
+			return fmt.Errorf("repair-agent-sheets uses either -story/-source/-in or -source-sheet/-done-sheet, not both")
+		}
+		result, err := workitem.RepairSheetPair(workitem.RepairSheetPairOptions{
+			SourceSheet:       *sourceSheet,
+			DoneSheet:         *doneSheet,
+			Check:             *check,
+			RewriteFromSource: *rewriteFromSource,
+			QuarantineInvalid: *quarantineInvalid,
+			QuarantineDir:     *quarantineDir,
+			RepairLog:         *repairLog,
+		})
+		if err != nil {
+			return err
+		}
+		printRepairSheetsResult(result)
+		if result.HasBlockingResults() {
+			return fmt.Errorf("agent sheet repair found blocking result(s)")
+		}
+		return nil
+	}
+
+	if *storyName == "" && (*source == "" || *in == "") {
+		return fmt.Errorf("repair-agent-sheets requires -story, both -source and -in, or both -source-sheet and -done-sheet")
+	}
+	if *storyName != "" {
+		layout, err := resolveStoryLayout(*storiesRoot, *storyName)
+		if err != nil {
+			return err
+		}
+		if *source == "" {
+			*source = layout.AgentDir
+		}
+		if *in == "" {
+			*in = layout.AgentDoneDir
+		}
+		if *repairLog == "" {
+			*repairLog = filepath.Join(layout.Dir, "agent-repair-log.jsonl")
+		}
+		if *quarantineDir == "" {
+			*quarantineDir = filepath.Join(layout.Dir, "agent-done-quarantine")
+		}
+	}
+
+	result, err := workitem.RepairSheets(workitem.RepairSheetsOptions{
+		StoryName:         *storyName,
+		SourceDir:         *source,
+		InputDir:          *in,
+		Files:             files,
+		Check:             *check,
+		RewriteFromSource: *rewriteFromSource,
+		QuarantineInvalid: *quarantineInvalid,
+		QuarantineDir:     *quarantineDir,
+		RepairLog:         *repairLog,
+	})
+	if err != nil {
+		return err
+	}
+	printRepairSheetsResult(result)
+	if result.HasBlockingResults() {
+		return fmt.Errorf("agent sheet repair found blocking result(s)")
+	}
+	return nil
+}
+
+type multiFlag []string
+
+func (f *multiFlag) String() string {
+	return strings.Join(*f, ",")
+}
+
+func (f *multiFlag) Set(value string) error {
+	*f = append(*f, value)
+	return nil
+}
+
+func printRepairSheetsResult(result workitem.RepairSheetsResult) {
+	for _, file := range result.Files {
+		if len(file.Issues) == 0 {
+			fmt.Fprintf(os.Stderr, "%s: %s\n", file.Status, file.Name)
+		} else {
+			for _, issue := range file.Issues {
+				fmt.Fprintf(os.Stderr, "%s: %s: %s\n", file.Status, file.Name, issue)
+			}
+		}
+		if file.QuarantinedPath != "" {
+			fmt.Fprintf(os.Stderr, "quarantined: %s: %s\n", file.Name, file.QuarantinedPath)
+		}
+	}
+	counts := result.Counts()
+	if counts["would-fix"] > 0 {
+		fmt.Fprintf(os.Stderr, "Total: %d fixed, %d would-fix, %d ok, %d missing, %d invalid, %d extra\n",
+			counts["fixed"], counts["would-fix"], counts["ok"], counts["missing"], counts["invalid"], counts["extra"])
+		return
+	}
+	fmt.Fprintf(os.Stderr, "Total: %d fixed, %d ok, %d missing, %d invalid, %d extra\n",
+		counts["fixed"], counts["ok"], counts["missing"], counts["invalid"], counts["extra"])
 }
 
 func printAgentValidationProgress(result workitem.SheetValidationResult) {
@@ -883,6 +1104,8 @@ func printUsage() {
   jpstories export-work -story my_story
   jpstories export-agent-work -story my_story
   jpstories validate-agent-work -story my_story
+  jpstories validate-workitems -story my_story
+  jpstories repair-agent-sheets -story my_story
   jpstories import-agent-work -story my_story [-check]
   jpstories accept-story -story my_story
   jpstories merge-work -story my_story

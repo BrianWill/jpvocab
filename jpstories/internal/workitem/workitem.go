@@ -49,6 +49,12 @@ type ValidateWorkItemsOptions struct {
 	FixBOM    bool
 }
 
+type ValidateWorkItemPairOptions struct {
+	SourcePath string
+	InputPath  string
+	FixBOM     bool
+}
+
 type WorkItem struct {
 	StoryID    string          `json:"story_id"`
 	StoryTitle string          `json:"story_title"`
@@ -303,6 +309,32 @@ func ValidateWorkItems(opts ValidateWorkItemsOptions) (WorkItemValidationResult,
 		return result.Files[i].File < result.Files[j].File
 	})
 	return result, nil
+}
+
+func ValidateWorkItemPair(opts ValidateWorkItemPairOptions) (WorkItemValidationResult, error) {
+	if strings.TrimSpace(opts.SourcePath) == "" {
+		return WorkItemValidationResult{}, fmt.Errorf("source path is required")
+	}
+	if strings.TrimSpace(opts.InputPath) == "" {
+		return WorkItemValidationResult{}, fmt.Errorf("input path is required")
+	}
+
+	failures, translations := validateWorkItemPair(opts.SourcePath, opts.InputPath, opts.FixBOM)
+	status := "ok"
+	if len(failures) > 0 {
+		status = "failed"
+		translations = 0
+	}
+	return WorkItemValidationResult{
+		FilesValidated: 1,
+		Translations:   translations,
+		Failures:       failures,
+		Files: []SheetFileValidation{{
+			File:         opts.InputPath,
+			Status:       status,
+			FailureCount: len(failures),
+		}},
+	}, nil
 }
 
 func ExportSheets(opts ExportSheetsOptions) (SheetExportResult, error) {

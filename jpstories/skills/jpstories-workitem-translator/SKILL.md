@@ -129,7 +129,7 @@ For retries, include only the failed file and the exact validation failure lines
 Treat a subagent stream disconnect, content-filter interruption, missing final report, or partially written completed sheet as incomplete output. Do not mark the file complete from a partial transcript. Retry failed or interrupted files one at a time, and quarantine invalid completed sheets before retrying when they may confuse the next worker:
 
 ```powershell
-powershell -ExecutionPolicy Bypass -File skills\jpstories-workitem-translator\scripts\repair_agent_sheets.ps1 -Story <story> -File <sheet.txt> -QuarantineInvalid
+go run ./cmd/jpstories repair-agent-sheets -story <story> -file <sheet.txt> -quarantine-invalid
 ```
 
 The repair helper records fixed, invalid, missing, and extra sheet events in `stories/<story>/agent-repair-log.jsonl`. Check this log when a file repeatedly fails; after two failed one-file retries, escalate that file to the coordinator or a stronger model with the exact failure lines and the repair-log history.
@@ -193,39 +193,33 @@ The batch gate ignores unrelated pending sheets and reports failures for the ass
 After all subagents finish, repair known subagent encoding defects (UTF-8 BOM and smart-quote corruption in english blocks) before importing:
 
 ```powershell
-powershell -ExecutionPolicy Bypass -File skills\jpstories-workitem-translator\scripts\repair_agent_sheets.ps1 -Story <story>
+go run ./cmd/jpstories repair-agent-sheets -story <story>
 ```
 
-On Unix-like shells:
-
-```sh
-sh skills/jpstories-workitem-translator/scripts/repair_agent_sheets.sh --story <story>
-```
-
-The repair helper delegates to the reusable `agent_sheet_tools.py` utility. It also inserts an obviously missing `JPSTORIES>>>` before the next known sheet label/header, detects duplicate labels, empty requested blocks, suspicious mojibake in translation blocks, missing completed sheets, and extra completed sheets. Treat `invalid`, `missing`, or `extra` results as blockers before import.
+The Go repair command inserts an obviously missing `JPSTORIES>>>` before the next known sheet label/header, detects duplicate labels, empty requested blocks, suspicious mojibake in translation blocks, missing completed sheets, and extra completed sheets. Treat `invalid`, `missing`, or `extra` results as blockers before import.
 
 Use single-file check mode for a failed worker result:
 
 ```powershell
-powershell -ExecutionPolicy Bypass -File skills\jpstories-workitem-translator\scripts\repair_agent_sheets.ps1 -Story <story> -File <sheet.txt> -Check
+go run ./cmd/jpstories repair-agent-sheets -story <story> -file <sheet.txt> -check
 ```
 
 If a completed sheet is badly malformed, prefer a source-shaped rewrite. This rebuilds the output from `stories/<story>/agent/<sheet.txt>`, preserving source metadata, sentence IDs, English text, block labels, fences, and order, then fills only translations salvaged from the malformed completed sheet:
 
 ```powershell
-powershell -ExecutionPolicy Bypass -File skills\jpstories-workitem-translator\scripts\repair_agent_sheets.ps1 -Story <story> -File <sheet.txt> -RewriteFromSource
+go run ./cmd/jpstories repair-agent-sheets -story <story> -file <sheet.txt> -rewrite-from-source
 ```
 
-The Python utility can also be called directly for explicit paths:
+Explicit source/done sheet paths are also supported:
 
 ```powershell
-python skills\jpstories-workitem-translator\scripts\agent_sheet_tools.py --source-sheet stories\<story>\agent\<sheet.txt> --done-sheet stories\<story>\agent-done\<sheet.txt> --rewrite-from-source
+go run ./cmd/jpstories repair-agent-sheets -source-sheet stories\<story>\agent\<sheet.txt> -done-sheet stories\<story>\agent-done\<sheet.txt> -rewrite-from-source
 ```
 
 If the file is too partial or malformed to salvage safely, quarantine it and retry from the original source sheet:
 
 ```powershell
-powershell -ExecutionPolicy Bypass -File skills\jpstories-workitem-translator\scripts\repair_agent_sheets.ps1 -Story <story> -File <sheet.txt> -QuarantineInvalid
+go run ./cmd/jpstories repair-agent-sheets -story <story> -file <sheet.txt> -quarantine-invalid
 ```
 
 Then import completed sheets into canonical completed JSON:
@@ -245,25 +239,13 @@ The importer compares each sheet against the matching source JSON work item in `
 Then independently validate the imported JSON files in `stories/<story>/done/` using the batch validator:
 
 ```powershell
-powershell -ExecutionPolicy Bypass -File skills\jpstories-workitem-translator\scripts\validate_workitems.ps1 -Story <story> -FixBom
-```
-
-On Unix-like shells:
-
-```sh
-sh skills/jpstories-workitem-translator/scripts/validate_workitems.sh --story <story> --fix-bom
+go run ./cmd/jpstories validate-workitems -story <story> -fix-bom
 ```
 
 Use the same validator in single-file mode when repairing one imported JSON output:
 
 ```powershell
-powershell -ExecutionPolicy Bypass -File skills\jpstories-workitem-translator\scripts\validate_workitems.ps1 -InputPath <input-file> -OutputPath <done-file> -FixBom
-```
-
-On Unix-like shells:
-
-```sh
-sh skills/jpstories-workitem-translator/scripts/validate_workitems.sh --input-path <input-file> --output-path <done-file> --fix-bom
+go run ./cmd/jpstories validate-workitems -input-path <input-file> -output-path <done-file> -fix-bom
 ```
 
 If import fails, repair the completed sheet and rerun `import-agent-work`. If JSON validation fails after import, repair the sheet when possible, re-import, and validate again. If a file is extra, remove it only when the user explicitly approves or it is clearly generated by this translation run; otherwise report it and do not merge.
@@ -290,6 +272,12 @@ For final acceptance, prefer the single executable gate:
 
 ```powershell
 go run ./cmd/jpstories accept-story -story <story>
+```
+
+If the remaining known defects are mechanical sheet-format problems, run the acceptance gate with its explicit repair pass:
+
+```powershell
+go run ./cmd/jpstories accept-story -story <story> -repair-agent-sheets
 ```
 
 This command validates exact `agent/` to `agent-done/` coverage, checks and imports completed sheets, validates `done/*.json` against `chunk/*.json` with BOM repair enabled by default, merges completed work, checks the expected file and translation counts, and requires both normal and complete story validation to pass. Treat the translation run as incomplete until this command succeeds.

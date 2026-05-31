@@ -752,6 +752,265 @@ func TestValidateSheetsAssignedFileReportsMissingSource(t *testing.T) {
 	}
 }
 
+func TestValidateWorkItemsReportsMissingInvalidAndExtraFiles(t *testing.T) {
+	dir := t.TempDir()
+	sourceDir := filepath.Join(dir, "chunk")
+	inputDir := filepath.Join(dir, "done")
+	if err := os.MkdirAll(sourceDir, 0755); err != nil {
+		t.Fatalf("MkdirAll(source) error = %v", err)
+	}
+	if err := os.MkdirAll(inputDir, 0755); err != nil {
+		t.Fatalf("MkdirAll(input) error = %v", err)
+	}
+
+	sourceOne := testWorkItem("sample", "chunk-001", "First sentence.", "")
+	sourceTwo := testWorkItem("sample", "chunk-002", "Second sentence.", "")
+	writeTestWorkItem(t, filepath.Join(sourceDir, "sample_chunk-001.json"), sourceOne)
+	writeTestWorkItem(t, filepath.Join(sourceDir, "sample_chunk-002.json"), sourceTwo)
+
+	doneOne := testWorkItem("sample", "chunk-001", "Changed sentence.", "翻訳です。")
+	writeTestWorkItem(t, filepath.Join(inputDir, "sample_chunk-001.json"), doneOne)
+	writeTestWorkItem(t, filepath.Join(inputDir, "extra.json"), testWorkItem("sample", "chunk-extra", "Extra.", "余分です。"))
+
+	result, err := ValidateWorkItems(ValidateWorkItemsOptions{
+		SourceDir: sourceDir,
+		InputDir:  inputDir,
+	})
+	if err != nil {
+		t.Fatalf("ValidateWorkItems() error = %v", err)
+	}
+
+	got := validationMessages(result.Failures)
+	for _, want := range []string{
+		"english changed",
+		"missing completed work item",
+		"extra completed work item",
+	} {
+		if !strings.Contains(got, want) {
+			t.Fatalf("failures missing %q:\n%s", want, got)
+		}
+	}
+	if result.FilesValidated != 1 {
+		t.Fatalf("FilesValidated = %d, want 1", result.FilesValidated)
+	}
+	if result.Translations != 0 {
+		t.Fatalf("Translations = %d, want 0 when validation fails", result.Translations)
+	}
+}
+
+func TestValidateWorkItemsFixBOMRemovesUTF8BOM(t *testing.T) {
+	dir := t.TempDir()
+	sourceDir := filepath.Join(dir, "chunk")
+	inputDir := filepath.Join(dir, "done")
+	if err := os.MkdirAll(sourceDir, 0755); err != nil {
+		t.Fatalf("MkdirAll(source) error = %v", err)
+	}
+	if err := os.MkdirAll(inputDir, 0755); err != nil {
+		t.Fatalf("MkdirAll(input) error = %v", err)
+	}
+
+	sourcePath := filepath.Join(sourceDir, "sample_chunk-001.json")
+	donePath := filepath.Join(inputDir, "sample_chunk-001.json")
+	writeTestWorkItem(t, sourcePath, testWorkItem("sample", "chunk-001", "First sentence.", ""))
+	writeTestWorkItem(t, donePath, testWorkItem("sample", "chunk-001", "First sentence.", "翻訳です。"))
+	prependUTF8BOM(t, sourcePath)
+	prependUTF8BOM(t, donePath)
+
+	result, err := ValidateWorkItems(ValidateWorkItemsOptions{
+		SourceDir: sourceDir,
+		InputDir:  inputDir,
+		FixBOM:    true,
+	})
+	if err != nil {
+		t.Fatalf("ValidateWorkItems() error = %v", err)
+	}
+	if len(result.Failures) != 0 {
+		t.Fatalf("Failures = %#v, want none", result.Failures)
+	}
+	if result.FilesValidated != 1 || result.Translations != 1 {
+		t.Fatalf("ValidateWorkItems() result = %#v, want one valid translation", result)
+	}
+	assertNoUTF8BOM(t, sourcePath)
+	assertNoUTF8BOM(t, donePath)
+}
+
+func TestRepairSheetsCheckReportsWouldFixWithoutWriting(t *testing.T) {
+	dir := t.TempDir()
+	sourceDir := filepath.Join(dir, "agent")
+	inputDir := filepath.Join(dir, "agent-done")
+	if err := os.MkdirAll(sourceDir, 0755); err != nil {
+		t.Fatalf("MkdirAll(source) error = %v", err)
+	}
+	if err := os.MkdirAll(inputDir, 0755); err != nil {
+		t.Fatalf("MkdirAll(input) error = %v", err)
+	}
+	sourcePath := filepath.Join(sourceDir, "sample_chunk-001.txt")
+	donePath := filepath.Join(inputDir, "sample_chunk-001.txt")
+	source := testSheet("")
+	done := strings.TrimSuffix(testSheet("翻訳です。"), "JPSTORIES>>>\n")
+	if err := os.WriteFile(sourcePath, []byte(source), 0644); err != nil {
+		t.Fatalf("WriteFile(source) error = %v", err)
+	}
+	if err := os.WriteFile(donePath, []byte(done), 0644); err != nil {
+		t.Fatalf("WriteFile(done) error = %v", err)
+	}
+
+	result, err := RepairSheets(RepairSheetsOptions{
+		SourceDir: sourceDir,
+		InputDir:  inputDir,
+		Check:     true,
+	})
+	if err != nil {
+		t.Fatalf("RepairSheets() error = %v", err)
+	}
+	if len(result.Files) != 1 || result.Files[0].Status != "would-fix" {
+		t.Fatalf("RepairSheets() files = %#v, want would-fix", result.Files)
+	}
+	data, err := os.ReadFile(donePath)
+	if err != nil {
+		t.Fatalf("ReadFile(done) error = %v", err)
+	}
+	if string(data) != done {
+		t.Fatal("check mode changed completed sheet")
+	}
+}
+
+func TestRepairSheetsWritesMissingClosingFenceRepair(t *testing.T) {
+	dir := t.TempDir()
+	sourceDir := filepath.Join(dir, "agent")
+	inputDir := filepath.Join(dir, "agent-done")
+	if err := os.MkdirAll(sourceDir, 0755); err != nil {
+		t.Fatalf("MkdirAll(source) error = %v", err)
+	}
+	if err := os.MkdirAll(inputDir, 0755); err != nil {
+		t.Fatalf("MkdirAll(input) error = %v", err)
+	}
+	sourcePath := filepath.Join(sourceDir, "sample_chunk-001.txt")
+	donePath := filepath.Join(inputDir, "sample_chunk-001.txt")
+	source := testSheet("")
+	done := strings.TrimSuffix(testSheet("翻訳です。"), "JPSTORIES>>>\n")
+	if err := os.WriteFile(sourcePath, []byte(source), 0644); err != nil {
+		t.Fatalf("WriteFile(source) error = %v", err)
+	}
+	if err := os.WriteFile(donePath, []byte(done), 0644); err != nil {
+		t.Fatalf("WriteFile(done) error = %v", err)
+	}
+
+	result, err := RepairSheets(RepairSheetsOptions{
+		SourceDir: sourceDir,
+		InputDir:  inputDir,
+	})
+	if err != nil {
+		t.Fatalf("RepairSheets() error = %v", err)
+	}
+	if len(result.Files) != 1 || result.Files[0].Status != "fixed" {
+		t.Fatalf("RepairSheets() files = %#v, want fixed", result.Files)
+	}
+	failures := validateSheetPair(sourcePath, donePath)
+	if len(failures) != 0 {
+		t.Fatalf("validateSheetPair() failures = %#v", failures)
+	}
+}
+
+func TestRepairSheetsRewriteFromSourceSalvagesTranslation(t *testing.T) {
+	dir := t.TempDir()
+	sourceDir := filepath.Join(dir, "agent")
+	inputDir := filepath.Join(dir, "agent-done")
+	if err := os.MkdirAll(sourceDir, 0755); err != nil {
+		t.Fatalf("MkdirAll(source) error = %v", err)
+	}
+	if err := os.MkdirAll(inputDir, 0755); err != nil {
+		t.Fatalf("MkdirAll(input) error = %v", err)
+	}
+	sourcePath := filepath.Join(sourceDir, "sample_chunk-001.txt")
+	donePath := filepath.Join(inputDir, "sample_chunk-001.txt")
+	source := testSheet("")
+	done := strings.Replace(testSheet("翻訳です。"), "First sentence.", "Changed sentence.", 1)
+	if err := os.WriteFile(sourcePath, []byte(source), 0644); err != nil {
+		t.Fatalf("WriteFile(source) error = %v", err)
+	}
+	if err := os.WriteFile(donePath, []byte(done), 0644); err != nil {
+		t.Fatalf("WriteFile(done) error = %v", err)
+	}
+
+	result, err := RepairSheets(RepairSheetsOptions{
+		SourceDir:         sourceDir,
+		InputDir:          inputDir,
+		RewriteFromSource: true,
+	})
+	if err != nil {
+		t.Fatalf("RepairSheets() error = %v", err)
+	}
+	if len(result.Files) != 1 || result.Files[0].Status != "fixed" {
+		t.Fatalf("RepairSheets() files = %#v, want fixed", result.Files)
+	}
+	data, err := os.ReadFile(donePath)
+	if err != nil {
+		t.Fatalf("ReadFile(done) error = %v", err)
+	}
+	if !strings.Contains(string(data), "First sentence.") || strings.Contains(string(data), "Changed sentence.") {
+		t.Fatalf("rewrite did not restore source English:\n%s", data)
+	}
+	if !strings.Contains(string(data), "翻訳です。") {
+		t.Fatalf("rewrite did not salvage translation:\n%s", data)
+	}
+}
+
+func TestRepairSheetsQuarantinesInvalidAndWritesLog(t *testing.T) {
+	dir := t.TempDir()
+	sourceDir := filepath.Join(dir, "agent")
+	inputDir := filepath.Join(dir, "agent-done")
+	quarantineDir := filepath.Join(dir, "quarantine")
+	logPath := filepath.Join(dir, "agent-repair-log.jsonl")
+	if err := os.MkdirAll(sourceDir, 0755); err != nil {
+		t.Fatalf("MkdirAll(source) error = %v", err)
+	}
+	if err := os.MkdirAll(inputDir, 0755); err != nil {
+		t.Fatalf("MkdirAll(input) error = %v", err)
+	}
+	sourcePath := filepath.Join(sourceDir, "sample_chunk-001.txt")
+	donePath := filepath.Join(inputDir, "sample_chunk-001.txt")
+	source := testSheet("")
+	done := strings.Replace(testSheet("翻訳です。"), "First sentence.", "Different sentence.", 1)
+	if err := os.WriteFile(sourcePath, []byte(source), 0644); err != nil {
+		t.Fatalf("WriteFile(source) error = %v", err)
+	}
+	if err := os.WriteFile(donePath, []byte(done), 0644); err != nil {
+		t.Fatalf("WriteFile(done) error = %v", err)
+	}
+
+	result, err := RepairSheets(RepairSheetsOptions{
+		StoryName:         "sample",
+		SourceDir:         sourceDir,
+		InputDir:          inputDir,
+		QuarantineInvalid: true,
+		QuarantineDir:     quarantineDir,
+		RepairLog:         logPath,
+	})
+	if err != nil {
+		t.Fatalf("RepairSheets() error = %v", err)
+	}
+	if len(result.Files) != 1 || result.Files[0].Status != "invalid" || result.Files[0].QuarantinedPath == "" {
+		t.Fatalf("RepairSheets() files = %#v, want quarantined invalid", result.Files)
+	}
+	if _, err := os.Stat(donePath); !os.IsNotExist(err) {
+		t.Fatalf("done sheet still exists or stat failed: %v", err)
+	}
+	if _, err := os.Stat(result.Files[0].QuarantinedPath); err != nil {
+		t.Fatalf("quarantined file missing: %v", err)
+	}
+	logData, err := os.ReadFile(logPath)
+	if err != nil {
+		t.Fatalf("ReadFile(log) error = %v", err)
+	}
+	logText := string(logData)
+	for _, want := range []string{`"story":"sample"`, `"status":"invalid"`, `"quarantined_path"`} {
+		if !strings.Contains(logText, want) {
+			t.Fatalf("repair log missing %q:\n%s", want, logText)
+		}
+	}
+}
+
 func readTestWorkItem(t *testing.T, path string) WorkItem {
 	t.Helper()
 	data, err := os.ReadFile(path)
@@ -776,6 +1035,25 @@ func writeTestWorkItem(t *testing.T, path string, item WorkItem) {
 	}
 }
 
+func testWorkItem(storyID, chunkID, english, native string) WorkItem {
+	return WorkItem{
+		StoryID:    storyID,
+		StoryTitle: "Sample",
+		ChunkID:    chunkID,
+		Levels:     []string{story.LevelNative},
+		Paragraphs: []WorkParagraph{{
+			ID: "p-001",
+			Sentences: []WorkSentence{{
+				ID:      "s-001",
+				English: english,
+				Translations: map[string]string{
+					story.LevelNative: native,
+				},
+			}},
+		}},
+	}
+}
+
 func validationMessages(failures []SheetValidationFailure) string {
 	var b strings.Builder
 	for _, failure := range failures {
@@ -783,6 +1061,29 @@ func validationMessages(failures []SheetValidationFailure) string {
 		b.WriteByte('\n')
 	}
 	return b.String()
+}
+
+func prependUTF8BOM(t *testing.T, path string) {
+	t.Helper()
+	data, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatalf("ReadFile(%s) error = %v", path, err)
+	}
+	data = append([]byte{0xEF, 0xBB, 0xBF}, data...)
+	if err := os.WriteFile(path, data, 0644); err != nil {
+		t.Fatalf("WriteFile(%s) error = %v", path, err)
+	}
+}
+
+func assertNoUTF8BOM(t *testing.T, path string) {
+	t.Helper()
+	data, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatalf("ReadFile(%s) error = %v", path, err)
+	}
+	if len(data) >= 3 && data[0] == 0xEF && data[1] == 0xBB && data[2] == 0xBF {
+		t.Fatalf("%s still has UTF-8 BOM", path)
+	}
 }
 
 func testSheet(native string) string {

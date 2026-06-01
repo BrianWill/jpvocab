@@ -86,11 +86,12 @@ type repairSentence struct {
 }
 
 type repairSheet struct {
-	Path       string
-	Meta       map[string]string
-	Levels     []string
-	SourceFile string
-	Sentences  []repairSentence
+	Path           string
+	Meta           map[string]string
+	Levels         []string
+	SourceFile     string
+	Sentences      []repairSentence
+	IsOutputFormat bool
 }
 
 func RepairSheets(opts RepairSheetsOptions) (RepairSheetsResult, error) {
@@ -206,7 +207,7 @@ func repairSheetFile(sourcePath, donePath string, check bool, rewriteFromSource 
 		return result
 	}
 	source, sourceIssues := parseRepairSheet(sourcePath, sourceText)
-	done, doneIssues := parseRepairSheet(donePath, text)
+	done, doneIssues := parseRepairOutputSheet(donePath, text)
 	if len(sourceIssues) > 0 {
 		result.Status = "invalid"
 		for _, issue := range sourceIssues {
@@ -220,11 +221,11 @@ func repairSheetFile(sourcePath, donePath string, check bool, rewriteFromSource 
 		if done != nil {
 			translations = repairFieldValuesBySentence(done)
 		}
-		rewritten := renderRepairSheetFromSource(source, translations)
+		rewritten := renderOutputFromSource(source, translations)
 		if rewritten != text {
 			changed = true
 			text = rewritten
-			done, doneIssues = parseRepairSheet(donePath, text)
+			done, doneIssues = parseRepairOutputSheet(donePath, text)
 			if !check {
 				if err := writeRepairText(donePath, text); err != nil {
 					result.Status = "invalid"
@@ -237,9 +238,6 @@ func repairSheetFile(sourcePath, donePath string, check bool, rewriteFromSource 
 		repaired, fixedFences := repairMissingFences(text)
 		text = repaired
 		changed = changed || fixedFences
-		repaired, fixedEnglish := repairEnglishBlocks(text, source, done)
-		text = repaired
-		changed = changed || fixedEnglish
 		if changed && !check {
 			if err := writeRepairText(donePath, text); err != nil {
 				result.Status = "invalid"
@@ -247,7 +245,7 @@ func repairSheetFile(sourcePath, donePath string, check bool, rewriteFromSource 
 				return result
 			}
 		}
-		done, doneIssues = parseRepairSheet(donePath, text)
+		done, doneIssues = parseRepairOutputSheet(donePath, text)
 	}
 
 	result.Issues = append(result.Issues, doneIssues...)
@@ -444,6 +442,147 @@ func parseRepairSheet(path string, text string) (*repairSheet, []string) {
 	return sheet, issues
 }
 
+func parseRepairOutputSheet(path string, text string) (*repairSheet, []string) {
+	lines := normalizedRepairLines(text)
+	var issues []string
+	if len(lines) == 0 || strings.TrimSpace(lines[0]) != outputHeader {
+		issues = append(issues, "missing translation output header")
+	}
+
+	sheet := &repairSheet{
+		Path:           path,
+		Meta:           map[string]string{},
+		IsOutputFormat: true,
+	}
+	i := 1
+	for i < len(lines) {
+		line := strings.TrimSpace(lines[i])
+		if line == "" {
+			i++
+			continue
+		}
+		if strings.HasPrefix(line, "## ") {
+			break
+		}
+		if strings.Contains(line, ":") {
+			key, value, _ := strings.Cut(line, ":")
+			sheet.Meta[strings.TrimSpace(key)] = strings.TrimSpace(value)
+		}
+		i++
+	}
+	sheet.Levels = splitSheetLevels(sheet.Meta["levels"])
+	if len(sheet.Levels) == 0 {
+		issues = append(issues, "missing levels metadata")
+	}
+
+	for i < len(lines) {
+		line := strings.TrimSpace(lines[i])
+		if line == "" {
+			i++
+			continue
+		}
+		if !strings.HasPrefix(line, "## ") {
+			issues = append(issues, fmt.Sprintf("line %d: expected sentence header", i+1))
+			i++
+			continue
+		}
+
+		sentenceID := strings.TrimSpace(strings.TrimPrefix(line, "## "))
+		current := repairSentence{
+			SentenceID: sentenceID,
+			Header:     sentenceID,
+		}
+		i++
+
+		for i < len(lines) {
+			line = strings.TrimSpace(lines[i])
+			if line == "" {
+				i++
+				continue
+			}
+			if strings.HasPrefix(line, "## ") {
+				break
+			}
+			if !strings.HasSuffix(line, ":") {
+				issues = append(issues, fmt.Sprintf("line %d: expected field label", i+1))
+				i++
+				continue
+			}
+
+			label := strings.TrimSpace(strings.TrimSuffix(line, ":"))
+			labelLine := i + 1
+			i++
+			if i >= len(lines) || strings.TrimSpace(lines[i]) != sheetFence {
+				issues = append(issues, fmt.Sprintf("%s: %s missing opening fence at line %d", sentenceID, label, labelLine))
+				continue
+			}
+			i++
+
+			var blockLines []string
+			closed := false
+			for i < len(lines) {
+				if strings.TrimSpace(lines[i]) == sheetFenceEnd {
+					closed = true
+					i++
+					break
+				}
+				if strings.HasPrefix(strings.TrimSpace(lines[i]), "## ") || isRepairKnownLabel(lines[i], sheet.Levels) {
+					issues = append(issues, fmt.Sprintf("%s: %s missing closing fence", sentenceID, label))
+					break
+				}
+				blockLines = append(blockLines, lines[i])
+				i++
+			}
+			if !closed && i >= len(lines) {
+				issues = append(issues, fmt.Sprintf("%s: %s missing closing fence", sentenceID, label))
+			}
+			current.Fields = append(current.Fields, repairField{
+				Label: label,
+				Value: strings.Join(blockLines, "\n"),
+				Line:  labelLine,
+			})
+		}
+		sheet.Sentences = append(sheet.Sentences, current)
+	}
+	return sheet, issues
+}
+
+func renderOutputFromSource(source *repairSheet, translations map[repairSentenceKey]map[string]string) string {
+	var out []string
+	out = append(out,
+		outputHeader,
+		fmt.Sprintf("story_id: %s", source.Meta["story_id"]),
+		fmt.Sprintf("chunk_id: %s", source.Meta["chunk_id"]),
+		fmt.Sprintf("levels: %s", strings.Join(source.Levels, ",")),
+		"",
+	)
+	for _, sentence := range source.Sentences {
+		out = append(out, fmt.Sprintf("## %s", sentence.SentenceID))
+		// Done sentences (output format) have empty ParagraphID; match by SentenceID only.
+		key := repairSentenceKey{ParagraphID: "", SentenceID: sentence.SentenceID}
+		for _, label := range source.Levels {
+			sourceHasField := false
+			for _, f := range sentence.Fields {
+				if f.Label == label {
+					sourceHasField = true
+					break
+				}
+			}
+			if !sourceHasField {
+				continue
+			}
+			value := strings.TrimSpace(translations[key][label])
+			out = append(out, label+":", sheetFence)
+			if value != "" {
+				out = append(out, normalizedRepairLines(value)...)
+			}
+			out = append(out, sheetFenceEnd)
+		}
+		out = append(out, "")
+	}
+	return strings.Join(out, "\n")
+}
+
 func repairMissingFences(text string) (string, bool) {
 	lines := normalizedRepairLines(text)
 	var levels []string
@@ -484,27 +623,6 @@ func repairMissingFences(text string) (string, bool) {
 		fixed = true
 	}
 	return strings.Join(out, "\n"), fixed
-}
-
-func repairEnglishBlocks(text string, source *repairSheet, done *repairSheet) (string, bool) {
-	if done == nil {
-		return text, false
-	}
-	changed := false
-	sourceValues := repairFieldValuesBySentence(source)
-	doneValues := repairFieldValuesBySentence(done)
-	for key, fields := range sourceValues {
-		sourceEnglish := fields["english"]
-		doneEnglish := doneValues[key]["english"]
-		if sourceEnglish != "" && doneEnglish != "" && sourceEnglish != doneEnglish && asciiQuotes(sourceEnglish) == doneEnglish {
-			repaired := replaceRepairBlockText(text, "english", doneEnglish, sourceEnglish)
-			if repaired != text {
-				text = repaired
-				changed = true
-			}
-		}
-	}
-	return text, changed
 }
 
 type repairSentenceKey struct {
@@ -550,13 +668,22 @@ func renderRepairSheetFromSource(source *repairSheet, translations map[repairSen
 			sourceFields[field.Label] = field.Value
 		}
 		key := repairSentenceKey{ParagraphID: sentence.ParagraphID, SentenceID: sentence.SentenceID}
-		labels := append([]string{"english"}, source.Levels...)
+		// Determine source label from metadata (default to "english" for backward compat).
+		sourceLabel := source.Meta["source_label"]
+		if sourceLabel == "" {
+			if source.Meta["source_language"] == "ja" {
+				sourceLabel = "native"
+			} else {
+				sourceLabel = "english"
+			}
+		}
+		labels := append([]string{sourceLabel}, source.Levels...)
 		for _, label := range labels {
 			if _, ok := sourceFields[label]; !ok {
 				continue
 			}
 			value := sourceFields[label]
-			if label != "english" {
+			if label != sourceLabel {
 				value = strings.TrimSpace(translations[key][label])
 			}
 			out = append(out, label+":", sheetFence)
@@ -572,27 +699,34 @@ func renderRepairSheetFromSource(source *repairSheet, translations map[repairSen
 
 func repairSemanticIssues(source *repairSheet, done *repairSheet) []string {
 	var issues []string
-	for _, key := range []string{"story_id", "story_title", "chunk_id", "levels", "source_file"} {
+	for _, key := range []string{"story_id", "chunk_id", "levels"} {
 		if source.Meta[key] != done.Meta[key] {
 			issues = append(issues, fmt.Sprintf("metadata %s changed", key))
 		}
 	}
 
-	sourceKeys := repairSentenceKeys(source)
-	doneKeys := repairSentenceKeys(done)
-	if strings.Join(sourceKeys, "\x00") != strings.Join(doneKeys, "\x00") {
-		sourceSet := stringSet(sourceKeys)
-		doneSet := stringSet(doneKeys)
+	// Compare sentence IDs only; done is new format (no paragraph IDs).
+	sourceSentenceIDs := make([]string, 0, len(source.Sentences))
+	for _, s := range source.Sentences {
+		sourceSentenceIDs = append(sourceSentenceIDs, s.SentenceID)
+	}
+	doneSentenceIDs := make([]string, 0, len(done.Sentences))
+	for _, s := range done.Sentences {
+		doneSentenceIDs = append(doneSentenceIDs, s.SentenceID)
+	}
+	if strings.Join(sourceSentenceIDs, "\x00") != strings.Join(doneSentenceIDs, "\x00") {
+		sourceSet := stringSet(sourceSentenceIDs)
+		doneSet := stringSet(doneSentenceIDs)
 		missingOrExtra := false
-		for _, key := range sourceKeys {
-			if !doneSet[key] {
-				issues = append(issues, fmt.Sprintf("%s: missing sentence", key))
+		for _, id := range sourceSentenceIDs {
+			if !doneSet[id] {
+				issues = append(issues, fmt.Sprintf("%s: missing sentence", id))
 				missingOrExtra = true
 			}
 		}
-		for _, key := range doneKeys {
-			if !sourceSet[key] {
-				issues = append(issues, fmt.Sprintf("%s: extra sentence", key))
+		for _, id := range doneSentenceIDs {
+			if !sourceSet[id] {
+				issues = append(issues, fmt.Sprintf("%s: extra sentence", id))
 				missingOrExtra = true
 			}
 		}
@@ -601,21 +735,36 @@ func repairSemanticIssues(source *repairSheet, done *repairSheet) []string {
 		}
 	}
 
-	sourceValues := repairFieldValuesBySentence(source)
+	// Determine source label for this sheet.
+	sourceLabel := source.Meta["source_label"]
+	if sourceLabel == "" {
+		if source.Meta["source_language"] == "ja" {
+			sourceLabel = "native"
+		} else {
+			sourceLabel = "english"
+		}
+	}
+
+	// Build expected translation field presence from source (by sentence ID).
+	// The source-context block is excluded; only produce blocks are expected.
+	sourceFieldsBySentenceID := map[string]map[string]bool{}
+	for _, s := range source.Sentences {
+		fields := map[string]bool{}
+		for _, f := range s.Fields {
+			if f.Label != sourceLabel {
+				fields[f.Label] = true
+			}
+		}
+		sourceFieldsBySentenceID[s.SentenceID] = fields
+	}
+
 	for _, sentence := range done.Sentences {
-		key := repairSentenceKey{ParagraphID: sentence.ParagraphID, SentenceID: sentence.SentenceID}
-		expected := sourceValues[key]
+		expected := sourceFieldsBySentenceID[sentence.SentenceID]
 		seen := map[string]int{}
 		for _, field := range sentence.Fields {
 			seen[field.Label]++
 			if seen[field.Label] > 1 {
 				issues = append(issues, fmt.Sprintf("%s: duplicate %s block", sentence.Header, field.Label))
-			}
-			if field.Label == "english" {
-				if expected["english"] != field.Value {
-					issues = append(issues, fmt.Sprintf("%s: english text changed", sentence.Header))
-				}
-				continue
 			}
 			if !containsString(source.Levels, field.Label) {
 				issues = append(issues, fmt.Sprintf("%s: unexpected %s block", sentence.Header, field.Label))
@@ -627,8 +776,8 @@ func repairSemanticIssues(source *repairSheet, done *repairSheet) []string {
 				issues = append(issues, fmt.Sprintf("%s: suspicious mojibake in %s translation", sentence.Header, field.Label))
 			}
 		}
-		for _, label := range append([]string{"english"}, source.Levels...) {
-			if _, ok := expected[label]; ok && seen[label] == 0 {
+		for label := range expected {
+			if seen[label] == 0 {
 				issues = append(issues, fmt.Sprintf("%s: missing %s block", sentence.Header, label))
 			}
 		}
@@ -636,17 +785,11 @@ func repairSemanticIssues(source *repairSheet, done *repairSheet) []string {
 	return issues
 }
 
-func repairSentenceKeys(sheet *repairSheet) []string {
-	keys := make([]string, 0, len(sheet.Sentences))
-	for _, sentence := range sheet.Sentences {
-		keys = append(keys, sentence.ParagraphID+" / "+sentence.SentenceID)
-	}
-	return keys
-}
-
 func isRepairKnownLabel(line string, levels []string) bool {
 	line = strings.TrimSpace(line)
-	if line == "english:" {
+	// These are always valid labels: "english" is either the source (en) or a produce field (ja);
+	// "native" is either the source (ja) or a produce field (en).
+	if line == "english:" || line == "native:" {
 		return true
 	}
 	for _, level := range levels {

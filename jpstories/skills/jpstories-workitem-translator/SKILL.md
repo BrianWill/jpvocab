@@ -166,7 +166,7 @@ Tell subagents they are not alone in the codebase and must not revert unrelated 
 
 ## Translation Rules
 
-Use each translation block label exactly.
+Use each translation block label exactly. The `levels:` metadata in each source sheet lists exactly which blocks to produce. The pre-filled source-context block (the non-empty block that is not in `levels:`) is read-only — do not re-output it.
 
 ### native
 
@@ -179,6 +179,10 @@ Write learner-friendly Japanese around JLPT N3 difficulty. Prefer common vocabul
 ### n3_abridged
 
 Write a shorter JLPT N3-level version. Preserve essential events, relationships, and emotional meaning. Compress details when useful, but do not change the plot. Use natural Japanese suitable for early intermediate learners.
+
+### english (Japanese-source stories only)
+
+When the source block is `native:` (Japanese source story), produce a **literal English translation**: follow the Japanese sentence structure and word choices closely rather than polishing into natural English prose. Translate individual sentences with no cross-sentence context. Do not add interpretation beyond what the source explicitly states. This literal style is intentional for language-learning purposes.
 
 ## Import And Validation
 
@@ -234,7 +238,7 @@ Check mode reports all sheet import diagnostics without writing JSON. Repair any
 go run ./cmd/jpstories import-agent-work -story <story>
 ```
 
-The importer compares each sheet against the matching source JSON work item in `chunk/` and rejects changed metadata, changed English text, missing translations, extra translation blocks, or malformed sheet structure.
+The importer compares each output file against the matching source JSON work item in `chunk/` and rejects mismatched metadata, missing sentence IDs, missing translations, extra translation blocks, or malformed output structure. English text is fetched from the source JSON — agents do not copy it into output files.
 
 Then independently validate the imported JSON files in `stories/<story>/done/` using the batch validator:
 
@@ -296,11 +300,11 @@ Complete these jpstories translation sheet files for story <story>:
 <file 1>
 <file 2>
 
-Read only those files from stories/<story>/agent/. Fill only existing empty translation blocks (`native`, `n3`, `n3_abridged`). Preserve metadata, IDs, English text, block labels, fences, order, and filenames exactly. Write completed sheets to stories/<story>/agent-done/ with the same filenames.
+Read only those files from stories/<story>/agent/. Write translation output files to stories/<story>/agent-done/ with the same filenames, using the translation output format (`# jpstories translation output v1`): only `story_id`, `chunk_id`, `levels` metadata; sentence headers as `## s-XXX` (no paragraph ID); only the produce blocks listed in `levels:` (do not re-output the pre-filled source-context block).
 
-After writing each file, re-read it and check that requested translation blocks are non-empty and the sheet structure is intact. Fix any problems before reporting completion.
+After writing each file, re-read it and check that requested produce blocks are non-empty and the structure is intact. Fix any problems before reporting completion.
 
-Before reporting success, compare the output against the source sheet: metadata unchanged, sentence headers unchanged and in order, English unchanged, requested labels present exactly once, no extra labels, all requested translations non-empty, and all fences present.
+Before reporting success, compare the output against the source sheet: story_id/chunk_id/levels unchanged, all sentence IDs from source present in output in order, requested labels present exactly once per sentence, no extra labels, source-context block absent from output, all requested produce blocks non-empty, all fences present.
 
 You are not alone in the codebase; do not revert unrelated edits. Report completed files, skipped files, and unresolved issues.
 ```

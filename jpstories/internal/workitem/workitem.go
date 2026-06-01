@@ -56,11 +56,13 @@ type ValidateWorkItemPairOptions struct {
 }
 
 type WorkItem struct {
-	StoryID    string          `json:"story_id"`
-	StoryTitle string          `json:"story_title"`
-	ChunkID    string          `json:"chunk_id"`
-	Levels     []string        `json:"levels"`
-	Paragraphs []WorkParagraph `json:"paragraphs"`
+	StoryID        string          `json:"story_id"`
+	StoryTitle     string          `json:"story_title"`
+	ChunkID        string          `json:"chunk_id"`
+	SourceLanguage string          `json:"source_language,omitempty"`
+	SourceLabel    string          `json:"source_label,omitempty"`
+	Levels         []string        `json:"levels"`
+	Paragraphs     []WorkParagraph `json:"paragraphs"`
 }
 
 type WorkParagraph struct {
@@ -69,8 +71,9 @@ type WorkParagraph struct {
 }
 
 type WorkSentence struct {
-	ID           string
-	English      string
+	ID          string
+	SourceLabel string // not serialized directly; guides MarshalJSON
+	Source      string
 	Translations map[string]string
 }
 
@@ -435,8 +438,12 @@ func importSheet(path string, opts ImportSheetsOptions) (string, []SheetValidati
 		}}, nil
 	}
 
-	sheet, failures := readStrictTranslationSheet(path)
-	item, semanticFailures := workItemFromSheetDiagnostics(source, sheet, sourceName, path)
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return out, []SheetValidationFailure{{File: path, Message: err.Error()}}, nil
+	}
+	output, failures := parseTranslationOutputStrict(path, string(data))
+	item, semanticFailures := workItemFromOutputDiagnostics(source, output, path)
 	failures = append(failures, semanticFailures...)
 	if len(failures) > 0 {
 		return out, failures, nil
@@ -510,8 +517,8 @@ func workItemFromSheetDiagnostics(source WorkItem, sheet translationSheet, sourc
 			if sheetSentence.ParagraphID != paragraph.ID {
 				add(sentence.ID, "", "paragraph mismatch: got %q, want %q", sheetSentence.ParagraphID, paragraph.ID)
 			}
-			if sheetSentence.English != sentence.English {
-				add(sentence.ID, "", "changed English text")
+			if sheetSentence.English != sentence.Source {
+				add(sentence.ID, "", "changed source text")
 			}
 			translations := map[string]string{}
 			for level := range sentence.Translations {
@@ -595,10 +602,16 @@ func validateWorkItemPair(sourcePath string, inputPath string, fixBOM bool) ([]S
 		add(&failures, fmt.Sprintf("levels changed: got %q, want %q", strings.Join(done.Levels, ","), strings.Join(source.Levels, ",")))
 	}
 
+	sourceSpec, _ := story.WorkSpecFor(source.SourceLanguage)
+	validFields := map[string]bool{}
+	for _, f := range sourceSpec.ProduceFields {
+		validFields[f] = true
+	}
+
 	levelSet := map[string]bool{}
 	for _, level := range source.Levels {
-		if !story.IsSupportedLevel(level) {
-			add(&failures, fmt.Sprintf("unsupported level: %s", level))
+		if !validFields[level] {
+			add(&failures, fmt.Sprintf("unsupported produce field: %s", level))
 		}
 		if levelSet[level] {
 			add(&failures, fmt.Sprintf("duplicate level: %s", level))
@@ -630,8 +643,8 @@ func validateWorkItemPair(sourcePath string, inputPath string, fixBOM bool) ([]S
 			if doneSentence.ID != sourceSentence.ID {
 				add(&failures, fmt.Sprintf("%s.id mismatch: got %q, want %q", sentencePath, doneSentence.ID, sourceSentence.ID))
 			}
-			if doneSentence.English != sourceSentence.English {
-				add(&failures, fmt.Sprintf("%s.english changed", sentencePath))
+			if doneSentence.Source != sourceSentence.Source {
+				add(&failures, fmt.Sprintf("%s source text changed", sentencePath))
 			}
 			sourceKeys := sortedTranslationKeys(sourceSentence.Translations)
 			doneKeys := sortedTranslationKeys(doneSentence.Translations)
@@ -815,13 +828,16 @@ func sheetNamesToValidate(files []string, sourceByName map[string]string) ([]str
 	return names, true
 }
 
-func buildWorkItem(s story.Story, chunk story.Chunk, levels []string) (WorkItem, bool) {
+func buildWorkItem(s story.Story, chunk story.Chunk, produceFields []string) (WorkItem, bool) {
+	spec, _ := story.WorkSpecFor(s.SourceLanguage)
 	item := WorkItem{
-		StoryID:    s.ID,
-		StoryTitle: s.Title,
-		ChunkID:    chunk.ID,
+		StoryID:        s.ID,
+		StoryTitle:     s.Title,
+		ChunkID:        chunk.ID,
+		SourceLanguage: s.SourceLanguage,
+		SourceLabel:    spec.SourceField,
 	}
-	missingLevels := map[string]bool{}
+	missingFields := map[string]bool{}
 
 	for _, paragraph := range chunk.Paragraphs {
 		workParagraph := WorkParagraph{
@@ -830,13 +846,14 @@ func buildWorkItem(s story.Story, chunk story.Chunk, levels []string) (WorkItem,
 		for _, sentence := range paragraph.Sentences {
 			workSentence := WorkSentence{
 				ID:           sentence.ID,
-				English:      sentence.English,
+				SourceLabel:  spec.SourceField,
+				Source:       sentence.Field(spec.SourceField),
 				Translations: map[string]string{},
 			}
-			for _, level := range levels {
-				if strings.TrimSpace(sentence.Translations[level]) == "" {
-					workSentence.Translations[level] = ""
-					missingLevels[level] = true
+			for _, field := range produceFields {
+				if strings.TrimSpace(sentence.Field(field)) == "" {
+					workSentence.Translations[field] = ""
+					missingFields[field] = true
 				}
 			}
 			workParagraph.Sentences = append(workParagraph.Sentences, workSentence)
@@ -844,21 +861,19 @@ func buildWorkItem(s story.Story, chunk story.Chunk, levels []string) (WorkItem,
 		item.Paragraphs = append(item.Paragraphs, workParagraph)
 	}
 
-	item.Levels = includedLevels(levels, missingLevels)
+	item.Levels = includedLevels(produceFields, missingFields)
 	return item, len(item.Levels) > 0
 }
 
 func levelsToExport(s story.Story, requested string) ([]string, error) {
+	spec, _ := story.WorkSpecFor(s.SourceLanguage)
 	if requested != "" {
-		if !story.IsSupportedLevel(requested) {
-			return nil, fmt.Errorf("unsupported level %q", requested)
-		}
-		if !storyHasLevel(s, requested) {
-			return nil, fmt.Errorf("story does not include level %q", requested)
+		if !containsString(spec.ProduceFields, requested) {
+			return nil, fmt.Errorf("unsupported produce field %q for source_language %q", requested, s.SourceLanguage)
 		}
 		return []string{requested}, nil
 	}
-	return append([]string(nil), s.Levels...), nil
+	return append([]string(nil), spec.ProduceFields...), nil
 }
 
 func mergeWorkItem(s *story.Story, item WorkItem) (int, error) {
@@ -871,18 +886,22 @@ func mergeWorkItem(s *story.Story, item WorkItem) (int, error) {
 	if len(item.Levels) == 0 {
 		return 0, fmt.Errorf("levels must include at least one translation level")
 	}
-	levelSet := map[string]bool{}
-	for _, level := range item.Levels {
-		if !story.IsSupportedLevel(level) {
-			return 0, fmt.Errorf("unsupported level %q", level)
+
+	spec, _ := story.WorkSpecFor(s.SourceLanguage)
+	validFields := map[string]bool{}
+	for _, f := range spec.ProduceFields {
+		validFields[f] = true
+	}
+
+	fieldSet := map[string]bool{}
+	for _, field := range item.Levels {
+		if !validFields[field] {
+			return 0, fmt.Errorf("unsupported produce field %q for source_language %q", field, s.SourceLanguage)
 		}
-		if !storyHasLevel(*s, level) {
-			return 0, fmt.Errorf("story does not include level %q", level)
+		if fieldSet[field] {
+			return 0, fmt.Errorf("duplicate level %q", field)
 		}
-		if levelSet[level] {
-			return 0, fmt.Errorf("duplicate level %q", level)
-		}
-		levelSet[level] = true
+		fieldSet[field] = true
 	}
 
 	chunk := findChunk(s, item.ChunkID)
@@ -898,18 +917,15 @@ func mergeWorkItem(s *story.Story, item WorkItem) (int, error) {
 			if sentence == nil {
 				return 0, fmt.Errorf("sentence %q not found in chunk %q", workSentence.ID, item.ChunkID)
 			}
-			for level, translation := range workSentence.Translations {
-				if !levelSet[level] {
-					return 0, fmt.Errorf("sentence %q includes level %q not listed in levels", workSentence.ID, level)
+			for field, translation := range workSentence.Translations {
+				if !fieldSet[field] {
+					return 0, fmt.Errorf("sentence %q includes level %q not listed in levels", workSentence.ID, field)
 				}
 				translation = strings.TrimSpace(translation)
 				if translation == "" {
-					return 0, fmt.Errorf("translation for sentence %q level %q is empty", workSentence.ID, level)
+					return 0, fmt.Errorf("translation for sentence %q level %q is empty", workSentence.ID, field)
 				}
-				if sentence.Translations == nil {
-					sentence.Translations = map[string]string{}
-				}
-				sentence.Translations[level] = translation
+				sentence.SetField(field, translation)
 				merged++
 			}
 		}
@@ -967,33 +983,103 @@ func workItemPaths(dir string) ([]string, error) {
 }
 
 func (s WorkSentence) MarshalJSON() ([]byte, error) {
-	fields := map[string]string{
-		"id":      s.ID,
-		"english": s.English,
+	sourceLabel := s.SourceLabel
+	if sourceLabel == "" {
+		sourceLabel = story.LevelEnglish
 	}
-	for _, level := range story.SupportedLevels {
-		if translation, ok := s.Translations[level]; ok {
-			fields[level] = translation
+	fields := map[string]string{
+		"id":        s.ID,
+		sourceLabel: s.Source,
+	}
+	// Write all translation fields (produce fields go here)
+	for key, val := range s.Translations {
+		if key != sourceLabel {
+			fields[key] = val
 		}
 	}
 	return json.Marshal(fields)
 }
 
-func (s *WorkSentence) UnmarshalJSON(data []byte) error {
-	var fields map[string]string
-	if err := json.Unmarshal(data, &fields); err != nil {
+// WorkItem.UnmarshalJSON handles sentence deserialization with source-label awareness.
+func (item *WorkItem) UnmarshalJSON(data []byte) error {
+	// First pass: decode all top-level fields.
+	type workItemRaw struct {
+		StoryID        string            `json:"story_id"`
+		StoryTitle     string            `json:"story_title"`
+		ChunkID        string            `json:"chunk_id"`
+		SourceLanguage string            `json:"source_language"`
+		SourceLabel    string            `json:"source_label"`
+		Levels         []string          `json:"levels"`
+		Paragraphs     []json.RawMessage `json:"paragraphs"`
+	}
+	var raw workItemRaw
+	if err := json.Unmarshal(data, &raw); err != nil {
 		return err
 	}
-	s.ID = fields["id"]
-	s.English = fields["english"]
-	s.Translations = map[string]string{}
-	delete(fields, "id")
-	delete(fields, "english")
-	for key, value := range fields {
-		if !story.IsSupportedLevel(key) {
-			return fmt.Errorf("unknown sentence field %q", key)
+	// Detect unknown top-level fields.
+	var allKeys map[string]json.RawMessage
+	if err := json.Unmarshal(data, &allKeys); err != nil {
+		return err
+	}
+	known := map[string]bool{
+		"story_id": true, "story_title": true, "chunk_id": true,
+		"source_language": true, "source_label": true,
+		"levels": true, "paragraphs": true,
+	}
+	for k := range allKeys {
+		if !known[k] {
+			return fmt.Errorf("unknown field %q", k)
 		}
-		s.Translations[key] = value
+	}
+
+	item.StoryID = raw.StoryID
+	item.StoryTitle = raw.StoryTitle
+	item.ChunkID = raw.ChunkID
+	item.SourceLanguage = raw.SourceLanguage
+	item.SourceLabel = raw.SourceLabel
+	item.Levels = raw.Levels
+
+	// Determine the source label: prefer explicit field, else derive from language.
+	sourceLabel := raw.SourceLabel
+	if sourceLabel == "" {
+		if raw.SourceLanguage == "ja" {
+			sourceLabel = story.LevelNative
+		} else {
+			sourceLabel = story.LevelEnglish
+		}
+	}
+
+	// Second pass: decode paragraphs with sentence context.
+	type paragraphRaw struct {
+		ID        string              `json:"id"`
+		Sentences []json.RawMessage   `json:"sentences"`
+	}
+	for _, pRaw := range raw.Paragraphs {
+		var pr paragraphRaw
+		if err := json.Unmarshal(pRaw, &pr); err != nil {
+			return err
+		}
+		wp := WorkParagraph{ID: pr.ID}
+		for _, sRaw := range pr.Sentences {
+			var fields map[string]string
+			if err := json.Unmarshal(sRaw, &fields); err != nil {
+				return err
+			}
+			ws := WorkSentence{
+				ID:           fields["id"],
+				SourceLabel:  sourceLabel,
+				Source:       fields[sourceLabel],
+				Translations: map[string]string{},
+			}
+			for k, v := range fields {
+				if k == "id" || k == sourceLabel {
+					continue
+				}
+				ws.Translations[k] = v
+			}
+			wp.Sentences = append(wp.Sentences, ws)
+		}
+		item.Paragraphs = append(item.Paragraphs, wp)
 	}
 	return nil
 }
@@ -1047,20 +1133,264 @@ func storyHasLevel(s story.Story, level string) bool {
 
 const sheetFence = "<<<JPSTORIES"
 const sheetFenceEnd = "JPSTORIES>>>"
+const outputHeader = "# jpstories translation output v1"
+
+// TranslationOutput is the new agent-done/*.txt format: no English blocks, no paragraph IDs.
+type TranslationOutput struct {
+	StoryID   string
+	ChunkID   string
+	Levels    []string
+	Sentences []OutputSentence
+}
+
+type OutputSentence struct {
+	ID           string
+	Translations map[string]string
+}
+
+func writeTranslationOutput(path string, item WorkItem) error {
+	var b strings.Builder
+	b.WriteString(outputHeader + "\n")
+	fmt.Fprintf(&b, "story_id: %s\n", item.StoryID)
+	fmt.Fprintf(&b, "chunk_id: %s\n", item.ChunkID)
+	fmt.Fprintf(&b, "levels: %s\n", strings.Join(item.Levels, ","))
+	b.WriteByte('\n')
+	for _, paragraph := range item.Paragraphs {
+		for _, sentence := range paragraph.Sentences {
+			fmt.Fprintf(&b, "## %s\n", sentence.ID)
+			for _, level := range item.Levels {
+				if _, ok := sentence.Translations[level]; ok {
+					writeSheetField(&b, level, "")
+				}
+			}
+			b.WriteByte('\n')
+		}
+	}
+	if err := os.MkdirAll(filepath.Dir(path), 0755); err != nil {
+		return err
+	}
+	return os.WriteFile(path, []byte(b.String()), 0644)
+}
+
+func parseTranslationOutputStrict(path, text string) (TranslationOutput, []SheetValidationFailure) {
+	text = strings.ReplaceAll(text, "\r\n", "\n")
+	text = strings.ReplaceAll(text, "\r", "\n")
+	lines := strings.Split(text, "\n")
+	var out TranslationOutput
+	var failures []SheetValidationFailure
+	add := func(line int, format string, args ...any) {
+		failures = append(failures, sheetFailure(path, line, format, args...))
+	}
+
+	if len(lines) == 0 || strings.TrimSpace(lines[0]) != outputHeader {
+		add(1, "missing translation output header")
+		return out, failures
+	}
+
+	i := 1
+	seenMeta := map[string]bool{}
+	requiredMeta := []string{"story_id", "chunk_id", "levels"}
+	metaIndex := 0
+	for ; i < len(lines); i++ {
+		line := strings.TrimSpace(lines[i])
+		if line == "" {
+			i++
+			break
+		}
+		key, value, ok := strings.Cut(line, ":")
+		if !ok {
+			add(i+1, "expected metadata line")
+			continue
+		}
+		key = strings.TrimSpace(key)
+		value = strings.TrimSpace(value)
+		if seenMeta[key] {
+			add(i+1, "duplicate metadata field %q", key)
+		}
+		if metaIndex < len(requiredMeta) && key != requiredMeta[metaIndex] {
+			add(i+1, "metadata field order mismatch: got %q, want %q", key, requiredMeta[metaIndex])
+		}
+		metaIndex++
+		seenMeta[key] = true
+		switch key {
+		case "story_id":
+			out.StoryID = value
+		case "chunk_id":
+			out.ChunkID = value
+		case "levels":
+			out.Levels = splitSheetLevels(value)
+		default:
+			add(i+1, "unknown metadata field %q", key)
+		}
+	}
+	for _, key := range requiredMeta {
+		if !seenMeta[key] {
+			add(0, "missing metadata field %q", key)
+		}
+	}
+
+	for i < len(lines) {
+		line := strings.TrimSpace(lines[i])
+		if line == "" {
+			i++
+			continue
+		}
+		if !strings.HasPrefix(line, "## ") {
+			add(i+1, "unexpected text outside sentence block")
+			i++
+			continue
+		}
+		headerLine := i + 1
+		sentenceID := strings.TrimSpace(strings.TrimPrefix(line, "## "))
+		current := OutputSentence{
+			ID:           sentenceID,
+			Translations: map[string]string{},
+		}
+		seenFields := map[string]bool{}
+		i++
+		for i < len(lines) {
+			line = strings.TrimSpace(lines[i])
+			if line == "" {
+				i++
+				continue
+			}
+			if strings.HasPrefix(line, "## ") {
+				break
+			}
+			fieldLine := i + 1
+			if !strings.HasSuffix(line, ":") {
+				add(fieldLine, "%s: expected field label", sentenceID)
+				i++
+				continue
+			}
+			field := strings.TrimSuffix(line, ":")
+			if seenFields[field] {
+				add(fieldLine, "%s: duplicate %s block", sentenceID, field)
+			}
+			seenFields[field] = true
+			value, next, blockFailures := parseStrictSheetBlock(path, lines, i+1, sentenceID, field, out.Levels)
+			failures = append(failures, blockFailures...)
+			current.Translations[field] = value
+			i = next
+		}
+		for _, level := range out.Levels {
+			if !seenFields[level] {
+				add(headerLine, "%s: missing %s block", sentenceID, level)
+			}
+		}
+		for field := range seenFields {
+			if !containsString(out.Levels, field) {
+				add(headerLine, "%s: unexpected %s block", sentenceID, field)
+			}
+		}
+		out.Sentences = append(out.Sentences, current)
+	}
+
+	return out, failures
+}
+
+func workItemFromOutputDiagnostics(source WorkItem, output TranslationOutput, path string) (WorkItem, []SheetValidationFailure) {
+	var failures []SheetValidationFailure
+	addf := func(sentenceID, level, format string, args ...any) {
+		prefix := ""
+		if sentenceID != "" {
+			prefix = fmt.Sprintf("sentence %s", sentenceID)
+			if level != "" {
+				prefix += fmt.Sprintf(" level %s", level)
+			}
+			prefix += ": "
+		}
+		failures = append(failures, SheetValidationFailure{
+			File:    path,
+			Message: prefix + fmt.Sprintf(format, args...),
+		})
+	}
+
+	if output.StoryID != source.StoryID {
+		addf("", "", "story_id mismatch: got %q, want %q", output.StoryID, source.StoryID)
+	}
+	if output.ChunkID != source.ChunkID {
+		addf("", "", "chunk_id mismatch: got %q, want %q", output.ChunkID, source.ChunkID)
+	}
+	if strings.Join(output.Levels, "\x00") != strings.Join(source.Levels, "\x00") {
+		addf("", "", "levels mismatch: got %q, want %q", strings.Join(output.Levels, ","), strings.Join(source.Levels, ","))
+	}
+
+	byID := map[string]OutputSentence{}
+	for _, sentence := range output.Sentences {
+		if sentence.ID == "" {
+			addf("", "", "sentence id is required")
+			continue
+		}
+		if _, exists := byID[sentence.ID]; exists {
+			addf(sentence.ID, "", "duplicate sentence")
+			continue
+		}
+		byID[sentence.ID] = sentence
+	}
+
+	result := source
+	for paragraphIndex, paragraph := range source.Paragraphs {
+		for sentenceIndex, sentence := range paragraph.Sentences {
+			outputSentence, ok := byID[sentence.ID]
+			if !ok {
+				addf(sentence.ID, "", "missing from output")
+				continue
+			}
+			translations := map[string]string{}
+			for level := range sentence.Translations {
+				translation, ok := outputSentence.Translations[level]
+				if !ok {
+					addf(sentence.ID, level, "missing block")
+					continue
+				}
+				translation = strings.TrimSpace(translation)
+				if translation == "" {
+					addf(sentence.ID, level, "empty translation")
+					continue
+				}
+				translations[level] = translation
+			}
+			for level := range outputSentence.Translations {
+				if _, ok := sentence.Translations[level]; !ok {
+					addf(sentence.ID, level, "extra unknown block")
+				}
+			}
+			result.Paragraphs[paragraphIndex].Sentences[sentenceIndex].Translations = translations
+			delete(byID, sentence.ID)
+		}
+	}
+	if len(byID) > 0 {
+		var extra []string
+		for sentenceID := range byID {
+			extra = append(extra, sentenceID)
+		}
+		sort.Strings(extra)
+		for _, sentenceID := range extra {
+			addf(sentenceID, "", "unknown sentence")
+		}
+	}
+	if len(failures) > 0 {
+		return WorkItem{}, failures
+	}
+	return result, nil
+}
 
 type translationSheet struct {
-	StoryID    string
-	StoryTitle string
-	ChunkID    string
-	Levels     []string
-	SourceFile string
-	Sentences  []sheetSentence
+	StoryID        string
+	StoryTitle     string
+	ChunkID        string
+	SourceLanguage string
+	SourceLabel    string
+	Levels         []string
+	SourceFile     string
+	Sentences      []sheetSentence
 }
 
 type sheetSentence struct {
 	ParagraphID  string
 	SentenceID   string
-	English      string
+	English      string // holds the source-context text (whatever label it uses)
 	Translations map[string]string
 }
 
@@ -1072,13 +1402,21 @@ func writeTranslationSheet(path string, item WorkItem, sourceFile string) error 
 	fmt.Fprintf(&b, "chunk_id: %s\n", item.ChunkID)
 	fmt.Fprintf(&b, "levels: %s\n", strings.Join(item.Levels, ","))
 	fmt.Fprintf(&b, "source_file: %s\n", sourceFile)
+	if item.SourceLanguage != "" && item.SourceLanguage != "en" {
+		fmt.Fprintf(&b, "source_language: %s\n", item.SourceLanguage)
+		fmt.Fprintf(&b, "source_label: %s\n", item.SourceLabel)
+	}
 	b.WriteByte('\n')
 	b.WriteString("Fill only the empty translation blocks. Do not edit IDs, metadata, English text, or block labels.\n\n")
 
+	sourceLabel := item.SourceLabel
+	if sourceLabel == "" {
+		sourceLabel = story.LevelEnglish
+	}
 	for _, paragraph := range item.Paragraphs {
 		for _, sentence := range paragraph.Sentences {
 			fmt.Fprintf(&b, "## %s / %s\n", paragraph.ID, sentence.ID)
-			writeSheetField(&b, "english", sentence.English)
+			writeSheetField(&b, sourceLabel, sentence.Source)
 			for _, level := range item.Levels {
 				if _, ok := sentence.Translations[level]; ok {
 					writeSheetField(&b, level, "")
@@ -1147,8 +1485,21 @@ func parseTranslationSheet(text string) (translationSheet, error) {
 			sheet.Levels = splitSheetLevels(value)
 		case "source_file":
 			sheet.SourceFile = value
+		case "source_language":
+			sheet.SourceLanguage = value
+		case "source_label":
+			sheet.SourceLabel = value
 		}
 		i++
+	}
+	// Derive source label from metadata for language-agnostic parsing.
+	sourceLabel := sheet.SourceLabel
+	if sourceLabel == "" {
+		if sheet.SourceLanguage == "ja" {
+			sourceLabel = story.LevelNative
+		} else {
+			sourceLabel = story.LevelEnglish
+		}
 	}
 
 	for i < len(lines) {
@@ -1188,7 +1539,7 @@ func parseTranslationSheet(text string) (translationSheet, error) {
 			if err != nil {
 				return translationSheet{}, fmt.Errorf("%s %s: %w", current.ParagraphID, current.SentenceID, err)
 			}
-			if field == "english" {
+			if field == sourceLabel {
 				current.English = value
 			} else {
 				current.Translations[field] = value
@@ -1236,63 +1587,65 @@ func parseSheetBlock(lines []string, start int) (string, int, error) {
 
 func validateSheetPair(sourcePath, inputPath string) []SheetValidationFailure {
 	source, sourceFailures := readStrictTranslationSheet(sourcePath)
-	input, inputFailures := readStrictTranslationSheet(inputPath)
 	var failures []SheetValidationFailure
 	failures = append(failures, sourceFailures...)
-	failures = append(failures, inputFailures...)
 	if len(sourceFailures) > 0 {
 		return failures
 	}
 
-	if source.StoryID != input.StoryID {
-		failures = append(failures, sheetFailure(inputPath, 0, "story_id mismatch: got %q, want %q", input.StoryID, source.StoryID))
+	inputData, err := os.ReadFile(inputPath)
+	if err != nil {
+		failures = append(failures, sheetFailure(inputPath, 0, "%v", err))
+		return failures
 	}
-	if source.StoryTitle != input.StoryTitle {
-		failures = append(failures, sheetFailure(inputPath, 0, "story_title mismatch: got %q, want %q", input.StoryTitle, source.StoryTitle))
+	output, inputFailures := parseTranslationOutputStrict(inputPath, string(inputData))
+	failures = append(failures, inputFailures...)
+
+	if source.StoryID != output.StoryID {
+		failures = append(failures, sheetFailure(inputPath, 0, "story_id mismatch: got %q, want %q", output.StoryID, source.StoryID))
 	}
-	if source.ChunkID != input.ChunkID {
-		failures = append(failures, sheetFailure(inputPath, 0, "chunk_id mismatch: got %q, want %q", input.ChunkID, source.ChunkID))
+	if source.ChunkID != output.ChunkID {
+		failures = append(failures, sheetFailure(inputPath, 0, "chunk_id mismatch: got %q, want %q", output.ChunkID, source.ChunkID))
 	}
-	if strings.Join(source.Levels, "\x00") != strings.Join(input.Levels, "\x00") {
-		failures = append(failures, sheetFailure(inputPath, 0, "levels mismatch: got %q, want %q", strings.Join(input.Levels, ","), strings.Join(source.Levels, ",")))
-	}
-	if source.SourceFile != input.SourceFile {
-		failures = append(failures, sheetFailure(inputPath, 0, "source_file mismatch: got %q, want %q", input.SourceFile, source.SourceFile))
+	if strings.Join(source.Levels, "\x00") != strings.Join(output.Levels, "\x00") {
+		failures = append(failures, sheetFailure(inputPath, 0, "levels mismatch: got %q, want %q", strings.Join(output.Levels, ","), strings.Join(source.Levels, ",")))
 	}
 
-	if len(source.Sentences) != len(input.Sentences) {
-		failures = append(failures, sheetFailure(inputPath, 0, "sentence count mismatch: got %d, want %d", len(input.Sentences), len(source.Sentences)))
+	outputByID := map[string]OutputSentence{}
+	for _, s := range output.Sentences {
+		outputByID[s.ID] = s
 	}
-	for i, sourceSentence := range source.Sentences {
-		if i >= len(input.Sentences) {
+	seen := map[string]bool{}
+	for _, sourceSentence := range source.Sentences {
+		id := sourceSentence.SentenceID
+		seen[id] = true
+		outputSentence, ok := outputByID[id]
+		if !ok {
+			failures = append(failures, sheetFailure(inputPath, 0, "%s missing from output", id))
 			continue
-		}
-		inputSentence := input.Sentences[i]
-		where := fmt.Sprintf("sentence %d", i+1)
-		if sourceSentence.ParagraphID != inputSentence.ParagraphID || sourceSentence.SentenceID != inputSentence.SentenceID {
-			failures = append(failures, sheetFailure(inputPath, 0, "%s id/order mismatch: got %s / %s, want %s / %s", where, inputSentence.ParagraphID, inputSentence.SentenceID, sourceSentence.ParagraphID, sourceSentence.SentenceID))
-			continue
-		}
-		if sourceSentence.English != inputSentence.English {
-			failures = append(failures, sheetFailure(inputPath, 0, "%s english text changed", sourceSentence.SentenceID))
 		}
 		for _, level := range source.Levels {
 			if _, expected := sourceSentence.Translations[level]; !expected {
 				continue
 			}
-			translation, ok := inputSentence.Translations[level]
+			translation, ok := outputSentence.Translations[level]
 			if !ok {
-				failures = append(failures, sheetFailure(inputPath, 0, "%s missing %s block", sourceSentence.SentenceID, level))
+				failures = append(failures, sheetFailure(inputPath, 0, "%s missing %s block", id, level))
 				continue
 			}
 			if strings.TrimSpace(translation) == "" {
-				failures = append(failures, sheetFailure(inputPath, 0, "%s %s translation is empty", sourceSentence.SentenceID, level))
+				failures = append(failures, sheetFailure(inputPath, 0, "%s %s translation is empty", id, level))
 			}
 		}
-		for level := range inputSentence.Translations {
+		for level := range outputSentence.Translations {
 			if _, expected := sourceSentence.Translations[level]; !expected {
-				failures = append(failures, sheetFailure(inputPath, 0, "%s includes unexpected %s block", sourceSentence.SentenceID, level))
+				failures = append(failures, sheetFailure(inputPath, 0, "%s includes unexpected %s block", id, level))
 			}
+		}
+	}
+	for id := range outputByID {
+		if !seen[id] {
+			failures = append(failures, sheetFailure(inputPath, 0, "%s extra sentence in output", id))
 		}
 	}
 	return failures
@@ -1357,6 +1710,10 @@ func parseStrictTranslationSheet(path, text string) (translationSheet, []SheetVa
 			sheet.Levels = splitSheetLevels(value)
 		case "source_file":
 			sheet.SourceFile = value
+		case "source_language":
+			sheet.SourceLanguage = value
+		case "source_label":
+			sheet.SourceLabel = value
 		default:
 			add(i+1, "unknown metadata field %q", key)
 		}
@@ -1367,8 +1724,20 @@ func parseStrictTranslationSheet(path, text string) (translationSheet, []SheetVa
 		}
 	}
 
+	// Derive source label for language-agnostic field parsing.
+	sourceLabel := sheet.SourceLabel
+	if sourceLabel == "" {
+		if sheet.SourceLanguage == "ja" {
+			sourceLabel = story.LevelNative
+		} else {
+			sourceLabel = story.LevelEnglish
+		}
+	}
+
 	if i < len(lines) {
-		if strings.TrimSpace(lines[i]) != "Fill only the empty translation blocks. Do not edit IDs, metadata, English text, or block labels." {
+		instruction := strings.TrimSpace(lines[i])
+		if instruction != "Fill only the empty translation blocks. Do not edit IDs, metadata, English text, or block labels." &&
+			instruction != "Fill only the empty translation blocks. Do not edit IDs, metadata, source text, or block labels." {
 			add(i+1, "unexpected text before first sentence")
 		}
 		i++
@@ -1425,15 +1794,15 @@ func parseStrictTranslationSheet(path, text string) (translationSheet, []SheetVa
 			seenFields[field] = true
 			value, next, blockFailures := parseStrictSheetBlock(path, lines, i+1, current.SentenceID, field, sheet.Levels)
 			failures = append(failures, blockFailures...)
-			if field == "english" {
+			if field == sourceLabel {
 				current.English = value
 			} else {
 				current.Translations[field] = value
 			}
 			i = next
 		}
-		if !seenFields["english"] {
-			add(headerLine, "%s: missing english block", current.SentenceID)
+		if !seenFields[sourceLabel] {
+			add(headerLine, "%s: missing %s block", current.SentenceID, sourceLabel)
 		}
 		for _, level := range sheet.Levels {
 			if !seenFields[level] {
@@ -1441,7 +1810,7 @@ func parseStrictTranslationSheet(path, text string) (translationSheet, []SheetVa
 			}
 		}
 		for field := range seenFields {
-			if field == "english" {
+			if field == sourceLabel {
 				continue
 			}
 			if !containsString(sheet.Levels, field) {
@@ -1501,7 +1870,8 @@ func containsString(values []string, want string) bool {
 }
 
 func isSheetFieldLabel(line string, levels []string) bool {
-	if line == "english:" {
+	// "english:" and "native:" are always valid field labels (one is source, one is a level).
+	if line == "english:" || line == "native:" {
 		return true
 	}
 	for _, level := range levels {
@@ -1550,8 +1920,8 @@ func workItemFromSheet(source WorkItem, sheet translationSheet, sourceFile strin
 			if sheetSentence.ParagraphID != paragraph.ID {
 				return WorkItem{}, fmt.Errorf("sentence %q paragraph mismatch: got %q, want %q", sentence.ID, sheetSentence.ParagraphID, paragraph.ID)
 			}
-			if sheetSentence.English != sentence.English {
-				return WorkItem{}, fmt.Errorf("sentence %q english mismatch", sentence.ID)
+			if sheetSentence.English != sentence.Source {
+				return WorkItem{}, fmt.Errorf("sentence %q source text mismatch", sentence.ID)
 			}
 			translations := map[string]string{}
 			for level := range sentence.Translations {

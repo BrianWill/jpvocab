@@ -236,3 +236,91 @@ func TestDraftRejectsEmptySource(t *testing.T) {
 		t.Fatal("Draft() error = nil, want error")
 	}
 }
+
+func TestDraftJapaneseSplitsSentencesOnKutenAndStoresInNative(t *testing.T) {
+	text := "駅で小さな鐘が鳴った。ホームに人影はなかった。\n\n彼女は静かに笑った。"
+
+	got, err := Draft(text, Options{
+		StoryID:        "jp-test",
+		Title:          "JP Test",
+		SourceFile:     "stories/jp-test/jp-test.txt",
+		SourceLanguage: "ja",
+	})
+	if err != nil {
+		t.Fatalf("Draft() error = %v", err)
+	}
+
+	if got.SourceLanguage != "ja" {
+		t.Errorf("SourceLanguage = %q, want ja", got.SourceLanguage)
+	}
+	if got.TargetLanguage != "en" {
+		t.Errorf("TargetLanguage = %q, want en", got.TargetLanguage)
+	}
+
+	// Two paragraphs, first has 2 sentences (split on 。).
+	if len(got.Chunks[0].Paragraphs) < 2 {
+		t.Fatalf("expected at least 2 paragraphs, got %d", len(got.Chunks[0].Paragraphs))
+	}
+	firstPara := got.Chunks[0].Paragraphs[0]
+	if len(firstPara.Sentences) != 2 {
+		t.Fatalf("first paragraph sentence count = %d, want 2", len(firstPara.Sentences))
+	}
+	s0 := firstPara.Sentences[0]
+	if s0.English != "" {
+		t.Errorf("sentence English = %q, want empty for ja source", s0.English)
+	}
+	if s0.Translations[story.LevelNative] != "駅で小さな鐘が鳴った。" {
+		t.Errorf("sentence Translations[native] = %q", s0.Translations[story.LevelNative])
+	}
+}
+
+func TestDraftJapaneseNormalizesMultiLineParagraphWithoutSpaces(t *testing.T) {
+	text := "これは一行目。\nこれは二行目。"
+
+	got, err := Draft(text, Options{
+		StoryID:        "jp-wrap",
+		Title:          "JP Wrap",
+		SourceFile:     "stories/jp-wrap/jp-wrap.txt",
+		SourceLanguage: "ja",
+	})
+	if err != nil {
+		t.Fatalf("Draft() error = %v", err)
+	}
+
+	// One paragraph; no space should be inserted between the two lines.
+	para := got.Chunks[0].Paragraphs[0]
+	if len(para.Sentences) != 2 {
+		t.Fatalf("sentence count = %d, want 2", len(para.Sentences))
+	}
+	// Neither sentence should contain a space between kanji characters.
+	for _, s := range para.Sentences {
+		native := s.Translations[story.LevelNative]
+		if strings.Contains(native, "目。 こ") {
+			t.Errorf("unexpected space between ja lines: %q", native)
+		}
+	}
+}
+
+func TestDraftJapaneseClosingBracketsAreConsumedAfterSentenceEnd(t *testing.T) {
+	text := "「鐘が鳴りました」と彼女は言った。次の文。"
+
+	got, err := Draft(text, Options{
+		StoryID:        "jp-brackets",
+		Title:          "JP Brackets",
+		SourceFile:     "stories/jp-brackets/jp-brackets.txt",
+		SourceLanguage: "ja",
+	})
+	if err != nil {
+		t.Fatalf("Draft() error = %v", err)
+	}
+
+	para := got.Chunks[0].Paragraphs[0]
+	if len(para.Sentences) != 2 {
+		t.Fatalf("sentence count = %d, want 2: %#v", len(para.Sentences), para.Sentences)
+	}
+	// First sentence should include the 。 but NOT the following 次.
+	s0 := para.Sentences[0].Translations[story.LevelNative]
+	if !strings.HasSuffix(s0, "。") {
+		t.Errorf("first sentence = %q, expected to end with 。", s0)
+	}
+}

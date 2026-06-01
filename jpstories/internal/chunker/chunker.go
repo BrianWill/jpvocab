@@ -12,6 +12,7 @@ import (
 )
 
 const defaultWordsPerChunk = 220
+const defaultJaCharsPerChunk = 700
 
 var blankLineRE = regexp.MustCompile(`\r?\n\s*\r?\n+`)
 
@@ -19,17 +20,23 @@ type Options struct {
 	StoryID            string
 	Title              string
 	SourceFile         string
+	SourceLanguage     string
 	ParagraphsPerChunk int
 	WordsPerChunk      int
 }
 
 func Draft(text string, opts Options) (story.Story, error) {
-	paragraphs := splitParagraphs(text)
+	lang := opts.SourceLanguage
+	if lang == "" {
+		lang = "en"
+	}
+
+	paragraphs := splitParagraphsForLang(text, lang)
 	if len(paragraphs) == 0 {
 		return story.Story{}, errors.New("source text must include at least one paragraph")
 	}
 
-	chunkGroups := groupParagraphs(paragraphs, opts)
+	chunkGroups := groupParagraphsForLang(paragraphs, opts, lang)
 
 	storyID := strings.TrimSpace(opts.StoryID)
 	if storyID == "" {
@@ -43,11 +50,16 @@ func Draft(text string, opts Options) (story.Story, error) {
 		title = inferTitle(storyID)
 	}
 
+	targetLang := "ja"
+	if lang == "ja" {
+		targetLang = "en"
+	}
+
 	s := story.Story{
 		ID:             storyID,
 		Title:          title,
-		SourceLanguage: "en",
-		TargetLanguage: "ja",
+		SourceLanguage: lang,
+		TargetLanguage: targetLang,
 		SourceFile:     filepath.ToSlash(strings.TrimSpace(opts.SourceFile)),
 		Levels:         append([]string(nil), story.SupportedLevels...),
 	}
@@ -64,12 +76,16 @@ func Draft(text string, opts Options) (story.Story, error) {
 			}
 			nextParagraphID++
 
-			for _, sentenceText := range splitSentences(paragraphText) {
-				paragraph.Sentences = append(paragraph.Sentences, story.Sentence{
-					ID:           fmt.Sprintf("s-%03d", nextSentenceID),
-					English:      sentenceText,
-					Translations: map[string]string{},
-				})
+			for _, sentenceText := range splitSentencesForLang(paragraphText, lang) {
+				var sentence story.Sentence
+				sentence.ID = fmt.Sprintf("s-%03d", nextSentenceID)
+				sentence.Translations = map[string]string{}
+				if lang == "ja" {
+					sentence.Translations[story.LevelNative] = sentenceText
+				} else {
+					sentence.English = sentenceText
+				}
+				paragraph.Sentences = append(paragraph.Sentences, sentence)
 				nextSentenceID++
 			}
 			chunk.Paragraphs = append(chunk.Paragraphs, paragraph)
@@ -83,14 +99,17 @@ func Draft(text string, opts Options) (story.Story, error) {
 	return s, nil
 }
 
-func groupParagraphs(paragraphs []string, opts Options) [][]string {
+func groupParagraphsForLang(paragraphs []string, opts Options, lang string) [][]string {
 	if opts.ParagraphsPerChunk > 0 {
 		return groupParagraphsByCount(paragraphs, opts.ParagraphsPerChunk)
 	}
-
 	wordsPerChunk := opts.WordsPerChunk
 	if wordsPerChunk <= 0 {
-		wordsPerChunk = defaultWordsPerChunk
+		if lang == "ja" {
+			wordsPerChunk = defaultJaCharsPerChunk
+		} else {
+			wordsPerChunk = defaultWordsPerChunk
+		}
 	}
 	return groupParagraphsByWordTarget(paragraphs, wordsPerChunk)
 }
@@ -138,22 +157,33 @@ func sourceWordCount(text string) int {
 	return len([]rune(strings.TrimSpace(text)))
 }
 
-func splitParagraphs(text string) []string {
+func splitParagraphsForLang(text, lang string) []string {
 	text = strings.ReplaceAll(text, "\r\n", "\n")
 	text = strings.TrimSpace(text)
 	if text == "" {
 		return nil
 	}
-
 	parts := blankLineRE.Split(text, -1)
 	paragraphs := make([]string, 0, len(parts))
 	for _, part := range parts {
-		paragraph := normalizeParagraph(part)
+		var paragraph string
+		if lang == "ja" {
+			paragraph = normalizeParagraphJa(part)
+		} else {
+			paragraph = normalizeParagraph(part)
+		}
 		if paragraph != "" {
 			paragraphs = append(paragraphs, paragraph)
 		}
 	}
 	return paragraphs
+}
+
+func splitSentencesForLang(paragraph, lang string) []string {
+	if lang == "ja" {
+		return splitJapaneseSentences(paragraph)
+	}
+	return splitSentences(paragraph)
 }
 
 func splitSentences(paragraph string) []string {
@@ -271,6 +301,55 @@ func isInitial(token string) bool {
 
 func normalizeParagraph(paragraph string) string {
 	return strings.Join(strings.Fields(paragraph), " ")
+}
+
+func normalizeParagraphJa(paragraph string) string {
+	lines := strings.Split(paragraph, "\n")
+	var out []string
+	for _, line := range lines {
+		line = strings.TrimSpace(line)
+		if line != "" {
+			out = append(out, line)
+		}
+	}
+	return strings.Join(out, "")
+}
+
+func splitJapaneseSentences(paragraph string) []string {
+	var sentences []string
+	runes := []rune(paragraph)
+	start := 0
+	for i, r := range runes {
+		if isJapaneseSentenceEnd(r) {
+			end := i + 1
+			// consume any closing brackets that follow the sentence-ender
+			for end < len(runes) && isJapaneseSentenceCloser(runes[end]) {
+				end++
+			}
+			s := strings.TrimSpace(string(runes[start:end]))
+			if s != "" {
+				sentences = append(sentences, s)
+			}
+			start = end
+		}
+	}
+	if remainder := strings.TrimSpace(string(runes[start:])); remainder != "" {
+		sentences = append(sentences, remainder)
+	}
+	return sentences
+}
+
+func isJapaneseSentenceEnd(r rune) bool {
+	return r == '。' || r == '！' || r == '？'
+}
+
+func isJapaneseSentenceCloser(r rune) bool {
+	switch r {
+	case '」', '』', '）', '】', '〕', '〉', '》':
+		return true
+	default:
+		return false
+	}
 }
 
 func isClosingPunctuation(r rune) bool {

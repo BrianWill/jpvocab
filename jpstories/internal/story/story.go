@@ -7,6 +7,7 @@ import (
 )
 
 const (
+	LevelEnglish    = "english"
 	LevelNative     = "native"
 	LevelN3         = "n3"
 	LevelN3Abridged = "n3_abridged"
@@ -18,6 +19,54 @@ var supportedLevelSet = map[string]struct{}{
 	LevelNative:     {},
 	LevelN3:         {},
 	LevelN3Abridged: {},
+}
+
+// WorkSpec describes which field is the read-only source context and which
+// fields the translation agent must produce for a given source language.
+type WorkSpec struct {
+	SourceField   string
+	ProduceFields []string
+}
+
+// WorkSpecFor returns the WorkSpec for the given source language.
+// An empty sourceLanguage is treated as "en".
+func WorkSpecFor(sourceLanguage string) (WorkSpec, error) {
+	switch sourceLanguage {
+	case "en", "":
+		return WorkSpec{
+			SourceField:   LevelEnglish,
+			ProduceFields: []string{LevelNative, LevelN3, LevelN3Abridged},
+		}, nil
+	case "ja":
+		return WorkSpec{
+			SourceField:   LevelNative,
+			ProduceFields: []string{LevelEnglish, LevelN3, LevelN3Abridged},
+		}, nil
+	default:
+		return WorkSpec{}, fmt.Errorf("unsupported source_language %q", sourceLanguage)
+	}
+}
+
+// Field returns the sentence text for a given field name.
+// "english" maps to Sentence.English; all other names map to Translations[name].
+func (s Sentence) Field(name string) string {
+	if name == LevelEnglish {
+		return s.English
+	}
+	return s.Translations[name]
+}
+
+// SetField sets the sentence text for a given field name.
+// "english" maps to Sentence.English; all other names map to Translations[name].
+func (s *Sentence) SetField(name, val string) {
+	if name == LevelEnglish {
+		s.English = val
+		return
+	}
+	if s.Translations == nil {
+		s.Translations = map[string]string{}
+	}
+	s.Translations[name] = val
 }
 
 type Story struct {
@@ -68,6 +117,10 @@ func validate(s Story, requireTranslations bool) error {
 	}
 	if strings.TrimSpace(s.SourceLanguage) == "" {
 		return fmt.Errorf("story.source_language is required")
+	}
+	spec, err := WorkSpecFor(s.SourceLanguage)
+	if err != nil {
+		return fmt.Errorf("story.source_language %q is not supported", s.SourceLanguage)
 	}
 	if strings.TrimSpace(s.TargetLanguage) == "" {
 		return fmt.Errorf("story.target_language is required")
@@ -126,8 +179,12 @@ func validate(s Story, requireTranslations bool) error {
 					return err
 				}
 				nextSentenceOrdinal++
-				if strings.TrimSpace(sentence.English) == "" {
-					return fmt.Errorf("%s.english is required", sentencePath)
+				sourceText := sentence.Field(spec.SourceField)
+				if strings.TrimSpace(sourceText) == "" {
+					return fmt.Errorf("%s.%s is required", sentencePath, spec.SourceField)
+				}
+				if requireTranslations && strings.TrimSpace(sentence.English) == "" {
+					return fmt.Errorf("%s.english is required for a complete story", sentencePath)
 				}
 				if sentence.Translations == nil {
 					return fmt.Errorf("%s.translations must be an object", sentencePath)

@@ -135,14 +135,9 @@ func TestRunExportAndImportAgentWork(t *testing.T) {
 	if err := runExportAgentWork([]string{"-stories", storiesRoot, "-story", "sample"}); err != nil {
 		t.Fatalf("runExportAgentWork() error = %v", err)
 	}
-	sheetPath := filepath.Join(storyDir, "agent", "sample_chunk-001.txt")
-	sheetData, err := os.ReadFile(sheetPath)
-	if err != nil {
-		t.Fatalf("ReadFile(sheet) error = %v", err)
-	}
-	filled := strings.Replace(string(sheetData), "native:\n<<<JPSTORIES\nJPSTORIES>>>", "native:\n<<<JPSTORIES\n最初の文です。\nJPSTORIES>>>", 1)
-	if err := os.WriteFile(filepath.Join(agentDoneDir, "sample_chunk-001.txt"), []byte(filled), 0644); err != nil {
-		t.Fatalf("WriteFile(filled) error = %v", err)
+	doneSheet := "# jpstories translation output v1\nstory_id: sample\nchunk_id: chunk-001\nlevels: native\n\n## s-001\nnative:\n<<<JPSTORIES\n最初の文です。\nJPSTORIES>>>\n"
+	if err := os.WriteFile(filepath.Join(agentDoneDir, "sample_chunk-001.txt"), []byte(doneSheet), 0644); err != nil {
+		t.Fatalf("WriteFile(done) error = %v", err)
 	}
 
 	if err := runImportAgentWork([]string{"-stories", storiesRoot, "-story", "sample"}); err != nil {
@@ -189,23 +184,15 @@ func TestRunImportAgentWorkCheckDoesNotWriteDoneJSON(t *testing.T) {
   ]
 }
 `
-	sheet := `# jpstories translation sheet v1
+	sheet := `# jpstories translation output v1
 story_id: sample
-story_title: Sample
 chunk_id: chunk-001
 levels: native
-source_file: sample_chunk-001.json
 
-Fill only the empty translation blocks. Do not edit IDs, metadata, English text, or block labels.
-
-## p-001 / s-001
-english:
-<<<JPSTORIES
-First sentence.
-JPSTORIES>>>
+## s-001
 native:
 <<<JPSTORIES
-æœ€åˆã®æ–‡ã§ã™ã€‚
+最初の文です。
 JPSTORIES>>>
 `
 	if err := os.WriteFile(filepath.Join(chunkDir, "sample_chunk-001.json"), []byte(source), 0644); err != nil {
@@ -289,14 +276,9 @@ func TestRunAcceptStoryRunsEndToEndGate(t *testing.T) {
 	if err := runExportAgentWork([]string{"-stories", storiesRoot, "-story", "sample"}); err != nil {
 		t.Fatalf("runExportAgentWork() error = %v", err)
 	}
-	sheetPath := filepath.Join(storyDir, "agent", "sample_chunk-001.txt")
-	sheetData, err := os.ReadFile(sheetPath)
-	if err != nil {
-		t.Fatalf("ReadFile(sheet) error = %v", err)
-	}
-	filled := strings.Replace(string(sheetData), "native:\n<<<JPSTORIES\nJPSTORIES>>>", "native:\n<<<JPSTORIES\n最初の文です。\nJPSTORIES>>>", 1)
-	if err := os.WriteFile(filepath.Join(agentDoneDir, "sample_chunk-001.txt"), []byte(filled), 0644); err != nil {
-		t.Fatalf("WriteFile(filled) error = %v", err)
+	doneSheet := "# jpstories translation output v1\nstory_id: sample\nchunk_id: chunk-001\nlevels: native\n\n## s-001\nnative:\n<<<JPSTORIES\n最初の文です。\nJPSTORIES>>>\n"
+	if err := os.WriteFile(filepath.Join(agentDoneDir, "sample_chunk-001.txt"), []byte(doneSheet), 0644); err != nil {
+		t.Fatalf("WriteFile(done) error = %v", err)
 	}
 
 	if err := runAcceptStory([]string{"-stories", storiesRoot, "-story", "sample"}); err != nil {
@@ -374,11 +356,11 @@ native:
 
 JPSTORIES>>>
 `
-	filled := strings.Replace(sheet, "native:\n<<<JPSTORIES\n\nJPSTORIES>>>", "native:\n<<<JPSTORIES\næœ€åˆã®æ–‡ã§ã™ã€‚\nJPSTORIES>>>", 1)
 	if err := os.WriteFile(filepath.Join(agentDir, "sample_chunk-001.txt"), []byte(sheet), 0644); err != nil {
 		t.Fatalf("WriteFile(source 1) error = %v", err)
 	}
-	if err := os.WriteFile(filepath.Join(agentDoneDir, "sample_chunk-001.txt"), []byte(filled), 0644); err != nil {
+	filledOutput := "# jpstories translation output v1\nstory_id: sample\nchunk_id: chunk-001\nlevels: native\n\n## s-001\nnative:\n<<<JPSTORIES\n最初の文です。\nJPSTORIES>>>\n"
+	if err := os.WriteFile(filepath.Join(agentDoneDir, "sample_chunk-001.txt"), []byte(filledOutput), 0644); err != nil {
 		t.Fatalf("WriteFile(done 1) error = %v", err)
 	}
 	if err := os.WriteFile(filepath.Join(agentDir, "sample_chunk-002.txt"), []byte(strings.Replace(sheet, "chunk-001", "chunk-002", -1)), 0644); err != nil {
@@ -462,19 +444,10 @@ func setupAcceptStoryWithMalformedDoneSheet(t *testing.T) string {
 	if err := runExportAgentWork([]string{"-stories", storiesRoot, "-story", "sample"}); err != nil {
 		t.Fatalf("runExportAgentWork() error = %v", err)
 	}
-	sheetPath := filepath.Join(storyDir, "agent", "sample_chunk-001.txt")
-	sheetData, err := os.ReadFile(sheetPath)
-	if err != nil {
-		t.Fatalf("ReadFile(sheet) error = %v", err)
-	}
-	filled := strings.Replace(string(sheetData), "native:\n<<<JPSTORIES\nJPSTORIES>>>", "native:\n<<<JPSTORIES\ntranslation\nJPSTORIES>>>", 1)
-	lastFence := strings.LastIndex(filled, "JPSTORIES>>>")
-	if lastFence < 0 {
-		t.Fatalf("filled sheet missing closing fence:\n%s", filled)
-	}
-	malformed := filled[:lastFence] + filled[lastFence+len("JPSTORIES>>>"):]
+	// Malformed new-format output sheet: missing closing fence
+	malformed := "# jpstories translation output v1\nstory_id: sample\nchunk_id: chunk-001\nlevels: native\n\n## s-001\nnative:\n<<<JPSTORIES\ntranslation\n"
 	if err := os.WriteFile(filepath.Join(agentDoneDir, "sample_chunk-001.txt"), []byte(malformed), 0644); err != nil {
-		t.Fatalf("WriteFile(filled) error = %v", err)
+		t.Fatalf("WriteFile(done) error = %v", err)
 	}
 	return storiesRoot
 }
@@ -601,7 +574,8 @@ native:
 
 JPSTORIES>>>
 `
-	done := strings.TrimSuffix(strings.Replace(sheet, "native:\n<<<JPSTORIES\n\nJPSTORIES>>>", "native:\n<<<JPSTORIES\ntranslation\nJPSTORIES>>>", 1), "JPSTORIES>>>\n")
+	// New-format output sheet with missing closing fence
+	done := "# jpstories translation output v1\nstory_id: sample\nchunk_id: chunk-001\nlevels: native\n\n## s-001\nnative:\n<<<JPSTORIES\ntranslation\n"
 	if err := os.WriteFile(filepath.Join(agentDir, "sample_chunk-001.txt"), []byte(sheet), 0644); err != nil {
 		t.Fatalf("WriteFile(source) error = %v", err)
 	}
@@ -623,6 +597,64 @@ JPSTORIES>>>
 	}
 	if !strings.HasSuffix(string(data), "JPSTORIES>>>") {
 		t.Fatalf("repair did not restore closing fence:\n%s", data)
+	}
+}
+
+func TestRunPrepareStoryJapaneseSourceLanguage(t *testing.T) {
+	dir := t.TempDir()
+	storiesRoot := filepath.Join(dir, "stories")
+	storyDir := filepath.Join(storiesRoot, "jp_test")
+	in := filepath.Join(storyDir, "jp_test.txt")
+	storyPath := filepath.Join(storyDir, "jp_test.json")
+	if err := os.MkdirAll(storyDir, 0755); err != nil {
+		t.Fatalf("MkdirAll() error = %v", err)
+	}
+	// Simple Japanese text with sentence-ending punctuation.
+	text := "駅で小さな鐘が鳴った。ホームに人影はなかった。\n\n彼女は静かに笑った。"
+	if err := os.WriteFile(in, []byte(text), 0644); err != nil {
+		t.Fatalf("WriteFile() error = %v", err)
+	}
+
+	err := runPrepareStory([]string{
+		"-stories", storiesRoot,
+		"-story", "jp_test",
+		"-source-language", "ja",
+	})
+	if err != nil {
+		t.Fatalf("runPrepareStory() error = %v", err)
+	}
+
+	storyData, err := os.ReadFile(storyPath)
+	if err != nil {
+		t.Fatalf("ReadFile(story) error = %v", err)
+	}
+	storyText := string(storyData)
+	if !strings.Contains(storyText, `"source_language": "ja"`) {
+		t.Fatalf("story JSON missing source_language ja:\n%s", storyText)
+	}
+	// Native field should contain Japanese text; english should be absent or empty.
+	if !strings.Contains(storyText, "駅で小さな鐘が鳴った") {
+		t.Fatalf("story JSON missing japanese source text:\n%s", storyText)
+	}
+
+	// Work items should request english, n3, n3_abridged with native as source.
+	files, err := filepath.Glob(filepath.Join(storyDir, "chunk", "jp_test_*.json"))
+	if err != nil {
+		t.Fatalf("Glob() error = %v", err)
+	}
+	if len(files) == 0 {
+		t.Fatal("no chunk work item files found")
+	}
+	chunkData, err := os.ReadFile(files[0])
+	if err != nil {
+		t.Fatalf("ReadFile(chunk) error = %v", err)
+	}
+	chunkText := string(chunkData)
+	if !strings.Contains(chunkText, `"source_label": "native"`) {
+		t.Fatalf("chunk work item missing source_label native:\n%s", chunkText)
+	}
+	if !strings.Contains(chunkText, `"english"`) {
+		t.Fatalf("chunk work item missing english produce field:\n%s", chunkText)
 	}
 }
 

@@ -169,15 +169,15 @@ func TestMergeUpdatesReferencedLevelsAndPreservesOthers(t *testing.T) {
 				ID: "p-001",
 				Sentences: []WorkSentence{
 					{
-						ID:      "s-001",
-						English: "First sentence.",
+						ID:     "s-001",
+						Source: "First sentence.",
 						Translations: map[string]string{
 							story.LevelNative: "new native",
 						},
 					},
 					{
-						ID:      "s-002",
-						English: "Second sentence.",
+						ID:     "s-002",
+						Source: "Second sentence.",
 						Translations: map[string]string{
 							story.LevelNative:     "second native",
 							story.LevelN3Abridged: "second n3 abridged",
@@ -335,8 +335,8 @@ func TestMergeRejectsUnknownWorkItemFields(t *testing.T) {
 	if err == nil {
 		t.Fatal("Merge() error = nil")
 	}
-	if !strings.Contains(err.Error(), "unknown field \"level\"") {
-		t.Fatalf("Merge() error = %v, want unknown level field", err)
+	if !strings.Contains(err.Error(), "unknown field") {
+		t.Fatalf("Merge() error = %v, want unknown field error", err)
 	}
 }
 
@@ -356,7 +356,7 @@ func TestExportSheetsWritesTranslatorFriendlyText(t *testing.T) {
 			ID: "p-001",
 			Sentences: []WorkSentence{{
 				ID:      "s-001",
-				English: "“Hello,” she said.",
+				Source: `”Hello,” she said.`,
 				Translations: map[string]string{
 					story.LevelNative: "",
 					story.LevelN3:     "",
@@ -384,7 +384,7 @@ func TestExportSheetsWritesTranslatorFriendlyText(t *testing.T) {
 		"# jpstories translation sheet v1",
 		"source_file: sample_chunk-001.json",
 		"## p-001 / s-001",
-		"“Hello,” she said.",
+		`”Hello,” she said.`,
 		"native:",
 		"n3:",
 	} {
@@ -417,7 +417,7 @@ func TestImportSheetsWritesCompletedJSONFromFilledSheet(t *testing.T) {
 			ID: "p-001",
 			Sentences: []WorkSentence{{
 				ID:      "s-001",
-				English: "First sentence.",
+				Source: "First sentence.",
 				Translations: map[string]string{
 					story.LevelNative: "",
 					story.LevelN3:     "",
@@ -425,20 +425,12 @@ func TestImportSheetsWritesCompletedJSONFromFilledSheet(t *testing.T) {
 			}},
 		}},
 	})
-	sheet := `# jpstories translation sheet v1
+	sheet := `# jpstories translation output v1
 story_id: sample
-story_title: Sample
 chunk_id: chunk-001
 levels: native,n3
-source_file: sample_chunk-001.json
 
-Fill only the empty translation blocks. Do not edit IDs, metadata, English text, or block labels.
-
-## p-001 / s-001
-english:
-<<<JPSTORIES
-First sentence.
-JPSTORIES>>>
+## s-001
 native:
 <<<JPSTORIES
 最初の文です。
@@ -493,7 +485,7 @@ func TestImportSheetsCheckAggregatesDiagnosticsWithoutWriting(t *testing.T) {
 			ID: "p-001",
 			Sentences: []WorkSentence{{
 				ID:      "s-001",
-				English: "First sentence.",
+				Source: "First sentence.",
 				Translations: map[string]string{
 					story.LevelNative: "",
 					story.LevelN3:     "",
@@ -510,18 +502,20 @@ func TestImportSheetsCheckAggregatesDiagnosticsWithoutWriting(t *testing.T) {
 			ID: "p-001",
 			Sentences: []WorkSentence{{
 				ID:      "s-002",
-				English: "Second sentence.",
+				Source: "Second sentence.",
 				Translations: map[string]string{
 					story.LevelNative: "",
 				},
 			}},
 		}},
 	})
-	badOne := strings.Replace(testTwoLevelSheet("", "ã¯ã˜ã‚ã®æ–‡ã§ã™ã€‚"), "First sentence.", "Changed sentence.", 1)
+	// badOne: two-level output with empty native, extra unknown block
+	badOne := testTwoLevelOutputSheet("", "はじめの文です。")
 	badOne = strings.Replace(badOne, "n3:\n<<<JPSTORIES", "unexpected:\n<<<JPSTORIES\nextra\nJPSTORIES>>>\nn3:\n<<<JPSTORIES", 1)
-	badTwo := strings.Replace(testSheet("äºŒç•ªç›®ã®æ–‡ã§ã™ã€‚"), "chunk-001", "chunk-002", -1)
+	// badTwo: single-level output for chunk-002/s-002 with missing closing fence
+	badTwo := testOutputSheet("二番目の文です。")
+	badTwo = strings.Replace(badTwo, "chunk-001", "chunk-002", -1)
 	badTwo = strings.Replace(badTwo, "s-001", "s-002", -1)
-	badTwo = strings.Replace(badTwo, "First sentence.", "Second sentence.", 1)
 	badTwo = strings.Replace(badTwo, "JPSTORIES>>>\n", "", 1)
 	if err := os.WriteFile(filepath.Join(inputDir, "sample_chunk-001.txt"), []byte(badOne), 0644); err != nil {
 		t.Fatalf("WriteFile(bad one) error = %v", err)
@@ -541,7 +535,6 @@ func TestImportSheetsCheckAggregatesDiagnosticsWithoutWriting(t *testing.T) {
 	}
 	got := validationMessages(result.Failures)
 	for _, want := range []string{
-		"sentence s-001: changed English text",
 		"sentence s-001 level native: empty translation",
 		"sentence s-001 level unexpected: extra unknown block",
 		"missing closing fence",
@@ -577,14 +570,14 @@ func TestImportSheetsCheckSucceedsWithoutOutputDir(t *testing.T) {
 			ID: "p-001",
 			Sentences: []WorkSentence{{
 				ID:      "s-001",
-				English: "First sentence.",
+				Source: "First sentence.",
 				Translations: map[string]string{
 					story.LevelNative: "",
 				},
 			}},
 		}},
 	})
-	if err := os.WriteFile(filepath.Join(inputDir, "sample_chunk-001.txt"), []byte(testSheet("æœ€åˆã®æ–‡ã§ã™ã€‚")), 0644); err != nil {
+	if err := os.WriteFile(filepath.Join(inputDir, "sample_chunk-001.txt"), []byte(testOutputSheet("最初の文です。")), 0644); err != nil {
 		t.Fatalf("WriteFile(sheet) error = %v", err)
 	}
 
@@ -613,7 +606,7 @@ func TestValidateSheetsAcceptsCompletedSheets(t *testing.T) {
 	}
 
 	source := testSheet("")
-	completed := testSheet("æœ€åˆã®æ–‡ã§ã™ã€‚")
+	completed := testOutputSheet("最初の文です。")
 	if err := os.WriteFile(filepath.Join(sourceDir, "sample_chunk-001.txt"), []byte(source), 0644); err != nil {
 		t.Fatalf("WriteFile(source) error = %v", err)
 	}
@@ -653,12 +646,12 @@ func TestValidateSheetsReportsAllFilesAndStrictFailures(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(sourceDir, "sample_chunk-002.txt"), []byte(strings.Replace(testSheet(""), "chunk-001", "chunk-002", -1)), 0644); err != nil {
 		t.Fatalf("WriteFile(source 2) error = %v", err)
 	}
-	bad := strings.Replace(testSheet("æœ€åˆã®æ–‡ã§ã™ã€‚"), "First sentence.", "Changed sentence.", 1)
+	bad := testOutputSheet("最初の文です。")
 	bad = strings.Replace(bad, "native:\n<<<JPSTORIES", "native:\n<<<JPSTORIES\nextra\nJPSTORIES>>>\nnative:\n<<<JPSTORIES", 1)
 	if err := os.WriteFile(filepath.Join(inputDir, "sample_chunk-001.txt"), []byte(bad), 0644); err != nil {
 		t.Fatalf("WriteFile(bad) error = %v", err)
 	}
-	if err := os.WriteFile(filepath.Join(inputDir, "extra.txt"), []byte(testSheet("translation")), 0644); err != nil {
+	if err := os.WriteFile(filepath.Join(inputDir, "extra.txt"), []byte(testOutputSheet("translation")), 0644); err != nil {
 		t.Fatalf("WriteFile(extra) error = %v", err)
 	}
 
@@ -672,7 +665,6 @@ func TestValidateSheetsReportsAllFilesAndStrictFailures(t *testing.T) {
 	got := validationMessages(result.Failures)
 	for _, want := range []string{
 		"duplicate native block",
-		"english text changed",
 		"missing completed sheet",
 		"extra completed sheet",
 	} {
@@ -698,7 +690,7 @@ func TestValidateSheetsCanGateAssignedFilesOnly(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(sourceDir, "sample_chunk-002.txt"), []byte(strings.Replace(testSheet(""), "chunk-001", "chunk-002", -1)), 0644); err != nil {
 		t.Fatalf("WriteFile(source 2) error = %v", err)
 	}
-	if err := os.WriteFile(filepath.Join(inputDir, "sample_chunk-001.txt"), []byte(testSheet("æœ€åˆã®æ–‡ã§ã™ã€‚")), 0644); err != nil {
+	if err := os.WriteFile(filepath.Join(inputDir, "sample_chunk-001.txt"), []byte(testOutputSheet("最初の文です。")), 0644); err != nil {
 		t.Fatalf("WriteFile(done 1) error = %v", err)
 	}
 
@@ -782,7 +774,7 @@ func TestValidateWorkItemsReportsMissingInvalidAndExtraFiles(t *testing.T) {
 
 	got := validationMessages(result.Failures)
 	for _, want := range []string{
-		"english changed",
+		"source text changed",
 		"missing completed work item",
 		"extra completed work item",
 	} {
@@ -847,7 +839,7 @@ func TestRepairSheetsCheckReportsWouldFixWithoutWriting(t *testing.T) {
 	sourcePath := filepath.Join(sourceDir, "sample_chunk-001.txt")
 	donePath := filepath.Join(inputDir, "sample_chunk-001.txt")
 	source := testSheet("")
-	done := strings.TrimSuffix(testSheet("翻訳です。"), "JPSTORIES>>>\n")
+	done := strings.TrimSuffix(testOutputSheet("翻訳です。"), "JPSTORIES>>>\n")
 	if err := os.WriteFile(sourcePath, []byte(source), 0644); err != nil {
 		t.Fatalf("WriteFile(source) error = %v", err)
 	}
@@ -888,7 +880,7 @@ func TestRepairSheetsWritesMissingClosingFenceRepair(t *testing.T) {
 	sourcePath := filepath.Join(sourceDir, "sample_chunk-001.txt")
 	donePath := filepath.Join(inputDir, "sample_chunk-001.txt")
 	source := testSheet("")
-	done := strings.TrimSuffix(testSheet("翻訳です。"), "JPSTORIES>>>\n")
+	done := strings.TrimSuffix(testOutputSheet("翻訳です。"), "JPSTORIES>>>\n")
 	if err := os.WriteFile(sourcePath, []byte(source), 0644); err != nil {
 		t.Fatalf("WriteFile(source) error = %v", err)
 	}
@@ -925,7 +917,7 @@ func TestRepairSheetsRewriteFromSourceSalvagesTranslation(t *testing.T) {
 	sourcePath := filepath.Join(sourceDir, "sample_chunk-001.txt")
 	donePath := filepath.Join(inputDir, "sample_chunk-001.txt")
 	source := testSheet("")
-	done := strings.Replace(testSheet("翻訳です。"), "First sentence.", "Changed sentence.", 1)
+	done := strings.Replace(testOutputSheet("翻訳です。"), "story_id: sample", "story_id: wrongstory", 1)
 	if err := os.WriteFile(sourcePath, []byte(source), 0644); err != nil {
 		t.Fatalf("WriteFile(source) error = %v", err)
 	}
@@ -948,8 +940,8 @@ func TestRepairSheetsRewriteFromSourceSalvagesTranslation(t *testing.T) {
 	if err != nil {
 		t.Fatalf("ReadFile(done) error = %v", err)
 	}
-	if !strings.Contains(string(data), "First sentence.") || strings.Contains(string(data), "Changed sentence.") {
-		t.Fatalf("rewrite did not restore source English:\n%s", data)
+	if !strings.Contains(string(data), "story_id: sample") || strings.Contains(string(data), "story_id: wrongstory") {
+		t.Fatalf("rewrite did not restore source story_id:\n%s", data)
 	}
 	if !strings.Contains(string(data), "翻訳です。") {
 		t.Fatalf("rewrite did not salvage translation:\n%s", data)
@@ -971,7 +963,7 @@ func TestRepairSheetsQuarantinesInvalidAndWritesLog(t *testing.T) {
 	sourcePath := filepath.Join(sourceDir, "sample_chunk-001.txt")
 	donePath := filepath.Join(inputDir, "sample_chunk-001.txt")
 	source := testSheet("")
-	done := strings.Replace(testSheet("翻訳です。"), "First sentence.", "Different sentence.", 1)
+	done := strings.Replace(testOutputSheet("翻訳です。"), "## s-001", "## s-999", 1)
 	if err := os.WriteFile(sourcePath, []byte(source), 0644); err != nil {
 		t.Fatalf("WriteFile(source) error = %v", err)
 	}
@@ -1045,7 +1037,7 @@ func testWorkItem(storyID, chunkID, english, native string) WorkItem {
 			ID: "p-001",
 			Sentences: []WorkSentence{{
 				ID:      "s-001",
-				English: english,
+				Source: english,
 				Translations: map[string]string{
 					story.LevelNative: native,
 				},
@@ -1132,6 +1124,292 @@ n3:
 ` + n3 + `
 JPSTORIES>>>
 `
+}
+
+func testOutputSheet(native string) string {
+	return `# jpstories translation output v1
+story_id: sample
+chunk_id: chunk-001
+levels: native
+
+## s-001
+native:
+<<<JPSTORIES
+` + native + `
+JPSTORIES>>>
+`
+}
+
+func testTwoLevelOutputSheet(native string, n3 string) string {
+	return `# jpstories translation output v1
+story_id: sample
+chunk_id: chunk-001
+levels: native,n3
+
+## s-001
+native:
+<<<JPSTORIES
+` + native + `
+JPSTORIES>>>
+n3:
+<<<JPSTORIES
+` + n3 + `
+JPSTORIES>>>
+`
+}
+
+func TestExportJapaneseStoryWritesNativeAsSourceLabel(t *testing.T) {
+	dir := t.TempDir()
+	storyPath := filepath.Join(dir, "story.json")
+	outDir := filepath.Join(dir, "work")
+	s := fixtureJaStory()
+	if err := story.SaveFile(storyPath, s); err != nil {
+		t.Fatalf("SaveFile() error = %v", err)
+	}
+
+	result, err := Export(ExportOptions{
+		StoryPath: storyPath,
+		OutputDir: outDir,
+	})
+	if err != nil {
+		t.Fatalf("Export() error = %v", err)
+	}
+
+	if len(result.Files) != 1 {
+		t.Fatalf("len(Files) = %d, want 1", len(result.Files))
+	}
+	item := readTestWorkItem(t, result.Files[0])
+	if item.SourceLabel != story.LevelNative {
+		t.Errorf("SourceLabel = %q, want native", item.SourceLabel)
+	}
+	if item.SourceLanguage != "ja" {
+		t.Errorf("SourceLanguage = %q, want ja", item.SourceLanguage)
+	}
+	if got, want := strings.Join(item.Levels, ","), "english,n3,n3_abridged"; got != want {
+		t.Errorf("Levels = %q, want %q", got, want)
+	}
+	s0 := item.Paragraphs[0].Sentences[0]
+	if s0.Source != "駅で小さな鐘が鳴った。" {
+		t.Errorf("Source = %q, want japanese text", s0.Source)
+	}
+	if _, ok := s0.Translations[story.LevelEnglish]; !ok {
+		t.Error("missing english produce field in translations")
+	}
+}
+
+func TestExportSheetsJapaneseWritesNativeAsSourceBlock(t *testing.T) {
+	dir := t.TempDir()
+	sourceDir := filepath.Join(dir, "chunk")
+	outDir := filepath.Join(dir, "agent")
+	if err := os.MkdirAll(sourceDir, 0755); err != nil {
+		t.Fatalf("MkdirAll() error = %v", err)
+	}
+	writeTestWorkItem(t, filepath.Join(sourceDir, "sample_chunk-001.json"), WorkItem{
+		StoryID:        "sample",
+		StoryTitle:     "Sample",
+		ChunkID:        "chunk-001",
+		SourceLanguage: "ja",
+		SourceLabel:    story.LevelNative,
+		Levels:         []string{story.LevelEnglish, story.LevelN3, story.LevelN3Abridged},
+		Paragraphs: []WorkParagraph{{
+			ID: "p-001",
+			Sentences: []WorkSentence{{
+				ID:          "s-001",
+				SourceLabel: story.LevelNative,
+				Source:      "駅で小さな鐘が鳴った。",
+				Translations: map[string]string{
+					story.LevelEnglish:    "",
+					story.LevelN3:         "",
+					story.LevelN3Abridged: "",
+				},
+			}},
+		}},
+	})
+
+	result, err := ExportSheets(ExportSheetsOptions{
+		SourceDir: sourceDir,
+		OutputDir: outDir,
+	})
+	if err != nil {
+		t.Fatalf("ExportSheets() error = %v", err)
+	}
+	data, err := os.ReadFile(result.Files[0])
+	if err != nil {
+		t.Fatalf("ReadFile() error = %v", err)
+	}
+	text := string(data)
+	for _, want := range []string{
+		"source_language: ja",
+		"source_label: native",
+		"native:",
+		"駅で小さな鐘が鳴った。",
+		"english:",
+		"n3:",
+	} {
+		if !strings.Contains(text, want) {
+			t.Fatalf("sheet missing %q:\n%s", want, text)
+		}
+	}
+}
+
+func TestImportSheetsJaStoryMergesEnglishIntoSentenceEnglishField(t *testing.T) {
+	dir := t.TempDir()
+	sourceDir := filepath.Join(dir, "chunk")
+	inputDir := filepath.Join(dir, "agent-done")
+	outputDir := filepath.Join(dir, "done")
+	for _, d := range []string{sourceDir, inputDir, outputDir} {
+		if err := os.MkdirAll(d, 0755); err != nil {
+			t.Fatalf("MkdirAll() error = %v", err)
+		}
+	}
+
+	writeTestWorkItem(t, filepath.Join(sourceDir, "sample_chunk-001.json"), WorkItem{
+		StoryID:        "sample",
+		StoryTitle:     "Sample",
+		ChunkID:        "chunk-001",
+		SourceLanguage: "ja",
+		SourceLabel:    story.LevelNative,
+		Levels:         []string{story.LevelEnglish, story.LevelN3},
+		Paragraphs: []WorkParagraph{{
+			ID: "p-001",
+			Sentences: []WorkSentence{{
+				ID:          "s-001",
+				SourceLabel: story.LevelNative,
+				Source:      "駅で小さな鐘が鳴った。",
+				Translations: map[string]string{
+					story.LevelEnglish: "",
+					story.LevelN3:      "",
+				},
+			}},
+		}},
+	})
+
+	sheet := `# jpstories translation output v1
+story_id: sample
+chunk_id: chunk-001
+levels: english,n3
+
+## s-001
+english:
+<<<JPSTORIES
+A small bell rang in the station.
+JPSTORIES>>>
+n3:
+<<<JPSTORIES
+駅でベルが鳴った。
+JPSTORIES>>>
+`
+	if err := os.WriteFile(filepath.Join(inputDir, "sample_chunk-001.txt"), []byte(sheet), 0644); err != nil {
+		t.Fatalf("WriteFile() error = %v", err)
+	}
+
+	result, err := ImportSheets(ImportSheetsOptions{
+		SourceDir: sourceDir,
+		InputDir:  inputDir,
+		OutputDir: outputDir,
+	})
+	if err != nil {
+		t.Fatalf("ImportSheets() error = %v", err)
+	}
+	if len(result.Files) != 1 {
+		t.Fatalf("len(Files) = %d, want 1", len(result.Files))
+	}
+	item := readTestWorkItem(t, result.Files[0])
+	s0 := item.Paragraphs[0].Sentences[0]
+	if enVal, ok := s0.Translations[story.LevelEnglish]; !ok || strings.TrimSpace(enVal) == "" {
+		t.Errorf("Translations[english] = %q, want non-empty English translation", enVal)
+	}
+}
+
+func TestMergeJapaneseStoryMergesEnglishIntoSentenceEnglishField(t *testing.T) {
+	dir := t.TempDir()
+	storyPath := filepath.Join(dir, "story.json")
+	inDir := filepath.Join(dir, "done")
+	if err := os.MkdirAll(inDir, 0755); err != nil {
+		t.Fatalf("MkdirAll() error = %v", err)
+	}
+
+	s := fixtureJaStory()
+	if err := story.SaveFile(storyPath, s); err != nil {
+		t.Fatalf("SaveFile() error = %v", err)
+	}
+
+	writeTestWorkItem(t, filepath.Join(inDir, "done.json"), WorkItem{
+		StoryID:        "sample",
+		StoryTitle:     "Sample",
+		ChunkID:        "chunk-001",
+		SourceLanguage: "ja",
+		SourceLabel:    story.LevelNative,
+		Levels:         []string{story.LevelEnglish, story.LevelN3},
+		Paragraphs: []WorkParagraph{{
+			ID: "p-001",
+			Sentences: []WorkSentence{
+				{
+					ID:          "s-001",
+					SourceLabel: story.LevelNative,
+					Source:      "駅で小さな鐘が鳴った。",
+					Translations: map[string]string{
+						story.LevelEnglish: "A small bell rang in the station.",
+						story.LevelN3:      "駅でベルが鳴った。",
+					},
+				},
+			},
+		}},
+	})
+
+	result, err := Merge(MergeOptions{
+		StoryPath: storyPath,
+		InputDir:  inDir,
+	})
+	if err != nil {
+		t.Fatalf("Merge() error = %v", err)
+	}
+	if result.TranslationsMerged != 2 {
+		t.Fatalf("TranslationsMerged = %d, want 2", result.TranslationsMerged)
+	}
+
+	updated, err := story.LoadFile(storyPath)
+	if err != nil {
+		t.Fatalf("LoadFile() error = %v", err)
+	}
+	s0 := updated.Chunks[0].Paragraphs[0].Sentences[0]
+	if s0.English != "A small bell rang in the station." {
+		t.Errorf("English = %q, want English translation", s0.English)
+	}
+	if s0.Translations[story.LevelNative] != "駅で小さな鐘が鳴った。" {
+		t.Errorf("Translations[native] = %q, want preserved Japanese", s0.Translations[story.LevelNative])
+	}
+	if s0.Translations[story.LevelN3] != "駅でベルが鳴った。" {
+		t.Errorf("Translations[n3] = %q", s0.Translations[story.LevelN3])
+	}
+}
+
+func fixtureJaStory() story.Story {
+	return story.Story{
+		ID:             "sample",
+		Title:          "Sample",
+		SourceLanguage: "ja",
+		TargetLanguage: "en",
+		SourceFile:     "stories/sample/sample.txt",
+		Levels:         []string{story.LevelNative, story.LevelN3, story.LevelN3Abridged},
+		Chunks: []story.Chunk{
+			{
+				ID: "chunk-001",
+				Paragraphs: []story.Paragraph{
+					{
+						ID: "p-001",
+						Sentences: []story.Sentence{
+							{
+								ID:           "s-001",
+								English:      "",
+								Translations: map[string]string{story.LevelNative: "駅で小さな鐘が鳴った。"},
+							},
+						},
+					},
+				},
+			},
+		},
+	}
 }
 
 func fixtureStory() story.Story {

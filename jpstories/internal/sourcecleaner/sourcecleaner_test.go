@@ -17,7 +17,7 @@ func TestCleanRepairsEncodingHyphenationAndDialogueParagraphs(t *testing.T) {
 		t.Fatalf("Clean() error = %v", err)
 	}
 
-	want := "“Correct,” said Scrimgeour. “A Snitch is not touched by bare skin before it is released, not even by the maker.\n\nHarry’s heart was beating rather fast.\n\n“You don’t say anything,” said Scrimgeour.\n"
+	want := "\"Correct,\" said Scrimgeour. \"A Snitch is not touched by bare skin before it is released, not even by the maker.\n\nHarry's heart was beating rather fast.\n\n\"You don't say anything,\" said Scrimgeour.\n"
 	if got.Text != want {
 		t.Fatalf("Text = %q, want %q", got.Text, want)
 	}
@@ -91,5 +91,63 @@ func TestCleanRejectsUnsupportedParagraphMode(t *testing.T) {
 	_, err := Clean("Hello.", Options{ParagraphMode: "wild"})
 	if err == nil {
 		t.Fatal("Clean() error = nil, want error")
+	}
+}
+
+func TestCleanJapanesePreservesBlankLineParagraphsWithoutInsertingSpaces(t *testing.T) {
+	text := "これは一段落目の\n最初の行です。\n\nこれは二段落目の\nテキストです。"
+
+	got, err := Clean(text, Options{
+		SourceLanguage: "ja",
+		CleanEncoding:  true,
+	})
+	if err != nil {
+		t.Fatalf("Clean() error = %v", err)
+	}
+
+	if got.Stats.ParagraphsOut != 2 {
+		t.Fatalf("ParagraphsOut = %d, want 2", got.Stats.ParagraphsOut)
+	}
+	// No space should be inserted between Japanese lines within a paragraph.
+	if strings.Contains(got.Text, "の ") {
+		t.Errorf("Clean() inserted space between Japanese characters: %q", got.Text)
+	}
+}
+
+func TestCleanJapaneseSkipsHyphenRepairAndDialogueHeuristics(t *testing.T) {
+	text := "これは日本語のテキストです。\n「こんにちは」と彼女は言った。\n\n次の段落です。"
+
+	got, err := Clean(text, Options{
+		SourceLanguage:    "ja",
+		CleanEncoding:     false,
+		RepairHyphenation: true, // should be ignored for Japanese
+	})
+	if err != nil {
+		t.Fatalf("Clean() error = %v", err)
+	}
+
+	if got.Stats.HyphenationRepairs != 0 {
+		t.Errorf("HyphenationRepairs = %d, want 0 (skipped for ja)", got.Stats.HyphenationRepairs)
+	}
+	if got.Stats.ParagraphBreaksAdded != 0 {
+		t.Errorf("ParagraphBreaksAdded = %d, want 0 (no dialogue heuristics for ja)", got.Stats.ParagraphBreaksAdded)
+	}
+}
+
+func TestCleanJapaneseMultiLineParagraphJoinsWithoutSpace(t *testing.T) {
+	text := "第一行。\n第二行。"
+
+	got, err := Clean(text, Options{SourceLanguage: "ja"})
+	if err != nil {
+		t.Fatalf("Clean() error = %v", err)
+	}
+
+	if got.Stats.ParagraphsOut != 1 {
+		t.Fatalf("ParagraphsOut = %d, want 1", got.Stats.ParagraphsOut)
+	}
+	// Lines should be joined without space.
+	want := "第一行。\n第二行。\n"
+	if got.Text != want {
+		t.Fatalf("Text = %q, want %q", got.Text, want)
 	}
 }

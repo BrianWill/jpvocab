@@ -16,6 +16,7 @@ type Options struct {
 	CleanEncoding     bool
 	RepairHyphenation bool
 	ParagraphMode     string
+	SourceLanguage    string
 }
 
 type Result struct {
@@ -33,6 +34,11 @@ type Stats struct {
 }
 
 func Clean(text string, opts Options) (Result, error) {
+	// For Japanese source, force preserve mode and skip English-only heuristics.
+	if opts.SourceLanguage == "ja" {
+		return cleanJapanese(text, opts)
+	}
+
 	mode := strings.TrimSpace(opts.ParagraphMode)
 	if mode == "" {
 		mode = ParagraphModeDialogue
@@ -80,6 +86,48 @@ func Clean(text string, opts Options) (Result, error) {
 	}
 	if current.hasText() {
 		paragraphs = append(paragraphs, current.text())
+	}
+
+	stats.ParagraphsOut = len(paragraphs)
+	return Result{
+		Text:  strings.Join(paragraphs, "\n\n") + "\n",
+		Stats: stats,
+	}, nil
+}
+
+// cleanJapanese applies minimal normalization for Japanese source text.
+// It preserves blank-line paragraph boundaries and applies encoding cleanup
+// when requested, but skips all English-only heuristics.
+func cleanJapanese(text string, opts Options) (Result, error) {
+	text = strings.ReplaceAll(text, "\r\n", "\n")
+	text = strings.ReplaceAll(text, "\r", "\n")
+
+	stats := Stats{}
+	if opts.CleanEncoding {
+		var replacements int
+		text, replacements = cleanEncoding(text)
+		stats.EncodingReplacements = replacements
+	}
+
+	lines := strings.Split(text, "\n")
+	stats.LinesIn = len(lines)
+
+	var paragraphs []string
+	var current []string
+	for _, line := range lines {
+		line = strings.TrimSpace(line)
+		if line == "" {
+			stats.BlankLinesIn++
+			if len(current) > 0 {
+				paragraphs = append(paragraphs, strings.Join(current, "\n"))
+				current = nil
+			}
+			continue
+		}
+		current = append(current, line)
+	}
+	if len(current) > 0 {
+		paragraphs = append(paragraphs, strings.Join(current, "\n"))
 	}
 
 	stats.ParagraphsOut = len(paragraphs)
@@ -247,13 +295,17 @@ func cleanEncoding(text string) (string, int) {
 		from string
 		to   string
 	}{
-		{"â€œ", "“"},
-		{"â€", "”"},
-		{"â€™", "’"},
-		{"â€˜", "‘"},
+		{"â€œ", "\""},
+		{"â€", "\""},
+		{"â€™", "'"},
+		{"â€˜", "'"},
 		{"â€”", "—"},
 		{"â€“", "–"},
 		{"â€¦", "…"},
+		{"\u201c", "\""}, // left double quotation mark
+		{"\u201d", "\""}, // right double quotation mark
+		{"\u2018", "'"}, // left single quotation mark
+		{"\u2019", "'"}, // right single quotation mark
 		{"ﬃ", "ffi"},
 		{"ﬄ", "ffl"},
 		{"ﬂ", "fl"},

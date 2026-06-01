@@ -73,6 +73,7 @@ func runCleanSource(args []string) error {
 	storiesRoot := fs.String("stories", "stories", "stories root directory")
 	in := fs.String("in", "", "source text file to clean")
 	out := fs.String("out", "", "cleaned source text output path")
+	sourceLanguage := fs.String("source-language", "en", "source language: en or ja")
 	paragraphMode := fs.String("paragraph-mode", sourcecleaner.ParagraphModeDialogue, "paragraph inference mode: preserve, conservative, or dialogue")
 	cleanEncoding := fs.Bool("clean-encoding", true, "repair common mojibake and ligature extraction artifacts")
 	repairHyphenation := fs.Bool("repair-hyphenation", true, "join line-wrapped hyphenated words")
@@ -100,6 +101,9 @@ func runCleanSource(args []string) error {
 	if *out == "" {
 		return fmt.Errorf("clean-source requires -story or -out")
 	}
+	if *sourceLanguage != "en" && *sourceLanguage != "ja" {
+		return fmt.Errorf("clean-source: unsupported -source-language %q (use en or ja)", *sourceLanguage)
+	}
 	if !*force {
 		if _, err := os.Stat(*out); err == nil {
 			return fmt.Errorf("refusing to overwrite %s without -force", *out)
@@ -112,6 +116,7 @@ func runCleanSource(args []string) error {
 		CleanEncoding:     *cleanEncoding,
 		RepairHyphenation: *repairHyphenation,
 		ParagraphMode:     *paragraphMode,
+		SourceLanguage:    *sourceLanguage,
 	})
 	if err != nil {
 		return err
@@ -135,7 +140,8 @@ func runPrepareStory(args []string) error {
 	workOut := fs.String("work-out", "", "directory for exported work item JSON files")
 	id := fs.String("id", "", "story ID; defaults to the story output filename without extension")
 	title := fs.String("title", "", "story title; defaults to title-cased story ID")
-	wordsPerChunk := fs.Int("words-per-chunk", 220, "target number of source words per chunk")
+	sourceLanguage := fs.String("source-language", "en", "source language: en or ja")
+	wordsPerChunk := fs.Int("words-per-chunk", 0, "target number of source words per chunk (default: 220 for en, 700 chars for ja)")
 	paragraphsPerChunk := fs.Int("paragraphs-per-chunk", 0, "optional fixed number of paragraphs per chunk")
 	level := fs.String("level", "", "optional translation level to export")
 	paragraphMode := fs.String("paragraph-mode", sourcecleaner.ParagraphModeDialogue, "paragraph inference mode: preserve, conservative, or dialogue")
@@ -183,6 +189,9 @@ func runPrepareStory(args []string) error {
 	if strings.TrimSpace(*id) == "" {
 		*id = strings.TrimSuffix(filepath.Base(*storyPath), filepath.Ext(*storyPath))
 	}
+	if *sourceLanguage != "en" && *sourceLanguage != "ja" {
+		return fmt.Errorf("prepare-story: unsupported -source-language %q (use en or ja)", *sourceLanguage)
+	}
 	if !*force {
 		if err := ensureNotExists(*cleanedOut); err != nil {
 			return err
@@ -196,6 +205,7 @@ func runPrepareStory(args []string) error {
 		CleanEncoding:     *cleanEncoding,
 		RepairHyphenation: *repairHyphenation,
 		ParagraphMode:     *paragraphMode,
+		SourceLanguage:    *sourceLanguage,
 	})
 	if err != nil {
 		return err
@@ -205,7 +215,7 @@ func runPrepareStory(args []string) error {
 	}
 	printCleanSourceResult(*cleanedOut, cleaned)
 
-	if err := writeDraftStory(*cleanedOut, *storyPath, *id, *title, *paragraphsPerChunk, *wordsPerChunk, cleaned.Text); err != nil {
+	if err := writeDraftStory(*cleanedOut, *storyPath, *id, *title, *paragraphsPerChunk, *wordsPerChunk, *sourceLanguage, cleaned.Text); err != nil {
 		return err
 	}
 	fmt.Fprintf(os.Stderr, "wrote draft story JSON to %s\n", *storyPath)
@@ -873,11 +883,12 @@ func runChunk(args []string) error {
 	fs := flag.NewFlagSet("chunk", flag.ContinueOnError)
 	storyName := fs.String("story", "", "story name under stories/")
 	storiesRoot := fs.String("stories", "stories", "stories root directory")
-	in := fs.String("in", "", "English source text file")
+	in := fs.String("in", "", "source text file")
 	out := fs.String("out", "", "draft story JSON output path")
 	id := fs.String("id", "", "story ID; defaults to a slug from the input filename")
 	title := fs.String("title", "", "story title; defaults to title-cased story ID")
-	wordsPerChunk := fs.Int("words-per-chunk", 220, "target number of source words per chunk")
+	sourceLanguage := fs.String("source-language", "en", "source language: en or ja")
+	wordsPerChunk := fs.Int("words-per-chunk", 0, "target number of source words/chars per chunk (default: 220 for en, 700 for ja)")
 	paragraphsPerChunk := fs.Int("paragraphs-per-chunk", 0, "optional fixed number of paragraphs per chunk")
 	force := fs.Bool("force", false, "overwrite an existing output file")
 	fs.SetOutput(os.Stderr)
@@ -922,7 +933,7 @@ func runChunk(args []string) error {
 		return err
 	}
 
-	if err := writeDraftStory(*in, *out, *id, *title, *paragraphsPerChunk, *wordsPerChunk, string(text)); err != nil {
+	if err := writeDraftStory(*in, *out, *id, *title, *paragraphsPerChunk, *wordsPerChunk, *sourceLanguage, string(text)); err != nil {
 		return err
 	}
 
@@ -1014,11 +1025,12 @@ func writeTextFile(path string, text string) error {
 	return os.WriteFile(path, []byte(text), 0644)
 }
 
-func writeDraftStory(sourceFile string, out string, id string, title string, paragraphsPerChunk int, wordsPerChunk int, text string) error {
+func writeDraftStory(sourceFile string, out string, id string, title string, paragraphsPerChunk int, wordsPerChunk int, sourceLanguage string, text string) error {
 	draft, err := chunker.Draft(text, chunker.Options{
 		StoryID:            id,
 		Title:              title,
 		SourceFile:         sourceFile,
+		SourceLanguage:     sourceLanguage,
 		ParagraphsPerChunk: paragraphsPerChunk,
 		WordsPerChunk:      wordsPerChunk,
 	})
